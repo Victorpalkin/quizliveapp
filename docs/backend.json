@@ -1,0 +1,148 @@
+{
+  "entities": {
+    "quiz": {
+      "title": "Quiz",
+      "description": "A quiz created by a host.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the quiz."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the quiz."
+        },
+        "questions": {
+          "type": "array",
+          "description": "The questions in the quiz.",
+          "items": {
+            "$ref": "#/entities/question"
+          }
+        },
+        "hostId": {
+          "type": "string",
+          "description": "The UID of the user who created the quiz."
+        }
+      },
+      "required": ["title", "questions", "hostId"]
+    },
+    "question": {
+      "title": "Question",
+      "description": "A single question in a quiz.",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "answers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/entities/answer"
+          }
+        },
+        "correctAnswerIndex": {
+          "type": "number"
+        }
+      },
+      "required": ["text", "answers", "correctAnswerIndex"]
+    },
+    "answer": {
+      "title": "Answer",
+      "description": "A single answer option for a question.",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": ["text"]
+    },
+    "game": {
+      "title": "Game",
+      "description": "A live game session of a quiz.",
+      "type": "object",
+      "properties": {
+        "quizId": {
+          "type": "string",
+          "description": "The ID of the quiz being played."
+        },
+        "hostId": {
+          "type": "string",
+          "description": "The UID of the user hosting the game."
+        },
+        "state": {
+          "type": "string",
+          "enum": ["lobby", "question", "leaderboard", "ended"],
+          "description": "The current state of the game."
+        },
+        "currentQuestionIndex": {
+          "type": "number",
+          "description": "The index of the current question being displayed."
+        },
+        "gamePin": {
+          "type": "string",
+          "description": "The short code for players to join the game."
+        }
+      },
+      "required": ["quizId", "hostId", "state", "gamePin"]
+    },
+    "player": {
+      "title": "Player",
+      "description": "A player in a game.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "score": {
+          "type": "number"
+        }
+      },
+      "required": ["name", "score"]
+    },
+    "userProfile": {
+      "title": "User Profile",
+      "description": "A user's public profile.",
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "photoURL": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["anonymous"]
+  },
+  "firestore": {
+    "/quizzes/{quizId}": {
+      "schema": {
+        "$ref": "#/entities/quiz"
+      },
+      "description": "Stores all created quizzes."
+    },
+    "/games/{gameId}": {
+      "schema": {
+        "$ref": "#/entities/game"
+      },
+      "description": "Stores active game sessions."
+    },
+    "/games/{gameId}/players/{playerId}": {
+      "schema": {
+        "$ref": "#/entities/player"
+      },
+      "description": "Stores players for a specific game."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/userProfile"
+      },
+      "description": "Stores public user profiles."
+    }
+  }
+}
