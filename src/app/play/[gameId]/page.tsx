@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { PartyPopper, Frown, Trophy } from 'lucide-react';
+import { PartyPopper, Frown, Trophy, Loader2 } from 'lucide-react';
 import {
   DiamondIcon,
   TriangleIcon,
@@ -12,12 +12,13 @@ import {
 } from '@/components/app/quiz-icons';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc, collection, addDoc, query, where, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
+import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { doc, collection, addDoc, query, where, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import type { Quiz, Player } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { signInAnonymously } from 'firebase/auth';
 
 type PlayerState = 'joining' | 'lobby' | 'question' | 'result' | 'ended';
 
@@ -30,7 +31,8 @@ const answerIcons = [
 
 export default function PlayerGamePage({ params }: { params: { gameId: string } }) {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const auth = useAuth();
+  let { user } = useUser();
   const { toast } = useToast();
 
   const [state, setState] = useState<PlayerState>('joining');
@@ -82,30 +84,41 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
       toast({ variant: 'destructive', title: 'Nickname is required' });
       return;
     }
-    if (!user) {
-      toast({ variant: 'destructive', title: 'You must be logged in' });
-      return;
-    }
     
-    const gamePin = params.gameId.toUpperCase();
-    const gamesRef = collection(firestore, 'games');
-    const q = query(gamesRef, where('gamePin', '==', gamePin), where('state', '==', 'lobby'));
+    try {
+        if (!user) {
+            const userCredential = await signInAnonymously(auth);
+            user = userCredential.user;
+        }
 
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
-      toast({ variant: 'destructive', title: 'Game not found', description: "Couldn't find a game with that PIN." });
-      return;
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Login failed', description: "Couldn't sign in anonymously." });
+            return;
+        }
+
+        const gamePin = params.gameId.toUpperCase();
+        const gamesRef = collection(firestore, 'games');
+        const q = query(gamesRef, where('gamePin', '==', gamePin), where('state', '==', 'lobby'));
+
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+        toast({ variant: 'destructive', title: 'Game not found', description: "Couldn't find a game with that PIN." });
+        return;
+        }
+
+        const gameDoc = querySnapshot.docs[0];
+        setGameId(gameDoc.id);
+
+        const playerRef = doc(firestore, 'games', gameDoc.id, 'players', user.uid);
+        const newPlayer = { name: nickname, score: 0 };
+        await setDoc(playerRef, newPlayer);
+
+        setPlayer({ ...newPlayer, id: user.uid });
+        setState('lobby');
+    } catch (error) {
+        console.error("Error joining game: ", error);
+        toast({ variant: 'destructive', title: 'Error', description: "Could not join the game. Please try again." });
     }
-
-    const gameDoc = querySnapshot.docs[0];
-    setGameId(gameDoc.id);
-
-    const playerRef = doc(firestore, 'games', gameDoc.id, 'players', user.uid);
-    const newPlayer = { name: nickname, score: 0 };
-    await setDoc(playerRef, newPlayer);
-
-    setPlayer({ ...newPlayer, id: user.uid });
-    setState('lobby');
   };
 
   const handleAnswer = async (selectedIndex: number) => {
