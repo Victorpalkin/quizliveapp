@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -7,15 +8,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Header } from '@/components/app/header';
 import { Play } from 'lucide-react';
+import { useFirestore } from '@/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 export default function JoinGamePage() {
-  const [gameId, setGameId] = useState('');
+  const [gamePin, setGamePin] = useState('');
   const router = useRouter();
+  const firestore = useFirestore();
+  const { toast } = useToast();
 
-  const handleJoin = (e: React.FormEvent) => {
+  const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (gameId.trim()) {
-      router.push(`/play/${gameId.trim().toUpperCase()}`);
+    const pin = gamePin.trim().toUpperCase();
+    if (!pin) return;
+
+    const gamesRef = collection(firestore, 'games');
+    const q = query(gamesRef, where('gamePin', '==', pin), where('state', '==', 'lobby'));
+    
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        toast({
+            variant: "destructive",
+            title: "Game not found",
+            description: "No active game with that PIN was found. Check the PIN and try again."
+        })
+    } else {
+      router.push(`/play/${pin}`);
     }
   };
 
@@ -34,11 +54,11 @@ export default function JoinGamePage() {
           <CardContent>
             <form onSubmit={handleJoin} className="space-y-6">
               <Input
-                value={gameId}
-                onChange={(e) => setGameId(e.target.value)}
+                value={gamePin}
+                onChange={(e) => setGamePin(e.target.value)}
                 placeholder="GAME PIN"
                 className="h-14 text-center text-2xl font-bold tracking-widest"
-                maxLength={8}
+                maxLength={6}
               />
               <Button type="submit" size="lg" className="w-full bg-accent hover:bg-accent/90 text-lg">
                 Enter

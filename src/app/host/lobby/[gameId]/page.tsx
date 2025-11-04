@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -6,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Copy, Check } from 'lucide-react';
 import { Header } from '@/components/app/header';
-import { mockPlayers } from '@/lib/mock-data';
+import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc, updateDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -24,11 +28,22 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-
 export default function HostLobbyPage({ params }: { params: { gameId: string } }) {
   const { gameId } = params;
-  const upperCaseGameId = gameId.toUpperCase();
-  const playerList = mockPlayers.slice(0, 5); // Mock 5 players
+  const router = useRouter();
+  const firestore = useFirestore();
+
+  const gameRef = useMemoFirebase(() => doc(firestore, 'games', gameId), [firestore, gameId]);
+  const { data: game, loading: gameLoading } = useDoc(gameRef);
+
+  const playersQuery = useMemoFirebase(() => collection(firestore, 'games', gameId, 'players'), [firestore, gameId]);
+  const { data: players, loading: playersLoading } = useCollection(playersQuery);
+  
+  const handleStartGame = async () => {
+    await updateDoc(gameRef, { state: 'question' });
+    router.push(`/host/game/${gameId}`);
+  };
+
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -40,10 +55,12 @@ export default function HostLobbyPage({ params }: { params: { gameId: string } }
           <Card className="w-full max-w-md mx-auto">
             <CardHeader>
               <CardDescription>GAME PIN</CardDescription>
-              <CardTitle className="text-6xl font-mono tracking-widest flex items-center justify-center gap-4">
-                {upperCaseGameId}
-                <CopyButton text={upperCaseGameId} />
-              </CardTitle>
+              {gameLoading ? <Skeleton className="h-16 w-48 mx-auto" /> : (
+                <CardTitle className="text-6xl font-mono tracking-widest flex items-center justify-center gap-4">
+                  {game?.gamePin}
+                  {game?.gamePin && <CopyButton text={game.gamePin} />}
+                </CardTitle>
+              )}
             </CardHeader>
           </Card>
 
@@ -51,27 +68,33 @@ export default function HostLobbyPage({ params }: { params: { gameId: string } }
             <Card>
               <CardHeader className="flex-row items-center gap-2">
                 <Users className="text-primary" />
-                <CardTitle>Players Joined ({playerList.length})</CardTitle>
+                <CardTitle>Players Joined ({players?.length || 0})</CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-left">
-                  {playerList.map(player => (
-                    <li key={player.id} className="p-3 bg-background/50 rounded-md font-medium">
-                      {player.name}
-                    </li>
-                  ))}
-                  {playerList.length === 0 && <p className="text-muted-foreground text-center p-4">Waiting for players to join...</p>}
-                </ul>
+                {playersLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                ) : (
+                  <ul className="space-y-2 text-left">
+                    {players?.map(player => (
+                      <li key={player.id} className="p-3 bg-background/50 rounded-md font-medium">
+                        {player.name}
+                      </li>
+                    ))}
+                    {players?.length === 0 && <p className="text-muted-foreground text-center p-4">Waiting for players to join...</p>}
+                  </ul>
+                )}
               </CardContent>
             </Card>
 
             <Card className="bg-primary text-primary-foreground flex flex-col justify-center items-center p-8">
                 <CardTitle className="text-3xl">Ready to Start?</CardTitle>
                 <CardDescription className="text-primary-foreground/80 my-4">Once you begin, no more players can join.</CardDescription>
-                <Button asChild size="lg" variant="secondary" className="text-xl px-12 py-8">
-                  <Link href={`/host/game/${upperCaseGameId}`}>
+                <Button onClick={handleStartGame} size="lg" variant="secondary" className="text-xl px-12 py-8">
                     Start Game
-                  </Link>
                 </Button>
             </Card>
           </div>
@@ -80,3 +103,4 @@ export default function HostLobbyPage({ params }: { params: { gameId: string } }
     </div>
   );
 }
+

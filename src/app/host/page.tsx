@@ -1,4 +1,4 @@
-// src/app/host/page.tsx
+
 'use client';
 
 import { useState } from 'react';
@@ -16,6 +16,9 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import type { Question } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestore, useUser } from '@/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { nanoid } from 'nanoid';
 
 const answerSchema = z.object({
   text: z.string().min(1, "Answer text can't be empty."),
@@ -38,6 +41,8 @@ type QuizFormData = z.infer<typeof quizSchema>;
 export default function CreateQuizPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const { user } = useUser();
   const [questions, setQuestions] = useState<Omit<Question, 'id' | 'timeLimit'>[]>([]);
   const form = useForm<QuizFormData>({
     resolver: zodResolver(quizSchema),
@@ -72,15 +77,45 @@ export default function CreateQuizPage() {
     form.setValue('questions', newQuestions, { shouldValidate: true });
   };
 
-  const onSubmit = (data: QuizFormData) => {
-    console.log('Quiz Created:', data);
-    toast({
-      title: 'Quiz Created!',
-      description: 'Your new quiz is ready to be hosted.',
-    });
-    // In a real app, this would save to a DB and return an ID
-    const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
-    router.push(`/host/lobby/${gameId}`);
+  const onSubmit = async (data: QuizFormData) => {
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Not signed in",
+            description: "You must be signed in to create a quiz.",
+        });
+        return;
+    }
+    try {
+      const quizDoc = await addDoc(collection(firestore, 'quizzes'), {
+        ...data,
+        hostId: user.uid,
+        createdAt: serverTimestamp(),
+      });
+      
+      const gamePin = nanoid(6).toUpperCase();
+      const gameDoc = await addDoc(collection(firestore, 'games'), {
+          quizId: quizDoc.id,
+          hostId: user.uid,
+          state: 'lobby',
+          currentQuestionIndex: 0,
+          gamePin,
+          createdAt: serverTimestamp(),
+      });
+
+      toast({
+        title: 'Quiz Created!',
+        description: 'Your new quiz is ready to be hosted.',
+      });
+      router.push(`/host/lobby/${gameDoc.id}`);
+    } catch(error) {
+        console.error("Error creating quiz: ", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not create the quiz. Please try again.",
+        });
+    }
   };
 
   return (
@@ -172,7 +207,7 @@ export default function CreateQuizPage() {
                 ))}
                 <Button type="button" variant="outline" onClick={() => addQuestion()} className="w-full">
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Question Manually
+                  Add Question
                 </Button>
                 <FormMessage>{form.formState.errors.questions?.message}</FormMessage>
               </CardContent>
