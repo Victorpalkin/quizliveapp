@@ -81,6 +81,7 @@ export function AiQuestionSuggester({ onAddQuestion }: AiQuestionSuggesterProps)
                 <li key={index} className="flex items-center justify-between p-2 rounded-md bg-background/50">
                   <span className="flex-grow pr-4">{q}</span>
                   <Button
+                    type="button"
                     size="sm"
                     variant="ghost"
                     onClick={() => onAddQuestion(q)}
