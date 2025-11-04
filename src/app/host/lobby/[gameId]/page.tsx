@@ -1,5 +1,4 @@
 'use client';
-// A simple client component to handle copy-to-clipboard
 
 import Link from 'next/link';
 import { useState } from 'react';
@@ -26,7 +25,8 @@ function CopyButton({ text }: { text: string }) {
 }
 
 
-export default function HostLobbyPage({ params: { gameId } }: { params: { gameId: string } }) {
+export default function HostLobbyPage({ params }: { params: { gameId: string } }) {
+  const { gameId } = params;
   const upperCaseGameId = gameId.toUpperCase();
   const playerList = mockPlayers.slice(0, 5); // Mock 5 players
 
