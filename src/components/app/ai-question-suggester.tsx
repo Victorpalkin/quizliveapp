@@ -1,13 +1,13 @@
 // src/components/app/ai-question-suggester.tsx
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useEffect } from 'react';
+import { useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getAiQuizQuestions } from '@/lib/actions';
 import { Lightbulb, PlusCircle, Loader2 } from 'lucide-react';
-import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 const initialState = {
@@ -40,7 +40,7 @@ type AiQuestionSuggesterProps = {
 };
 
 export function AiQuestionSuggester({ onAddQuestion }: AiQuestionSuggesterProps) {
-  const [state, formAction] = useFormState(getAiQuizQuestions, initialState);
+  const [state, formAction] = useActionState(getAiQuizQuestions, initialState);
   const { toast } = useToast();
 
   useEffect(() => {
