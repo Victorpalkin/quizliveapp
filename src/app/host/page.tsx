@@ -12,7 +12,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Header } from '@/components/app/header';
-import { AiQuestionSuggester } from '@/components/app/ai-question-suggester';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import type { Question } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -124,8 +123,6 @@ export default function CreateQuizPage() {
                 />
               </CardContent>
             </Card>
-
-            <AiQuestionSuggester onAddQuestion={addQuestion} />
 
             <Card>
               <CardHeader>
