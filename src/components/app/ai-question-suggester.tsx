@@ -65,34 +65,36 @@ export function AiQuestionSuggester({ onAddQuestion }: AiQuestionSuggesterProps)
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div action={formAction} className="flex items-start gap-4">
-          <Input
-            name="topic"
-            placeholder="e.g., 'The Solar System' or '80s Pop Music'"
-            className="flex-grow"
-          />
-          <SubmitButton />
-        </div>
-        {state.success && state.questions.length > 0 && (
-          <div className="mt-6 space-y-3">
-            <h3 className="font-semibold">Suggestions:</h3>
-            <ul className="space-y-2">
-              {state.questions.map((q, index) => (
-                <li key={index} className="flex items-center justify-between p-2 rounded-md bg-background/50">
-                  <span className="flex-grow pr-4">{q}</span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onAddQuestion(q)}
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add
-                  </Button>
-                </li>
-              ))}
-            </ul>
+        <form action={formAction} className="space-y-4">
+          <div className="flex items-start gap-4">
+            <Input
+              name="topic"
+              placeholder="e.g., 'The Solar System' or '80s Pop Music'"
+              className="flex-grow"
+            />
+            <SubmitButton />
           </div>
-        )}
+          {state.success && state.questions.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <h3 className="font-semibold">Suggestions:</h3>
+              <ul className="space-y-2">
+                {state.questions.map((q, index) => (
+                  <li key={index} className="flex items-center justify-between p-2 rounded-md bg-background/50">
+                    <span className="flex-grow pr-4">{q}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onAddQuestion(q)}
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" /> Add
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </form>
       </CardContent>
     </Card>
   );
