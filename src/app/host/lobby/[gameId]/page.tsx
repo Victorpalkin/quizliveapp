@@ -1,13 +1,13 @@
+// A simple client component to handle copy-to-clipboard
+'use client';
+
 import Link from 'next/link';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Copy, Check } from 'lucide-react';
 import { Header } from '@/components/app/header';
 import { mockPlayers } from '@/lib/mock-data';
-
-// A simple client component to handle copy-to-clipboard
-'use client';
-import { useState } from 'react';
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
