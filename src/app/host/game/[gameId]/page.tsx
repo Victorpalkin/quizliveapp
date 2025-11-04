@@ -28,7 +28,7 @@ const answerColors = [
   'bg-red-500', 'bg-blue-500', 'bg-yellow-500', 'bg-green-500'
 ]
 
-export default function HostGamePage({ params }: { params: { gameId: string } }) {
+export default function HostGamePage({ params: { gameId } }: { params: { gameId: string } }) {
   const [gameState, setGameState] = useState<GameState>('question');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [scores, setScores] = useState(mockPlayers.map(p => ({ ...p, score: 0 })));
@@ -87,7 +87,7 @@ export default function HostGamePage({ params }: { params: { gameId: string } })
     <div className="flex flex-col min-h-screen bg-background text-foreground p-8">
       <header className="flex justify-between items-center mb-8">
         <h1 className="text-xl font-bold">QuizLive</h1>
-        <div className="text-2xl font-mono">{params.gameId}</div>
+        <div className="text-2xl font-mono">{gameId}</div>
       </header>
 
       {gameState === 'question' && (
