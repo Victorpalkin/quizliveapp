@@ -16,10 +16,9 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import type { Question } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
-import { signInAnonymously } from 'firebase/auth';
 
 const answerSchema = z.object({
   text: z.string().min(1, "Answer text can't be empty."),
@@ -43,8 +42,7 @@ export default function CreateQuizPage() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
-  const auth = useAuth();
-  let { user } = useUser();
+  const { user } = useUser();
   const [questions, setQuestions] = useState<Omit<Question, 'id' | 'timeLimit'>[]>([]);
   const form = useForm<QuizFormData>({
     resolver: zodResolver(quizSchema),
@@ -80,21 +78,15 @@ export default function CreateQuizPage() {
   };
 
   const onSubmit = async (data: QuizFormData) => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "You must be signed in",
+        description: "Please sign in to create a quiz.",
+      });
+      return;
+    }
     try {
-        if (!user) {
-            const userCredential = await signInAnonymously(auth);
-            user = userCredential.user;
-        }
-
-        if (!user) {
-             toast({
-                variant: "destructive",
-                title: "Login failed",
-                description: "Could not sign in anonymously. Please try again.",
-            });
-            return;
-        }
-
       const quizDoc = await addDoc(collection(firestore, 'quizzes'), {
         ...data,
         hostId: user.uid,

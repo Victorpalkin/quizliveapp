@@ -12,13 +12,12 @@ import {
 } from '@/components/app/quiz-icons';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
-import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, collection, addDoc, query, where, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import type { Quiz, Player } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { signInAnonymously } from 'firebase/auth';
 
 type PlayerState = 'joining' | 'lobby' | 'question' | 'result' | 'ended';
 
@@ -31,8 +30,7 @@ const answerIcons = [
 
 export default function PlayerGamePage({ params }: { params: { gameId: string } }) {
   const firestore = useFirestore();
-  const auth = useAuth();
-  let { user } = useUser();
+  const { user } = useUser();
   const { toast } = useToast();
 
   const [state, setState] = useState<PlayerState>('joining');
@@ -85,17 +83,12 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
       return;
     }
     
+    if (!user) {
+        toast({ variant: 'destructive', title: 'You must be signed in', description: "Please sign in to join a game." });
+        return;
+    }
+
     try {
-        if (!user) {
-            const userCredential = await signInAnonymously(auth);
-            user = userCredential.user;
-        }
-
-        if (!user) {
-            toast({ variant: 'destructive', title: 'Login failed', description: "Couldn't sign in anonymously." });
-            return;
-        }
-
         const gamePin = params.gameId.toUpperCase();
         const gamesRef = collection(firestore, 'games');
         const q = query(gamesRef, where('gamePin', '==', gamePin), where('state', '==', 'lobby'));
@@ -254,4 +247,3 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
     </div>
   );
 }
-
