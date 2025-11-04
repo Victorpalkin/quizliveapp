@@ -65,14 +65,14 @@ export function AiQuestionSuggester({ onAddQuestion }: AiQuestionSuggesterProps)
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="flex items-start gap-4">
+        <div action={formAction} className="flex items-start gap-4">
           <Input
             name="topic"
             placeholder="e.g., 'The Solar System' or '80s Pop Music'"
             className="flex-grow"
           />
           <SubmitButton />
-        </form>
+        </div>
         {state.success && state.questions.length > 0 && (
           <div className="mt-6 space-y-3">
             <h3 className="font-semibold">Suggestions:</h3>
