@@ -6,7 +6,7 @@ import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { mockQuiz, mockPlayers } from '@/lib/mock-data';
-import { Leaderboard } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import {
   DiamondIcon,
   TriangleIcon,
@@ -84,7 +84,7 @@ export default function HostGamePage({ params }: { params: { gameId: string } })
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-900 text-white p-8">
+    <div className="flex flex-col min-h-screen bg-background text-foreground p-8">
       <header className="flex justify-between items-center mb-8">
         <h1 className="text-xl font-bold">QuizLive</h1>
         <div className="text-2xl font-mono">{params.gameId}</div>
@@ -147,7 +147,7 @@ function LeaderboardView({ scores }: { scores: { id: string; name: string; score
     return (
         <Card className="w-full max-w-2xl bg-card text-card-foreground">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Leaderboard /> Rankings</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Trophy /> Rankings</CardTitle>
             </CardHeader>
             <CardContent>
                 <ul className="space-y-3">
