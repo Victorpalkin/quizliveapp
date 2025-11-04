@@ -12,12 +12,13 @@ import {
 } from '@/components/app/quiz-icons';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, collection, addDoc, query, where, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import type { Quiz, Player } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { signInAnonymously } from 'firebase/auth';
 
 type PlayerState = 'joining' | 'lobby' | 'question' | 'result' | 'ended';
 
@@ -30,7 +31,8 @@ const answerIcons = [
 
 export default function PlayerGamePage({ params }: { params: { gameId: string } }) {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const auth = useAuth();
+  const { user, loading: userLoading } = useUser();
   const { toast } = useToast();
 
   const [state, setState] = useState<PlayerState>('joining');
@@ -49,6 +51,19 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
   const [answerSelected, setAnswerSelected] = useState<number | null>(null);
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
+  
+  useEffect(() => {
+    if (!userLoading && !user) {
+      signInAnonymously(auth).catch((error) => {
+        console.error("Anonymous sign-in failed: ", error);
+        toast({
+          variant: "destructive",
+          title: "Authentication Failed",
+          description: "Could not sign you in. Please try refreshing the page.",
+        });
+      });
+    }
+  }, [user, userLoading, auth, toast]);
 
   useEffect(() => {
     if (game?.state) {
@@ -84,7 +99,7 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
     }
     
     if (!user) {
-        toast({ variant: 'destructive', title: 'You must be signed in', description: "Please sign in to join a game." });
+        toast({ variant: 'destructive', title: 'Could not authenticate', description: "Please wait a moment and try again." });
         return;
     }
 
@@ -157,7 +172,7 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
                 placeholder="Enter your nickname"
                 className="h-12 text-center text-xl"
               />
-              <Button type="submit" size="lg" className="w-full">Join</Button>
+              <Button type="submit" size="lg" className="w-full" disabled={userLoading}>Join</Button>
             </form>
           </div>
         );

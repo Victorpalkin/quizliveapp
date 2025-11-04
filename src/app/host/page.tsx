@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,9 +16,11 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import type { Question } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser } from '@/firebase';
+import { useAuth, useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
+import { signInAnonymously } from 'firebase/auth';
+import { AiQuestionSuggester } from '@/components/app/ai-question-suggester';
 
 const answerSchema = z.object({
   text: z.string().min(1, "Answer text can't be empty."),
@@ -42,7 +44,8 @@ export default function CreateQuizPage() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { user } = useUser();
+  const auth = useAuth();
+  const { user, loading: userLoading } = useUser();
   const [questions, setQuestions] = useState<Omit<Question, 'id' | 'timeLimit'>[]>([]);
   const form = useForm<QuizFormData>({
     resolver: zodResolver(quizSchema),
@@ -52,6 +55,19 @@ export default function CreateQuizPage() {
       questions: [],
     },
   });
+
+  useEffect(() => {
+    if (!userLoading && !user) {
+      signInAnonymously(auth).catch((error) => {
+        console.error("Anonymous sign-in failed: ", error);
+        toast({
+          variant: "destructive",
+          title: "Authentication Failed",
+          description: "Could not sign you in. Please try refreshing the page.",
+        });
+      });
+    }
+  }, [user, userLoading, auth, toast]);
 
   const addQuestion = (text: string = '') => {
     const newQuestion: Omit<Question, 'id' | 'timeLimit'> = {
@@ -159,6 +175,8 @@ export default function CreateQuizPage() {
               </CardContent>
             </Card>
 
+            <AiQuestionSuggester onAddQuestion={addQuestion} />
+
             <Card>
               <CardHeader>
                 <CardTitle>Questions</CardTitle>
@@ -214,7 +232,7 @@ export default function CreateQuizPage() {
             </Card>
 
             <div className="flex justify-end">
-              <Button type="submit" size="lg" className="bg-primary hover:bg-primary/90">
+              <Button type="submit" size="lg" className="bg-primary hover:bg-primary/90" disabled={userLoading}>
                 Launch Quiz
               </Button>
             </div>
