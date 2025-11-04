@@ -1,3 +1,4 @@
+
 // src/components/app/ai-question-suggester.tsx
 'use client';
 
@@ -52,7 +53,12 @@ export function AiQuestionSuggester({ onAddQuestion }: AiQuestionSuggesterProps)
       });
     }
   }, [state, toast]);
+  
+  // This component is currently not used, so we can return null.
+  // We can re-enable it later if needed.
+  return null;
 
+  /*
   return (
     <Card>
       <CardHeader>
@@ -98,4 +104,5 @@ export function AiQuestionSuggester({ onAddQuestion }: AiQuestionSuggesterProps)
       </CardContent>
     </Card>
   );
+  */
 }
