@@ -12,14 +12,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Header } from '@/components/app/header';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import type { Question } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
-import { signInAnonymously } from 'firebase/auth';
 import { AiQuestionSuggester } from '@/components/app/ai-question-suggester';
 
 const answerSchema = z.object({
@@ -44,7 +43,6 @@ export default function CreateQuizPage() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
-  const auth = useAuth();
   const { user, loading: userLoading } = useUser();
   const [questions, setQuestions] = useState<Omit<Question, 'id' | 'timeLimit'>[]>([]);
   const form = useForm<QuizFormData>({
@@ -58,16 +56,9 @@ export default function CreateQuizPage() {
 
   useEffect(() => {
     if (!userLoading && !user) {
-      signInAnonymously(auth).catch((error) => {
-        console.error("Anonymous sign-in failed: ", error);
-        toast({
-          variant: "destructive",
-          title: "Authentication Failed",
-          description: "Could not sign you in. Please try refreshing the page.",
-        });
-      });
+      router.push('/login');
     }
-  }, [user, userLoading, auth, toast]);
+  }, [user, userLoading, router]);
 
   const addQuestion = (text: string = '') => {
     const newQuestion: Omit<Question, 'id' | 'timeLimit'> = {
@@ -133,6 +124,15 @@ export default function CreateQuizPage() {
         });
     }
   };
+
+  if (userLoading || !user) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
