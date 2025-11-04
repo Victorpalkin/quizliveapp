@@ -26,8 +26,8 @@ function CopyButton({ text }: { text: string }) {
 }
 
 
-export default function HostLobbyPage({ params: { gameId: gameIdParam } }: { params: { gameId: string } }) {
-  const gameId = gameIdParam.toUpperCase();
+export default function HostLobbyPage({ params: { gameId } }: { params: { gameId: string } }) {
+  const upperCaseGameId = gameId.toUpperCase();
   const playerList = mockPlayers.slice(0, 5); // Mock 5 players
 
   return (
@@ -41,8 +41,8 @@ export default function HostLobbyPage({ params: { gameId: gameIdParam } }: { par
             <CardHeader>
               <CardDescription>GAME PIN</CardDescription>
               <CardTitle className="text-6xl font-mono tracking-widest flex items-center justify-center gap-4">
-                {gameId}
-                <CopyButton text={gameId} />
+                {upperCaseGameId}
+                <CopyButton text={upperCaseGameId} />
               </CardTitle>
             </CardHeader>
           </Card>
@@ -69,7 +69,7 @@ export default function HostLobbyPage({ params: { gameId: gameIdParam } }: { par
                 <CardTitle className="text-3xl">Ready to Start?</CardTitle>
                 <CardDescription className="text-primary-foreground/80 my-4">Once you begin, no more players can join.</CardDescription>
                 <Button asChild size="lg" variant="secondary" className="text-xl px-12 py-8">
-                  <Link href={`/host/game/${gameId}`}>
+                  <Link href={`/host/game/${upperCaseGameId}`}>
                     Start Game
                   </Link>
                 </Button>
