@@ -16,10 +16,10 @@ const initialState = {
   error: null as string | null,
 };
 
-function SubmitButton() {
+function SubmitButton({ formAction }: { formAction: (payload: FormData) => void }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" formAction={formAction} disabled={pending}>
       {pending ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -65,14 +65,14 @@ export function AiQuestionSuggester({ onAddQuestion }: AiQuestionSuggesterProps)
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-4">
+        <div className="space-y-4">
           <div className="flex items-start gap-4">
             <Input
               name="topic"
               placeholder="e.g., 'The Solar System' or '80s Pop Music'"
               className="flex-grow"
             />
-            <SubmitButton />
+            <SubmitButton formAction={formAction} />
           </div>
           {state.success && state.questions.length > 0 && (
             <div className="mt-6 space-y-3">
@@ -94,7 +94,7 @@ export function AiQuestionSuggester({ onAddQuestion }: AiQuestionSuggesterProps)
               </ul>
             </div>
           )}
-        </form>
+        </div>
       </CardContent>
     </Card>
   );
