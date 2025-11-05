@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, LabelList, Cell } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, LabelList, Cell, Rectangle } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trophy, XCircle, Home, Trash2, CheckCircle, Users } from 'lucide-react';
@@ -374,23 +374,33 @@ function LeaderboardView({ players }: { players: Player[] }) {
 
 function AnswerDistributionChart({ data }: { data: { name: string; total: number; isCorrect: boolean }[] }) {
     const CustomBarLabel = (props: any) => {
-        const { x, y, width, height, value, isCorrect } = props;
+        const { x, y, width, height, value } = props;
+        // Don't render a label if the value is 0
+        if (value === 0) return null;
         return (
-          <g>
-            <text x={x + width / 2} y={y} fill="hsl(var(--foreground))" textAnchor="middle" dy={-6} className="text-sm font-bold">
-                {`${value}`}
-            </text>
-            {isCorrect && (
-              <CheckCircle 
+          <text x={x + width / 2} y={y} fill="hsl(var(--foreground))" textAnchor="middle" dy={-6} className="text-sm font-bold">
+              {`${value}`}
+          </text>
+        );
+    };
+
+    const CustomBar = (props: any) => {
+      const { fill, x, y, width, height, isCorrect } = props;
+      
+      return (
+        <g>
+          <Rectangle {...props} fill={isCorrect ? 'hsl(var(--primary))' : 'hsl(var(--muted))'} radius={[4, 4, 0, 0]} />
+          {isCorrect && (
+             <CheckCircle 
                 x={x + width / 2 - 8} 
-                y={y - 28} 
+                y={y - 20} 
                 width={16} 
                 height={16} 
                 className="text-green-500"
               />
-            )}
-          </g>
-        );
+          )}
+        </g>
+      );
     };
 
     return (
@@ -403,11 +413,8 @@ function AnswerDistributionChart({ data }: { data: { name: string; total: number
                     <BarChart data={data} margin={{ top: 30, right: 10, left: 10, bottom: 5 }}>
                         <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} />
                         <YAxis hide={true} />
-                        <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                        <Bar dataKey="total" shape={<CustomBar />}>
                              <LabelList dataKey="total" content={<CustomBarLabel />} />
-                             {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.isCorrect ? 'hsl(var(--primary))' : 'hsl(var(--muted))'} />
-                             ))}
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
@@ -417,4 +424,5 @@ function AnswerDistributionChart({ data }: { data: { name: string; total: number
 }
 
 
+    
     
