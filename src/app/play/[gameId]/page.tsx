@@ -69,31 +69,41 @@ export default function PlayerGamePage() {
   const [answerSelected, setAnswerSelected] = useState<number | null>(null);
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
-  const isLastQuestion = game && quiz ? game.currentQuestionIndex === quiz.questions.length - 1 : false;
+  const isLastQuestion = game && quiz ? game.currentQuestionIndex >= quiz.questions.length - 1 : false;
 
-  
   useEffect(() => {
     if (!game && !gameLoading && state !== 'joining' && state !== 'cancelled') {
         setState('cancelled');
         return;
     }
 
-    if (game?.state) {
-        if (game.state !== 'lobby' && state === 'lobby') {
-            setState('question');
-        } else if (game.state === 'question' && (state === 'result' || state === 'waiting')) {
-            // Only go back to question state if the question has actually changed
-            if (game.currentQuestionIndex !== (quiz?.questions.findIndex(q => q.text === question?.text) ?? -1)) {
-              setState('question');
+    if (!game) return;
+
+    switch (game.state) {
+        case 'lobby':
+            if (state === 'joining') setState('lobby');
+            break;
+        case 'question':
+            // If host moves to a new question, player moves from result/lobby to question
+            if (state === 'result' || state === 'lobby') {
+                setState('question');
             }
-        } else if (game.state === 'leaderboard' && state === 'question') {
-            // After question time is up, host moves to leaderboard, player sees their result
-            setState('result');
-        } else if (game.state === 'ended' && state !== 'ended') {
-            setState('ended');
-        }
+            break;
+        case 'leaderboard':
+            // Host finished question, player moves from 'waiting' to 'result'
+            if (state === 'waiting') {
+                setState('result');
+            }
+            break;
+        case 'ended':
+            if (state !== 'ended') {
+                setState('ended');
+            }
+            break;
     }
-  }, [game, gameLoading, state, quiz, question]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game, gameLoading]);
+
 
   useEffect(() => {
     if (state === 'question') {
@@ -103,8 +113,9 @@ export default function PlayerGamePage() {
         setTime(prev => {
           if (prev <= 1) {
             clearInterval(timer);
-            if (answerSelected === null) { 
-              handleAnswer(-1); // Times up
+            // If timer expires and no answer was selected, handle it as a wrong answer
+            if (answerSelected === null) {
+              handleAnswer(-1); // -1 indicates timeout
             }
             return 0;
           }
@@ -113,7 +124,8 @@ export default function PlayerGamePage() {
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [game?.currentQuestionIndex, state]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, game?.currentQuestionIndex]); // Rerun timer only when a new question starts
 
   const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,18 +173,24 @@ export default function PlayerGamePage() {
   };
 
   const handleAnswer = (selectedIndex: number) => {
-    if (answerSelected !== null || !gameDocId || !player) return;
+    // Prevent answering multiple times or after time is up
+    if (answerSelected !== null || state !== 'question') return;
+    
     setAnswerSelected(selectedIndex);
-    setState('waiting');
+    setState('waiting'); // Move to waiting state immediately
 
+    // The result will be calculated when host moves to 'leaderboard'
     const isCorrect = question?.correctAnswerIndex === selectedIndex;
     const points = isCorrect ? Math.round(100 + (time / 20) * 900) : 0;
     
-    const newScore = player.score + points;
-    const playerRef = doc(firestore, 'games', gameDocId, 'players', playerId) as DocumentReference<Player>;
-    updatePlayer(playerRef, { score: newScore });
+    const newScore = (player?.score || 0) + points;
+    
+    if (gameDocId && player) {
+        const playerRef = doc(firestore, 'games', gameDocId, 'players', playerId) as DocumentReference<Player>;
+        updatePlayer(playerRef, { score: newScore });
+    }
 
-    setPlayer({ ...player, score: newScore });
+    setPlayer(p => p ? { ...p, score: newScore } : null);
     setLastAnswer({ selected: selectedIndex, correct: question.correctAnswerIndex, points });
   };
   
@@ -226,10 +244,8 @@ export default function PlayerGamePage() {
                       onClick={() => handleAnswer(i)}
                       disabled={answerSelected !== null}
                       className={cn(
-                        'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform',
-                        answerIcons[i].color,
-                        answerSelected === null ? 'hover:scale-105' : 'opacity-50',
-                        answerSelected === i && 'opacity-100 ring-4 ring-white scale-105'
+                        'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform hover:scale-105',
+                        answerIcons[i].color
                       )}
                     >
                       <Icon className="w-24 h-24" />
@@ -248,10 +264,11 @@ export default function PlayerGamePage() {
             <div className="flex flex-col items-center justify-center text-center p-8 w-full h-full bg-background">
                 <Timer className="w-24 h-24 mb-4 text-primary animate-pulse" />
                 <h1 className="text-4xl font-bold">Answer Locked In!</h1>
+                <p className="text-muted-foreground mt-2 text-xl">Waiting for question to finish...</p>
                 <div className="mt-12 flex flex-col items-center">
                     <Loader2 className="animate-spin w-12 h-12"/>
-                    <p className="mt-4 text-xl">
-                        {isLastQuestion ? "Waiting for final results..." : "Waiting for next question..."}
+                    <p className="mt-4">
+                        Waiting for host...
                     </p>
                 </div>
             </div>
@@ -262,11 +279,11 @@ export default function PlayerGamePage() {
           <div className={`flex flex-col items-center justify-center text-center p-8 w-full h-full ${isCorrect ? 'bg-green-500' : 'bg-red-500'} text-white`}>
             {isCorrect ? <PartyPopper className="w-24 h-24 mb-4" /> : <Frown className="w-24 h-24 mb-4" />}
             <h1 className="text-6xl font-bold">{isCorrect ? 'Correct!' : 'Incorrect'}</h1>
-            <p className="text-3xl mt-4">+{lastAnswer?.points} points</p>
+            <p className="text-3xl mt-4">+{lastAnswer?.points || 0} points</p>
             <p className="text-2xl mt-8">Your score: {player?.score}</p>
             <div className="mt-12 flex flex-col items-center">
                 <Loader2 className="animate-spin w-12 h-12"/>
-                <p className="mt-4">
+                <p className="mt-4 text-lg">
                     {isLastQuestion ? "Revealing final scores..." : "Loading next question..."}
                 </p>
             </div>

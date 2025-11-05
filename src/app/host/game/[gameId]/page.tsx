@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, XCircle, Home, Trash2 } from 'lucide-react';
+import { Trophy, XCircle, Home, Trash2, CheckCircle } from 'lucide-react';
 import {
   DiamondIcon,
   TriangleIcon,
@@ -163,6 +163,8 @@ export default function HostGamePage() {
   const [time, setTime] = useState(20);
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
+  const isLastQuestion = game && quiz ? game.currentQuestionIndex >= quiz.questions.length - 1 : false;
+
 
   const chartData = question?.answers.map((ans:any, index:number) => ({
     name: `Option ${index + 1}`,
@@ -173,6 +175,12 @@ export default function HostGamePage() {
     fill: `hsl(var(--chart-${index + 1}))`
   }));
 
+  const finishQuestion = () => {
+    if (game?.state === 'question' && gameRef) {
+        updateGame(gameRef, { state: 'leaderboard' });
+    }
+  };
+
   useEffect(() => {
     if (game?.state === 'question') {
       setTime(20);
@@ -180,6 +188,7 @@ export default function HostGamePage() {
         setTime(prev => {
           if (prev <= 1) {
             clearInterval(timer);
+            finishQuestion(); // Automatically finish when timer runs out
             return 0;
           }
           return prev - 1;
@@ -187,15 +196,17 @@ export default function HostGamePage() {
       }, 1000);
       return () => clearInterval(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game?.currentQuestionIndex, game?.state]);
 
   const handleNext = () => {
     if (!game || !quiz || !gameRef) return;
 
     if (game.state === 'question') {
+      // This is handled by finishQuestion now
       updateGame(gameRef, { state: 'leaderboard' });
     } else if (game.state === 'leaderboard') {
-      if (game.currentQuestionIndex < quiz.questions.length - 1) {
+      if (!isLastQuestion) {
         updateGame(gameRef, { 
           state: 'question',
           currentQuestionIndex: game.currentQuestionIndex + 1
@@ -264,21 +275,6 @@ export default function HostGamePage() {
                     <p className="text-3xl font-bold">{question.text}</p>
                 </CardContent>
             </Card>
-
-            <div className="w-full max-w-4xl mt-8">
-                <h2 className="text-xl font-semibold mb-4 text-left text-muted-foreground">Live Answer Distribution</h2>
-                <Card className="bg-card/80">
-                    <CardContent className="p-4">
-                        <ResponsiveContainer width="100%" height={250}>
-                            <BarChart data={chartData} layout="vertical" margin={{ left: 20 }}>
-                                <XAxis type="number" hide />
-                                <YAxis type="category" dataKey="name" hide />
-                                <Bar dataKey="total" radius={[0, 8, 8, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            </div>
             
             <div className="grid grid-cols-2 gap-4 mt-8 w-full max-w-4xl">
               {question.answers.map((ans, i) => (
@@ -300,9 +296,17 @@ export default function HostGamePage() {
 
       <footer className="mt-8 flex justify-end items-center gap-4">
         <span className="text-lg">Question {(game?.currentQuestionIndex || 0) + 1} / {(quiz?.questions.length || 0)}</span>
-        <Button onClick={handleNext} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
-          {game?.state === 'leaderboard' && (game?.currentQuestionIndex || 0) === (quiz?.questions.length || 0) - 1 ? 'End Game' : 'Next'}
-        </Button>
+        {game?.state === 'question' && (
+             <Button onClick={finishQuestion} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Finish Question
+            </Button>
+        )}
+        {game?.state === 'leaderboard' && (
+            <Button onClick={handleNext} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
+                {isLastQuestion ? 'End Game' : 'Next Question'}
+            </Button>
+        )}
       </footer>
     </div>
   );
@@ -326,14 +330,9 @@ function LeaderboardView({ players }: { players: Player[] }) {
                             <span className="font-bold text-lg text-primary">{player.score}</span>
                         </li>
                     ))}
+                    {players.length === 0 && <p className="text-muted-foreground text-center p-4">No players have joined yet.</p>}
                 </ul>
             </CardContent>
         </Card>
     );
 }
-
-    
-
-    
-
-    
