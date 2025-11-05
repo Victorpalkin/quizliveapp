@@ -20,8 +20,8 @@ service cloud.firestore {
       // Anyone can read game state
       allow read: if true;
 
-      // Only verified hosts can create games
-      allow create: if request.auth != null && request.auth.token.email_verified == true && request.auth.uid == request.resource.data.hostId;
+      // Only authenticated hosts can create games
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.hostId;
       
       // Only the host can update or delete the game
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.hostId;
