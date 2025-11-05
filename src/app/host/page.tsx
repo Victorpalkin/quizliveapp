@@ -6,12 +6,12 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
-import { PlusCircle, Loader2, Gamepad2, Trash2 } from 'lucide-react';
+import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn } from 'lucide-react';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
-import type { Quiz } from '@/lib/types';
+import type { Quiz, Game } from '@/lib/types';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -27,6 +27,27 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+function GameStateBadge({ state }: { state: Game['state'] }) {
+    let text;
+    let className;
+    switch (state) {
+        case 'lobby':
+            text = 'In Lobby';
+            className = 'bg-blue-500/20 text-blue-400';
+            break;
+        case 'question':
+        case 'leaderboard':
+            text = 'In Progress';
+            className = 'bg-green-500/20 text-green-400';
+            break;
+        default:
+            text = 'Unknown';
+            className = 'bg-muted text-muted-foreground';
+    }
+    return <div className={`px-2 py-1 text-xs font-medium rounded-md ${className}`}>{text}</div>;
+}
+
+
 export default function HostDashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -38,6 +59,12 @@ export default function HostDashboardPage() {
   , [user, firestore]);
 
   const { data: quizzes, loading: quizzesLoading } = useCollection<Quiz>(quizzesQuery);
+  
+  const gamesQuery = useMemoFirebase(() =>
+    user ? query(collection(firestore, 'games'), where('hostId', '==', user.uid)) : null
+    , [user, firestore]);
+
+  const { data: games, loading: gamesLoading } = useCollection<Game>(gamesQuery);
 
   useEffect(() => {
     if (!userLoading && !user) {
@@ -51,7 +78,7 @@ export default function HostDashboardPage() {
     const gameData = {
       quizId: quizId,
       hostId: user.uid,
-      state: 'lobby',
+      state: 'lobby' as const,
       currentQuestionIndex: 0,
       gamePin: nanoid(6).toUpperCase(),
       createdAt: serverTimestamp(),
@@ -106,6 +133,39 @@ export default function HostDashboardPage() {
       });
   };
 
+  const handleCancelGame = (gameId: string) => {
+    if (!firestore) return;
+    const gameRef = doc(firestore, 'games', gameId);
+    deleteDoc(gameRef)
+      .then(() => {
+        toast({
+          title: 'Game Canceled',
+          description: 'The game has been removed.',
+        });
+      })
+      .catch((error) => {
+        console.error("Error canceling game:", error);
+        const permissionError = new FirestorePermissionError({
+            path: gameRef.path,
+            operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not cancel the game. Please try again.",
+        });
+      });
+  };
+
+  const handleOpenGame = (game: Game) => {
+    if (game.state === 'lobby') {
+        router.push(`/host/lobby/${game.id}`);
+    } else {
+        router.push(`/host/game/${game.id}`);
+    }
+  }
+
 
   if (userLoading || !user) {
     return (
@@ -116,10 +176,66 @@ export default function HostDashboardPage() {
     );
   }
 
+  const activeGames = games?.filter(g => g.state !== 'ended');
+
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1 container mx-auto p-4 md-p-8">
+      <main className="flex-1 container mx-auto p-4 md:p-8">
+        
+        {/* Active Games Section */}
+        {activeGames && activeGames.length > 0 && (
+            <div className="mb-12">
+                <h1 className="text-3xl font-bold mb-8">Active Games</h1>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {gamesLoading ? (
+                        <Card><CardContent><Loader2 className="m-4 animate-spin"/></CardContent></Card>
+                    ) : (
+                        activeGames.map(game => (
+                            <Card key={game.id} className="flex flex-col">
+                                <CardHeader>
+                                    <div className="flex justify-between items-center">
+                                        <CardTitle className="font-mono tracking-widest">{game.gamePin}</CardTitle>
+                                        <GameStateBadge state={game.state} />
+                                    </div>
+                                    <CardDescription>
+                                        {quizzes?.find(q => q.id === game.quizId)?.title || '...'}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="flex-grow flex flex-col justify-end gap-2">
+                                    <Button className="w-full" onClick={() => handleOpenGame(game)}>
+                                        <LogIn className="mr-2 h-4 w-4" /> Open Game
+                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button className="w-full" variant="destructive">
+                                                <XCircle className="mr-2 h-4 w-4" /> Cancel Game
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will cancel the game for all players and cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Back</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleCancelGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                    Yes, Cancel Game
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
+                </div>
+            </div>
+        )}
+
+        {/* My Quizzes Section */}
         <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold">My Quizzes</h1>
             <Button asChild>
@@ -199,3 +315,5 @@ export default function HostDashboardPage() {
     </div>
   );
 }
+
+    
