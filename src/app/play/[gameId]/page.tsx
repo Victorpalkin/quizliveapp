@@ -79,13 +79,14 @@ export default function PlayerGamePage() {
 
     if (!game) return;
 
+    // This effect synchronizes the player's state with the host's game state.
     switch (game.state) {
         case 'lobby':
             if (state === 'joining') setState('lobby');
             break;
         case 'question':
-            // If host moves to a new question, player moves from result/lobby to question
-            if (state === 'result' || state === 'lobby') {
+            // Host started a new question. Move from lobby/result to question.
+            if ((state === 'result' || state === 'lobby') && game.currentQuestionIndex !== player?.lastAnswerIndex) {
                 setState('question');
             }
             break;
@@ -149,7 +150,7 @@ export default function PlayerGamePage() {
         setGameDocId(gameDoc.id);
 
         const playerRef = doc(firestore, 'games', gameDoc.id, 'players', playerId);
-        const newPlayer = { name: nickname, score: 0 };
+        const newPlayer = { name: nickname, score: 0, lastAnswerIndex: null };
         
         setDoc(playerRef, newPlayer)
           .then(() => {
@@ -187,10 +188,10 @@ export default function PlayerGamePage() {
     
     if (gameDocId && player) {
         const playerRef = doc(firestore, 'games', gameDocId, 'players', playerId) as DocumentReference<Player>;
-        updatePlayer(playerRef, { score: newScore });
+        updatePlayer(playerRef, { score: newScore, lastAnswerIndex: game?.currentQuestionIndex });
     }
 
-    setPlayer(p => p ? { ...p, score: newScore } : null);
+    setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndex: game?.currentQuestionIndex } : null);
     setLastAnswer({ selected: selectedIndex, correct: question.correctAnswerIndex, points });
   };
   
@@ -268,7 +269,7 @@ export default function PlayerGamePage() {
                 <div className="mt-12 flex flex-col items-center">
                     <Loader2 className="animate-spin w-12 h-12"/>
                     <p className="mt-4">
-                        Waiting for host...
+                        {isLastQuestion ? "Waiting for final results..." : "Waiting for other players..."}
                     </p>
                 </div>
             </div>

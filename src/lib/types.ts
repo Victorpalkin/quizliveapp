@@ -24,6 +24,7 @@ export interface Player {
     id: string;
     name: string;
     score: number;
+    lastAnswerIndex?: number | null;
 }
 
 export interface Game {

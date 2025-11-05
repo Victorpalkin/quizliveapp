@@ -97,6 +97,10 @@
         },
         "score": {
           "type": "number"
+        },
+        "lastAnswerIndex": {
+          "type": "number",
+          "description": "The index of the answer submitted for the current question. Null if not answered yet."
         }
       },
       "required": ["name", "score"]

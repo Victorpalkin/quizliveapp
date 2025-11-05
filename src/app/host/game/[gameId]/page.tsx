@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, XCircle, Home, Trash2, CheckCircle } from 'lucide-react';
+import { Trophy, XCircle, Home, Trash2, CheckCircle, Users } from 'lucide-react';
 import {
   DiamondIcon,
   TriangleIcon,
@@ -16,7 +16,7 @@ import {
 } from '@/components/app/quiz-icons';
 import { Progress } from '@/components/ui/progress';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, updateDoc, DocumentReference, deleteDoc } from 'firebase/firestore';
+import { doc, collection, updateDoc, DocumentReference, deleteDoc, writeBatch } from 'firebase/firestore';
 import type { Player, Quiz, Game } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -158,12 +158,14 @@ export default function HostGamePage() {
   const { data: quiz, loading: quizLoading } = useDoc(quizRef);
 
   const playersQuery = useMemoFirebase(() => collection(firestore, 'games', gameId, 'players'), [firestore, gameId]);
-  const { data: players, loading: playersLoading } = useCollection(playersQuery);
+  const { data: players, loading: playersLoading } = useCollection<Player>(playersQuery);
   
   const [time, setTime] = useState(20);
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
   const isLastQuestion = game && quiz ? game.currentQuestionIndex >= quiz.questions.length - 1 : false;
+
+  const answeredPlayers = players?.filter(p => p.lastAnswerIndex !== null && p.lastAnswerIndex !== undefined).length || 0;
 
 
   const chartData = question?.answers.map((ans:any, index:number) => ({
@@ -183,6 +185,16 @@ export default function HostGamePage() {
 
   useEffect(() => {
     if (game?.state === 'question') {
+      // If all players have answered, finish the question
+      if (players && players.length > 0 && answeredPlayers === players.length) {
+        finishQuestion();
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [players, answeredPlayers, game?.state]);
+
+  useEffect(() => {
+    if (game?.state === 'question') {
       setTime(20);
       const timer = setInterval(() => {
         setTime(prev => {
@@ -199,14 +211,21 @@ export default function HostGamePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game?.currentQuestionIndex, game?.state]);
 
-  const handleNext = () => {
-    if (!game || !quiz || !gameRef) return;
+  const handleNext = async () => {
+    if (!game || !quiz || !gameRef || !players) return;
 
     if (game.state === 'question') {
-      // This is handled by finishQuestion now
       updateGame(gameRef, { state: 'leaderboard' });
     } else if (game.state === 'leaderboard') {
       if (!isLastQuestion) {
+        // Reset player answers for the next round
+        const batch = writeBatch(firestore);
+        players.forEach(player => {
+            const playerRef = doc(firestore, 'games', gameId, 'players', player.id);
+            batch.update(playerRef, { lastAnswerIndex: null });
+        });
+        await batch.commit();
+
         updateGame(gameRef, { 
           state: 'question',
           currentQuestionIndex: game.currentQuestionIndex + 1
@@ -294,19 +313,25 @@ export default function HostGamePage() {
         </main>
       )}
 
-      <footer className="mt-8 flex justify-end items-center gap-4">
-        <span className="text-lg">Question {(game?.currentQuestionIndex || 0) + 1} / {(quiz?.questions.length || 0)}</span>
-        {game?.state === 'question' && (
-             <Button onClick={finishQuestion} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Finish Question
-            </Button>
-        )}
-        {game?.state === 'leaderboard' && (
-            <Button onClick={handleNext} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
-                {isLastQuestion ? 'End Game' : 'Next Question'}
-            </Button>
-        )}
+      <footer className="mt-8 flex justify-between items-center gap-4">
+        <div className="flex items-center gap-2 text-lg font-medium">
+          <Users className="h-5 w-5"/>
+          <span>{answeredPlayers} / {players?.length || 0} Answered</span>
+        </div>
+        <div>
+          <span className="text-lg mr-4">Question {(game?.currentQuestionIndex || 0) + 1} / {(quiz?.questions.length || 0)}</span>
+          {game?.state === 'question' && (
+              <Button onClick={finishQuestion} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Finish Question
+              </Button>
+          )}
+          {game?.state === 'leaderboard' && (
+              <Button onClick={handleNext} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
+                  {isLastQuestion ? 'End Game' : 'Next Question'}
+              </Button>
+          )}
+        </div>
       </footer>
     </div>
   );
