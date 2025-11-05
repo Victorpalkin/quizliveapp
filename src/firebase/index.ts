@@ -2,6 +2,7 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import { firebaseConfig } from './config';
 
 import {
@@ -9,6 +10,7 @@ import {
   useFirebaseApp,
   useAuth,
   useFirestore,
+  useStorage,
   FirebaseProvider,
   useMemoFirebase,
 } from './provider';
@@ -22,14 +24,16 @@ function initializeFirebase() {
     const app = getApp();
     const auth = getAuth(app);
     const firestore = getFirestore(app);
-    return { app, auth, firestore };
+    const storage = getStorage(app);
+    return { app, auth, firestore, storage };
   }
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const firestore = getFirestore(app);
+  const storage = getStorage(app);
 
-  return { app, auth, firestore };
+  return { app, auth, firestore, storage };
 }
 
 export {
@@ -40,6 +44,7 @@ export {
   useFirebaseApp,
   useAuth,
   useFirestore,
+  useStorage,
   useUser,
   useDoc,
   useCollection,

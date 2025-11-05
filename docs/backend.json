@@ -35,6 +35,11 @@
         "text": {
           "type": "string"
         },
+        "imageUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "The URL of an optional image for the question."
+        },
         "answers": {
           "type": "array",
           "description": "An array of 2 to 8 answer options.",

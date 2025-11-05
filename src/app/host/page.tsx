@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
 import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye, Edit } from 'lucide-react';
-import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { useCollection, useFirestore, useUser, useMemoFirebase, useStorage } from '@/firebase';
+import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getDoc } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 import type { Quiz, Game } from '@/lib/types';
@@ -35,6 +36,7 @@ function GameStateBadge({ state }: { state: Game['state'] }) {
             text = 'In Lobby';
             className = 'bg-blue-500/20 text-blue-400';
             break;
+        case 'preparing':
         case 'question':
         case 'leaderboard':
             text = 'In Progress';
@@ -56,6 +58,7 @@ export default function HostDashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
+  const storage = useStorage();
   const { user, loading: userLoading } = useUser();
   
   const quizzesQuery = useMemoFirebase(() => 
@@ -112,14 +115,39 @@ export default function HostDashboardPage() {
         });
   };
 
-  const handleDeleteQuiz = (quizId: string) => {
+  const deleteQuizImages = async (quizId: string) => {
+    const quizRef = doc(firestore, 'quizzes', quizId);
+    const quizSnap = await getDoc(quizRef);
+    if (!quizSnap.exists()) return;
+    const quiz = quizSnap.data() as Quiz;
+
+    for (const question of quiz.questions) {
+      if (question.imageUrl) {
+        try {
+          const imageRef = ref(storage, question.imageUrl);
+          await deleteObject(imageRef);
+        } catch (error: any) {
+          if (error.code !== 'storage/object-not-found') {
+            console.error(`Failed to delete image ${question.imageUrl}:`, error);
+          }
+        }
+      }
+    }
+  };
+
+  const handleDeleteQuiz = async (quizId: string) => {
     if (!firestore) return;
+    
+    // First, delete associated images from Storage
+    await deleteQuizImages(quizId);
+    
+    // Then, delete the quiz document from Firestore
     const quizRef = doc(firestore, 'quizzes', quizId);
     deleteDoc(quizRef)
       .then(() => {
         toast({
           title: 'Quiz Deleted',
-          description: 'The quiz has been successfully removed.',
+          description: 'The quiz and its images have been successfully removed.',
         });
       })
       .catch((error) => {
@@ -290,7 +318,7 @@ export default function HostDashboardPage() {
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>Are you sure you want to delete this quiz?</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                    This action cannot be undone. This will permanently delete the quiz '{quiz.title}'.
+                                                    This action cannot be undone. This will permanently delete the quiz '{quiz.title}' and all its images.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>

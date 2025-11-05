@@ -10,6 +10,7 @@ export interface Question {
   answers: Answer[];
   correctAnswerIndex: number;
   timeLimit?: number; // in seconds
+  imageUrl?: string;
 }
 
 export interface Quiz {

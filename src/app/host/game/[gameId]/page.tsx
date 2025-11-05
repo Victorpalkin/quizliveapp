@@ -4,6 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, LabelList, Cell, Rectangle } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -199,7 +200,6 @@ export default function HostGamePage() {
 
   useEffect(() => {
     if (game?.state === 'question') {
-      // If all players have answered, finish the question
       if (players && players.length > 0 && answeredPlayers === players.length) {
         finishQuestion();
       }
@@ -214,7 +214,7 @@ export default function HostGamePage() {
         setTime(prev => {
           if (prev <= 1) {
             clearInterval(timer);
-            finishQuestion(); // Automatically finish when timer runs out
+            finishQuestion(); 
             return 0;
           }
           return prev - 1;
@@ -226,8 +226,6 @@ export default function HostGamePage() {
   }, [game?.currentQuestionIndex, game?.state]);
 
   useEffect(() => {
-    // When the host screen is ready, update the state to 'question'
-    // to signal players to start.
     if (game?.state === 'preparing' && gameRef) {
       updateGame(gameRef, { state: 'question' });
     }
@@ -240,7 +238,6 @@ export default function HostGamePage() {
       updateGame(gameRef, { state: 'leaderboard' });
     } else if (game.state === 'leaderboard') {
       if (!isLastQuestion) {
-        // Reset player answers for the next round
         const batch = writeBatch(firestore);
         players.forEach(player => {
             const playerRef = doc(firestore, 'games', gameId, 'players', player.id);
@@ -317,11 +314,19 @@ export default function HostGamePage() {
       {game?.state === 'question' && question && (
         <main className="flex-1 flex flex-col items-center justify-center text-center">
             <Progress value={(time / 20) * 100} className="w-full max-w-4xl h-4 mb-4" />
-            <Card className="w-full max-w-4xl bg-card text-card-foreground">
-                <CardContent className="p-8">
-                    <p className="text-3xl font-bold">{question.text}</p>
-                </CardContent>
-            </Card>
+            
+            <div className="w-full max-w-4xl flex gap-4">
+              {question.imageUrl && (
+                <div className="relative w-1/3 aspect-video rounded-lg overflow-hidden">
+                    <Image src={question.imageUrl} alt="Question image" layout="fill" objectFit="contain" />
+                </div>
+              )}
+              <Card className="flex-1 bg-card text-card-foreground">
+                  <CardContent className="p-8">
+                      <p className="text-3xl font-bold">{question.text}</p>
+                  </CardContent>
+              </Card>
+            </div>
             
             <div className="grid grid-cols-2 gap-4 mt-8 w-full max-w-4xl">
               {question.answers.map((ans, i) => {
@@ -397,7 +402,6 @@ function LeaderboardView({ players }: { players: Player[] }) {
 function AnswerDistributionChart({ data }: { data: { name: string; total: number; isCorrect: boolean }[] }) {
     const CustomBarLabel = (props: any) => {
         const { x, y, width, height, value } = props;
-        // Don't render a label if the value is 0
         if (value === 0) return null;
         return (
           <text x={x + width / 2} y={y} fill="hsl(var(--foreground))" textAnchor="middle" dy={-6} className="text-sm font-bold">
