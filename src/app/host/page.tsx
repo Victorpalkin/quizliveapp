@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
-import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn } from 'lucide-react';
+import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye } from 'lucide-react';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 import type { Quiz, Game } from '@/lib/types';
@@ -39,6 +39,10 @@ function GameStateBadge({ state }: { state: Game['state'] }) {
         case 'leaderboard':
             text = 'In Progress';
             className = 'bg-green-500/20 text-green-400';
+            break;
+        case 'ended':
+            text = 'Finished';
+            className = 'bg-gray-500/20 text-gray-400';
             break;
         default:
             text = 'Unknown';
@@ -133,18 +137,18 @@ export default function HostDashboardPage() {
       });
   };
 
-  const handleCancelGame = (gameId: string) => {
+  const handleDeleteGame = (gameId: string) => {
     if (!firestore) return;
     const gameRef = doc(firestore, 'games', gameId);
     deleteDoc(gameRef)
       .then(() => {
         toast({
-          title: 'Game Canceled',
-          description: 'The game has been removed.',
+          title: 'Game Record Deleted',
+          description: 'The game has been removed from your history.',
         });
       })
       .catch((error) => {
-        console.error("Error canceling game:", error);
+        console.error("Error deleting game:", error);
         const permissionError = new FirestorePermissionError({
             path: gameRef.path,
             operation: 'delete',
@@ -153,10 +157,10 @@ export default function HostDashboardPage() {
         toast({
             variant: "destructive",
             title: "Error",
-            description: "Could not cancel the game. Please try again.",
+            description: "Could not delete the game. Please try again.",
         });
       });
-  };
+  }
 
   const handleOpenGame = (game: Game) => {
     if (game.state === 'lobby') {
@@ -177,6 +181,7 @@ export default function HostDashboardPage() {
   }
 
   const activeGames = games?.filter(g => g.state !== 'ended');
+  const completedGames = games?.filter(g => g.state === 'ended');
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -186,7 +191,7 @@ export default function HostDashboardPage() {
         {/* Active Games Section */}
         {activeGames && activeGames.length > 0 && (
             <div className="mb-12">
-                <h1 className="text-3xl font-bold mb-8">Active Games</h1>
+                <h2 className="text-2xl font-bold mb-6">Active Games</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {gamesLoading ? (
                         <Card><CardContent><Loader2 className="m-4 animate-spin"/></CardContent></Card>
@@ -221,7 +226,7 @@ export default function HostDashboardPage() {
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
                                                 <AlertDialogCancel>Back</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleCancelGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                                                     Yes, Cancel Game
                                                 </AlertDialogAction>
                                             </AlertDialogFooter>
@@ -236,81 +241,134 @@ export default function HostDashboardPage() {
         )}
 
         {/* My Quizzes Section */}
-        <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">My Quizzes</h1>
-            <Button asChild>
-                <Link href="/host/create">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Create New Quiz
-                </Link>
-            </Button>
-        </div>
-
-        {quizzesLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(3)].map((_, i) => (
-                    <Card key={i}>
-                        <CardHeader>
-                            <div className="h-6 bg-muted rounded w-3/4"></div>
-                            <div className="h-4 bg-muted rounded w-1/2 mt-2"></div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="h-10 bg-muted rounded w-full"></div>
-                        </CardContent>
-                    </Card>
-                ))}
+        <div className="mb-12">
+            <div className="flex justify-between items-center mb-8">
+                <h1 className="text-3xl font-bold">My Quizzes</h1>
+                <Button asChild>
+                    <Link href="/host/create">
+                        <PlusCircle className="mr-2 h-4 w-4" /> Create New Quiz
+                    </Link>
+                </Button>
             </div>
-        ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {quizzes && quizzes.map(quiz => (
-                    <Card key={quiz.id} className="flex flex-col">
-                        <CardHeader className="flex-row items-start justify-between">
-                            <div>
-                                <CardTitle>{quiz.title}</CardTitle>
-                                <CardDescription>{quiz.questions.length} questions</CardDescription>
-                            </div>
-                             <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you sure you want to delete this quiz?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This action cannot be undone. This will permanently delete the quiz '{quiz.title}'.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDeleteQuiz(quiz.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                            Delete
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </CardHeader>
-                        <CardContent className="flex-grow flex items-end">
-                            <Button className="w-full" onClick={() => handleHostGame(quiz.id)}>
-                               <Gamepad2 className="mr-2 h-4 w-4" /> Host Game
-                            </Button>
-                        </CardContent>
-                    </Card>
-                ))}
 
-                {quizzes?.length === 0 && (
-                    <div className="col-span-full text-center text-muted-foreground py-16">
-                        <p className="mb-4">You haven't created any quizzes yet.</p>
-                        <Button asChild variant="outline">
-                            <Link href="/host/create">
-                                Create Your First Quiz
-                            </Link>
-                        </Button>
-                    </div>
-                )}
+            {quizzesLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(3)].map((_, i) => (
+                        <Card key={i}>
+                            <CardHeader>
+                                <div className="h-6 bg-muted rounded w-3/4"></div>
+                                <div className="h-4 bg-muted rounded w-1/2 mt-2"></div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="h-10 bg-muted rounded w-full"></div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {quizzes && quizzes.map(quiz => (
+                        <Card key={quiz.id} className="flex flex-col">
+                            <CardHeader className="flex-row items-start justify-between">
+                                <div>
+                                    <CardTitle>{quiz.title}</CardTitle>
+                                    <CardDescription>{quiz.questions.length} questions</CardDescription>
+                                </div>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you sure you want to delete this quiz?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This action cannot be undone. This will permanently delete the quiz '{quiz.title}'.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDeleteQuiz(quiz.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                Delete
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </CardHeader>
+                            <CardContent className="flex-grow flex items-end">
+                                <Button className="w-full" onClick={() => handleHostGame(quiz.id)}>
+                                <Gamepad2 className="mr-2 h-4 w-4" /> Host Game
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    ))}
+
+                    {quizzes?.length === 0 && (
+                        <div className="col-span-full text-center text-muted-foreground py-16">
+                            <p className="mb-4">You haven't created any quizzes yet.</p>
+                            <Button asChild variant="outline">
+                                <Link href="/host/create">
+                                    Create Your First Quiz
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+        
+        {/* Completed Games Section */}
+        {completedGames && completedGames.length > 0 && (
+            <div className="mb-12">
+                <h2 className="text-2xl font-bold mb-6">Completed Games</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {gamesLoading ? (
+                        <Card><CardContent><Loader2 className="m-4 animate-spin"/></CardContent></Card>
+                    ) : (
+                        completedGames.map(game => (
+                            <Card key={game.id} className="flex flex-col">
+                                <CardHeader>
+                                    <div className="flex justify-between items-center">
+                                        <CardTitle className="font-mono tracking-widest">{game.gamePin}</CardTitle>
+                                        <GameStateBadge state={game.state} />
+                                    </div>
+                                    <CardDescription>
+                                        {quizzes?.find(q => q.id === game.quizId)?.title || '...'}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="flex-grow flex flex-col justify-end gap-2">
+                                    <Button className="w-full" variant="secondary" onClick={() => handleOpenGame(game)}>
+                                        <Eye className="mr-2 h-4 w-4" /> View Results
+                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button className="w-full" variant="ghost">
+                                                <Trash2 className="mr-2 h-4 w-4" /> Delete Record
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Delete this game record?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will permanently delete the record for game '{game.gamePin}'.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Back</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                    Yes, Delete
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
+                </div>
             </div>
         )}
-        
       </main>
     </div>
   );
