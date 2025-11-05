@@ -8,23 +8,25 @@ QuizLive is an interactive, real-time quiz application that allows users to host
 - **Authentication**: Secure sign-in for hosts to manage their quizzes.
 - **Quiz Creation**: A user-friendly interface to create custom quizzes with multiple-choice questions.
 - **AI Question Suggester**: Get a little help from AI to generate questions on any topic.
-- **Quiz Dashboard**: View, manage, and delete all your created quizzes in one place.
+- **Quiz Management**: View, edit, and delete all your created quizzes from a central dashboard.
 - **Game Hosting**: Launch a live game session from any of your quizzes.
 - **Game Lobby**: A waiting room for players to join using a unique, auto-generated Game PIN.
 - **Live Game Management**:
   - Start the game when you're ready.
-  - Advance through questions and view leaderboards between rounds.
-  - Cancel the game at any point from the lobby or during the live session.
-- **Real-time Leaderboard**: See player rankings update after each question.
+  - Advance through questions manually or let the game auto-advance when all players have answered.
+  - View a real-time count of how many players have answered.
+  - See a distribution chart of player answers after each question.
+  - Cancel the game at any point.
+- **Game History**: View final leaderboards for completed games.
 
 ### Player Features
-- **Easy Join**: Players can quickly join a game using a simple Game PIN.
+- **Easy Join**: Players can quickly join a game using a simple Game PIN without needing an account.
 - **Nickname Selection**: Choose a nickname to appear on the leaderboard.
 - **Real-time Gameplay**:
   - See questions appear on your screen as the host presents them.
   - Answer questions within the time limit.
   - Receive instant feedback on your answer (correct/incorrect) and points awarded.
-- **Game Status Updates**: Get notified if the host starts or cancels the game.
+- **Game Status Updates**: Get notified if the host starts or cancels the game, and smoothly transition between questions and results.
 - **Final Results**: See your final score and rank when the quiz is over.
 
 ## Tech Stack
@@ -50,7 +52,7 @@ GEMINI_API_KEY=your_google_ai_api_key
 ### 2. Firebase Setup
 This project is configured to use Firebase for authentication and as its database.
 
-1.  **Firebase Project**: The app is connected to the Firebase project `sap-demo-ai-d-agents-grht`.
+1.  **Firebase Project**: The app is connected to a Firebase project. If you are running this locally through a tool like Firebase Studio, this is managed for you.
 2.  **Authentication**: The app uses Firebase Authentication with the "Email/Password" sign-in method for hosts. To create a host user:
     - Go to the **Firebase Console** and select your project.
     - Navigate to **Authentication** > **Users** tab.
@@ -61,6 +63,7 @@ This project is configured to use Firebase for authentication and as its databas
 Once your environment variables are set, you can start the development server:
 
 ```bash
+npm install
 npm run dev
 ```
 
@@ -70,9 +73,10 @@ Open [http://localhost:9002](http://localhost:9002) with your browser to see the
 
 - `/`: The home page where users can choose to host or join a game.
 - `/login`: The sign-in page for hosts.
-- `/host`: The host's dashboard to view, create, and delete quizzes.
+- `/host`: The host's dashboard to view, create, and manage quizzes and games.
 - `/host/create`: The page for creating a new quiz.
+- `/host/edit/[quizId]`: The page for editing an existing quiz.
 - `/host/lobby/[gameId]`: The lobby screen for a game you are hosting.
-- `/host/game/[gameId]`: The live game screen for the host.
+- `/host/game/[gameId]`: The live game screen for the host, showing questions and leaderboards.
 - `/join`: The page for players to enter a Game PIN.
 - `/play/[gameId]`: The game screen for players participating in a quiz.

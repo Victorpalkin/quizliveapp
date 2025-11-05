@@ -20,6 +20,7 @@ import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { AiQuestionSuggester } from '@/components/app/ai-question-suggester';
 
 const answerSchema = z.object({
   text: z.string().min(1, "Answer text can't be empty."),
@@ -181,6 +182,8 @@ export default function CreateQuizPage() {
                 />
               </CardContent>
             </Card>
+
+            <AiQuestionSuggester onAddQuestion={addQuestion} />
 
             <Card>
               <CardHeader>

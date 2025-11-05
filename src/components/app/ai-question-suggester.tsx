@@ -54,11 +54,6 @@ export function AiQuestionSuggester({ onAddQuestion }: AiQuestionSuggesterProps)
     }
   }, [state, toast]);
   
-  // This component is currently not used, so we can return null.
-  // We can re-enable it later if needed.
-  return null;
-
-  /*
   return (
     <Card>
       <CardHeader>
@@ -71,7 +66,7 @@ export function AiQuestionSuggester({ onAddQuestion }: AiQuestionSuggesterProps)
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <form className="space-y-4">
           <div className="flex items-start gap-4">
             <Input
               name="topic"
@@ -100,9 +95,8 @@ export function AiQuestionSuggester({ onAddQuestion }: AiQuestionSuggesterProps)
               </ul>
             </div>
           )}
-        </div>
+        </form>
       </CardContent>
     </Card>
   );
-  */
 }
