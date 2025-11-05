@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,8 +44,9 @@ function updateGame(gameRef: DocumentReference<Game>, data: Partial<Game>) {
   });
 }
 
-export default function HostGamePage({ params }: { params: { gameId: string } }) {
-  const { gameId } = params;
+export default function HostGamePage() {
+  const params = useParams();
+  const gameId = params.gameId as string;
   const firestore = useFirestore();
 
   const gameRef = useMemoFirebase(() => doc(firestore, 'games', gameId) as DocumentReference<Game>, [firestore, gameId]);
@@ -86,7 +88,7 @@ export default function HostGamePage({ params }: { params: { gameId: string } })
   }, [game?.currentQuestionIndex, game?.state]);
 
   const handleNext = () => {
-    if (!game || !quiz) return;
+    if (!game || !quiz || !gameRef) return;
 
     if (game.state === 'question') {
       updateGame(gameRef, { state: 'leaderboard' });
@@ -202,3 +204,5 @@ function LeaderboardView({ players }: { players: Player[] }) {
         </Card>
     );
 }
+
+    

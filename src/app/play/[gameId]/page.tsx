@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { PartyPopper, Frown, Trophy, Loader2 } from 'lucide-react';
 import {
@@ -44,7 +45,9 @@ function updatePlayer(playerRef: DocumentReference<Player>, data: Partial<Player
 }
 
 
-export default function PlayerGamePage({ params }: { params: { gameId: string } }) {
+export default function PlayerGamePage() {
+  const params = useParams();
+  const gamePin = params.gameId as string;
   const firestore = useFirestore();
   const auth = useAuth();
   const { user, loading: userLoading } = useUser();
@@ -52,9 +55,9 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
 
   const [state, setState] = useState<PlayerState>('joining');
   const [nickname, setNickname] = useState('');
-  const [gameId, setGameId] = useState<string | null>(null);
+  const [gameDocId, setGameDocId] = useState<string | null>(null);
   
-  const gameRef = useMemoFirebase(() => gameId ? doc(firestore, 'games', gameId) : null, [firestore, gameId]);
+  const gameRef = useMemoFirebase(() => gameDocId ? doc(firestore, 'games', gameDocId) : null, [firestore, gameDocId]);
   const { data: game, loading: gameLoading } = useDoc(gameRef);
 
   const quizRef = useMemoFirebase(() => game ? doc(firestore, 'quizzes', game.quizId) : null, [firestore, game]);
@@ -85,6 +88,12 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
         if (game.state !== 'lobby' && state === 'lobby') {
             setState('question');
         }
+        if(game.state === 'question' && state === 'result') {
+          setState('question');
+        }
+        if(game.state === 'ended' && state !== 'ended') {
+          setState('ended');
+        }
     }
   }, [game, state]);
 
@@ -96,7 +105,9 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
         setTime(prev => {
           if (prev <= 1) {
             clearInterval(timer);
-            handleAnswer(-1); // Times up
+            if (answerSelected === null) {
+              handleAnswer(-1); // Times up
+            }
             return 0;
           }
           return prev - 1;
@@ -104,7 +115,7 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [game?.currentQuestionIndex, state]);
+  }, [game?.currentQuestionIndex, state, answerSelected]);
 
   const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,9 +130,9 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
     }
 
     try {
-        const gamePin = params.gameId.toUpperCase();
+        const pin = gamePin.toUpperCase();
         const gamesRef = collection(firestore, 'games');
-        const q = query(gamesRef, where('gamePin', '==', gamePin), where('state', '==', 'lobby'));
+        const q = query(gamesRef, where('gamePin', '==', pin), where('state', '==', 'lobby'));
 
         const querySnapshot = await getDocs(q);
         if (querySnapshot.empty) {
@@ -130,7 +141,7 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
         }
 
         const gameDoc = querySnapshot.docs[0];
-        setGameId(gameDoc.id);
+        setGameDocId(gameDoc.id);
 
         const playerRef = doc(firestore, 'games', gameDoc.id, 'players', user.uid);
         const newPlayer = { name: nickname, score: 0 };
@@ -157,14 +168,14 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
   };
 
   const handleAnswer = (selectedIndex: number) => {
-    if (answerSelected !== null || !user || !gameId || !player) return;
+    if (answerSelected !== null || !user || !gameDocId || !player) return;
     setAnswerSelected(selectedIndex);
 
     const isCorrect = question?.correctAnswerIndex === selectedIndex;
     const points = isCorrect ? Math.round(100 + (time / 20) * 900) : 0;
     
     const newScore = player.score + points;
-    const playerRef = doc(firestore, 'games', gameId, 'players', user.uid) as DocumentReference<Player>;
+    const playerRef = doc(firestore, 'games', gameDocId, 'players', user.uid) as DocumentReference<Player>;
     updatePlayer(playerRef, { score: newScore });
 
     setPlayer({ ...player, score: newScore });
@@ -176,14 +187,7 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
   };
   
   const handleNext = () => {
-    // Note: The game state transition is controlled by the host. 
-    // This just moves the player to the next screen locally.
-    // A better implementation might wait for a signal from the backend.
-    if ((game?.currentQuestionIndex || 0) < (quiz?.questions.length || 0) - 1) {
-      setState('question');
-    } else {
-      setState('ended');
-    }
+    // This is now handled by the useEffect that listens to game state
   };
 
   const renderContent = () => {
@@ -289,3 +293,5 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
     </div>
   );
 }
+
+    

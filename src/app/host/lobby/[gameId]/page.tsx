@@ -3,13 +3,13 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Copy, Check } from 'lucide-react';
 import { Header } from '@/components/app/header';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, updateDoc, DocumentReference } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -31,8 +31,9 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export default function HostLobbyPage({ params }: { params: { gameId: string } }) {
-  const { gameId } = params;
+export default function HostLobbyPage() {
+  const params = useParams();
+  const gameId = params.gameId as string;
   const router = useRouter();
   const firestore = useFirestore();
 
@@ -43,7 +44,8 @@ export default function HostLobbyPage({ params }: { params: { gameId: string } }
   const { data: players, loading: playersLoading } = useCollection(playersQuery);
   
   const handleStartGame = () => {
-    const updateData = { state: 'question' };
+    if (!gameRef) return;
+    const updateData = { state: 'question' as const };
     updateDoc(gameRef, updateData)
       .then(() => {
         router.push(`/host/game/${gameId}`);
@@ -118,3 +120,5 @@ export default function HostLobbyPage({ params }: { params: { gameId: string } }
     </div>
   );
 }
+
+    
