@@ -86,7 +86,7 @@ export default function PlayerGamePage() {
             break;
         case 'question':
             // Host started a new question. Move from lobby/result to question.
-            if ((state === 'result' || state === 'lobby') && answerSelected !== null) {
+            if (state === 'result' || state === 'lobby') {
                 setState('question');
             }
             break;
