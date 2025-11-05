@@ -82,7 +82,10 @@ export default function PlayerGamePage() {
         if (game.state !== 'lobby' && state === 'lobby') {
             setState('question');
         } else if (game.state === 'question' && (state === 'result' || state === 'waiting')) {
-            setState('question');
+            // Only go back to question state if the question has actually changed
+            if (game.currentQuestionIndex !== (quiz?.questions.findIndex(q => q.text === question?.text) ?? -1)) {
+              setState('question');
+            }
         } else if (game.state === 'leaderboard' && state === 'question') {
             // After question time is up, host moves to leaderboard, player sees their result
             setState('result');
@@ -90,7 +93,7 @@ export default function PlayerGamePage() {
             setState('ended');
         }
     }
-  }, [game, gameLoading, state, quiz]);
+  }, [game, gameLoading, state, quiz, question]);
 
   useEffect(() => {
     if (state === 'question') {
@@ -100,7 +103,6 @@ export default function PlayerGamePage() {
         setTime(prev => {
           if (prev <= 1) {
             clearInterval(timer);
-            // Check if an answer has already been selected before auto-submitting
             if (answerSelected === null) { 
               handleAnswer(-1); // Times up
             }
@@ -111,7 +113,7 @@ export default function PlayerGamePage() {
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [game?.currentQuestionIndex, state]); // removed answerSelected from dependencies
+  }, [game?.currentQuestionIndex, state]);
 
   const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,6 +163,7 @@ export default function PlayerGamePage() {
   const handleAnswer = (selectedIndex: number) => {
     if (answerSelected !== null || !gameDocId || !player) return;
     setAnswerSelected(selectedIndex);
+    setState('waiting');
 
     const isCorrect = question?.correctAnswerIndex === selectedIndex;
     const points = isCorrect ? Math.round(100 + (time / 20) * 900) : 0;
@@ -171,7 +174,6 @@ export default function PlayerGamePage() {
 
     setPlayer({ ...player, score: newScore });
     setLastAnswer({ selected: selectedIndex, correct: question.correctAnswerIndex, points });
-    setState('waiting');
   };
   
   const renderContent = () => {
