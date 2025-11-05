@@ -374,12 +374,22 @@ function LeaderboardView({ players }: { players: Player[] }) {
 
 function AnswerDistributionChart({ data }: { data: { name: string; total: number; isCorrect: boolean }[] }) {
     const CustomBarLabel = (props: any) => {
-        const { x, y, width, value, isCorrect } = props;
+        const { x, y, width, height, value, isCorrect } = props;
         return (
-          <text x={x + width / 2} y={y} fill="hsl(var(--foreground))" textAnchor="middle" dy={-6} className="text-sm font-bold">
-            {`${value}`}
-            {isCorrect && <tspan dy={-14} dx={-15}> (Correct)</tspan>}
-          </text>
+          <g>
+            <text x={x + width / 2} y={y} fill="hsl(var(--foreground))" textAnchor="middle" dy={-6} className="text-sm font-bold">
+                {`${value}`}
+            </text>
+            {isCorrect && (
+              <CheckCircle 
+                x={x + width / 2 - 8} 
+                y={y - 28} 
+                width={16} 
+                height={16} 
+                className="text-green-500"
+              />
+            )}
+          </g>
         );
     };
 
