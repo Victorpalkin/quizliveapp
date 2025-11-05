@@ -6,15 +6,26 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
-import { PlusCircle, Loader2, Gamepad2 } from 'lucide-react';
+import { PlusCircle, Loader2, Gamepad2, Trash2 } from 'lucide-react';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 import type { Quiz } from '@/lib/types';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export default function HostDashboardPage() {
   const router = useRouter();
@@ -70,6 +81,31 @@ export default function HostDashboardPage() {
         });
   };
 
+  const handleDeleteQuiz = (quizId: string) => {
+    if (!firestore) return;
+    const quizRef = doc(firestore, 'quizzes', quizId);
+    deleteDoc(quizRef)
+      .then(() => {
+        toast({
+          title: 'Quiz Deleted',
+          description: 'The quiz has been successfully removed.',
+        });
+      })
+      .catch((error) => {
+        console.error("Error deleting quiz:", error);
+        const permissionError = new FirestorePermissionError({
+            path: quizRef.path,
+            operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not delete the quiz. Please try again.",
+        });
+      });
+  };
+
 
   if (userLoading || !user) {
     return (
@@ -111,9 +147,32 @@ export default function HostDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {quizzes && quizzes.map(quiz => (
                     <Card key={quiz.id} className="flex flex-col">
-                        <CardHeader>
-                            <CardTitle>{quiz.title}</CardTitle>
-                            <CardDescription>{quiz.questions.length} questions</CardDescription>
+                        <CardHeader className="flex-row items-start justify-between">
+                            <div>
+                                <CardTitle>{quiz.title}</CardTitle>
+                                <CardDescription>{quiz.questions.length} questions</CardDescription>
+                            </div>
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure you want to delete this quiz?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be undone. This will permanently delete the quiz '{quiz.title}'.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteQuiz(quiz.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                            Delete
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </CardHeader>
                         <CardContent className="flex-grow flex items-end">
                             <Button className="w-full" onClick={() => handleHostGame(quiz.id)}>
