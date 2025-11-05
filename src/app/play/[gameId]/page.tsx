@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PartyPopper, Frown, Trophy, Loader2, XCircle } from 'lucide-react';
+import { PartyPopper, Frown, Trophy, Loader2, XCircle, Timer } from 'lucide-react';
 import {
   DiamondIcon,
   TriangleIcon,
@@ -23,7 +23,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { nanoid } from 'nanoid';
 
-type PlayerState = 'joining' | 'lobby' | 'question' | 'result' | 'ended' | 'cancelled';
+type PlayerState = 'joining' | 'lobby' | 'question' | 'waiting' | 'result' | 'ended' | 'cancelled';
 
 const answerIcons = [
   { icon: TriangleIcon, color: 'bg-red-500', textColor: 'text-red-500' },
@@ -69,20 +69,25 @@ export default function PlayerGamePage() {
   const [answerSelected, setAnswerSelected] = useState<number | null>(null);
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
+  const isLastQuestion = game && quiz ? game.currentQuestionIndex === quiz.questions.length - 1 : false;
+
   
   useEffect(() => {
     if (!game && !gameLoading && state !== 'joining' && state !== 'cancelled') {
         setState('cancelled');
+        return;
     }
-    else if (game?.state) {
+
+    if (game?.state) {
         if (game.state !== 'lobby' && state === 'lobby') {
             setState('question');
-        }
-        if(game.state === 'question' && state === 'result' && game.currentQuestionIndex < (quiz?.questions.length ?? 0)) {
-          setState('question');
-        }
-        if(game.state === 'ended' && state !== 'ended') {
-          setState('ended');
+        } else if (game.state === 'question' && (state === 'result' || state === 'waiting')) {
+            setState('question');
+        } else if (game.state === 'leaderboard' && state === 'question') {
+            // After question time is up, host moves to leaderboard, player sees their result
+            setState('result');
+        } else if (game.state === 'ended' && state !== 'ended') {
+            setState('ended');
         }
     }
   }, [game, gameLoading, state, quiz]);
@@ -95,7 +100,8 @@ export default function PlayerGamePage() {
         setTime(prev => {
           if (prev <= 1) {
             clearInterval(timer);
-            if (answerSelected === null) {
+            // Check if an answer has already been selected before auto-submitting
+            if (answerSelected === null) { 
               handleAnswer(-1); // Times up
             }
             return 0;
@@ -105,7 +111,7 @@ export default function PlayerGamePage() {
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [game?.currentQuestionIndex, state, answerSelected]);
+  }, [game?.currentQuestionIndex, state]); // removed answerSelected from dependencies
 
   const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,10 +171,7 @@ export default function PlayerGamePage() {
 
     setPlayer({ ...player, score: newScore });
     setLastAnswer({ selected: selectedIndex, correct: question.correctAnswerIndex, points });
-
-    setTimeout(() => {
-        setState('result');
-    }, 1000);
+    setState('waiting');
   };
   
   const renderContent = () => {
@@ -238,6 +241,19 @@ export default function PlayerGamePage() {
             </footer>
           </div>
         );
+    case 'waiting':
+        return (
+            <div className="flex flex-col items-center justify-center text-center p-8 w-full h-full bg-background">
+                <Timer className="w-24 h-24 mb-4 text-primary animate-pulse" />
+                <h1 className="text-4xl font-bold">Answer Locked In!</h1>
+                <div className="mt-12 flex flex-col items-center">
+                    <Loader2 className="animate-spin w-12 h-12"/>
+                    <p className="mt-4 text-xl">
+                        {isLastQuestion ? "Waiting for final results..." : "Waiting for next question..."}
+                    </p>
+                </div>
+            </div>
+        );
       case 'result':
         const isCorrect = lastAnswer?.selected === lastAnswer?.correct;
         return (
@@ -248,7 +264,9 @@ export default function PlayerGamePage() {
             <p className="text-2xl mt-8">Your score: {player?.score}</p>
             <div className="mt-12 flex flex-col items-center">
                 <Loader2 className="animate-spin w-12 h-12"/>
-                <p className="mt-4">Waiting for next question...</p>
+                <p className="mt-4">
+                    {isLastQuestion ? "Revealing final scores..." : "Loading next question..."}
+                </p>
             </div>
           </div>
         );
