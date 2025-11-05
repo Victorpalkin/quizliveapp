@@ -78,14 +78,14 @@ export default function PlayerGamePage() {
         if (game.state !== 'lobby' && state === 'lobby') {
             setState('question');
         }
-        if(game.state === 'question' && state === 'result') {
+        if(game.state === 'question' && state === 'result' && game.currentQuestionIndex < (quiz?.questions.length ?? 0)) {
           setState('question');
         }
         if(game.state === 'ended' && state !== 'ended') {
           setState('ended');
         }
     }
-  }, [game, gameLoading, state]);
+  }, [game, gameLoading, state, quiz]);
 
   useEffect(() => {
     if (state === 'question') {
