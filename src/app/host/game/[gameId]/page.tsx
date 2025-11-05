@@ -3,10 +3,11 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, XCircle } from 'lucide-react';
+import { Trophy, XCircle, Home, Trash2 } from 'lucide-react';
 import {
   DiamondIcon,
   TriangleIcon,
@@ -93,6 +94,51 @@ function CancelGameButton({ gameRef }: { gameRef: DocumentReference<Game> | null
                     <AlertDialogCancel>Back</AlertDialogCancel>
                     <AlertDialogAction onClick={handleCancelGame} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                         Yes, Cancel Game
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+}
+
+function DeleteGameButton({ gameRef }: { gameRef: DocumentReference<Game> | null }) {
+    const router = useRouter();
+
+    const handleDeleteGame = () => {
+        if (!gameRef) return;
+        deleteDoc(gameRef)
+            .then(() => {
+                router.push('/host');
+            })
+            .catch((error) => {
+                console.error("Error deleting game: ", error);
+                const permissionError = new FirestorePermissionError({
+                    path: gameRef.path,
+                    operation: 'delete',
+                });
+                errorEmitter.emit('permission-error', permissionError);
+            });
+    };
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Game
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this game?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will permanently delete this game session. This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteGame} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Delete
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
@@ -187,6 +233,15 @@ export default function HostGamePage() {
             <h1 className="text-4xl font-bold mb-4">Quiz Over!</h1>
             <p className="text-muted-foreground mb-8">Here are the final results.</p>
             <LeaderboardView players={players || []} />
+            <div className="mt-8 flex gap-4">
+                <Button asChild>
+                    <Link href="/host">
+                        <Home className="mr-2 h-4 w-4" />
+                        Exit to Dashboard
+                    </Link>
+                </Button>
+                <DeleteGameButton gameRef={gameRef} />
+            </div>
         </div>
     );
   }
@@ -276,6 +331,8 @@ function LeaderboardView({ players }: { players: Player[] }) {
         </Card>
     );
 }
+
+    
 
     
 
