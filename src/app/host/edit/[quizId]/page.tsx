@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -13,13 +13,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Header } from '@/components/app/header';
 import { PlusCircle, Trash2, Loader2, Save } from 'lucide-react';
-import type { Question } from '@/lib/types';
+import type { Question, Quiz } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc, serverTimestamp, DocumentReference } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const answerSchema = z.object({
   text: z.string().min(1, "Answer text can't be empty."),
@@ -39,12 +40,19 @@ const quizSchema = z.object({
 
 type QuizFormData = z.infer<typeof quizSchema>;
 
-export default function CreateQuizPage() {
+export default function EditQuizPage() {
   const router = useRouter();
+  const params = useParams();
+  const quizId = params.quizId as string;
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user, loading: userLoading } = useUser();
+  
+  const quizRef = useMemoFirebase(() => doc(firestore, 'quizzes', quizId) as DocumentReference<Quiz>, [firestore, quizId]);
+  const { data: quizData, loading: quizLoading } = useDoc(quizRef);
+
   const [questions, setQuestions] = useState<Omit<Question, 'id' | 'timeLimit'>[]>([]);
+  
   const form = useForm<QuizFormData>({
     resolver: zodResolver(quizSchema),
     defaultValues: {
@@ -53,20 +61,23 @@ export default function CreateQuizPage() {
       questions: [],
     },
   });
+  
+  useEffect(() => {
+    if (quizData) {
+      form.reset({
+        title: quizData.title,
+        description: quizData.description,
+        questions: quizData.questions,
+      });
+      setQuestions(quizData.questions);
+    }
+  }, [quizData, form]);
 
   useEffect(() => {
     if (!userLoading && !user) {
       router.push('/login');
     }
   }, [user, userLoading, router]);
-
-  useEffect(() => {
-    // Add one default question when the page loads
-    if (questions.length === 0) {
-      addQuestion();
-    }
-     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const addQuestion = (text: string = '') => {
     const newQuestion: Omit<Question, 'id' | 'timeLimit'> = {
@@ -97,42 +108,41 @@ export default function CreateQuizPage() {
       toast({
         variant: "destructive",
         title: "You must be signed in",
-        description: "Please sign in to create a quiz.",
+        description: "Please sign in to update a quiz.",
       });
       return;
     }
     
-    const quizData = {
+    const quizUpdateData = {
         ...data,
-        hostId: user.uid,
-        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
     };
 
-    addDoc(collection(firestore, 'quizzes'), quizData)
+    updateDoc(quizRef, quizUpdateData)
       .then(() => {
         toast({
-          title: 'Quiz Saved!',
-          description: 'Your new quiz has been saved to your dashboard.',
+          title: 'Quiz Updated!',
+          description: 'Your quiz has been successfully updated.',
         });
         router.push(`/host`);
       })
       .catch((error) => {
-        console.error("Error creating quiz: ", error);
+        console.error("Error updating quiz: ", error);
         const permissionError = new FirestorePermissionError({
-          path: '/quizzes',
-          operation: 'create',
-          requestResourceData: quizData
+          path: quizRef.path,
+          operation: 'update',
+          requestResourceData: quizUpdateData
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({
             variant: "destructive",
             title: "Error",
-            description: "Could not save the quiz. Please try again.",
+            description: "Could not update the quiz. Please try again.",
         });
       });
   };
 
-  if (userLoading || !user) {
+  if (userLoading || quizLoading || !user) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -149,8 +159,8 @@ export default function CreateQuizPage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <Card>
               <CardHeader>
-                <CardTitle>Create a New Quiz</CardTitle>
-                <CardDescription>Fill in the details for your new quiz. You can host it from your dashboard after saving.</CardDescription>
+                <CardTitle>Edit Quiz</CardTitle>
+                <CardDescription>Update the details for your quiz below.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <FormField
@@ -185,7 +195,7 @@ export default function CreateQuizPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Questions</CardTitle>
-                <CardDescription>Add questions and answers for your quiz.</CardDescription>
+                <CardDescription>Edit the questions and answers for your quiz.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {questions.map((q, qIndex) => (
@@ -239,7 +249,7 @@ export default function CreateQuizPage() {
             <div className="flex justify-end">
               <Button type="submit" size="lg" disabled={form.formState.isSubmitting || userLoading}>
                 <Save className="mr-2 h-4 w-4" />
-                Save Quiz
+                Save Changes
               </Button>
             </div>
           </form>
