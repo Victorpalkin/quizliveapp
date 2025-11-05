@@ -190,7 +190,7 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
         );
       case 'question':
         if (quizLoading || !question || !game) {
-            return <Skeleton className="w-full h-full" />
+            return <Skeleton className="w-full h-full" />;
         }
         return (
           <div className="w-full h-full flex flex-col">
