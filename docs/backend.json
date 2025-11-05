@@ -37,12 +37,16 @@
         },
         "answers": {
           "type": "array",
+          "description": "An array of 2 to 8 answer options.",
           "items": {
             "$ref": "#/entities/answer"
-          }
+          },
+          "minItems": 2,
+          "maxItems": 8
         },
         "correctAnswerIndex": {
-          "type": "number"
+          "type": "number",
+          "description": "The index of the correct answer in the answers array."
         }
       },
       "required": ["text", "answers", "correctAnswerIndex"]

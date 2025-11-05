@@ -35,15 +35,20 @@ import {
 import { cn } from '@/lib/utils';
 
 const answerIcons = [
-  <TriangleIcon key="0" className="w-5 h-5" />,
-  <DiamondIcon key="1" className="w-5 h-5" />,
-  <SquareIcon key="2" className="w-5 h-5" />,
-  <CircleIcon key="3" className="w-5 h-5" />,
+  TriangleIcon,
+  DiamondIcon,
+  SquareIcon,
+  CircleIcon,
+  TriangleIcon, // Repeat for more than 4
+  DiamondIcon,
+  SquareIcon,
+  CircleIcon,
 ];
 
 const answerColors = [
-  'bg-red-500', 'bg-blue-500', 'bg-yellow-500', 'bg-green-500'
-]
+  'bg-red-500', 'bg-blue-500', 'bg-yellow-500', 'bg-green-500',
+  'bg-purple-500', 'bg-pink-500', 'bg-orange-500', 'bg-teal-500',
+];
 
 function updateGame(gameRef: DocumentReference<Game>, data: Partial<Game>) {
   updateDoc(gameRef, data).catch(error => {
@@ -319,12 +324,15 @@ export default function HostGamePage() {
             </Card>
             
             <div className="grid grid-cols-2 gap-4 mt-8 w-full max-w-4xl">
-              {question.answers.map((ans, i) => (
-                <div key={i} className={`flex items-center gap-4 p-4 rounded-lg ${answerColors[i]}`}>
-                  {answerIcons[i]}
-                  <span className="text-xl font-medium text-white">{ans.text}</span>
-                </div>
-              ))}
+              {question.answers.map((ans, i) => {
+                const Icon = answerIcons[i % answerIcons.length];
+                return (
+                    <div key={i} className={cn(`flex items-center gap-4 p-4 rounded-lg`, answerColors[i % answerColors.length])}>
+                        <Icon className="w-5 h-5" />
+                        <span className="text-xl font-medium text-white">{ans.text}</span>
+                    </div>
+                )
+              })}
             </div>
         </main>
       )}
@@ -436,7 +444,3 @@ function AnswerDistributionChart({ data }: { data: { name: string; total: number
         </Card>
     );
 }
-
-
-    
-    

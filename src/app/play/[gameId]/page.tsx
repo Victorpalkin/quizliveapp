@@ -26,10 +26,19 @@ import { nanoid } from 'nanoid';
 type PlayerState = 'joining' | 'lobby' | 'preparing' | 'question' | 'waiting' | 'result' | 'ended' | 'cancelled';
 
 const answerIcons = [
-  { icon: TriangleIcon, color: 'bg-red-500', textColor: 'text-red-500' },
-  { icon: DiamondIcon, color: 'bg-blue-500', textColor: 'text-blue-500' },
-  { icon: SquareIcon, color: 'bg-yellow-500', textColor: 'text-yellow-500' },
-  { icon: CircleIcon, color: 'bg-green-500', textColor: 'text-green-500' },
+  TriangleIcon,
+  DiamondIcon,
+  SquareIcon,
+  CircleIcon,
+  TriangleIcon, // Repeat for more than 4
+  DiamondIcon,
+  SquareIcon,
+  CircleIcon,
+];
+
+const answerColors = [
+  'bg-red-500', 'bg-blue-500', 'bg-yellow-500', 'bg-green-500',
+  'bg-purple-500', 'bg-pink-500', 'bg-orange-500', 'bg-teal-500',
 ];
 
 function updatePlayer(playerRef: DocumentReference<Player>, data: Partial<Player>) {
@@ -90,7 +99,7 @@ export default function PlayerGamePage() {
             }
             break;
         case 'question':
-            if (state === 'preparing') {
+            if (state === 'preparing' || state === 'lobby') {
                 setState('question');
             }
             break;
@@ -246,9 +255,9 @@ export default function PlayerGamePage() {
             <div className="flex-grow flex items-center justify-center w-full">
               <Progress value={(time / 20) * 100} className="absolute top-0 left-0 w-full h-2 rounded-none" />
               <div className="absolute top-4 right-4 text-2xl font-bold bg-background/80 px-4 py-2 rounded-lg">{time}</div>
-              <div className="grid grid-cols-2 gap-4 w-full h-full p-4">
+              <div className={cn("grid gap-4 w-full h-full p-4", question.answers.length > 4 ? "grid-cols-2 grid-rows-4" : "grid-cols-2 grid-rows-2")}>
                 {question.answers.map((ans: any, i: number) => {
-                  const Icon = answerIcons[i].icon;
+                  const Icon = answerIcons[i % answerIcons.length];
                   return (
                     <button
                       key={i}
@@ -256,10 +265,10 @@ export default function PlayerGamePage() {
                       disabled={answerSelected !== null}
                       className={cn(
                         'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform hover:scale-105',
-                        answerIcons[i].color
+                        answerColors[i % answerColors.length]
                       )}
                     >
-                      <Icon className="w-24 h-24" />
+                      <Icon className="w-16 h-16 md:w-24 md:h-24" />
                     </button>
                   );
                 })}

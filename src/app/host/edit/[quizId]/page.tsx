@@ -12,7 +12,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Header } from '@/components/app/header';
-import { PlusCircle, Trash2, Loader2, Save } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Save, X } from 'lucide-react';
 import type { Question, Quiz } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
@@ -28,8 +28,8 @@ const answerSchema = z.object({
 
 const questionSchema = z.object({
   text: z.string().min(1, 'Question text cannot be empty.'),
-  answers: z.array(answerSchema).length(4, 'Each question must have exactly 4 answers.'),
-  correctAnswerIndex: z.number().min(0).max(3),
+  answers: z.array(answerSchema).min(2, 'Each question must have at least 2 answers.').max(8, 'Each question can have at most 8 answers.'),
+  correctAnswerIndex: z.number().min(0).max(7),
 });
 
 const quizSchema = z.object({
@@ -82,7 +82,7 @@ export default function EditQuizPage() {
   const addQuestion = (text: string = '') => {
     const newQuestion: Omit<Question, 'id' | 'timeLimit'> = {
       text: text,
-      answers: [{ text: '' }, { text: '' }, { text: '' }, { text: '' }],
+      answers: [{ text: '' }, { text: '' }],
       correctAnswerIndex: 0,
     };
     const newQuestions = [...questions, newQuestion];
@@ -101,6 +101,44 @@ export default function EditQuizPage() {
     const newQuestions = questions.filter((_, qIndex) => qIndex !== index);
     setQuestions(newQuestions);
     form.setValue('questions', newQuestions, { shouldValidate: true });
+  };
+
+  const addAnswer = (qIndex: number) => {
+    const newQuestions = [...questions];
+    if (newQuestions[qIndex].answers.length < 8) {
+      newQuestions[qIndex].answers.push({ text: '' });
+      setQuestions(newQuestions);
+      form.setValue('questions', newQuestions, { shouldValidate: true });
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Answer limit reached",
+            description: "You can only have a maximum of 8 answers per question.",
+        });
+    }
+  };
+
+  const removeAnswer = (qIndex: number, aIndex: number) => {
+    const newQuestions = [...questions];
+    const question = newQuestions[qIndex];
+    if (question.answers.length > 2) {
+      question.answers.splice(aIndex, 1);
+      // If the removed answer was the correct one, reset to the first answer
+      if (question.correctAnswerIndex === aIndex) {
+        question.correctAnswerIndex = 0;
+      } else if (question.correctAnswerIndex > aIndex) {
+        // If the removed answer was before the correct one, shift the correct index down
+        question.correctAnswerIndex -= 1;
+      }
+      setQuestions(newQuestions);
+      form.setValue('questions', newQuestions, { shouldValidate: true });
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Answer limit reached",
+            description: "You must have at least 2 answers per question.",
+        });
+    }
   };
 
   const onSubmit = async (data: QuizFormData) => {
@@ -195,46 +233,93 @@ export default function EditQuizPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Questions</CardTitle>
-                <CardDescription>Edit the questions and answers for your quiz.</CardDescription>
+                <CardDescription>Edit the questions and answers for your quiz. Each question can have between 2 and 8 answers.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {questions.map((q, qIndex) => (
                   <Card key={qIndex} className="bg-background/50">
                     <CardHeader className="flex-row items-center justify-between">
                       <CardTitle className="text-lg">Question {qIndex + 1}</CardTitle>
-                      <Button variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)} type="button">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      {questions.length > 1 && (
+                        <Button variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)} type="button">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <Input
-                        placeholder="What is the capital of France?"
-                        value={q.text}
-                        onChange={(e) => updateQuestion(qIndex, { ...q, text: e.target.value })}
+                      <FormField
+                        control={form.control}
+                        name={`questions.${qIndex}.text`}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Question Text</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="What is the capital of France?" {...field} onChange={(e) => {
+                                        field.onChange(e);
+                                        updateQuestion(qIndex, { ...q, text: e.target.value });
+                                    }}/>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
                         />
                       
-                      <RadioGroup
-                        value={String(q.correctAnswerIndex)}
-                        onValueChange={(value) => updateQuestion(qIndex, { ...q, correctAnswerIndex: Number(value) })}
-                      >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {q.answers.map((ans, aIndex) => (
-                          <div key={aIndex} className="flex items-center space-x-2">
-                             <RadioGroupItem value={String(aIndex)} id={`q${qIndex}a${aIndex}`} />
-                             <Input
-                              placeholder={`Answer ${aIndex + 1}`}
-                              value={ans.text}
-                              onChange={(e) => {
-                                const newAnswers = [...q.answers];
-                                newAnswers[aIndex] = { text: e.target.value };
-                                updateQuestion(qIndex, { ...q, answers: newAnswers });
-                              }}
-                              />
-                          </div>
-                        ))}
-                        </div>
-                      </RadioGroup>
-                      <FormMessage>{form.formState.errors.questions?.[qIndex]?.answers?.message}</FormMessage>
+                      <FormField
+                          control={form.control}
+                          name={`questions.${qIndex}.correctAnswerIndex`}
+                          render={({ field }) => (
+                            <FormItem className="space-y-3">
+                              <FormLabel>Answers</FormLabel>
+                              <FormControl>
+                                <RadioGroup
+                                  onValueChange={(value) => {
+                                    field.onChange(Number(value));
+                                    updateQuestion(qIndex, { ...q, correctAnswerIndex: Number(value) });
+                                  }}
+                                  value={String(field.value)}
+                                  className="space-y-2"
+                                >
+                                {q.answers.map((ans, aIndex) => (
+                                  <FormField
+                                    key={aIndex}
+                                    control={form.control}
+                                    name={`questions.${qIndex}.answers.${aIndex}.text`}
+                                    render={({ field: answerField }) => (
+                                      <FormItem className="flex items-center space-x-3">
+                                        <FormControl>
+                                          <RadioGroupItem value={String(aIndex)} id={`q${qIndex}a${aIndex}`} />
+                                        </FormControl>
+                                        <Input
+                                          placeholder={`Answer ${aIndex + 1}`}
+                                          {...answerField}
+                                          onChange={(e) => {
+                                              answerField.onChange(e);
+                                              const newAnswers = [...q.answers];
+                                              newAnswers[aIndex] = { text: e.target.value };
+                                              updateQuestion(qIndex, { ...q, answers: newAnswers });
+                                          }}
+                                        />
+                                        {q.answers.length > 2 && (
+                                            <Button variant="ghost" size="icon" onClick={() => removeAnswer(qIndex, aIndex)} type="button">
+                                                <X className="h-4 w-4 text-muted-foreground" />
+                                            </Button>
+                                        )}
+                                      </FormItem>
+                                    )}
+                                  />
+                                ))}
+                                </RadioGroup>
+                              </FormControl>
+                              <FormMessage />
+                               {q.answers.length < 8 && (
+                                  <Button type="button" variant="outline" size="sm" onClick={() => addAnswer(qIndex)}>
+                                      <PlusCircle className="mr-2 h-4 w-4" />
+                                      Add Answer
+                                  </Button>
+                                )}
+                            </FormItem>
+                          )}
+                        />
                     </CardContent>
                   </Card>
                 ))}
