@@ -221,7 +221,7 @@ export default function PlayerGamePage() {
         );
       case 'question':
         if (quizLoading || !question || !game) {
-            return <Skeleton className="w-full h-full" />;
+          return <Skeleton className="w-full h-full" />;
         }
         return (
           <div className="w-full h-full flex flex-col">
@@ -229,28 +229,28 @@ export default function PlayerGamePage() {
               <p className="text-2xl font-bold">{question.text}</p>
             </header>
             <div className="flex-grow flex items-center justify-center w-full">
-                <Progress value={(time / 20) * 100} className="absolute top-0 left-0 w-full h-2 rounded-none" />
-                <div className="absolute top-4 right-4 text-2xl font-bold bg-background/80 px-4 py-2 rounded-lg">{time}</div>
-                <div className="grid grid-cols-2 gap-4 w-full h-full p-4">
-                  {question.answers.map((ans: any, i: number) => (
-                    <button
-                      key={i}
-                      onClick={() => handleAnswer(i)}
-                      disabled={answerSelected !== null}
-                      className={cn(
-                        "flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform",
-                        answerIcons[i].color,
-                        answerSelected === null ? 'hover:scale-105' : 'opacity-50',
-                        answerSelected === i && 'opacity-100 ring-4 ring-white scale-105'
-                      )}
-                    >
-                      <answerIcons[i].icon className="w-24 h-24" />
-                    </button>
-                  ))}
-                </div>
+              <Progress value={(time / 20) * 100} className="absolute top-0 left-0 w-full h-2 rounded-none" />
+              <div className="absolute top-4 right-4 text-2xl font-bold bg-background/80 px-4 py-2 rounded-lg">{time}</div>
+              <div className="grid grid-cols-2 gap-4 w-full h-full p-4">
+                {question.answers.map((ans: any, i: number) => (
+                  <button
+                    key={i}
+                    onClick={() => handleAnswer(i)}
+                    disabled={answerSelected !== null}
+                    className={cn(
+                      "flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform",
+                      answerIcons[i].color,
+                      answerSelected === null ? 'hover:scale-105' : 'opacity-50',
+                      answerSelected === i && 'opacity-100 ring-4 ring-white scale-105'
+                    )}
+                  >
+                    <answerIcons[i].icon className="w-24 h-24" />
+                  </button>
+                ))}
+              </div>
             </div>
             <footer className="p-4 text-center">
-                <p>Question {game.currentQuestionIndex + 1} of {quiz.questions.length}</p>
+              <p>Question {game.currentQuestionIndex + 1} of {quiz.questions.length}</p>
             </footer>
           </div>
         );
@@ -304,5 +304,3 @@ export default function PlayerGamePage() {
     </div>
   );
 }
-
-    
