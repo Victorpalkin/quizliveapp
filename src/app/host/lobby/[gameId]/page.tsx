@@ -6,14 +6,26 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Copy, Check } from 'lucide-react';
+import { Users, Copy, Check, XCircle } from 'lucide-react';
 import { Header } from '@/components/app/header';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, DocumentReference } from 'firebase/firestore';
+import { collection, doc, updateDoc, DocumentReference, deleteDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import type { Game } from '@/lib/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -61,11 +73,27 @@ export default function HostLobbyPage() {
       });
   };
 
+  const handleCancelGame = () => {
+    if (!gameRef) return;
+    deleteDoc(gameRef)
+        .then(() => {
+            router.push('/host');
+        })
+        .catch((error) => {
+            console.error("Error deleting game: ", error);
+            const permissionError = new FirestorePermissionError({
+                path: gameRef.path,
+                operation: 'delete',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
+  };
+
 
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1 container mx-auto p-4 md:p-8 flex items-center justify-center">
+      <main className="flex-1 container mx-auto p-4 md:p-8 flex flex-col items-center justify-center">
         <div className="w-full max-w-4xl space-y-8 text-center">
             <h1 className="text-4xl font-bold tracking-tighter">Your Quiz is Ready!</h1>
             <p className="text-muted-foreground text-xl">Players can now join your game.</p>
@@ -116,9 +144,36 @@ export default function HostLobbyPage() {
             </Card>
           </div>
         </div>
+
+        <div className="mt-12 border-t w-full max-w-4xl pt-6 flex justify-center">
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Cancel Game
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will cancel the game for all players and cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Back</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleCancelGame} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Yes, Cancel Game
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
       </main>
     </div>
   );
 }
+
+    
 
     

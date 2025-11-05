@@ -2,9 +2,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PartyPopper, Frown, Trophy, Loader2 } from 'lucide-react';
+import { PartyPopper, Frown, Trophy, Loader2, XCircle } from 'lucide-react';
 import {
   DiamondIcon,
   TriangleIcon,
@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, collection, addDoc, query, where, getDocs, serverTimestamp, setDoc, updateDoc, DocumentReference } from 'firebase/firestore';
-import type { Quiz, Player } from '@/lib/types';
+import type { Quiz, Player, Game } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,7 +23,7 @@ import { signInAnonymously } from 'firebase/auth';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
-type PlayerState = 'joining' | 'lobby' | 'question' | 'result' | 'ended';
+type PlayerState = 'joining' | 'lobby' | 'question' | 'result' | 'ended' | 'cancelled';
 
 const answerIcons = [
   { icon: TriangleIcon, color: 'bg-red-500', textColor: 'text-red-500' },
@@ -52,12 +52,13 @@ export default function PlayerGamePage() {
   const auth = useAuth();
   const { user, loading: userLoading } = useUser();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [state, setState] = useState<PlayerState>('joining');
   const [nickname, setNickname] = useState('');
   const [gameDocId, setGameDocId] = useState<string | null>(null);
   
-  const gameRef = useMemoFirebase(() => gameDocId ? doc(firestore, 'games', gameDocId) : null, [firestore, gameDocId]);
+  const gameRef = useMemoFirebase(() => gameDocId ? doc(firestore, 'games', gameDocId) as DocumentReference<Game> : null, [firestore, gameDocId]);
   const { data: game, loading: gameLoading } = useDoc(gameRef);
 
   const quizRef = useMemoFirebase(() => game ? doc(firestore, 'quizzes', game.quizId) : null, [firestore, game]);
@@ -84,7 +85,10 @@ export default function PlayerGamePage() {
   }, [user, userLoading, auth, toast]);
 
   useEffect(() => {
-    if (game?.state) {
+    if (!game && !gameLoading && state !== 'joining' && state !== 'cancelled') {
+        setState('cancelled');
+    }
+    else if (game?.state) {
         if (game.state !== 'lobby' && state === 'lobby') {
             setState('question');
         }
@@ -95,7 +99,7 @@ export default function PlayerGamePage() {
           setState('ended');
         }
     }
-  }, [game, state]);
+  }, [game, gameLoading, state]);
 
   useEffect(() => {
     if (state === 'question') {
@@ -186,10 +190,6 @@ export default function PlayerGamePage() {
     }, 1000);
   };
   
-  const handleNext = () => {
-    // This is now handled by the useEffect that listens to game state
-  };
-
   const renderContent = () => {
     switch (state) {
       case 'joining':
@@ -275,8 +275,19 @@ export default function PlayerGamePage() {
                 <h1 className="text-5xl font-bold">Quiz Finished!</h1>
                 <p className="text-3xl mt-4">Your final score is:</p>
                 <p className="text-8xl font-bold my-8">{player?.score}</p>
-                <Button onClick={() => window.location.href = '/'} size="lg" variant="secondary" className="mt-12 text-xl">
+                <Button onClick={() => router.push('/')} size="lg" variant="secondary" className="mt-12 text-xl">
                     Play Again
+                </Button>
+            </div>
+        );
+      case 'cancelled':
+        return (
+            <div className="flex flex-col items-center justify-center text-center p-8 w-full h-full bg-destructive text-destructive-foreground">
+                <XCircle className="w-24 h-24 mb-4" />
+                <h1 className="text-5xl font-bold">Game Canceled</h1>
+                <p className="text-2xl mt-4">The host has canceled the game.</p>
+                <Button onClick={() => router.push('/')} size="lg" variant="secondary" className="mt-12 text-xl">
+                    Return Home
                 </Button>
             </div>
         );

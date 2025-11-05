@@ -2,11 +2,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy } from 'lucide-react';
+import { Trophy, XCircle } from 'lucide-react';
 import {
   DiamondIcon,
   TriangleIcon,
@@ -15,11 +15,22 @@ import {
 } from '@/components/app/quiz-icons';
 import { Progress } from '@/components/ui/progress';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, updateDoc, DocumentReference } from 'firebase/firestore';
+import { doc, collection, updateDoc, DocumentReference, deleteDoc } from 'firebase/firestore';
 import type { Player, Quiz, Game } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const answerIcons = [
   <TriangleIcon key="0" className="w-5 h-5" />,
@@ -42,6 +53,51 @@ function updateGame(gameRef: DocumentReference<Game>, data: Partial<Game>) {
     });
     errorEmitter.emit('permission-error', permissionError);
   });
+}
+
+function CancelGameButton({ gameRef }: { gameRef: DocumentReference<Game> | null }) {
+    const router = useRouter();
+
+    const handleCancelGame = () => {
+        if (!gameRef) return;
+        deleteDoc(gameRef)
+            .then(() => {
+                router.push('/host');
+            })
+            .catch((error) => {
+                console.error("Error deleting game: ", error);
+                const permissionError = new FirestorePermissionError({
+                    path: gameRef.path,
+                    operation: 'delete',
+                });
+                errorEmitter.emit('permission-error', permissionError);
+            });
+    };
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Cancel Game
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will cancel the game for all players and cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Back</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCancelGame} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Yes, Cancel Game
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
 }
 
 export default function HostGamePage() {
@@ -111,6 +167,19 @@ export default function HostGamePage() {
         </div>
     );
   }
+  
+  if (!game && !gameLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-8 text-center">
+        <XCircle className="w-16 h-16 text-destructive mb-4" />
+        <h1 className="text-4xl font-bold mb-4">Game Not Found</h1>
+        <p className="text-muted-foreground mb-8">This game may have been canceled or never existed.</p>
+        <Button asChild>
+          <a href="/host">Return to Dashboard</a>
+        </Button>
+      </div>
+    );
+  }
 
   if (game?.state === 'ended') {
     return (
@@ -125,8 +194,11 @@ export default function HostGamePage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground p-8">
       <header className="flex justify-between items-center mb-8">
-        <h1 className="text-xl font-bold">QuizLive</h1>
-        <div className="text-2xl font-mono">{game?.gamePin}</div>
+        <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold">QuizLive</h1>
+            <div className="text-2xl font-mono bg-muted text-muted-foreground px-4 py-1 rounded-md">{game?.gamePin}</div>
+        </div>
+        <CancelGameButton gameRef={gameRef} />
       </header>
 
       {game?.state === 'question' && question && (
@@ -204,5 +276,7 @@ function LeaderboardView({ players }: { players: Player[] }) {
         </Card>
     );
 }
+
+    
 
     
