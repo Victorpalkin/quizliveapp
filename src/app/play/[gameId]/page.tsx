@@ -13,12 +13,14 @@ import {
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc, collection, addDoc, query, where, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, collection, addDoc, query, where, getDocs, serverTimestamp, setDoc, updateDoc, DocumentReference } from 'firebase/firestore';
 import type { Quiz, Player } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { signInAnonymously } from 'firebase/auth';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type PlayerState = 'joining' | 'lobby' | 'question' | 'result' | 'ended';
 
@@ -28,6 +30,19 @@ const answerIcons = [
   { icon: SquareIcon, color: 'bg-yellow-500', textColor: 'text-yellow-500' },
   { icon: CircleIcon, color: 'bg-green-500', textColor: 'text-green-500' },
 ];
+
+function updatePlayer(playerRef: DocumentReference<Player>, data: Partial<Player>) {
+  updateDoc(playerRef, data).catch(error => {
+    console.error("Error updating player:", error);
+    const permissionError = new FirestorePermissionError({
+      path: playerRef.path,
+      operation: 'update',
+      requestResourceData: data
+    });
+    errorEmitter.emit('permission-error', permissionError);
+  });
+}
+
 
 export default function PlayerGamePage({ params }: { params: { gameId: string } }) {
   const firestore = useFirestore();
@@ -119,17 +134,29 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
 
         const playerRef = doc(firestore, 'games', gameDoc.id, 'players', user.uid);
         const newPlayer = { name: nickname, score: 0 };
-        await setDoc(playerRef, newPlayer);
-
-        setPlayer({ ...newPlayer, id: user.uid });
-        setState('lobby');
+        
+        setDoc(playerRef, newPlayer)
+          .then(() => {
+            setPlayer({ ...newPlayer, id: user.uid });
+            setState('lobby');
+          })
+          .catch(error => {
+            console.error("Error joining game: ", error);
+            const permissionError = new FirestorePermissionError({
+              path: playerRef.path,
+              operation: 'create',
+              requestResourceData: newPlayer
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Error', description: "Could not join the game. Please try again." });
+          });
     } catch (error) {
-        console.error("Error joining game: ", error);
-        toast({ variant: 'destructive', title: 'Error', description: "Could not join the game. Please try again." });
+        console.error("Error querying game: ", error);
+        toast({ variant: 'destructive', title: 'Error', description: "Could not find the game. Please check the PIN." });
     }
   };
 
-  const handleAnswer = async (selectedIndex: number) => {
+  const handleAnswer = (selectedIndex: number) => {
     if (answerSelected !== null || !user || !gameId || !player) return;
     setAnswerSelected(selectedIndex);
 
@@ -137,8 +164,8 @@ export default function PlayerGamePage({ params }: { params: { gameId: string } 
     const points = isCorrect ? Math.round(100 + (time / 20) * 900) : 0;
     
     const newScore = player.score + points;
-    const playerRef = doc(firestore, 'games', gameId, 'players', user.uid);
-    await updateDoc(playerRef, { score: newScore });
+    const playerRef = doc(firestore, 'games', gameId, 'players', user.uid) as DocumentReference<Player>;
+    updatePlayer(playerRef, { score: newScore });
 
     setPlayer({ ...player, score: newScore });
     setLastAnswer({ selected: selectedIndex, correct: question.correctAnswerIndex, points });

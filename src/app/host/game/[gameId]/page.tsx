@@ -14,9 +14,11 @@ import {
 } from '@/components/app/quiz-icons';
 import { Progress } from '@/components/ui/progress';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, updateDoc } from 'firebase/firestore';
-import type { Player, Quiz } from '@/lib/types';
+import { doc, collection, updateDoc, DocumentReference } from 'firebase/firestore';
+import type { Player, Quiz, Game } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const answerIcons = [
   <TriangleIcon key="0" className="w-5 h-5" />,
@@ -29,11 +31,23 @@ const answerColors = [
   'bg-red-500', 'bg-blue-500', 'bg-yellow-500', 'bg-green-500'
 ]
 
+function updateGame(gameRef: DocumentReference<Game>, data: Partial<Game>) {
+  updateDoc(gameRef, data).catch(error => {
+    console.error("Error updating game: ", error);
+    const permissionError = new FirestorePermissionError({
+      path: gameRef.path,
+      operation: 'update',
+      requestResourceData: data,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+  });
+}
+
 export default function HostGamePage({ params }: { params: { gameId: string } }) {
   const { gameId } = params;
   const firestore = useFirestore();
 
-  const gameRef = useMemoFirebase(() => doc(firestore, 'games', gameId), [firestore, gameId]);
+  const gameRef = useMemoFirebase(() => doc(firestore, 'games', gameId) as DocumentReference<Game>, [firestore, gameId]);
   const { data: game, loading: gameLoading } = useDoc(gameRef);
 
   const quizRef = useMemoFirebase(() => game ? doc(firestore, 'quizzes', game.quizId) : null, [firestore, game]);
@@ -71,19 +85,19 @@ export default function HostGamePage({ params }: { params: { gameId: string } })
     }
   }, [game?.currentQuestionIndex, game?.state]);
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (!game || !quiz) return;
 
     if (game.state === 'question') {
-      await updateDoc(gameRef, { state: 'leaderboard' });
+      updateGame(gameRef, { state: 'leaderboard' });
     } else if (game.state === 'leaderboard') {
       if (game.currentQuestionIndex < quiz.questions.length - 1) {
-        await updateDoc(gameRef, { 
+        updateGame(gameRef, { 
           state: 'question',
           currentQuestionIndex: game.currentQuestionIndex + 1
         });
       } else {
-        await updateDoc(gameRef, { state: 'ended' });
+        updateGame(gameRef, { state: 'ended' });
       }
     }
   };
@@ -188,4 +202,3 @@ function LeaderboardView({ players }: { players: Player[] }) {
         </Card>
     );
 }
-

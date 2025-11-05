@@ -18,6 +18,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const answerSchema = z.object({
   text: z.string().min(1, "Answer text can't be empty."),
@@ -91,26 +93,35 @@ export default function CreateQuizPage() {
       });
       return;
     }
-    try {
-      await addDoc(collection(firestore, 'quizzes'), {
+    
+    const quizData = {
         ...data,
         hostId: user.uid,
         createdAt: serverTimestamp(),
-      });
-      
-      toast({
-        title: 'Quiz Saved!',
-        description: 'Your new quiz has been saved to your dashboard.',
-      });
-      router.push(`/host`);
-    } catch(error) {
+    };
+
+    addDoc(collection(firestore, 'quizzes'), quizData)
+      .then(() => {
+        toast({
+          title: 'Quiz Saved!',
+          description: 'Your new quiz has been saved to your dashboard.',
+        });
+        router.push(`/host`);
+      })
+      .catch((error) => {
         console.error("Error creating quiz: ", error);
+        const permissionError = new FirestorePermissionError({
+          path: '/quizzes',
+          operation: 'create',
+          requestResourceData: quizData
+        });
+        errorEmitter.emit('permission-error', permissionError);
         toast({
             variant: "destructive",
             title: "Error",
             description: "Could not save the quiz. Please try again.",
         });
-    }
+      });
   };
 
   if (userLoading || !user) {
@@ -229,4 +240,3 @@ export default function CreateQuizPage() {
     </div>
   );
 }
-

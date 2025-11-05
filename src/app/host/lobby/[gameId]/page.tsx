@@ -8,9 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, Copy, Check } from 'lucide-react';
 import { Header } from '@/components/app/header';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, DocumentReference } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+import type { Game } from '@/lib/types';
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -33,15 +36,27 @@ export default function HostLobbyPage({ params }: { params: { gameId: string } }
   const router = useRouter();
   const firestore = useFirestore();
 
-  const gameRef = useMemoFirebase(() => doc(firestore, 'games', gameId), [firestore, gameId]);
+  const gameRef = useMemoFirebase(() => doc(firestore, 'games', gameId) as DocumentReference<Game>, [firestore, gameId]);
   const { data: game, loading: gameLoading } = useDoc(gameRef);
 
   const playersQuery = useMemoFirebase(() => collection(firestore, 'games', gameId, 'players'), [firestore, gameId]);
   const { data: players, loading: playersLoading } = useCollection(playersQuery);
   
-  const handleStartGame = async () => {
-    await updateDoc(gameRef, { state: 'question' });
-    router.push(`/host/game/${gameId}`);
+  const handleStartGame = () => {
+    const updateData = { state: 'question' };
+    updateDoc(gameRef, updateData)
+      .then(() => {
+        router.push(`/host/game/${gameId}`);
+      })
+      .catch((error) => {
+        console.error("Error starting game: ", error);
+        const permissionError = new FirestorePermissionError({
+          path: gameRef.path,
+          operation: 'update',
+          requestResourceData: updateData
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
 
@@ -103,4 +118,3 @@ export default function HostLobbyPage({ params }: { params: { gameId: string } }
     </div>
   );
 }
-

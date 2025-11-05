@@ -13,6 +13,8 @@ import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 import type { Quiz } from '@/lib/types';
 import Link from 'next/link';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function HostDashboardPage() {
   const router = useRouter();
@@ -34,29 +36,38 @@ export default function HostDashboardPage() {
 
   const handleHostGame = async (quizId: string) => {
     if (!user) return;
-    try {
-        const gamePin = nanoid(6).toUpperCase();
-        const gameDoc = await addDoc(collection(firestore, 'games'), {
-            quizId: quizId,
-            hostId: user.uid,
-            state: 'lobby',
-            currentQuestionIndex: 0,
-            gamePin,
-            createdAt: serverTimestamp(),
+
+    const gameData = {
+      quizId: quizId,
+      hostId: user.uid,
+      state: 'lobby',
+      currentQuestionIndex: 0,
+      gamePin: nanoid(6).toUpperCase(),
+      createdAt: serverTimestamp(),
+    };
+
+    addDoc(collection(firestore, 'games'), gameData)
+        .then((gameDoc) => {
+            toast({
+                title: 'Game Created!',
+                description: 'Your game lobby is now open.',
+            });
+            router.push(`/host/lobby/${gameDoc.id}`);
+        })
+        .catch((error) => {
+            console.error("Error creating game: ", error);
+            const permissionError = new FirestorePermissionError({
+              path: '/games',
+              operation: 'create',
+              requestResourceData: gameData
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not create the game. Please try again.",
+            });
         });
-        toast({
-            title: 'Game Created!',
-            description: 'Your game lobby is now open.',
-        });
-        router.push(`/host/lobby/${gameDoc.id}`);
-    } catch (error) {
-        console.error("Error creating game: ", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not create the game. Please try again.",
-        });
-    }
   };
 
 
@@ -72,7 +83,7 @@ export default function HostDashboardPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1 container mx-auto p-4 md:p-8">
+      <main className="flex-1 container mx-auto p-4 md-p-8">
         <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold">My Quizzes</h1>
             <Button asChild>
