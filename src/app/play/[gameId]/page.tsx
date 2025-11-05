@@ -13,15 +13,15 @@ import {
 } from '@/components/app/quiz-icons';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
-import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc, collection, addDoc, query, where, getDocs, serverTimestamp, setDoc, updateDoc, DocumentReference } from 'firebase/firestore';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where, getDocs, setDoc, updateDoc, DocumentReference } from 'firebase/firestore';
 import type { Quiz, Player, Game } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { signInAnonymously } from 'firebase/auth';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { nanoid } from 'nanoid';
 
 type PlayerState = 'joining' | 'lobby' | 'question' | 'result' | 'ended' | 'cancelled';
 
@@ -49,14 +49,13 @@ export default function PlayerGamePage() {
   const params = useParams();
   const gamePin = params.gameId as string;
   const firestore = useFirestore();
-  const auth = useAuth();
-  const { user, loading: userLoading } = useUser();
   const { toast } = useToast();
   const router = useRouter();
 
   const [state, setState] = useState<PlayerState>('joining');
   const [nickname, setNickname] = useState('');
   const [gameDocId, setGameDocId] = useState<string | null>(null);
+  const [playerId] = useState(() => nanoid());
   
   const gameRef = useMemoFirebase(() => gameDocId ? doc(firestore, 'games', gameDocId) as DocumentReference<Game> : null, [firestore, gameDocId]);
   const { data: game, loading: gameLoading } = useDoc(gameRef);
@@ -71,19 +70,6 @@ export default function PlayerGamePage() {
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
   
-  useEffect(() => {
-    if (!userLoading && !user) {
-      signInAnonymously(auth).catch((error) => {
-        console.error("Anonymous sign-in failed: ", error);
-        toast({
-          variant: "destructive",
-          title: "Authentication Failed",
-          description: "Could not sign you in. Please try refreshing the page.",
-        });
-      });
-    }
-  }, [user, userLoading, auth, toast]);
-
   useEffect(() => {
     if (!game && !gameLoading && state !== 'joining' && state !== 'cancelled') {
         setState('cancelled');
@@ -119,18 +105,13 @@ export default function PlayerGamePage() {
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [game?.currentQuestionIndex, state]);
+  }, [game?.currentQuestionIndex, state, answerSelected]);
 
   const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nickname.trim()) {
       toast({ variant: 'destructive', title: 'Nickname is required' });
       return;
-    }
-    
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Could not authenticate', description: "Please wait a moment and try again." });
-        return;
     }
 
     try {
@@ -147,12 +128,12 @@ export default function PlayerGamePage() {
         const gameDoc = querySnapshot.docs[0];
         setGameDocId(gameDoc.id);
 
-        const playerRef = doc(firestore, 'games', gameDoc.id, 'players', user.uid);
+        const playerRef = doc(firestore, 'games', gameDoc.id, 'players', playerId);
         const newPlayer = { name: nickname, score: 0 };
         
         setDoc(playerRef, newPlayer)
           .then(() => {
-            setPlayer({ ...newPlayer, id: user.uid });
+            setPlayer({ ...newPlayer, id: playerId });
             setState('lobby');
           })
           .catch(error => {
@@ -172,14 +153,14 @@ export default function PlayerGamePage() {
   };
 
   const handleAnswer = (selectedIndex: number) => {
-    if (answerSelected !== null || !user || !gameDocId || !player) return;
+    if (answerSelected !== null || !gameDocId || !player) return;
     setAnswerSelected(selectedIndex);
 
     const isCorrect = question?.correctAnswerIndex === selectedIndex;
     const points = isCorrect ? Math.round(100 + (time / 20) * 900) : 0;
     
     const newScore = player.score + points;
-    const playerRef = doc(firestore, 'games', gameDocId, 'players', user.uid) as DocumentReference<Player>;
+    const playerRef = doc(firestore, 'games', gameDocId, 'players', playerId) as DocumentReference<Player>;
     updatePlayer(playerRef, { score: newScore });
 
     setPlayer({ ...player, score: newScore });
@@ -203,7 +184,7 @@ export default function PlayerGamePage() {
                 placeholder="Enter your nickname"
                 className="h-12 text-center text-xl"
               />
-              <Button type="submit" size="lg" className="w-full" disabled={userLoading}>Join</Button>
+              <Button type="submit" size="lg" className="w-full">Join</Button>
             </form>
           </div>
         );
