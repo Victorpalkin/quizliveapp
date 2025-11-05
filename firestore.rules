@@ -1,0 +1,36 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Protect user profiles
+    match /users/{userId} {
+      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
+    }
+
+    // Protect quizzes
+    match /quizzes/{quizId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.hostId;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.hostId;
+    }
+
+    // Protect game sessions
+    match /games/{gameId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.token.email_verified == true && request.auth.uid == request.resource.data.hostId;
+      allow update: if request.auth != null && request.auth.uid == resource.data.hostId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.hostId;
+
+      // Protect player data within a game
+      match /players/{playerId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.auth.uid == playerId;
+        allow update: if request.auth != null && request.auth.uid == playerId;
+        allow delete: if false; 
+      }
+    }
+  }
+}
