@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, LabelList, Cell } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trophy, XCircle, Home, Trash2, CheckCircle, Users } from 'lucide-react';
@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { cn } from '@/lib/utils';
 
 const answerIcons = [
   <TriangleIcon key="0" className="w-5 h-5" />,
@@ -167,15 +168,23 @@ export default function HostGamePage() {
 
   const answeredPlayers = players?.filter(p => p.lastAnswerIndex !== null && p.lastAnswerIndex !== undefined).length || 0;
 
+  const answerDistribution = useMemo(() => {
+    if (!question || !players) return [];
 
-  const chartData = question?.answers.map((ans:any, index:number) => ({
-    name: `Option ${index + 1}`,
-    // This part is tricky without knowing player answers in real-time.
-    // For now, we'll keep it random. A full implementation would require
-    // storing player answers temporarily.
-    total: Math.floor(Math.random() * (players?.length || 0)), 
-    fill: `hsl(var(--chart-${index + 1}))`
-  }));
+    const counts = Array(question.answers.length).fill(0);
+    players.forEach(player => {
+        if (player.lastAnswerIndex !== null && player.lastAnswerIndex !== undefined && player.lastAnswerIndex >= 0) {
+            counts[player.lastAnswerIndex]++;
+        }
+    });
+
+    return question.answers.map((ans, index) => ({
+        name: ans.text,
+        total: counts[index],
+        isCorrect: index === question.correctAnswerIndex,
+    }));
+}, [question, players]);
+
 
   const finishQuestion = () => {
     if (game?.state === 'question' && gameRef) {
@@ -299,7 +308,7 @@ export default function HostGamePage() {
               {question.answers.map((ans, i) => (
                 <div key={i} className={`flex items-center gap-4 p-4 rounded-lg ${answerColors[i]}`}>
                   {answerIcons[i]}
-                  <span className="text-xl font-medium">{ans.text}</span>
+                  <span className="text-xl font-medium text-white">{ans.text}</span>
                 </div>
               ))}
             </div>
@@ -307,9 +316,9 @@ export default function HostGamePage() {
       )}
 
       {game?.state === 'leaderboard' && (
-        <main className="flex-1 flex flex-col items-center justify-center">
-            <h1 className="text-4xl font-bold mb-8">Leaderboard</h1>
+        <main className="flex-1 flex flex-col items-center justify-center gap-8 md:flex-row md:items-start">
             <LeaderboardView players={players || []} />
+            <AnswerDistributionChart data={answerDistribution} />
         </main>
       )}
 
@@ -340,7 +349,7 @@ export default function HostGamePage() {
 function LeaderboardView({ players }: { players: Player[] }) {
     const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
     return (
-        <Card className="w-full max-w-2xl bg-card text-card-foreground">
+        <Card className="w-full max-w-md bg-card text-card-foreground">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Trophy /> Rankings</CardTitle>
             </CardHeader>
@@ -361,3 +370,41 @@ function LeaderboardView({ players }: { players: Player[] }) {
         </Card>
     );
 }
+
+
+function AnswerDistributionChart({ data }: { data: { name: string; total: number; isCorrect: boolean }[] }) {
+    const CustomBarLabel = (props: any) => {
+        const { x, y, width, value, isCorrect } = props;
+        return (
+          <text x={x + width / 2} y={y} fill="hsl(var(--foreground))" textAnchor="middle" dy={-6} className="text-sm font-bold">
+            {`${value}`}
+            {isCorrect && <tspan dy={-14} dx={-15}> (Correct)</tspan>}
+          </text>
+        );
+    };
+
+    return (
+        <Card className="w-full max-w-lg">
+            <CardHeader>
+                <CardTitle>Answer Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={data} margin={{ top: 30, right: 10, left: 10, bottom: 5 }}>
+                        <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} />
+                        <YAxis hide={true} />
+                        <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                             <LabelList dataKey="total" content={<CustomBarLabel />} />
+                             {data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.isCorrect ? 'hsl(var(--primary))' : 'hsl(var(--muted))'} />
+                             ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+}
+
+
+    
