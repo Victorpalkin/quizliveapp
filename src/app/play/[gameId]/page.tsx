@@ -23,7 +23,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { nanoid } from 'nanoid';
 
-type PlayerState = 'joining' | 'lobby' | 'question' | 'waiting' | 'result' | 'ended' | 'cancelled';
+type PlayerState = 'joining' | 'lobby' | 'preparing' | 'question' | 'waiting' | 'result' | 'ended' | 'cancelled';
 
 const answerIcons = [
   { icon: TriangleIcon, color: 'bg-red-500', textColor: 'text-red-500' },
@@ -84,14 +84,17 @@ export default function PlayerGamePage() {
         case 'lobby':
             if (state === 'joining') setState('lobby');
             break;
+        case 'preparing':
+            if (state === 'result' || state === 'lobby' || state === 'question') {
+                setState('preparing');
+            }
+            break;
         case 'question':
-            // Host started a new question. Move from lobby/result to question.
-            if (state === 'result' || state === 'lobby') {
+            if (state === 'preparing') {
                 setState('question');
             }
             break;
         case 'leaderboard':
-            // Host finished question, player moves from 'waiting' to 'result'
             if (state === 'waiting') {
                 setState('result');
             }
@@ -221,6 +224,14 @@ export default function PlayerGamePage() {
                 <Loader2 className="animate-spin w-12 h-12 text-primary"/>
                 <p className="mt-4">Waiting for the host to start the game...</p>
             </div>
+          </div>
+        );
+      case 'preparing':
+        return (
+          <div className="flex flex-col items-center justify-center text-center p-8 w-full h-full bg-background">
+            <h1 className="text-4xl font-bold">Get Ready...</h1>
+            <p className="text-muted-foreground mt-2 text-xl">The next question is about to start!</p>
+            <Loader2 className="animate-spin w-12 h-12 text-primary mt-8"/>
           </div>
         );
       case 'question':

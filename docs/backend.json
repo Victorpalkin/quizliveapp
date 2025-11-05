@@ -73,7 +73,7 @@
         },
         "state": {
           "type": "string",
-          "enum": ["lobby", "question", "leaderboard", "ended"],
+          "enum": ["lobby", "preparing", "question", "leaderboard", "ended"],
           "description": "The current state of the game."
         },
         "currentQuestionIndex": {

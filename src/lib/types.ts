@@ -31,7 +31,7 @@ export interface Game {
     id: string;
     quizId: string;
     hostId: string;
-    state: 'lobby' | 'question' | 'leaderboard' | 'ended';
+    state: 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
     currentQuestionIndex: number;
     gamePin: string;
 }

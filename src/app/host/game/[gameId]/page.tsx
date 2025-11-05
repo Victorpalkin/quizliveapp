@@ -220,6 +220,14 @@ export default function HostGamePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game?.currentQuestionIndex, game?.state]);
 
+  useEffect(() => {
+    // When the host screen is ready, update the state to 'question'
+    // to signal players to start.
+    if (game?.state === 'preparing' && gameRef) {
+      updateGame(gameRef, { state: 'question' });
+    }
+  }, [game?.state, gameRef]);
+
   const handleNext = async () => {
     if (!game || !quiz || !gameRef || !players) return;
 
@@ -236,7 +244,7 @@ export default function HostGamePage() {
         await batch.commit();
 
         updateGame(gameRef, { 
-          state: 'question',
+          state: 'preparing',
           currentQuestionIndex: game.currentQuestionIndex + 1
         });
       } else {
@@ -294,6 +302,12 @@ export default function HostGamePage() {
         </div>
         <CancelGameButton gameRef={gameRef} />
       </header>
+
+      {game?.state === 'preparing' && (
+        <main className="flex-1 flex flex-col items-center justify-center text-center">
+          <h1 className="text-3xl font-bold">Get ready for the next question...</h1>
+        </main>
+      )}
 
       {game?.state === 'question' && question && (
         <main className="flex-1 flex flex-col items-center justify-center text-center">
