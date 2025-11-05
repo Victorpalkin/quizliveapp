@@ -86,7 +86,7 @@ export default function PlayerGamePage() {
             break;
         case 'question':
             // Host started a new question. Move from lobby/result to question.
-            if ((state === 'result' || state === 'lobby') && game.currentQuestionIndex !== player?.lastAnswerIndex) {
+            if ((state === 'result' || state === 'lobby') && answerSelected !== null) {
                 setState('question');
             }
             break;
@@ -180,7 +180,6 @@ export default function PlayerGamePage() {
     setAnswerSelected(selectedIndex);
     setState('waiting'); // Move to waiting state immediately
 
-    // The result will be calculated when host moves to 'leaderboard'
     const isCorrect = question?.correctAnswerIndex === selectedIndex;
     const points = isCorrect ? Math.round(100 + (time / 20) * 900) : 0;
     
@@ -188,10 +187,10 @@ export default function PlayerGamePage() {
     
     if (gameDocId && player) {
         const playerRef = doc(firestore, 'games', gameDocId, 'players', playerId) as DocumentReference<Player>;
-        updatePlayer(playerRef, { score: newScore, lastAnswerIndex: game?.currentQuestionIndex });
+        updatePlayer(playerRef, { score: newScore, lastAnswerIndex: selectedIndex });
     }
 
-    setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndex: game?.currentQuestionIndex } : null);
+    setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndex: selectedIndex } : null);
     setLastAnswer({ selected: selectedIndex, correct: question.correctAnswerIndex, points });
   };
   
