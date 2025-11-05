@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -46,7 +47,7 @@ export default function Home() {
                 </p>
                 <Button asChild size="lg" className="mt-4 w-full bg-primary hover:bg-primary/90">
                   <Link href="/host">
-                    Create a Quiz
+                    Manage games
                   </Link>
                 </Button>
               </div>
