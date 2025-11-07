@@ -315,17 +315,18 @@ export default function HostGamePage() {
         <main className="flex-1 flex flex-col items-center justify-center text-center">
             <Progress value={(time / 20) * 100} className="w-full max-w-4xl h-4 mb-4" />
             
-            <div className="w-full max-w-4xl flex gap-4">
-              {question.imageUrl && (
-                <div className="relative w-1/3 aspect-video rounded-lg overflow-hidden">
-                    <Image src={question.imageUrl} alt="Question image" layout="fill" objectFit="contain" />
-                </div>
-              )}
-              <Card className="flex-1 bg-card text-card-foreground">
+            <div className="w-full max-w-4xl">
+              <Card className="bg-card text-card-foreground mb-4">
                   <CardContent className="p-8">
                       <p className="text-3xl font-bold">{question.text}</p>
                   </CardContent>
               </Card>
+
+              {question.imageUrl && (
+                <div className="relative w-full aspect-video rounded-lg overflow-hidden my-4">
+                    <Image src={question.imageUrl} alt="Question image" layout="fill" objectFit="contain" />
+                </div>
+              )}
             </div>
             
             <div className="grid grid-cols-2 gap-4 mt-8 w-full max-w-4xl">
