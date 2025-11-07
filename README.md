@@ -5,28 +5,43 @@ QuizLive is an interactive, real-time quiz application that allows users to host
 ## Features
 
 ### Host Features
-- **Authentication**: Secure sign-in for hosts to manage their quizzes.
-- **Quiz Creation**: A user-friendly interface to create custom quizzes with multiple-choice questions.
-- **Quiz Management**: View, edit, and delete all your created quizzes from a central dashboard.
-- **Game Hosting**: Launch a live game session from any of your quizzes.
-- **Game Lobby**: A waiting room for players to join using a unique, auto-generated Game PIN.
+- **Secure Authentication**: Hosts can sign in securely with email and password to access their dashboard and manage all quiz-related activities.
+- **Quiz Dashboard**: A central hub to view all created quizzes, active games, and completed game records.
+- **Quiz Creation & Editing**:
+  - Create new quizzes with a title and an optional description.
+  - Add, edit, and delete questions within a quiz.
+  - **Flexible Answer Options**: For each question, hosts can specify between 2 and 8 answer choices.
+  - **Image Uploads**: Upload an image or GIF for each question to make quizzes more visually engaging.
+  - **Per-Question Time Limits**: Configure a specific time limit (10, 20, 30, or 60 seconds) for each individual question.
+  - **Automatic Image Cleanup**: Images are automatically deleted from storage if a quiz, question, or image is deleted.
+- **Game Hosting**:
+  - Launch a live game session from any quiz with a single click.
+  - A unique, auto-generated Game PIN is created for each game lobby.
+  - **Synchronized Game Start**: The game begins for all players only when the host's screen is fully loaded, ensuring a fair start.
 - **Live Game Management**:
-  - Start the game when you're ready.
-  - Advance through questions manually or let the game auto-advance when all players have answered.
+  - View a real-time list of players who have joined the lobby.
+  - **Synchronized Question Display**: Questions are revealed to players only after they have fully loaded on the host's screen, keeping everyone in sync.
+  - Manually advance from the question results to the next question.
   - View a real-time count of how many players have answered.
   - See a distribution chart of player answers after each question.
-  - Cancel the game at any point.
-- **Game History**: View final leaderboards for completed games.
+  - Cancel the game at any point from the lobby or live game screen.
+- **Game History**:
+  - Review final leaderboards for completed games.
+  - Delete old game records from the dashboard.
 
 ### Player Features
-- **Easy Join**: Players can quickly join a game using a simple Game PIN without needing an account.
-- **Nickname Selection**: Choose a nickname to appear on the leaderboard.
-- **Real-time Gameplay**:
+- **Easy Join**: Players can quickly join a game using a simple Game PIN without needing to create an account.
+- **Nickname Selection**: Choose a nickname to appear on the leaderboard before joining.
+- **Real-time Synchronized Gameplay**:
+  - **Fair Start**: The quiz begins and questions appear only when the host is ready, ensuring no one gets a head start.
   - See questions appear on your screen as the host presents them.
-  - Answer questions within the time limit.
-  - Receive instant feedback on your answer (correct/incorrect) and points awarded.
-- **Game Status Updates**: Get notified if the host starts or cancels the game, and smoothly transition between questions and results.
-- **Final Results**: See your final score and rank when the quiz is over.
+  - Answer questions within the host-defined time limit.
+  - Receive instant feedback on your answer (correct/incorrect) and the points awarded.
+  - Points are calculated based on both correctness and speed.
+- **Seamless Game Flow**:
+  - Smooth transitions between joining, waiting in the lobby, answering questions, and viewing results.
+  - Get clear status updates if the host starts or cancels the game.
+- **Final Results**: See your final score when the quiz is over.
 
 ## Tech Stack
 
@@ -34,7 +49,7 @@ QuizLive is an interactive, real-time quiz application that allows users to host
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
 - **UI**: [React](https://react.dev/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) with [ShadCN UI](https://ui.shadcn.com/) components.
-- **Backend & Database**: [Firebase](https://firebase.google.com/) (Authentication & Firestore)
+- **Backend & Database**: [Firebase](https://firebase.google.com/) (Authentication, Firestore & Storage)
 
 ## Getting Started
 
@@ -46,7 +61,7 @@ This project is configured to use Firebase for authentication and as its databas
     - Go to the **Firebase Console** and select your project.
     - Navigate to **Authentication** > **Users** tab.
     - Click **"Add user"** and provide an email and password. You can then use these credentials to log in to the app's `/login` page.
-3.  **Firestore Rules**: The database is secured with Firestore Security Rules. These rules are managed automatically within the development environment.
+3.  **Firestore & Storage Rules**: The database and file storage are secured with pre-configured rules (`firestore.rules` and `storage.rules`). These are managed automatically within the development environment.
 
 ### 2. Running the Development Server
 Once your environment is set up, you can start the development server:
@@ -68,4 +83,4 @@ Open [http://localhost:9002](http://localhost:9002) with your browser to see the
 - `/host/lobby/[gameId]`: The lobby screen for a game you are hosting.
 - `/host/game/[gameId]`: The live game screen for the host, showing questions and leaderboards.
 - `/join`: The page for players to enter a Game PIN.
-- `/play/[gameId]`: The game screen for players participating in a quiz.
+- `/play/[gamePin]`: The game screen for players participating in a quiz.
