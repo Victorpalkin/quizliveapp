@@ -249,14 +249,14 @@ export default function PlayerGamePage() {
         }
         return (
           <div className="w-full h-full flex flex-col">
-            <header className="p-4 text-center">
-              <p className="text-2xl font-bold">{question.text}</p>
+            <header className="p-4 flex items-center justify-center">
+              <p className="text-2xl font-bold text-center">{question.text}</p>
             </header>
-            <div className="flex-grow flex items-center justify-center w-full">
+            <div className="flex-grow flex items-center justify-center w-full relative">
               <Progress value={(time / 20) * 100} className="absolute top-0 left-0 w-full h-2 rounded-none" />
               <div className="absolute top-4 right-4 text-2xl font-bold bg-background/80 px-4 py-2 rounded-lg">{time}</div>
               <div className={cn("grid gap-4 w-full h-full p-4", question.answers.length > 4 ? "grid-cols-2 grid-rows-4" : "grid-cols-2 grid-rows-2")}>
-                {question.answers.map((ans: any, i: number) => {
+                {question.answers.map((ans, i) => {
                   const Icon = answerIcons[i % answerIcons.length];
                   return (
                     <button
@@ -264,11 +264,14 @@ export default function PlayerGamePage() {
                       onClick={() => handleAnswer(i)}
                       disabled={answerSelected !== null}
                       className={cn(
-                        'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform hover:scale-105',
-                        answerColors[i % answerColors.length]
+                        'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform hover:scale-105 p-4',
+                        answerColors[i % answerColors.length],
+                         answerSelected !== null && answerSelected !== i ? 'opacity-25' : '',
+                         answerSelected !== null && answerSelected === i ? 'scale-110 border-4 border-white' : ''
                       )}
                     >
-                      <Icon className="w-16 h-16 md:w-24 md:h-24" />
+                      <Icon className="w-16 h-16 md:w-24 md:h-24 mb-2" />
+                      <span className="text-xl md:text-2xl font-bold">{ans.text}</span>
                     </button>
                   );
                 })}

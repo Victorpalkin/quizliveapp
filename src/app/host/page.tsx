@@ -297,7 +297,7 @@ export default function HostDashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {quizzes && quizzes.map(quiz => (
                         <Card key={quiz.id} className="flex flex-col">
-                            <CardHeader>
+                            <CardHeader className="flex flex-row items-start justify-between">
                                 <div className='flex-grow'>
                                     <CardTitle>{quiz.title}</CardTitle>
                                     <CardDescription>{quiz.questions.length} questions</CardDescription>

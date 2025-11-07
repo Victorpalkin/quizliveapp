@@ -323,19 +323,19 @@ export default function HostGamePage() {
               </Card>
 
               {question.imageUrl && (
-                <div className="relative w-full aspect-video rounded-lg overflow-hidden my-4">
+                <div className="relative w-full max-w-4xl mx-auto aspect-video rounded-lg overflow-hidden my-6">
                     <Image src={question.imageUrl} alt="Question image" layout="fill" objectFit="contain" />
                 </div>
               )}
             </div>
             
-            <div className="grid grid-cols-2 gap-4 mt-8 w-full max-w-4xl">
+            <div className="grid grid-cols-2 gap-4 mt-auto w-full max-w-4xl">
               {question.answers.map((ans, i) => {
                 const Icon = answerIcons[i % answerIcons.length];
                 return (
-                    <div key={i} className={cn(`flex items-center gap-4 p-4 rounded-lg`, answerColors[i % answerColors.length])}>
-                        <Icon className="w-5 h-5" />
-                        <span className="text-xl font-medium text-white">{ans.text}</span>
+                    <div key={i} className={cn(`flex items-center gap-4 p-4 rounded-lg text-white`, answerColors[i % answerColors.length])}>
+                        <Icon className="w-8 h-8" />
+                        <span className="text-2xl font-medium">{ans.text}</span>
                     </div>
                 )
               })}
