@@ -57,7 +57,7 @@ export default function HostLobbyPage() {
   
   const handleStartGame = () => {
     if (!gameRef) return;
-    const updateData = { state: 'question' as const };
+    const updateData = { state: 'preparing' as const };
     updateDoc(gameRef, updateData)
       .then(() => {
         router.push(`/host/game/${gameId}`);
