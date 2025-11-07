@@ -301,7 +301,7 @@ export default function HostGamePage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground p-8">
       <header className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold">QuizLive</h1>
+            <h1 className="text-xl font-bold">gQuiz</h1>
             <div className="text-2xl font-mono bg-muted text-muted-foreground px-4 py-1 rounded-md">{game?.gamePin}</div>
         </div>
         <CancelGameButton gameRef={gameRef} />

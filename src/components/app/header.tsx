@@ -21,7 +21,7 @@ export function Header() {
       <div className="container flex h-14 items-center">
         <Link href="/" className="flex items-center gap-2 font-bold text-lg mr-auto">
           <BrainCircuit className="h-6 w-6 text-primary" />
-          <span className="text-foreground">QuizLive</span>
+          <span className="text-foreground">gQuiz</span>
         </Link>
         {!loading && user && !user.isAnonymous && (
           <Button variant="ghost" onClick={handleSignOut}>

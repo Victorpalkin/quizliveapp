@@ -4,7 +4,7 @@ import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'QuizLive',
+  title: 'gQuiz',
   description: 'An interactive quiz app for engaging live game sessions.',
 };
 

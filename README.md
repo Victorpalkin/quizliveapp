@@ -1,6 +1,6 @@
-# QuizLive
+# gQuiz
 
-QuizLive is an interactive, real-time quiz application that allows users to host live quiz games and have players join and compete from their own devices. It's built with a modern web stack and leverages Firebase for its backend services.
+gQuiz is an interactive, real-time quiz application that allows users to host live quiz games and have players join and compete from their own devices. It's built with a modern web stack and leverages Firebase for its backend services.
 
 ## Features
 

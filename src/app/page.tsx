@@ -27,7 +27,7 @@ export default function Home() {
         <div className="mb-8 flex items-center gap-4 text-primary">
           <BrainCircuit className="h-16 w-16" />
           <h1 className="text-7xl font-bold tracking-tighter text-foreground">
-            QuizLive
+            gQuiz
           </h1>
         </div>
         <p className="max-w-2xl text-xl text-muted-foreground">
