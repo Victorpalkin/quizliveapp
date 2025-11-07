@@ -13,9 +13,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Header } from '@/components/app/header';
-import { PlusCircle, Trash2, Loader2, Save, X, ImagePlus, ImageOff } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Save, X, ImagePlus, ImageOff, Timer } from 'lucide-react';
 import type { Question, Quiz } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useDoc, useMemoFirebase, useStorage } from '@/firebase';
 import { doc, updateDoc, serverTimestamp, DocumentReference } from 'firebase/firestore';
@@ -34,6 +35,7 @@ const questionSchema = z.object({
   imageUrl: z.string().url().optional(),
   answers: z.array(answerSchema).min(2, 'Each question must have at least 2 answers.').max(8, 'Each question can have at most 8 answers.'),
   correctAnswerIndex: z.number().min(0).max(7),
+  timeLimit: z.number().default(20),
 });
 
 const quizSchema = z.object({
@@ -56,7 +58,7 @@ export default function EditQuizPage() {
   const quizRef = useMemoFirebase(() => doc(firestore, 'quizzes', quizId) as DocumentReference<Quiz>, [firestore, quizId]);
   const { data: quizData, loading: quizLoading } = useDoc(quizRef);
 
-  const [questions, setQuestions] = useState<Omit<Question, 'id' | 'timeLimit'>[]>([]);
+  const [questions, setQuestions] = useState<Omit<Question, 'id'>[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const imageFiles = useRef<Record<number, File>>({});
@@ -73,7 +75,7 @@ export default function EditQuizPage() {
   
   useEffect(() => {
     if (quizData) {
-      const sanitizedQuestions = quizData.questions.map(({ id, timeLimit, ...q }) => q);
+      const sanitizedQuestions = quizData.questions.map(({ id, ...q }) => ({ timeLimit: 20, ...q }));
       form.reset({
         title: quizData.title,
         description: quizData.description,
@@ -109,17 +111,18 @@ export default function EditQuizPage() {
 
 
   const addQuestion = (text: string = '') => {
-    const newQuestion: Omit<Question, 'id' | 'timeLimit'> = {
+    const newQuestion: Omit<Question, 'id'> = {
       text: text,
       answers: [{ text: '' }, { text: '' }],
       correctAnswerIndex: 0,
+      timeLimit: 20,
     };
     const newQuestions = [...questions, newQuestion];
     setQuestions(newQuestions);
     form.setValue('questions', newQuestions);
   };
 
-  const updateQuestion = (index: number, updatedQuestion: Omit<Question, 'id'| 'timeLimit'>) => {
+  const updateQuestion = (index: number, updatedQuestion: Omit<Question, 'id'>) => {
     const newQuestions = [...questions];
     newQuestions[index] = updatedQuestion;
     setQuestions(newQuestions);
@@ -350,32 +353,64 @@ export default function EditQuizPage() {
                         )}
                         />
                       
-                       <FormItem>
-                            <FormLabel>Image (Optional)</FormLabel>
-                            <FormControl>
-                                <div className="flex items-center gap-4">
-                                {q.imageUrl ? (
-                                    <div className="relative w-32 h-20 rounded-md overflow-hidden">
-                                        <Image src={q.imageUrl} alt={`Preview for question ${qIndex + 1}`} layout="fill" objectFit="cover" />
-                                        <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 z-10" onClick={() => removeImage(qIndex)} type="button">
-                                            <ImageOff className="h-4 w-4" />
-                                        </Button>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <FormItem>
+                                <FormLabel>Image (Optional)</FormLabel>
+                                <FormControl>
+                                    <div className="flex items-center gap-4">
+                                    {q.imageUrl ? (
+                                        <div className="relative w-32 h-20 rounded-md overflow-hidden">
+                                            <Image src={q.imageUrl} alt={`Preview for question ${qIndex + 1}`} layout="fill" objectFit="cover" />
+                                            <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 z-10" onClick={() => removeImage(qIndex)} type="button">
+                                                <ImageOff className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <label className="cursor-pointer flex flex-col items-center justify-center w-32 h-20 border-2 border-dashed rounded-md hover:bg-muted">
+                                            <ImagePlus className="h-8 w-8 text-muted-foreground" />
+                                            <span className="text-xs text-muted-foreground">Upload</span>
+                                            <input 
+                                                type="file" 
+                                                className="hidden" 
+                                                accept="image/png, image/jpeg, image/gif"
+                                                onChange={(e) => e.target.files && handleImageUpload(qIndex, e.target.files[0])}
+                                            />
+                                        </label>
+                                    )}
                                     </div>
-                                ) : (
-                                    <label className="cursor-pointer flex flex-col items-center justify-center w-32 h-20 border-2 border-dashed rounded-md hover:bg-muted">
-                                        <ImagePlus className="h-8 w-8 text-muted-foreground" />
-                                        <span className="text-xs text-muted-foreground">Upload</span>
-                                        <input 
-                                            type="file" 
-                                            className="hidden" 
-                                            accept="image/png, image/jpeg, image/gif"
-                                            onChange={(e) => e.target.files && handleImageUpload(qIndex, e.target.files[0])}
-                                        />
-                                    </label>
+                                </FormControl>
+                            </FormItem>
+                            <FormField
+                                control={form.control}
+                                name={`questions.${qIndex}.timeLimit`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Time Limit</FormLabel>
+                                        <Select 
+                                            onValueChange={(value) => {
+                                                const time = parseInt(value, 10);
+                                                field.onChange(time);
+                                                updateQuestion(qIndex, { ...q, timeLimit: time });
+                                            }} 
+                                            defaultValue={String(field.value || 20)}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a time limit" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="10">10 seconds</SelectItem>
+                                                <SelectItem value="20">20 seconds</SelectItem>
+                                                <SelectItem value="30">30 seconds</SelectItem>
+                                                <SelectItem value="60">60 seconds</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
                                 )}
-                                </div>
-                            </FormControl>
-                        </FormItem>
+                            />
+                        </div>
 
                       <FormField
                           control={form.control}

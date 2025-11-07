@@ -167,9 +167,11 @@ export default function HostGamePage() {
   const playersQuery = useMemoFirebase(() => collection(firestore, 'games', gameId, 'players'), [firestore, gameId]);
   const { data: players, loading: playersLoading } = useCollection<Player>(playersQuery);
   
-  const [time, setTime] = useState(20);
-
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
+  const timeLimit = question?.timeLimit || 20;
+
+  const [time, setTime] = useState(timeLimit);
+
   const isLastQuestion = game && quiz ? game.currentQuestionIndex >= quiz.questions.length - 1 : false;
 
   const answeredPlayers = players?.filter(p => p.lastAnswerIndex !== null && p.lastAnswerIndex !== undefined).length || 0;
@@ -209,7 +211,7 @@ export default function HostGamePage() {
 
   useEffect(() => {
     if (game?.state === 'question') {
-      setTime(20);
+      setTime(timeLimit);
       const timer = setInterval(() => {
         setTime(prev => {
           if (prev <= 1) {
@@ -223,7 +225,7 @@ export default function HostGamePage() {
       return () => clearInterval(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game?.currentQuestionIndex, game?.state]);
+  }, [game?.currentQuestionIndex, game?.state, timeLimit]);
 
   useEffect(() => {
     if (game?.state === 'preparing' && gameRef) {
@@ -313,7 +315,7 @@ export default function HostGamePage() {
 
       {game?.state === 'question' && question && (
         <main className="flex-1 flex flex-col items-center justify-center text-center">
-            <Progress value={(time / 20) * 100} className="w-full max-w-4xl h-4 mb-4" />
+            <Progress value={(time / timeLimit) * 100} className="w-full max-w-4xl h-4 mb-4" />
             
             <div className="w-full max-w-4xl">
               <Card className="bg-card text-card-foreground mb-4">

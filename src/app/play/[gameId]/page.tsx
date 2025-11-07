@@ -72,12 +72,14 @@ export default function PlayerGamePage() {
   const quizRef = useMemoFirebase(() => game ? doc(firestore, 'quizzes', game.quizId) : null, [firestore, game]);
   const { data: quiz, loading: quizLoading } = useDoc(quizRef);
 
+  const question = quiz?.questions[game?.currentQuestionIndex || 0];
+  const timeLimit = question?.timeLimit || 20;
+
   const [player, setPlayer] = useState<Player | null>(null);
   const [lastAnswer, setLastAnswer] = useState<{ selected: number; correct: number; points: number } | null>(null);
-  const [time, setTime] = useState(20);
+  const [time, setTime] = useState(timeLimit);
   const [answerSelected, setAnswerSelected] = useState<number | null>(null);
 
-  const question = quiz?.questions[game?.currentQuestionIndex || 0];
   const isLastQuestion = game && quiz ? game.currentQuestionIndex >= quiz.questions.length - 1 : false;
 
   useEffect(() => {
@@ -120,7 +122,7 @@ export default function PlayerGamePage() {
 
   useEffect(() => {
     if (state === 'question') {
-      setTime(20);
+      setTime(timeLimit);
       setAnswerSelected(null);
       const timer = setInterval(() => {
         setTime(prev => {
@@ -138,7 +140,7 @@ export default function PlayerGamePage() {
       return () => clearInterval(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, game?.currentQuestionIndex]); // Rerun timer only when a new question starts
+  }, [state, game?.currentQuestionIndex, timeLimit]); // Rerun timer only when a new question starts
 
   const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,7 +195,7 @@ export default function PlayerGamePage() {
     setState('waiting'); // Move to waiting state immediately
 
     const isCorrect = question?.correctAnswerIndex === selectedIndex;
-    const points = isCorrect ? Math.round(100 + (time / 20) * 900) : 0;
+    const points = isCorrect ? Math.round(100 + (time / timeLimit) * 900) : 0;
     
     const newScore = (player?.score || 0) + points;
     
@@ -203,7 +205,9 @@ export default function PlayerGamePage() {
     }
 
     setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndex: selectedIndex } : null);
-    setLastAnswer({ selected: selectedIndex, correct: question.correctAnswerIndex, points });
+    if(question) {
+        setLastAnswer({ selected: selectedIndex, correct: question.correctAnswerIndex, points });
+    }
   };
   
   const renderContent = () => {
@@ -253,7 +257,7 @@ export default function PlayerGamePage() {
               <p className="text-2xl font-bold text-center">{question.text}</p>
             </header>
             <div className="flex-grow flex items-center justify-center w-full relative">
-              <Progress value={(time / 20) * 100} className="absolute top-0 left-0 w-full h-2 rounded-none" />
+              <Progress value={(time / timeLimit) * 100} className="absolute top-0 left-0 w-full h-2 rounded-none" />
               <div className="absolute top-4 right-4 text-2xl font-bold bg-background/80 px-4 py-2 rounded-lg">{time}</div>
               <div className={cn("grid gap-4 w-full h-full p-4", question.answers.length > 4 ? "grid-cols-2 grid-rows-4" : "grid-cols-2 grid-rows-2")}>
                 {question.answers.map((ans, i) => {

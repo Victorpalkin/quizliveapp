@@ -52,6 +52,10 @@
         "correctAnswerIndex": {
           "type": "number",
           "description": "The index of the correct answer in the answers array."
+        },
+        "timeLimit": {
+          "type": "number",
+          "description": "The time limit for the question in seconds."
         }
       },
       "required": ["text", "answers", "correctAnswerIndex"]
