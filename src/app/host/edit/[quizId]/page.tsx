@@ -13,6 +13,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Header } from '@/components/app/header';
+import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { PlusCircle, Trash2, Loader2, Save, X, ImagePlus, ImageOff, Timer } from 'lucide-react';
 import type { Question, Quiz } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -197,6 +198,29 @@ export default function EditQuizPage() {
 
   const handleImageUpload = async (qIndex: number, file: File) => {
     if (!user) return;
+
+    // Validate file size (max 5MB)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "Image must be less than 5MB. Please choose a smaller file.",
+      });
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Only PNG, JPEG, and GIF images are allowed.",
+      });
+      return;
+    }
+
     const question = questions[qIndex];
 
     if (question.imageUrl) {
@@ -317,7 +341,7 @@ export default function EditQuizPage() {
                     <FormItem>
                       <FormLabel>Quiz Title</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., World Capitals Trivia" {...field} />
+                        <Input placeholder="e.g., World Capitals Trivia" {...field} maxLength={100} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -330,7 +354,7 @@ export default function EditQuizPage() {
                     <FormItem>
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="A fun quiz about geography!" {...field} />
+                        <Textarea placeholder="A fun quiz about geography!" {...field} maxLength={500} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -363,7 +387,7 @@ export default function EditQuizPage() {
                             <FormItem>
                                 <FormLabel>Question Text</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="What is the capital of France?" {...field} onChange={(e) => {
+                                    <Input placeholder="What is the capital of France?" {...field} maxLength={500} onChange={(e) => {
                                         field.onChange(e);
                                         updateQuestion(qIndex, { ...q, text: e.target.value });
                                     }}/>
@@ -473,6 +497,7 @@ export default function EditQuizPage() {
                                             <Input
                                                 {...field}
                                                 placeholder={`Answer ${aIndex + 1}`}
+                                                maxLength={200}
                                                 onChange={(e) => {
                                                     field.onChange(e);
                                                     const newAnswers = [...q.answers];
@@ -509,6 +534,8 @@ export default function EditQuizPage() {
                 <FormMessage>{form.formState.errors.questions?.message}</FormMessage>
               </CardContent>
             </Card>
+
+            <QuizShareManager quizId={quizId} quizTitle={quiz?.title || ''} />
 
             <div className="flex justify-end">
               <Button type="submit" size="lg" disabled={isSubmitting || userLoading}>

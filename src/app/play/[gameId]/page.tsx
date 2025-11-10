@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PartyPopper, Frown, Trophy, Loader2, XCircle, Timer } from 'lucide-react';
+import { PartyPopper, Frown, Trophy, Loader2, XCircle, Timer, Clock } from 'lucide-react';
 import {
   DiamondIcon,
   TriangleIcon,
@@ -13,8 +13,9 @@ import {
 } from '@/components/app/quiz-icons';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, getDocs, setDoc, updateDoc, DocumentReference } from 'firebase/firestore';
+import { useDoc, useFirestore, useMemoFirebase, useFunctions } from '@/firebase';
+import { doc, collection, query, where, getDocs, setDoc, DocumentReference } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import type { Quiz, Player, Game, Question } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -41,18 +42,6 @@ const answerColors = [
   'bg-purple-500', 'bg-pink-500', 'bg-orange-500', 'bg-teal-500',
 ];
 
-function updatePlayer(playerRef: DocumentReference<Player>, data: Partial<Player>) {
-  updateDoc(playerRef, data).catch(error => {
-    console.error("Error updating player:", error);
-    const permissionError = new FirestorePermissionError({
-      path: playerRef.path,
-      operation: 'update',
-      requestResourceData: data
-    });
-    errorEmitter.emit('permission-error', permissionError);
-  });
-}
-
 // Helper to migrate old questions with `correctAnswerIndex` to the new `correctAnswerIndices`
 const migrateQuestion = (q: any): Question => {
   const { correctAnswerIndex, correctAnswerIndices, ...rest } = q;
@@ -72,6 +61,7 @@ export default function PlayerGamePage() {
   const params = useParams();
   const gamePin = params.gameId as string;
   const firestore = useFirestore();
+  const functions = useFunctions();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -98,9 +88,10 @@ export default function PlayerGamePage() {
   const timeLimit = question?.timeLimit || 20;
 
   const [player, setPlayer] = useState<Player | null>(null);
-  const [lastAnswer, setLastAnswer] = useState<{ selected: number; correct: number[]; points: number } | null>(null);
+  const [lastAnswer, setLastAnswer] = useState<{ selected: number; correct: number[]; points: number; wasTimeout: boolean } | null>(null);
   const [time, setTime] = useState(timeLimit);
   const [answerSelected, setAnswerSelected] = useState<number | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
 
   const isLastQuestion = game && quiz ? game.currentQuestionIndex >= quiz.questions.length - 1 : false;
 
@@ -112,48 +103,69 @@ export default function PlayerGamePage() {
 
     if (!game) return;
 
-    // This effect synchronizes the player's state with the host's game state.
-    switch (game.state) {
-        case 'lobby':
-            if (state === 'joining') setState('lobby');
-            break;
-        case 'preparing':
-            if (state === 'result' || state === 'lobby' || state === 'question') {
-                setState('preparing');
-            }
-            break;
-        case 'question':
-            if (state === 'preparing' || state === 'lobby') {
-                setState('question');
-            }
-            break;
-        case 'leaderboard':
-            if (state === 'waiting') {
-                setState('result');
-            }
-            break;
-        case 'ended':
-            if (state !== 'ended') {
-                setState('ended');
-            }
-            break;
+    // Synchronize player state with host game state
+    const hostState = game.state;
+    const currentQuestionIndex = game.currentQuestionIndex;
+
+    // State machine for player-host sync
+    if (hostState === 'lobby' && state === 'joining') {
+      setState('lobby');
+    }
+    else if (hostState === 'preparing') {
+      // When host prepares a question, player should also prepare (from any state except joining/cancelled)
+      if (state !== 'preparing' && state !== 'joining' && state !== 'cancelled') {
+        setState('preparing');
+      }
+    }
+    else if (hostState === 'question') {
+      // When host shows question, player should see it (if in preparing state)
+      if (state === 'preparing') {
+        setState('question');
+      }
+    }
+    else if (hostState === 'leaderboard') {
+      // When host shows leaderboard, player should see results
+      if (state === 'waiting' || (state === 'question' && timedOut)) {
+        setState('result');
+      }
+    }
+    else if (hostState === 'ended') {
+      if (state !== 'ended') {
+        setState('ended');
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game, gameLoading]);
+  }, [game?.state, game?.currentQuestionIndex, gameLoading, timedOut]);
 
 
+  // Reset answer state when preparing for new question
+  useEffect(() => {
+    if (state === 'preparing') {
+      setAnswerSelected(null);
+      setTimedOut(false);
+      setLastAnswer(null);
+
+      // Reset lastAnswerIndex for new question
+      if (gameDocId && player?.lastAnswerIndex !== null && player?.lastAnswerIndex !== undefined) {
+        const playerRef = doc(firestore, 'games', gameDocId, 'players', playerId) as DocumentReference<Player>;
+        setDoc(playerRef, { ...player, lastAnswerIndex: null }, { merge: true }).catch(error => {
+          console.error("Error resetting lastAnswerIndex:", error);
+        });
+        setPlayer(p => p ? { ...p, lastAnswerIndex: null } : null);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, game?.currentQuestionIndex]);
+
+  // Start timer when question is shown
   useEffect(() => {
     if (state === 'question') {
       setTime(timeLimit);
-      setAnswerSelected(null);
+
       const timer = setInterval(() => {
         setTime(prev => {
           if (prev <= 1) {
             clearInterval(timer);
-            // If timer expires and no answer was selected, handle it as a wrong answer
-            if (answerSelected === null) {
-              handleAnswer(-1); // -1 indicates timeout
-            }
             return 0;
           }
           return prev - 1;
@@ -162,12 +174,45 @@ export default function PlayerGamePage() {
       return () => clearInterval(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, game?.currentQuestionIndex, timeLimit]); // Rerun timer only when a new question starts
+  }, [state, game?.currentQuestionIndex, timeLimit]);
+
+  // Handle timeout when time reaches 0
+  useEffect(() => {
+    if (state === 'question' && time === 0 && answerSelected === null && !timedOut) {
+      setTimedOut(true);
+
+      // Set local state immediately for display (in case submission fails)
+      if (question) {
+        setLastAnswer({
+          selected: -1,
+          correct: question.correctAnswerIndices,
+          points: 0,
+          wasTimeout: true
+        });
+      }
+
+      // Try to submit to server (may fail if game state changed due to race condition)
+      handleAnswer(-1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [time, state, answerSelected, timedOut]);
 
   const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nickname.trim()) {
+    const trimmedNickname = nickname.trim();
+
+    if (!trimmedNickname) {
       toast({ variant: 'destructive', title: 'Nickname is required' });
+      return;
+    }
+
+    if (trimmedNickname.length < 2) {
+      toast({ variant: 'destructive', title: 'Nickname too short', description: 'Nickname must be at least 2 characters long.' });
+      return;
+    }
+
+    if (trimmedNickname.length > 20) {
+      toast({ variant: 'destructive', title: 'Nickname too long', description: 'Nickname must be 20 characters or less.' });
       return;
     }
 
@@ -186,7 +231,7 @@ export default function PlayerGamePage() {
         setGameDocId(gameDoc.id);
 
         const playerRef = doc(firestore, 'games', gameDoc.id, 'players', playerId);
-        const newPlayer = { name: nickname, score: 0, lastAnswerIndex: null };
+        const newPlayer = { id: playerId, name: trimmedNickname, score: 0, lastAnswerIndex: null };
         
         setDoc(playerRef, newPlayer)
           .then(() => {
@@ -209,26 +254,77 @@ export default function PlayerGamePage() {
     }
   };
 
-  const handleAnswer = (selectedIndex: number) => {
-    // Prevent answering multiple times or after time is up
-    if (answerSelected !== null || state !== 'question') return;
-    
-    setAnswerSelected(selectedIndex);
-    setState('waiting'); // Move to waiting state immediately
+  const handleAnswer = async (selectedIndex: number) => {
+    // Prevent answering multiple times
+    if (answerSelected !== null) return;
 
-    const isCorrect = question?.correctAnswerIndices.includes(selectedIndex) || false;
-    const points = isCorrect ? Math.round(100 + (time / timeLimit) * 900) : 0;
-    
-    const newScore = (player?.score || 0) + points;
-    
-    if (gameDocId && player) {
-        const playerRef = doc(firestore, 'games', gameDocId, 'players', playerId) as DocumentReference<Player>;
-        updatePlayer(playerRef, { score: newScore, lastAnswerIndex: selectedIndex });
+    // For timeouts, allow submission even if state changed (race condition handling)
+    const isTimeout = selectedIndex === -1;
+    if (!isTimeout && state !== 'question') return;
+
+    setAnswerSelected(selectedIndex);
+
+    // Only change state if still in question state
+    if (state === 'question') {
+      setState('waiting');
     }
 
-    setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndex: selectedIndex } : null);
-    if(question) {
-        setLastAnswer({ selected: selectedIndex, correct: question.correctAnswerIndices, points });
+    if (!gameDocId || !game) {
+      toast({ variant: 'destructive', title: 'Error', description: "Game not found" });
+      return;
+    }
+
+    try {
+      // Call Cloud Function to validate and score the answer
+      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
+
+      const result = await submitAnswerFn({
+        gameId: gameDocId,
+        playerId: playerId,
+        questionIndex: game.currentQuestionIndex,
+        answerIndex: selectedIndex,
+        timeRemaining: time,
+      });
+
+      const { isCorrect, points, newScore } = result.data as {
+        success: boolean;
+        isCorrect: boolean;
+        points: number;
+        newScore: number;
+      };
+
+      // Update local player state with server-validated score
+      setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndex: selectedIndex } : null);
+
+      if (question) {
+        setLastAnswer({
+          selected: selectedIndex,
+          correct: question.correctAnswerIndices,
+          points,
+          wasTimeout: selectedIndex === -1
+        });
+      }
+    } catch (error: any) {
+      console.error('Error submitting answer:', error);
+
+      // Handle specific error cases
+      if (error.code === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Already Answered',
+          description: error.message
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to submit answer. Please try again.'
+        });
+      }
+
+      // Reset UI state on error
+      setAnswerSelected(null);
+      setState('question');
     }
   };
   
@@ -244,6 +340,9 @@ export default function PlayerGamePage() {
                 onChange={(e) => setNickname(e.target.value)}
                 placeholder="Enter your nickname"
                 className="h-12 text-center text-xl"
+                maxLength={20}
+                minLength={2}
+                required
               />
               <Button type="submit" size="lg" className="w-full">Join</Button>
             </form>
@@ -324,10 +423,26 @@ export default function PlayerGamePage() {
         );
       case 'result':
         const isCorrect = lastAnswer ? lastAnswer.correct.includes(lastAnswer.selected) : false;
+        const wasTimeout = lastAnswer?.wasTimeout || false;
+
+        let bgColor = 'bg-red-500';
+        let icon = <Frown className="w-24 h-24 mb-4" />;
+        let message = 'Incorrect';
+
+        if (isCorrect) {
+          bgColor = 'bg-green-500';
+          icon = <PartyPopper className="w-24 h-24 mb-4" />;
+          message = 'Correct!';
+        } else if (wasTimeout) {
+          bgColor = 'bg-orange-500';
+          icon = <Clock className="w-24 h-24 mb-4" />;
+          message = 'No Answer';
+        }
+
         return (
-          <div className={`flex flex-col items-center justify-center text-center p-8 w-full h-full ${isCorrect ? 'bg-green-500' : 'bg-red-500'} text-white`}>
-            {isCorrect ? <PartyPopper className="w-24 h-24 mb-4" /> : <Frown className="w-24 h-24 mb-4" />}
-            <h1 className="text-6xl font-bold">{isCorrect ? 'Correct!' : 'Incorrect'}</h1>
+          <div className={`flex flex-col items-center justify-center text-center p-8 w-full h-full ${bgColor} text-white`}>
+            {icon}
+            <h1 className="text-6xl font-bold">{message}</h1>
             <p className="text-3xl mt-4">+{lastAnswer?.points || 0} points</p>
             <p className="text-2xl mt-8">Your score: {player?.score}</p>
             <div className="mt-12 flex flex-col items-center">

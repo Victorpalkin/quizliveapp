@@ -5,6 +5,7 @@ import type { FirebaseApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
+import type { Functions } from 'firebase/functions';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseContextValue {
@@ -12,6 +13,7 @@ interface FirebaseContextValue {
   auth: Auth;
   firestore: Firestore;
   storage: FirebaseStorage;
+  functions: Functions;
 }
 
 const FirebaseContext = createContext<FirebaseContextValue | null>(null);
@@ -54,6 +56,10 @@ export function useFirestore() {
 
 export function useStorage() {
     return useFirebase().storage;
+}
+
+export function useFunctions() {
+    return useFirebase().functions;
 }
 
 export function useMemoFirebase<T>(

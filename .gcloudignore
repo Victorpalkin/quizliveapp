@@ -1,0 +1,93 @@
+# This file specifies files that are *not* uploaded to Google Cloud
+# using gcloud. It follows the same syntax as .gitignore, with the addition of
+# "#!include" directives (which insert the entries of the given .gitignore-style
+# file at that point).
+#
+# For more information, run:
+#   $ gcloud topic gcloudignore
+#
+.gcloudignore
+# If you would like to upload your .git directory, .gitignore file or files
+# from your .gitignore file, remove the corresponding line below:
+.git
+.gitignore
+
+# Node.js dependencies:
+node_modules/
+
+# Next.js build output (will be rebuilt by Cloud Run)
+.next/
+out/
+
+# Build artifacts
+build/
+dist/
+
+# Local environment files (use Cloud Run env vars instead)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Firebase files (deployed separately)
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+firebase.json
+firestore.rules
+storage.rules
+
+# Cloud Functions (deployed separately to Firebase)
+functions/
+
+# Deployment configurations
+Dockerfile
+.dockerignore
+cloudbuild.yaml
+deploy.sh
+
+# Documentation (not needed in runtime)
+docs/
+*.md
+!README.md
+
+# Temporary files
+.claude/
+tmp/
+temp/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Package manager files (lock files are needed, but not these)
+.npm/
+.yarn/
+.pnp.*
+
+# Misc
+.modified
+*.tsbuildinfo

@@ -2,12 +2,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Copy, Check, XCircle } from 'lucide-react';
+import { Users, Copy, Check, XCircle, QrCode } from 'lucide-react';
 import { Header } from '@/components/app/header';
+import { QRCodeSVG } from 'qrcode.react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, updateDoc, DocumentReference, deleteDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -48,12 +49,19 @@ export default function HostLobbyPage() {
   const gameId = params.gameId as string;
   const router = useRouter();
   const firestore = useFirestore();
+  const [joinUrl, setJoinUrl] = useState<string>('');
 
   const gameRef = useMemoFirebase(() => doc(firestore, 'games', gameId) as DocumentReference<Game>, [firestore, gameId]);
   const { data: game, loading: gameLoading } = useDoc(gameRef);
 
   const playersQuery = useMemoFirebase(() => collection(firestore, 'games', gameId, 'players'), [firestore, gameId]);
   const { data: players, loading: playersLoading } = useCollection(playersQuery);
+
+  useEffect(() => {
+    if (game?.gamePin) {
+      setJoinUrl(`${window.location.origin}/play/${game.gamePin}`);
+    }
+  }, [game?.gamePin]);
   
   const handleStartGame = () => {
     if (!gameRef) return;
@@ -97,17 +105,51 @@ export default function HostLobbyPage() {
         <div className="w-full max-w-4xl space-y-8 text-center">
             <h1 className="text-4xl font-bold tracking-tighter">Your Quiz is Ready!</h1>
             <p className="text-muted-foreground text-xl">Players can now join your game.</p>
-          <Card className="w-full max-w-md mx-auto">
-            <CardHeader>
-              <CardDescription>GAME PIN</CardDescription>
-              {gameLoading ? <Skeleton className="h-16 w-48 mx-auto" /> : (
-                <CardTitle className="text-6xl font-mono tracking-widest flex items-center justify-center gap-4">
-                  {game?.gamePin}
-                  {game?.gamePin && <CopyButton text={game.gamePin} />}
-                </CardTitle>
-              )}
-            </CardHeader>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <Card>
+              <CardHeader>
+                <CardDescription>GAME PIN</CardDescription>
+                {gameLoading ? <Skeleton className="h-16 w-48 mx-auto" /> : (
+                  <CardTitle className="text-6xl font-mono tracking-widest flex items-center justify-center gap-4">
+                    {game?.gamePin}
+                    {game?.gamePin && <CopyButton text={game.gamePin} />}
+                  </CardTitle>
+                )}
+              </CardHeader>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2 justify-center mb-2">
+                  <QrCode className="h-5 w-5 text-primary" />
+                  <CardDescription>SCAN TO JOIN</CardDescription>
+                </div>
+                {gameLoading || !joinUrl ? (
+                  <Skeleton className="h-48 w-48 mx-auto" />
+                ) : (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="bg-white p-4 rounded-lg">
+                      <QRCodeSVG
+                        value={joinUrl}
+                        size={192}
+                        level="M"
+                        includeMargin={false}
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigator.clipboard.writeText(joinUrl)}
+                      className="text-xs"
+                    >
+                      <Copy className="h-3 w-3 mr-2" />
+                      Copy Link
+                    </Button>
+                  </div>
+                )}
+              </CardHeader>
+            </Card>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Card>

@@ -84,3 +84,489 @@ Open [http://localhost:9002](http://localhost:9002) with your browser to see the
 - `/host/game/[gameId]`: The live game screen for the host, showing questions and leaderboards.
 - `/join`: The page for players to enter a Game PIN.
 - `/play/[gamePin]`: The game screen for players participating in a quiz.
+
+## Deployment
+
+This application uses a hybrid deployment approach:
+- **Client Application**: Deployed to Google Cloud Run
+- **Cloud Functions**: Deployed to Firebase for server-side validation
+- **Database & Storage**: Firebase Firestore and Cloud Storage
+
+### Prerequisites
+
+Before deploying, ensure you have:
+
+- [Node.js 20+](https://nodejs.org/) installed (Node.js 18 was decommissioned in October 2024)
+- [Firebase CLI](https://firebase.google.com/docs/cli) installed (`npm install -g firebase-tools`)
+- [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) installed
+- A Firebase project set up
+- Google Cloud project linked to your Firebase project
+- Appropriate permissions for Firebase and Cloud Run deployments
+
+### 1. Environment Configuration
+
+#### Create Environment Variables
+
+Create a `.env.local` file in the project root with your Firebase configuration:
+
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
+```
+
+**Important**: Never commit `.env.local` to version control. It's already included in `.gitignore`.
+
+### 2. Deploy Firebase Services
+
+#### Step 1: Login to Firebase
+
+```bash
+firebase login
+```
+
+#### Step 2: Initialize Firebase (if not already done)
+
+```bash
+firebase init
+```
+
+Select:
+- Firestore
+- Functions
+- Storage
+- Choose your existing Firebase project
+
+#### Step 3: Install Cloud Functions Dependencies
+
+```bash
+cd functions
+npm install
+npm run build
+cd ..
+```
+
+#### Step 4: Deploy Firestore Security Rules
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+This deploys the security rules that:
+- Prevent client-side score manipulation
+- Enforce nickname length validation (2-20 characters)
+- Restrict player data updates to authorized fields only
+
+#### Step 5: Deploy Storage Rules
+
+```bash
+firebase deploy --only storage:rules
+```
+
+#### Step 6: Deploy Cloud Functions
+
+```bash
+firebase deploy --only functions
+```
+
+This deploys the `submitAnswer` function which:
+- Validates player answers server-side
+- Calculates scores securely
+- Prevents cheating and score manipulation
+- Uses transactions to prevent race conditions
+
+**Note**: Cloud Functions deployment may take 2-5 minutes.
+
+### 3. Deploy Client to Cloud Run
+
+#### Step 1: Set Your Google Cloud Project
+
+```bash
+gcloud config set project YOUR_PROJECT_ID
+```
+
+#### Step 2: Build the Next.js Application
+
+```bash
+npm install
+npm run build
+```
+
+#### Step 3: Deploy Using Buildpacks (Recommended) or Dockerfile
+
+**Option A: Deploy with Google Cloud Buildpacks (No Dockerfile needed)**
+
+Cloud Run will automatically detect your Next.js app and build it using buildpacks. This is the recommended approach as it's simpler and automatically updated.
+
+Files are excluded via `.gcloudignore` to reduce upload size and build time.
+
+**Option B: Deploy with Custom Dockerfile**
+
+If you need more control over the build process, create a `Dockerfile` in the project root:
+
+```dockerfile
+FROM node:20-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Set environment variables for build
+ARG NEXT_PUBLIC_FIREBASE_API_KEY
+ARG NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+ARG NEXT_PUBLIC_FIREBASE_PROJECT_ID
+ARG NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+ARG NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+ARG NEXT_PUBLIC_FIREBASE_APP_ID
+ARG NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+
+ENV NEXT_PUBLIC_FIREBASE_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY
+ENV NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+ENV NEXT_PUBLIC_FIREBASE_PROJECT_ID=$NEXT_PUBLIC_FIREBASE_PROJECT_ID
+ENV NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+ENV NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+ENV NEXT_PUBLIC_FIREBASE_APP_ID=$NEXT_PUBLIC_FIREBASE_APP_ID
+ENV NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=$NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+
+RUN npm run build
+
+# Production image
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]
+```
+
+#### Step 4: Update next.config.ts for Standalone Output
+
+Add the following to your `next.config.ts`:
+
+```typescript
+const nextConfig = {
+  output: 'standalone', // Add this line
+  // ... rest of your config
+};
+```
+
+#### Step 5: Deploy to Cloud Run
+
+**Using Buildpacks (Recommended - No Dockerfile needed):**
+
+```bash
+gcloud run deploy gquiz \
+  --source . \
+  --platform managed \
+  --region europe-west4 \
+  --allow-unauthenticated \
+  --update-build-env-vars NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key \
+  --update-build-env-vars NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com \
+  --update-build-env-vars NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id \
+  --update-build-env-vars NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app \
+  --update-build-env-vars NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id \
+  --update-build-env-vars NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id \
+  --update-build-env-vars NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id \
+  --set-env-vars NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key \
+  --set-env-vars NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com \
+  --set-env-vars NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id \
+  --set-env-vars NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app \
+  --set-env-vars NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id \
+  --set-env-vars NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id \
+  --set-env-vars NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
+```
+
+This command:
+- Uses `--source .` to deploy from source code (buildpacks)
+- `--update-build-env-vars` provides environment variables during BUILD time (for Next.js prerendering)
+- `--set-env-vars` provides environment variables at RUNTIME
+- Automatically detects Next.js and builds with appropriate settings
+- Respects `.gcloudignore` to exclude unnecessary files
+- No Dockerfile required
+
+**Alternative: Use Cloud Build with Dockerfile:**
+
+If you prefer using a Dockerfile for more control, use the Cloud Build YAML configuration:
+
+Create `cloudbuild.yaml`:
+
+```yaml
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '--build-arg', 'NEXT_PUBLIC_FIREBASE_API_KEY=${_FIREBASE_API_KEY}',
+      '--build-arg', 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${_FIREBASE_AUTH_DOMAIN}',
+      '--build-arg', 'NEXT_PUBLIC_FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID}',
+      '--build-arg', 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${_FIREBASE_STORAGE_BUCKET}',
+      '--build-arg', 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${_FIREBASE_MESSAGING_SENDER_ID}',
+      '--build-arg', 'NEXT_PUBLIC_FIREBASE_APP_ID=${_FIREBASE_APP_ID}',
+      '--build-arg', 'NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${_FIREBASE_MEASUREMENT_ID}',
+      '-t', 'gcr.io/$PROJECT_ID/gquiz',
+      '.'
+    ]
+
+  # Push the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/gquiz']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run', 'deploy', 'gquiz',
+      '--image', 'gcr.io/$PROJECT_ID/gquiz',
+      '--region', 'europe-west4',
+      '--platform', 'managed',
+      '--allow-unauthenticated'
+    ]
+
+images:
+  - 'gcr.io/$PROJECT_ID/gquiz'
+```
+
+Deploy with:
+
+```bash
+gcloud builds submit --config cloudbuild.yaml \
+  --substitutions=_FIREBASE_API_KEY=your_api_key,_FIREBASE_AUTH_DOMAIN=your_domain,...
+```
+
+### 4. Post-Deployment Configuration
+
+#### Create Host User
+
+After deployment, create a host user in Firebase Authentication:
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your project
+3. Navigate to **Authentication** > **Users**
+4. Click **Add user**
+5. Enter email and password
+6. Use these credentials to sign in at `https://your-app-url.run.app/login`
+
+#### Verify Deployment
+
+1. **Client Application**: Visit your Cloud Run URL
+2. **Cloud Functions**: Check Firebase Console > Functions to ensure `submitAnswer` is deployed
+3. **Firestore Rules**: Navigate to Firestore > Rules to verify they're active
+4. **Storage Rules**: Navigate to Storage > Rules to verify they're active
+
+### 5. Continuous Deployment (Optional)
+
+#### GitHub Actions for Cloud Run
+
+Create `.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: your-project-id
+  SERVICE_NAME: gquiz
+  REGION: europe-west4
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --source . \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --allow-unauthenticated \
+            --set-env-vars NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }} \
+            --set-env-vars NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }} \
+            --set-env-vars NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }} \
+            --set-env-vars NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
+            --set-env-vars NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }} \
+            --set-env-vars NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }} \
+            --set-env-vars NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${{ secrets.FIREBASE_MEASUREMENT_ID }}
+```
+
+#### GitHub Actions for Firebase
+
+Create `.github/workflows/firebase-deploy.yml`:
+
+```yaml
+name: Deploy to Firebase
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'functions/**'
+      - 'firestore.rules'
+      - 'storage.rules'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Install Functions dependencies
+        run: |
+          cd functions
+          npm ci
+          npm run build
+
+      - name: Deploy to Firebase
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: firebase deploy --only functions,firestore:rules,storage:rules --token "$FIREBASE_TOKEN"
+```
+
+### Deployment Checklist
+
+Before going live, ensure:
+
+- [ ] All environment variables are configured correctly
+- [ ] Cloud Functions are deployed and responding
+- [ ] Firestore security rules are active
+- [ ] Storage security rules are active
+- [ ] At least one host user is created in Firebase Authentication
+- [ ] Cloud Run service is publicly accessible
+- [ ] Image uploads are working (test with < 5MB images)
+- [ ] Players can join games and submit answers
+- [ ] Scores are calculated server-side (check Cloud Functions logs)
+- [ ] Game PINs are 8 characters long
+
+### Monitoring & Logs
+
+#### View Cloud Functions Logs
+
+```bash
+firebase functions:log
+```
+
+Or in Firebase Console: Functions > Logs
+
+#### View Cloud Run Logs
+
+```bash
+gcloud run services logs read gquiz --region europe-west4
+```
+
+Or in Google Cloud Console: Cloud Run > gquiz > Logs
+
+#### Monitor Firestore Usage
+
+Firebase Console > Firestore > Usage tab
+
+#### Monitor Storage Usage
+
+Firebase Console > Storage > Usage tab
+
+### Troubleshooting
+
+**Issue**: Players can't submit answers
+- **Solution**: Verify Cloud Functions are deployed: `firebase functions:list`
+
+**Issue**: "Permission denied" errors in Firestore
+- **Solution**: Redeploy Firestore rules: `firebase deploy --only firestore:rules`
+
+**Issue**: Images not uploading
+- **Solution**: Check Storage rules and file size (must be < 5MB)
+
+**Issue**: Cloud Run build fails
+- **Solution**: Ensure `output: 'standalone'` is in `next.config.ts`
+- If using buildpacks: Check `.gcloudignore` isn't excluding necessary files
+- If using Dockerfile: Verify Dockerfile syntax and build args
+
+**Issue**: Environment variables not loading
+- **Solution**: Verify all `NEXT_PUBLIC_*` variables are set in Cloud Run
+
+**Issue**: Large upload to Cloud Build
+- **Solution**: Check `.gcloudignore` is properly excluding `node_modules`, `.next`, and `functions/`
+
+### Costs & Scaling
+
+#### Firebase Costs
+- **Firestore**: Pay-as-you-go (free tier: 50k reads, 20k writes/day)
+- **Cloud Functions**: $0.40/million invocations (free tier: 2M/month)
+- **Storage**: $0.026/GB/month (free tier: 5GB)
+
+#### Cloud Run Costs
+- **CPU**: $0.00002400/vCPU-second
+- **Memory**: $0.00000250/GiB-second
+- **Requests**: $0.40/million (free tier: 2M/month)
+- **Note**: Cloud Run only charges when processing requests
+
+#### Scaling Recommendations
+- Cloud Run auto-scales from 0 to 100 instances by default
+- For large events (100+ concurrent players), increase max instances:
+  ```bash
+  gcloud run services update gquiz --max-instances=50
+  ```
+- Monitor Firebase quota limits in the Firebase Console
+
+## Security
+
+This application implements several security measures:
+
+- **Server-side score validation**: Prevents client-side score manipulation via Cloud Functions
+- **Firestore security rules**: Enforces data access control and validation
+- **Input validation**: File size limits (5MB), nickname length (2-20 chars), input maxLength attributes
+- **Environment variables**: Sensitive configuration kept out of source code
+- **Strong Game PINs**: 8-character PINs provide 208 billion combinations
+- **Transaction-based updates**: Prevents race conditions in score updates
+
+For detailed security implementation, see `SECURITY_IMPROVEMENTS.md`.

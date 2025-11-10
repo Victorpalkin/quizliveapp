@@ -171,6 +171,29 @@ export default function CreateQuizPage() {
 
   const handleImageUpload = async (qIndex: number, file: File) => {
     if (!user) return;
+
+    // Validate file size (max 5MB)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "Image must be less than 5MB. Please choose a smaller file.",
+      });
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Only PNG, JPEG, and GIF images are allowed.",
+      });
+      return;
+    }
+
     const question = questions[qIndex];
 
     // If there's already an image, mark it for deletion
@@ -289,7 +312,7 @@ export default function CreateQuizPage() {
                     <FormItem>
                       <FormLabel>Quiz Title</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., World Capitals Trivia" {...field} />
+                        <Input placeholder="e.g., World Capitals Trivia" {...field} maxLength={100} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -302,7 +325,7 @@ export default function CreateQuizPage() {
                     <FormItem>
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="A fun quiz about geography!" {...field} />
+                        <Textarea placeholder="A fun quiz about geography!" {...field} maxLength={500} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -335,7 +358,7 @@ export default function CreateQuizPage() {
                                 <FormItem>
                                     <FormLabel>Question Text</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="What is the capital of France?" {...field} onChange={(e) => {
+                                        <Input placeholder="What is the capital of France?" {...field} maxLength={500} onChange={(e) => {
                                             field.onChange(e);
                                             updateQuestion(qIndex, { ...q, text: e.target.value });
                                         }}/>
@@ -444,6 +467,7 @@ export default function CreateQuizPage() {
                                             <Input
                                                 {...field}
                                                 placeholder={`Answer ${aIndex + 1}`}
+                                                maxLength={200}
                                                 onChange={(e) => {
                                                     field.onChange(e);
                                                     const newAnswers = [...q.answers];

@@ -1,0 +1,68 @@
+# Dependencies
+node_modules
+npm-debug.log
+
+# Next.js build output
+.next
+out
+
+# Production build files
+build
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+*.log
+logs
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Testing
+coverage
+.nyc_output
+
+# Misc
+.claude
+README.md
+SECURITY_IMPROVEMENTS.md
+
+# Firebase
+.firebase
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+firebase.json
+firestore.rules
+storage.rules
+
+# Cloud Functions (not needed in client build)
+functions/
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Deployment scripts and configs (not needed in runtime)
+deploy.sh
+cloudbuild.yaml
+Dockerfile
+.dockerignore

@@ -21,6 +21,16 @@ export interface Quiz {
   hostId: string;
 }
 
+export interface QuizShare {
+  id: string;
+  quizId: string;
+  quizTitle: string;
+  sharedWith: string; // email
+  sharedBy: string; // userId
+  sharedByEmail: string;
+  createdAt: Date;
+}
+
 export interface Player {
     id: string;
     name: string;

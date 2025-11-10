@@ -1,0 +1,9 @@
+# Compiled JavaScript files
+lib/
+node_modules/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Firebase cache
+.firebase/

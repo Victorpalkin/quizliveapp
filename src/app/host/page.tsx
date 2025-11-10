@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
+import { SharedQuizzes } from '@/components/app/shared-quizzes';
 import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye, Edit } from 'lucide-react';
 import { useCollection, useFirestore, useUser, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getDoc } from 'firebase/firestore';
@@ -87,7 +88,7 @@ export default function HostDashboardPage() {
       hostId: user.uid,
       state: 'lobby' as const,
       currentQuestionIndex: 0,
-      gamePin: nanoid(6).toUpperCase(),
+      gamePin: nanoid(8).toUpperCase(),
       createdAt: serverTimestamp(),
     };
 
@@ -352,7 +353,10 @@ export default function HostDashboardPage() {
                 </div>
             )}
         </div>
-        
+
+        {/* Shared Quizzes Section */}
+        <SharedQuizzes />
+
         {/* Completed Games Section */}
         {completedGames && completedGames.length > 0 && (
             <div className="mb-12">
