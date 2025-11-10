@@ -3,12 +3,24 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access to all images
+    // Legacy path - Allow public read access to all images
     match /quiz-images/{allPaths=**} {
       allow read;
-      
+
       // Allow writes (uploads, updates, deletes) only for authenticated users
       allow write: if request.auth != null;
+    }
+
+    // New quiz-specific storage structure
+    // Path: quizzes/{quizId}/questions/{questionIndex}/image
+    match /quizzes/{quizId}/questions/{questionIndex}/{imageName} {
+      // Anyone can read quiz images
+      allow read;
+
+      // Only the quiz owner can write/delete images
+      // This is checked via Firestore lookup
+      allow write: if request.auth != null &&
+                     request.auth.uid == firestore.get(/databases/(default)/documents/quizzes/$(quizId)).data.hostId;
     }
   }
 }

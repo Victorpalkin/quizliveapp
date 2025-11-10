@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { PartyPopper, Frown, Trophy, Loader2, XCircle, Timer, Clock } from 'lucide-react';
@@ -93,6 +93,9 @@ export default function PlayerGamePage() {
   const [answerSelected, setAnswerSelected] = useState<number | null>(null);
   const [timedOut, setTimedOut] = useState(false);
 
+  // Use ref to track question index - refs don't trigger re-renders
+  const lastQuestionIndexRef = useRef<number>(-1);
+
   const isLastQuestion = game && quiz ? game.currentQuestionIndex >= quiz.questions.length - 1 : false;
 
   useEffect(() => {
@@ -103,47 +106,101 @@ export default function PlayerGamePage() {
 
     if (!game) return;
 
-    // Synchronize player state with host game state
     const hostState = game.state;
     const currentQuestionIndex = game.currentQuestionIndex;
 
-    // State machine for player-host sync
-    if (hostState === 'lobby' && state === 'joining') {
-      setState('lobby');
-    }
-    else if (hostState === 'preparing') {
-      // When host prepares a question, player should also prepare (from any state except joining/cancelled)
-      if (state !== 'preparing' && state !== 'joining' && state !== 'cancelled') {
+    // CRITICAL: Detect question index change using ref
+    // Refs don't trigger re-renders, but we can compare against them
+    const questionChanged = currentQuestionIndex !== lastQuestionIndexRef.current && lastQuestionIndexRef.current !== -1;
+
+    if (questionChanged) {
+      console.log(`[Player State] Question changed: ${lastQuestionIndexRef.current} → ${currentQuestionIndex}`);
+      // Update ref immediately
+      lastQuestionIndexRef.current = currentQuestionIndex;
+
+      // When question changes, force player to 'preparing' state to reset for new question
+      // This ensures player never gets stuck on result screens
+      if (state !== 'joining' && state !== 'lobby' && state !== 'cancelled') {
+        console.log(`[Player State] Resetting to 'preparing' due to question change`);
         setState('preparing');
+        return; // Effect will run again due to state change
       }
     }
-    else if (hostState === 'question') {
-      // When host shows question, player should see it (if in preparing state)
-      if (state === 'preparing') {
-        setState('question');
-      }
+
+    // Update ref on first run or when syncing
+    if (currentQuestionIndex !== lastQuestionIndexRef.current) {
+      lastQuestionIndexRef.current = currentQuestionIndex;
     }
-    else if (hostState === 'leaderboard') {
-      // When host shows leaderboard, player should see results
-      if (state === 'waiting' || (state === 'question' && timedOut)) {
-        setState('result');
-      }
-    }
-    else if (hostState === 'ended') {
+
+    // State machine for player-host sync
+    // Order matters! Handle states from most specific to least specific
+
+    // 1. Terminal state - game ended
+    if (hostState === 'ended') {
       if (state !== 'ended') {
+        console.log(`[Player State] Game ended: ${state} → ended`);
         setState('ended');
       }
+      return;
     }
+
+    // 2. Initial join flow
+    if (hostState === 'lobby' && state === 'joining') {
+      console.log(`[Player State] Joined lobby: joining → lobby`);
+      setState('lobby');
+      return;
+    }
+
+    // 3. Leaderboard - show results to players who answered or timed out
+    if (hostState === 'leaderboard') {
+      if (state === 'waiting' || (state === 'question' && timedOut)) {
+        console.log(`[Player State] Showing result: ${state} → result`);
+        setState('result');
+      }
+      // If already in result, stay there
+      return;
+    }
+
+    // 4. Question - transition from preparing to question
+    if (hostState === 'question') {
+      if (state === 'preparing') {
+        console.log(`[Player State] Showing question: preparing → question`);
+        setState('question');
+      }
+      // If in other states (waiting, result), stay there until question changes
+      return;
+    }
+
+    // 5. Preparing - handle game start from lobby
+    if (hostState === 'preparing') {
+      if (state === 'lobby') {
+        console.log(`[Player State] Game starting: lobby → preparing`);
+        setState('preparing');
+      }
+      // If in other states, question change handler above should have moved to preparing
+      return;
+    }
+
+  // Include 'state' in dependencies so effect runs when player state changes
+  // This allows the preparing → question transition to happen
+  // NOTE: timedOut is NOT in dependencies - it's only used as a condition check
+  // Including it causes unwanted re-runs when reset effect sets it to false
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game?.state, game?.currentQuestionIndex, gameLoading, timedOut]);
+  }, [game?.state, game?.currentQuestionIndex, gameLoading, state]);
 
 
   // Reset answer state when preparing for new question
   useEffect(() => {
     if (state === 'preparing') {
+      console.log('[Player State] Resetting for new question');
       setAnswerSelected(null);
       setTimedOut(false);
       setLastAnswer(null);
+
+      // CRITICAL: Reset time to prevent false timeout on next question
+      // Without this, if player timed out on previous question (time = 0),
+      // the timeout effect can fire before timer effect resets time on new question
+      setTime(timeLimit);
 
       // Reset lastAnswerIndex for new question
       if (gameDocId && player?.lastAnswerIndex !== null && player?.lastAnswerIndex !== undefined) {
@@ -181,6 +238,9 @@ export default function PlayerGamePage() {
     if (state === 'question' && time === 0 && answerSelected === null && !timedOut) {
       setTimedOut(true);
 
+      // Set answer selection to prevent multiple submissions
+      setAnswerSelected(-1);
+
       // Set local state immediately for display (in case submission fails)
       if (question) {
         setLastAnswer({
@@ -191,7 +251,11 @@ export default function PlayerGamePage() {
         });
       }
 
+      // Move to waiting state immediately (before API call to prevent race conditions)
+      setState('waiting');
+
       // Try to submit to server (may fail if game state changed due to race condition)
+      // But local state is already set, so player will see correct "No Answer" screen
       handleAnswer(-1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -307,24 +371,31 @@ export default function PlayerGamePage() {
     } catch (error: any) {
       console.error('Error submitting answer:', error);
 
-      // Handle specific error cases
-      if (error.code === 'functions/failed-precondition') {
-        toast({
-          variant: 'destructive',
-          title: 'Already Answered',
-          description: error.message
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Failed to submit answer. Please try again.'
-        });
-      }
+      // For timeouts, don't show error toasts or reset state
+      // The local state is already set correctly and player will transition to result screen
+      const isTimeout = selectedIndex === -1;
 
-      // Reset UI state on error
-      setAnswerSelected(null);
-      setState('question');
+      if (!isTimeout) {
+        // Handle specific error cases for normal answers
+        if (error.code === 'functions/failed-precondition') {
+          toast({
+            variant: 'destructive',
+            title: 'Already Answered',
+            description: error.message
+          });
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to submit answer. Please try again.'
+          });
+        }
+
+        // Reset UI state on error (only for normal answers, not timeouts)
+        setAnswerSelected(null);
+        setState('question');
+      }
+      // For timeouts, we keep the current state (waiting) and let the normal state sync handle transition to result
     }
   };
   

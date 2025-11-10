@@ -2,7 +2,7 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // Protect user profiles - only the user can access their profile
     match /users/{userId} {
       allow read, update, create: if request.auth.uid == userId;
@@ -14,6 +14,13 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/quizzes/$(quizId)/shares/$(request.auth.token.email));
     }
 
+    // CollectionGroup rule for querying shares across all quizzes
+    match /{path=**}/shares/{shareId} {
+      // Allow authenticated users to read shares where sharedWith matches their email
+      allow read: if request.auth != null &&
+                    resource.data.sharedWith == request.auth.token.email;
+    }
+
     // Quizzes can be read by anyone, but only managed by their owner
     match /quizzes/{quizId} {
       allow read: if true;
@@ -21,6 +28,7 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.hostId;
 
       // Quiz shares subcollection
+      // Note: shareId is the email address for efficient exists() checks
       match /shares/{shareId} {
         // Owner can read all shares for their quiz
         // Recipient can read shares where sharedWith matches their email
@@ -29,10 +37,12 @@ service cloud.firestore {
                        request.auth.token.email == resource.data.sharedWith);
 
         // Only quiz owner can create shares
+        // Document ID (shareId) must match the sharedWith email
         allow create: if request.auth != null &&
                         request.auth.uid == get(/databases/$(database)/documents/quizzes/$(quizId)).data.hostId &&
                         request.resource.data.sharedBy == request.auth.uid &&
-                        request.resource.data.quizId == quizId;
+                        request.resource.data.quizId == quizId &&
+                        shareId == request.resource.data.sharedWith;
 
         // Owner can delete their shares, recipient can also delete (to cancel)
         allow delete: if request.auth != null &&

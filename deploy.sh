@@ -59,11 +59,11 @@ echo "✅ Cloud Functions built successfully"
 echo ""
 echo "Step 2: Deploying Firebase Services..."
 echo "========================================"
-echo "Deploying Firestore rules..."
-firebase deploy --only firestore:rules --project $PROJECT_ID
+echo "Deploying Firestore rules and indexes..."
+firebase deploy --only firestore --project $PROJECT_ID
 
 # echo "Deploying Storage rules..."
-# firebase deploy --only storage:rules --project $PROJECT_ID
+firebase deploy --only storage --project $PROJECT_ID
 
 echo "Deploying Cloud Functions to $REGION..."
 firebase deploy --only functions --project $PROJECT_ID
@@ -96,6 +96,24 @@ gcloud run deploy gquiz \
 
 echo ""
 echo "✅ Deployment Complete!"
+echo ""
+
+# Get and display Cloud Run URL
+CLOUD_RUN_URL=$(gcloud run services describe gquiz --region=$REGION --format='value(status.url)' 2>/dev/null)
+
+if [ ! -z "$CLOUD_RUN_URL" ]; then
+    echo "🌐 Application URL: $CLOUD_RUN_URL"
+    echo ""
+fi
+
+echo "🔒 SECURITY: Update CORS Origins"
+echo "================================="
+echo "IMPORTANT: Add your Cloud Run URL to Cloud Functions CORS allowed origins:"
+echo "   1. Edit functions/src/index.ts"
+echo "   2. Add '${CLOUD_RUN_URL}' to ALLOWED_ORIGINS array"
+echo "   3. Redeploy functions: firebase deploy --only functions"
+echo ""
+echo "Or run: ./functions/update-cors-origins.sh"
 echo ""
 echo "📝 Next Steps:"
 echo "1. Create a host user in Firebase Authentication Console"

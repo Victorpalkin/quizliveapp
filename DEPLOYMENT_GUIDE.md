@@ -97,8 +97,12 @@ npm install
 npm run build
 cd ..
 
-# Deploy Firestore rules
-firebase deploy --only firestore:rules --project YOUR_PROJECT_ID
+# Deploy Firestore rules and indexes
+firebase deploy --only firestore --project YOUR_PROJECT_ID
+
+# Or deploy separately:
+# firebase deploy --only firestore:rules --project YOUR_PROJECT_ID
+# firebase deploy --only firestore:indexes --project YOUR_PROJECT_ID
 
 # Deploy Storage rules (if needed)
 firebase deploy --only storage:rules --project YOUR_PROJECT_ID

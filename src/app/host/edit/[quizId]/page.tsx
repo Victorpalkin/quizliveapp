@@ -535,7 +535,7 @@ export default function EditQuizPage() {
               </CardContent>
             </Card>
 
-            <QuizShareManager quizId={quizId} quizTitle={quiz?.title || ''} />
+            {quizData && <QuizShareManager quizId={quizId} quizTitle={quizData.title} />}
 
             <div className="flex justify-end">
               <Button type="submit" size="lg" disabled={isSubmitting || userLoading}>

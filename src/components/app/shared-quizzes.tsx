@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Share2, Copy, Trash2, Loader2, Play } from 'lucide-react';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useStorage } from '@/firebase';
 import { useSharedQuizzes } from '@/firebase/firestore/use-shared-quizzes';
-import { collection, addDoc, deleteDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, serverTimestamp, getDoc, updateDoc } from 'firebase/firestore';
+import { ref, getDownloadURL, uploadBytes } from 'firebase/storage';
 import type { QuizShare, Quiz } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -25,6 +26,7 @@ import {
 
 export function SharedQuizzes() {
   const firestore = useFirestore();
+  const storage = useStorage();
   const { user } = useUser();
   const { toast } = useToast();
   const router = useRouter();
@@ -39,6 +41,40 @@ export function SharedQuizzes() {
     setShares(initialShares);
   }, [initialShares]);
 
+  /**
+   * Copy image from original quiz to new quiz in Firebase Storage
+   * This ensures each quiz has its own independent images
+   */
+  const copyImageToNewQuiz = async (
+    originalImageUrl: string,
+    newQuizId: string,
+    questionIndex: number
+  ): Promise<string> => {
+    try {
+      // Download the original image
+      const response = await fetch(originalImageUrl);
+      if (!response.ok) {
+        throw new Error('Failed to download image');
+      }
+      const blob = await response.blob();
+
+      // Upload to new location
+      const newImagePath = `quizzes/${newQuizId}/questions/${questionIndex}/image`;
+      const newImageRef = ref(storage, newImagePath);
+
+      await uploadBytes(newImageRef, blob);
+
+      // Get the new download URL
+      const newImageUrl = await getDownloadURL(newImageRef);
+
+      return newImageUrl;
+    } catch (error) {
+      console.error('Error copying image:', error);
+      // Return original URL as fallback (better than breaking the quiz)
+      return originalImageUrl;
+    }
+  };
+
   const handleCopyQuiz = async (share: QuizShare) => {
     if (!user) return;
 
@@ -52,23 +88,60 @@ export function SharedQuizzes() {
 
       const originalQuiz = quizDoc.data() as Quiz;
 
-      // Create a copy
+      // Create a copy - exclude 'id' field by destructuring
+      const { id, ...quizDataWithoutId } = originalQuiz;
+
+      // First create the quiz document to get the new quiz ID
       const newQuiz = {
-        ...originalQuiz,
-        id: undefined,
+        ...quizDataWithoutId,
         title: `${originalQuiz.title} (Copy)`,
         hostId: user.uid,
       };
 
       const quizzesRef = collection(firestore, 'quizzes');
       const newQuizDoc = await addDoc(quizzesRef, newQuiz);
+      const newQuizId = newQuizDoc.id;
 
-      toast({
-        title: 'Quiz copied',
-        description: 'The quiz has been added to your quizzes',
+      // Copy images for questions that have them
+      // Process all images in parallel for better performance
+      const imagePromises = originalQuiz.questions.map(async (question, index) => {
+        if (question.imageUrl) {
+          return copyImageToNewQuiz(question.imageUrl, newQuizId, index);
+        }
+        return null;
       });
 
-      router.push(`/host/edit/${newQuizDoc.id}`);
+      const newImageUrls = await Promise.all(imagePromises);
+
+      // Count successfully copied images (URLs that are different from original)
+      const copiedImageCount = newImageUrls.filter(
+        (url, index) => url && url !== originalQuiz.questions[index].imageUrl
+      ).length;
+
+      // If any images were copied, update the quiz with new image URLs
+      if (copiedImageCount > 0) {
+        const updatedQuestions = originalQuiz.questions.map((question, index) => ({
+          ...question,
+          imageUrl: newImageUrls[index] || question.imageUrl,
+        }));
+
+        // Update the quiz document with new image URLs
+        await updateDoc(newQuizDoc, {
+          questions: updatedQuestions,
+        });
+
+        toast({
+          title: 'Quiz copied',
+          description: `Copied quiz with ${copiedImageCount} image${copiedImageCount > 1 ? 's' : ''}`,
+        });
+      } else {
+        toast({
+          title: 'Quiz copied',
+          description: 'The quiz has been added to your quizzes',
+        });
+      }
+
+      router.push(`/host/edit/${newQuizId}`);
     } catch (error) {
       console.error('Error copying quiz:', error);
       toast({

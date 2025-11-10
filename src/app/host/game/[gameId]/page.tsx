@@ -437,17 +437,25 @@ function AnswerDistributionChart({ data }: { data: { name: string; total: number
     };
 
     const CustomBar = (props: any) => {
-      const { fill, x, y, width, height, isCorrect, name } = props;
-      
+      const { fill, x, y, width, height, isCorrect, name, ...restProps } = props;
+
       return (
         <g>
-          <rect {...props} fill={isCorrect ? 'hsl(var(--primary))' : 'hsl(var(--muted))'} radius={[0, 4, 4, 0]} />
+          <rect
+            {...restProps}
+            fill={isCorrect ? 'hsl(var(--primary))' : 'hsl(var(--muted))'}
+            x={x}
+            y={y}
+            width={width}
+            height={height}
+            radius={[0, 4, 4, 0]}
+          />
           {isCorrect && (
-             <CheckCircle 
-                x={x + width - 24} 
+             <CheckCircle
+                x={x + width - 24}
                 y={y + height / 2 - 8}
-                width={16} 
-                height={16} 
+                width={16}
+                height={16}
                 className="text-white"
               />
           )}

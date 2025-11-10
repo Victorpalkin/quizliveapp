@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Share2, Trash2, Loader2, UserPlus } from 'lucide-react';
 import { useCollection, useMemoFirebase, useFirestore, useUser } from '@/firebase';
-import { collection, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import type { QuizShare } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -39,8 +39,8 @@ export function QuizShareManager({ quizId, quizTitle }: QuizShareManagerProps) {
   );
   const { data: shares, loading } = useCollection<QuizShare>(sharesRef);
 
-  const handleShare = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleShare = async (e?: React.FormEvent | React.MouseEvent) => {
+    e?.preventDefault();
 
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail) {
@@ -69,7 +69,11 @@ export function QuizShareManager({ quizId, quizTitle }: QuizShareManagerProps) {
 
     setSharing(true);
     try {
-      await addDoc(sharesRef, {
+      // Use email as document ID for efficient exists() checks in security rules
+      // This also prevents duplicate shares to the same email
+      const shareDocRef = doc(firestore, 'quizzes', quizId, 'shares', trimmedEmail);
+
+      await setDoc(shareDocRef, {
         quizId,
         quizTitle,
         sharedWith: trimmedEmail,
@@ -124,16 +128,22 @@ export function QuizShareManager({ quizId, quizTitle }: QuizShareManagerProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <form onSubmit={handleShare} className="flex gap-2">
+        <div className="flex gap-2">
           <Input
             type="email"
             placeholder="Enter email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleShare(e as any);
+              }
+            }}
             disabled={sharing}
             className="flex-1"
           />
-          <Button type="submit" disabled={sharing}>
+          <Button type="button" onClick={handleShare} disabled={sharing}>
             {sharing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -143,7 +153,7 @@ export function QuizShareManager({ quizId, quizTitle }: QuizShareManagerProps) {
               </>
             )}
           </Button>
-        </form>
+        </div>
 
         <div className="space-y-2">
           <h4 className="text-sm font-medium">Shared with ({shares?.length || 0})</h4>
