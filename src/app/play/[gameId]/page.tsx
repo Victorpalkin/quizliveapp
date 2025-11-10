@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { PartyPopper, Frown, Trophy, Loader2, XCircle, Timer } from 'lucide-react';
@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, getDocs, setDoc, updateDoc, DocumentReference } from 'firebase/firestore';
-import type { Quiz, Player, Game } from '@/lib/types';
+import type { Quiz, Player, Game, Question } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -53,6 +53,20 @@ function updatePlayer(playerRef: DocumentReference<Player>, data: Partial<Player
   });
 }
 
+// Helper to migrate old questions with `correctAnswerIndex` to the new `correctAnswerIndices`
+const migrateQuestion = (q: any): Question => {
+  const { correctAnswerIndex, correctAnswerIndices, ...rest } = q;
+  let newCorrectAnswerIndices = correctAnswerIndices;
+
+  if (typeof correctAnswerIndex === 'number' && !correctAnswerIndices) {
+    newCorrectAnswerIndices = [correctAnswerIndex];
+  } else if (!Array.isArray(newCorrectAnswerIndices)) {
+    newCorrectAnswerIndices = [0];
+  }
+
+  return { ...rest, correctAnswerIndices: newCorrectAnswerIndices };
+};
+
 
 export default function PlayerGamePage() {
   const params = useParams();
@@ -70,13 +84,21 @@ export default function PlayerGamePage() {
   const { data: game, loading: gameLoading } = useDoc(gameRef);
 
   const quizRef = useMemoFirebase(() => game ? doc(firestore, 'quizzes', game.quizId) : null, [firestore, game]);
-  const { data: quiz, loading: quizLoading } = useDoc(quizRef);
+  const { data: quizData, loading: quizLoading } = useDoc(quizRef);
+
+  const quiz = useMemo(() => {
+    if (!quizData) return null;
+    return {
+      ...quizData,
+      questions: quizData.questions.map(migrateQuestion)
+    }
+  }, [quizData]);
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;
 
   const [player, setPlayer] = useState<Player | null>(null);
-  const [lastAnswer, setLastAnswer] = useState<{ selected: number; correct: number; points: number } | null>(null);
+  const [lastAnswer, setLastAnswer] = useState<{ selected: number; correct: number[]; points: number } | null>(null);
   const [time, setTime] = useState(timeLimit);
   const [answerSelected, setAnswerSelected] = useState<number | null>(null);
 
@@ -194,7 +216,7 @@ export default function PlayerGamePage() {
     setAnswerSelected(selectedIndex);
     setState('waiting'); // Move to waiting state immediately
 
-    const isCorrect = question?.correctAnswerIndex === selectedIndex;
+    const isCorrect = question?.correctAnswerIndices.includes(selectedIndex) || false;
     const points = isCorrect ? Math.round(100 + (time / timeLimit) * 900) : 0;
     
     const newScore = (player?.score || 0) + points;
@@ -206,7 +228,7 @@ export default function PlayerGamePage() {
 
     setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndex: selectedIndex } : null);
     if(question) {
-        setLastAnswer({ selected: selectedIndex, correct: question.correctAnswerIndex, points });
+        setLastAnswer({ selected: selectedIndex, correct: question.correctAnswerIndices, points });
     }
   };
   
@@ -301,7 +323,7 @@ export default function PlayerGamePage() {
             </div>
         );
       case 'result':
-        const isCorrect = lastAnswer?.selected === lastAnswer?.correct;
+        const isCorrect = lastAnswer ? lastAnswer.correct.includes(lastAnswer.selected) : false;
         return (
           <div className={`flex flex-col items-center justify-center text-center p-8 w-full h-full ${isCorrect ? 'bg-green-500' : 'bg-red-500'} text-white`}>
             {isCorrect ? <PartyPopper className="w-24 h-24 mb-4" /> : <Frown className="w-24 h-24 mb-4" />}

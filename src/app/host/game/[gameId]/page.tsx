@@ -18,7 +18,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, updateDoc, DocumentReference, deleteDoc, writeBatch } from 'firebase/firestore';
-import type { Player, Quiz, Game } from '@/lib/types';
+import type { Player, Quiz, Game, Question } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -153,6 +153,21 @@ function DeleteGameButton({ gameRef }: { gameRef: DocumentReference<Game> | null
     );
 }
 
+// Helper to migrate old questions with `correctAnswerIndex` to the new `correctAnswerIndices`
+const migrateQuestion = (q: any): Question => {
+  const { correctAnswerIndex, correctAnswerIndices, ...rest } = q;
+  let newCorrectAnswerIndices = correctAnswerIndices;
+
+  if (typeof correctAnswerIndex === 'number' && !correctAnswerIndices) {
+    newCorrectAnswerIndices = [correctAnswerIndex];
+  } else if (!Array.isArray(newCorrectAnswerIndices)) {
+    newCorrectAnswerIndices = [0];
+  }
+
+  return { ...rest, correctAnswerIndices: newCorrectAnswerIndices };
+};
+
+
 export default function HostGamePage() {
   const params = useParams();
   const gameId = params.gameId as string;
@@ -162,7 +177,15 @@ export default function HostGamePage() {
   const { data: game, loading: gameLoading } = useDoc(gameRef);
 
   const quizRef = useMemoFirebase(() => game ? doc(firestore, 'quizzes', game.quizId) : null, [firestore, game]);
-  const { data: quiz, loading: quizLoading } = useDoc(quizRef);
+  const { data: quizData, loading: quizLoading } = useDoc(quizRef);
+
+  const quiz = useMemo(() => {
+    if (!quizData) return null;
+    return {
+      ...quizData,
+      questions: quizData.questions.map(migrateQuestion)
+    }
+  }, [quizData]);
 
   const playersQuery = useMemoFirebase(() => collection(firestore, 'games', gameId, 'players'), [firestore, gameId]);
   const { data: players, loading: playersLoading } = useCollection<Player>(playersQuery);
@@ -189,7 +212,7 @@ export default function HostGamePage() {
     return question.answers.map((ans, index) => ({
         name: ans.text,
         total: counts[index],
-        isCorrect: index === question.correctAnswerIndex,
+        isCorrect: question.correctAnswerIndices.includes(index),
     }));
 }, [question, players]);
 

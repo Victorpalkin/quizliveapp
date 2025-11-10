@@ -15,7 +15,7 @@ import * as z from 'zod';
 import { Header } from '@/components/app/header';
 import { PlusCircle, Trash2, Loader2, Save, X, ImagePlus, ImageOff, Timer } from 'lucide-react';
 import type { Question } from '@/lib/types';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useStorage } from '@/firebase';
@@ -33,7 +33,7 @@ const questionSchema = z.object({
   text: z.string().min(1, 'Question text cannot be empty.'),
   imageUrl: z.string().url().optional(),
   answers: z.array(answerSchema).min(2, 'Each question must have at least 2 answers.').max(8, 'Each question can have at most 8 answers.'),
-  correctAnswerIndex: z.number().min(0).max(7),
+  correctAnswerIndices: z.array(z.number()).min(1, 'Each question must have at least one correct answer.'),
   timeLimit: z.number().default(20),
 });
 
@@ -103,7 +103,7 @@ export default function CreateQuizPage() {
     const newQuestion: Omit<Question, 'id'> = {
       text: text,
       answers: [{ text: '' }, { text: '' }],
-      correctAnswerIndex: 0,
+      correctAnswerIndices: [0],
       timeLimit: 20,
     };
     const newQuestions = [...questions, newQuestion];
@@ -148,11 +148,16 @@ export default function CreateQuizPage() {
     const question = newQuestions[qIndex];
     if (question.answers.length > 2) {
       question.answers.splice(aIndex, 1);
-      if (question.correctAnswerIndex === aIndex) {
-        question.correctAnswerIndex = 0;
-      } else if (question.correctAnswerIndex > aIndex) {
-        question.correctAnswerIndex -= 1;
+      // Remove the index from correct answers and shift subsequent indices
+      const newCorrectIndices = question.correctAnswerIndices
+        .filter(i => i !== aIndex)
+        .map(i => i > aIndex ? i - 1 : i);
+      // If no correct answers are left, default to the first one
+      if (newCorrectIndices.length === 0) {
+        newCorrectIndices.push(0);
       }
+      question.correctAnswerIndices = newCorrectIndices;
+
       setQuestions(newQuestions);
       form.setValue('questions', newQuestions, { shouldValidate: true });
     } else {
@@ -400,56 +405,67 @@ export default function CreateQuizPage() {
                       
                         <FormField
                           control={form.control}
-                          name={`questions.${qIndex}.correctAnswerIndex`}
-                          render={({ field }) => (
-                            <FormItem className="space-y-3">
-                              <FormLabel>Answers</FormLabel>
-                              <FormControl>
-                                <RadioGroup
-                                  onValueChange={(value) => {
-                                    field.onChange(Number(value));
-                                    updateQuestion(qIndex, { ...q, correctAnswerIndex: Number(value) });
-                                  }}
-                                  value={String(field.value)}
-                                  className="space-y-2"
-                                >
+                          name={`questions.${qIndex}.correctAnswerIndices`}
+                          render={() => (
+                            <FormItem>
+                                <div className="mb-4">
+                                    <FormLabel className="text-base">Answers</FormLabel>
+                                    <p className="text-sm text-muted-foreground">Select one or more correct answers.</p>
+                                </div>
                                 {q.answers.map((ans, aIndex) => (
-                                  <FormField
+                                    <FormField
                                     key={aIndex}
                                     control={form.control}
                                     name={`questions.${qIndex}.answers.${aIndex}.text`}
-                                    render={({ field: answerField }) => (
-                                      <FormItem className="flex items-center space-x-3">
-                                        <FormControl>
-                                          <RadioGroupItem value={String(aIndex)} id={`q${qIndex}a${aIndex}`} />
-                                        </FormControl>
-                                        <Input
-                                          placeholder={`Answer ${aIndex + 1}`}
-                                          {...answerField}
-                                          onChange={(e) => {
-                                              answerField.onChange(e);
-                                              const newAnswers = [...q.answers];
-                                              newAnswers[aIndex] = { text: e.target.value };
-                                              updateQuestion(qIndex, { ...q, answers: newAnswers });
-                                          }}
-                                        />
-                                        {q.answers.length > 2 && (
-                                            <Button variant="ghost" size="icon" onClick={() => removeAnswer(qIndex, aIndex)} type="button">
-                                                <X className="h-4 w-4 text-muted-foreground" />
-                                            </Button>
-                                        )}
-                                      </FormItem>
+                                    render={({ field }) => (
+                                        <FormItem
+                                            key={aIndex}
+                                            className="flex flex-row items-center space-x-3 space-y-0"
+                                        >
+                                            <FormControl>
+                                                <Checkbox
+                                                checked={q.correctAnswerIndices.includes(aIndex)}
+                                                onCheckedChange={(checked) => {
+                                                    let newCorrectIndices: number[];
+                                                    if (checked) {
+                                                        newCorrectIndices = [...q.correctAnswerIndices, aIndex].sort();
+                                                    } else {
+                                                        newCorrectIndices = q.correctAnswerIndices.filter((i) => i !== aIndex);
+                                                    }
+                                                    // Ensure at least one answer remains selected
+                                                    if (newCorrectIndices.length === 0) {
+                                                        toast({ variant: 'destructive', title: "You must have at least one correct answer." });
+                                                        return;
+                                                    }
+                                                    updateQuestion(qIndex, { ...q, correctAnswerIndices: newCorrectIndices });
+                                                }}
+                                                />
+                                            </FormControl>
+                                            <Input
+                                                {...field}
+                                                placeholder={`Answer ${aIndex + 1}`}
+                                                onChange={(e) => {
+                                                    field.onChange(e);
+                                                    const newAnswers = [...q.answers];
+                                                    newAnswers[aIndex] = { text: e.target.value };
+                                                    updateQuestion(qIndex, { ...q, answers: newAnswers });
+                                                }}
+                                            />
+                                            {q.answers.length > 2 && (
+                                                <Button variant="ghost" size="icon" onClick={() => removeAnswer(qIndex, aIndex)} type="button">
+                                                    <X className="h-4 w-4 text-muted-foreground" />
+                                                </Button>
+                                            )}
+                                        </FormItem>
                                     )}
-                                  />
+                                    />
                                 ))}
-                                </RadioGroup>
-                              </FormControl>
-                              <FormMessage />
-                               {q.answers.length < 8 && (
-                                  <Button type="button" variant="outline" size="sm" onClick={() => addAnswer(qIndex)}>
-                                      <PlusCircle className="mr-2 h-4 w-4" />
-                                      Add Answer
-                                  </Button>
+                                <FormMessage>{form.formState.errors.questions?.[qIndex]?.correctAnswerIndices?.message}</FormMessage>
+                                {q.answers.length < 8 && (
+                                <Button type="button" variant="outline" size="sm" onClick={() => addAnswer(qIndex)} className="mt-2">
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add Answer
+                                </Button>
                                 )}
                             </FormItem>
                           )}

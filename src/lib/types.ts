@@ -8,7 +8,7 @@ export interface Question {
   id?: string;
   text: string;
   answers: Answer[];
-  correctAnswerIndex: number;
+  correctAnswerIndices: number[];
   timeLimit?: number; // in seconds
   imageUrl?: string;
 }

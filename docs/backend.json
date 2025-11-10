@@ -49,16 +49,19 @@
           "minItems": 2,
           "maxItems": 8
         },
-        "correctAnswerIndex": {
-          "type": "number",
-          "description": "The index of the correct answer in the answers array."
+        "correctAnswerIndices": {
+          "type": "array",
+          "description": "The indices of the correct answers in the answers array.",
+          "items": {
+            "type": "number"
+          }
         },
         "timeLimit": {
           "type": "number",
           "description": "The time limit for the question in seconds."
         }
       },
-      "required": ["text", "answers", "correctAnswerIndex"]
+      "required": ["text", "answers", "correctAnswerIndices"]
     },
     "answer": {
       "title": "Answer",
