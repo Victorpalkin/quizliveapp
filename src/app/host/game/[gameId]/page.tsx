@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, LabelList, Cell, Rectangle } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, LabelList, Cell, Rectangle, Text } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trophy, XCircle, Home, Trash2, CheckCircle, Users } from 'lucide-react';
@@ -430,42 +430,66 @@ function AnswerDistributionChart({ data }: { data: { name: string; total: number
         const { x, y, width, height, value } = props;
         if (value === 0) return null;
         return (
-          <text x={x + width / 2} y={y} fill="hsl(var(--foreground))" textAnchor="middle" dy={-6} className="text-sm font-bold">
+          <text x={x + width + 10} y={y + height / 2} fill="hsl(var(--foreground))" textAnchor="start" dominantBaseline="middle" className="text-sm font-bold">
               {`${value}`}
           </text>
         );
     };
 
     const CustomBar = (props: any) => {
-      const { fill, x, y, width, height, isCorrect } = props;
+      const { fill, x, y, width, height, isCorrect, name } = props;
       
       return (
         <g>
-          <Rectangle {...props} fill={isCorrect ? 'hsl(var(--primary))' : 'hsl(var(--muted))'} radius={[4, 4, 0, 0]} />
+          <rect {...props} fill={isCorrect ? 'hsl(var(--primary))' : 'hsl(var(--muted))'} radius={[0, 4, 4, 0]} />
           {isCorrect && (
              <CheckCircle 
-                x={x + width / 2 - 8} 
-                y={y - 20} 
+                x={x + width - 24} 
+                y={y + height / 2 - 8}
                 width={16} 
                 height={16} 
-                className="text-green-500"
+                className="text-white"
               />
           )}
         </g>
       );
     };
 
+    const CustomizedYAxisTick = (props: any) => {
+        const { x, y, payload } = props;
+        return (
+            <Text
+                x={x}
+                y={y}
+                width={150}
+                textAnchor="end"
+                verticalAnchor="middle"
+                fill="hsl(var(--muted-foreground))"
+                className="text-xs"
+            >
+                {payload.value}
+            </Text>
+        );
+    };
+
     return (
-        <Card className="w-full max-w-lg">
+        <Card className="w-full max-w-2xl flex-1">
             <CardHeader>
                 <CardTitle>Answer Distribution</CardTitle>
             </CardHeader>
             <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={data} margin={{ top: 30, right: 10, left: 10, bottom: 5 }}>
-                        <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} />
-                        <YAxis hide={true} />
-                        <Bar dataKey="total" shape={<CustomBar />}>
+                <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={data} layout="vertical" margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
+                        <XAxis type="number" hide={true} />
+                        <YAxis 
+                            dataKey="name" 
+                            type="category" 
+                            width={150} 
+                            tickLine={false} 
+                            axisLine={false} 
+                            tick={<CustomizedYAxisTick/>}
+                        />
+                        <Bar dataKey="total" minPointSize={2} shape={<CustomBar />}>
                              <LabelList dataKey="total" content={<CustomBarLabel />} />
                         </Bar>
                     </BarChart>
@@ -474,3 +498,5 @@ function AnswerDistributionChart({ data }: { data: { name: string; total: number
         </Card>
     );
 }
+
+    
