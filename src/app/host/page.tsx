@@ -1,13 +1,15 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
 import { SharedQuizzes } from '@/components/app/shared-quizzes';
-import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye, Edit } from 'lucide-react';
+import { QuizShareManager } from '@/components/app/quiz-share-manager';
+import { QuizPreview } from '@/components/app/quiz-preview';
+import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye, Edit, Share2 } from 'lucide-react';
 import { useCollection, useFirestore, useUser, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
@@ -27,7 +29,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 function GameStateBadge({ state }: { state: Game['state'] }) {
     let text;
@@ -61,13 +70,19 @@ export default function HostDashboardPage() {
   const firestore = useFirestore();
   const storage = useStorage();
   const { user, loading: userLoading } = useUser();
-  
-  const quizzesQuery = useMemoFirebase(() => 
+
+  // State for share dialog
+  const [shareDialogQuiz, setShareDialogQuiz] = useState<{ id: string; title: string } | null>(null);
+
+  // State for preview dialog
+  const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
+
+  const quizzesQuery = useMemoFirebase(() =>
     user ? query(collection(firestore, 'quizzes'), where('hostId', '==', user.uid)) : null
   , [user, firestore]);
 
   const { data: quizzes, loading: quizzesLoading } = useCollection<Quiz>(quizzesQuery);
-  
+
   const gamesQuery = useMemoFirebase(() =>
     user ? query(collection(firestore, 'games'), where('hostId', '==', user.uid)) : null
     , [user, firestore]);
@@ -304,14 +319,22 @@ export default function HostDashboardPage() {
                                     <CardDescription>{quiz.questions.length} questions</CardDescription>
                                 </div>
                                 <div className='flex items-center gap-1'>
-                                    <Button asChild variant="ghost" size="icon">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => setShareDialogQuiz({ id: quiz.id, title: quiz.title })}
+                                      title="Share quiz"
+                                    >
+                                      <Share2 className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                    <Button asChild variant="ghost" size="icon" title="Edit quiz">
                                         <Link href={`/host/edit/${quiz.id}`}>
                                             <Edit className="h-4 w-4 text-muted-foreground" />
                                         </Link>
                                     </Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon">
+                                            <Button variant="ghost" size="icon" title="Delete quiz">
                                                 <Trash2 className="h-4 w-4 text-destructive" />
                                             </Button>
                                         </AlertDialogTrigger>
@@ -332,9 +355,12 @@ export default function HostDashboardPage() {
                                     </AlertDialog>
                                 </div>
                             </CardHeader>
-                            <CardContent className="flex-grow flex items-end">
+                            <CardContent className="flex-grow flex flex-col justify-end gap-2">
                                 <Button className="w-full" onClick={() => handleHostGame(quiz.id)}>
-                                <Gamepad2 className="mr-2 h-4 w-4" /> Host Game
+                                  <Gamepad2 className="mr-2 h-4 w-4" /> Host Game
+                                </Button>
+                                <Button className="w-full" variant="outline" onClick={() => setPreviewQuiz(quiz)}>
+                                  <Eye className="mr-2 h-4 w-4" /> Preview Quiz
                                 </Button>
                             </CardContent>
                         </Card>
@@ -408,6 +434,35 @@ export default function HostDashboardPage() {
                 </div>
             </div>
         )}
+
+        {/* Share Quiz Dialog */}
+        <Dialog open={!!shareDialogQuiz} onOpenChange={(open) => !open && setShareDialogQuiz(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Share Quiz</DialogTitle>
+              <DialogDescription>
+                Share "{shareDialogQuiz?.title}" with other hosts by entering their email address
+              </DialogDescription>
+            </DialogHeader>
+            {shareDialogQuiz && (
+              <QuizShareManager
+                quizId={shareDialogQuiz.id}
+                quizTitle={shareDialogQuiz.title}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Preview Quiz Dialog */}
+        <Dialog open={!!previewQuiz} onOpenChange={(open) => !open && setPreviewQuiz(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Quiz Preview</DialogTitle>
+            </DialogHeader>
+            {previewQuiz && <QuizPreview quiz={previewQuiz} showCorrectAnswers={true} />}
+          </DialogContent>
+        </Dialog>
+
       </main>
     </div>
   );

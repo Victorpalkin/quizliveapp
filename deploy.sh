@@ -1,13 +1,80 @@
 #!/bin/bash
 
-# gQuiz Deployment Script
-# This script helps deploy the gQuiz application to Google Cloud Run and Firebase
+# gQuiz Deployment Script - Environment Selector
+# This script helps you choose the correct deployment method
+#
+# For automatic CI/CD setup and detailed instructions, see DEPLOYMENT.md
 
 set -e  # Exit on error
 
-echo "🚀 gQuiz Deployment Script"
-echo "=========================="
+echo "🚀 gQuiz Deployment - Environment Selector"
+echo "==========================================="
 echo ""
+echo "This project now supports separate dev and production environments."
+echo ""
+echo "Deployment Options:"
+echo "  1) Deploy to DEVELOPMENT environment"
+echo "  2) Deploy to PRODUCTION environment"
+echo "  3) View deployment documentation"
+echo "  4) Exit"
+echo ""
+read -p "Select option (1-4): " option
+echo ""
+
+case $option in
+  1)
+    echo "🔧 Launching development deployment..."
+    echo ""
+    if [ ! -f ./deploy-dev.sh ]; then
+      echo "❌ deploy-dev.sh not found!"
+      exit 1
+    fi
+    exec ./deploy-dev.sh
+    ;;
+  2)
+    echo "⚠️  Launching PRODUCTION deployment..."
+    echo ""
+    if [ ! -f ./deploy-prod.sh ]; then
+      echo "❌ deploy-prod.sh not found!"
+      exit 1
+    fi
+    exec ./deploy-prod.sh
+    ;;
+  3)
+    echo "📖 Opening deployment documentation..."
+    echo ""
+    if [ -f ./DEPLOYMENT.md ]; then
+      ${PAGER:-less} ./DEPLOYMENT.md
+    else
+      echo "❌ DEPLOYMENT.md not found!"
+      echo ""
+      echo "Quick guide:"
+      echo "  • For dev: ./deploy-dev.sh"
+      echo "  • For prod: ./deploy-prod.sh"
+      echo "  • See README.md for more info"
+    fi
+    exit 0
+    ;;
+  4)
+    echo "Deployment cancelled."
+    exit 0
+    ;;
+  *)
+    echo "❌ Invalid option. Please run ./deploy.sh again and select 1-4."
+    exit 1
+    ;;
+esac
+
+# Legacy deployment code below (kept for reference)
+# ================================================
+# This is the old single-environment deployment
+# It's kept here for reference but should not be used
+# ================================================
+
+exit 0  # Exit before legacy code
+
+# OLD CODE BELOW - DO NOT USE
+# ============================
 
 # Check if required tools are installed
 command -v firebase >/dev/null 2>&1 || { echo "❌ Firebase CLI is not installed. Install with: npm install -g firebase-tools"; exit 1; }

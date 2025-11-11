@@ -38,8 +38,17 @@ yarn-error.log*
 next-env.d.ts
 
 .genkit/*
+
+# Environment files (contains sensitive Firebase credentials)
+# Keep .env.example, .env.*.template committed for reference
 .env*
+!.env.example
+!.env.*.template
 
 # firebase
 firebase-debug.log
 firestore-debug.log
+
+# Cloud Build artifacts
+cloud_run_url.txt
+env_vars.txt

@@ -15,6 +15,7 @@
 | Stronger Game PINs | ✅ Implemented | Medium | 8 characters (208B combinations) vs 6 characters (308M combinations) |
 | Input length limits | ✅ Implemented | Low | maxLength on all input fields |
 | Email-based quiz sharing | ✅ Implemented | Medium | Share quizzes with specific users only, no public sharing |
+| CORS policy review | ✅ Implemented | Medium | Ensure Cloud Functions only accept requests from authorized origins |
 
 ### Feature Enhancements ✅
 
@@ -27,6 +28,7 @@
 | Multiple correct answers | ✅ Implemented | High | Questions can have multiple correct answers |
 | Material You design | ✅ Implemented | Medium | Modern Google Material Design 3 styling |
 
+
 ---
 
 ## Proposed Security Improvements
@@ -38,7 +40,7 @@
 | Rate limiting | Medium | High | Prevent spam answer submissions, limit to 1 answer per question |
 | Game PIN expiry | Low | Medium | Expire game PINs after X hours to prevent stale lobbies |
 | Audit logging | Medium | Medium | Log critical actions (quiz creation, game hosting, answer submissions) for security analysis |
-| CORS policy review | Low | Medium | Ensure Cloud Functions only accept requests from authorized origins |
+
 
 ### Priority 2: Important Security
 

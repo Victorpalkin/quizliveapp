@@ -15,6 +15,7 @@ This document contains all bug fixes, technical solutions, and architectural dec
 5. [React DOM Props Validation](#react-dom-props-validation)
 6. [Nested Forms Issue](#nested-forms-issue)
 7. [CORS Security for Cloud Functions](#cors-security-for-cloud-functions)
+8. [Quiz Preview Feature](#quiz-preview-feature)
 
 ---
 
@@ -974,6 +975,189 @@ firebase deploy --only functions
 'http://localhost:3000',
 'http://localhost:3001',
 ```
+
+---
+
+## Quiz Preview Feature
+
+### Feature Request
+
+Hosts need ability to view quiz content before:
+1. Hosting a game with shared quiz
+2. Copying shared quiz to their own quizzes
+3. Hosting their own quiz
+
+### Implementation
+
+**1. Created QuizPreview Component**
+
+`src/components/app/quiz-preview.tsx` - Reusable component for displaying quiz content:
+
+```typescript
+interface QuizPreviewProps {
+  quiz: Quiz;
+  showCorrectAnswers?: boolean;
+}
+
+export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProps) {
+  return (
+    <div className="space-y-6">
+      {/* Quiz Header - Title, description, question count */}
+      {/* Questions - Each with text, time limit, image, color-coded answers */}
+      {/* Correct answer indicators - Green ring + checkmark */}
+    </div>
+  );
+}
+```
+
+**Features:**
+- Quiz title and description
+- Question count badge
+- Each question displays:
+  - Question text
+  - Time limit (with Clock icon)
+  - Optional image (aspect-ratio preserved)
+  - Color-coded answer options (red, blue, yellow, green, purple, pink, orange, teal)
+  - Correct answer indicators (green ring + CheckCircle icon)
+- Responsive 2-column answer grid
+- Scrollable dialog for long quizzes
+
+**2. Added Preview to Shared Quizzes**
+
+`src/components/app/shared-quizzes.tsx`:
+
+```typescript
+// State
+const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
+const [loadingPreview, setLoadingPreview] = useState(false);
+
+// Handler to fetch and display quiz
+const handlePreviewQuiz = async (share: QuizShare) => {
+  setLoadingPreview(true);
+  try {
+    const quizDoc = await getDoc(doc(firestore, 'quizzes', share.quizId));
+    if (!quizDoc.exists()) throw new Error('Quiz not found');
+
+    const quiz = quizDoc.data() as Quiz;
+    setPreviewQuiz(quiz);
+  } catch (error) {
+    toast({
+      variant: 'destructive',
+      title: 'Failed to load quiz preview',
+      description: 'Please try again.',
+    });
+  } finally {
+    setLoadingPreview(false);
+  }
+};
+
+// Preview button in card
+<Button
+  className="w-full"
+  variant="outline"
+  onClick={() => handlePreviewQuiz(share)}
+  disabled={loadingPreview}
+>
+  {loadingPreview ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Eye className="mr-2 h-4 w-4" />}
+  Preview Quiz
+</Button>
+
+// Dialog
+<Dialog open={!!previewQuiz} onOpenChange={(open) => !open && setPreviewQuiz(null)}>
+  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle>Quiz Preview</DialogTitle>
+    </DialogHeader>
+    {previewQuiz && <QuizPreview quiz={previewQuiz} showCorrectAnswers={true} />}
+  </DialogContent>
+</Dialog>
+```
+
+**3. Added Preview to Host Dashboard**
+
+`src/app/host/page.tsx`:
+
+```typescript
+// State
+const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
+
+// Preview button in quiz card (no fetch needed - quiz already loaded)
+<Button className="w-full" variant="outline" onClick={() => setPreviewQuiz(quiz)}>
+  <Eye className="mr-2 h-4 w-4" /> Preview Quiz
+</Button>
+
+// Dialog (same as SharedQuizzes)
+<Dialog open={!!previewQuiz} onOpenChange={(open) => !open && setPreviewQuiz(null)}>
+  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle>Quiz Preview</DialogTitle>
+    </DialogHeader>
+    {previewQuiz && <QuizPreview quiz={previewQuiz} showCorrectAnswers={true} />}
+  </DialogContent>
+</Dialog>
+```
+
+### User Experience Flow
+
+**Shared Quizzes:**
+1. User clicks "Preview Quiz" button
+2. Loading spinner shows while fetching quiz data
+3. Dialog opens with full quiz preview
+4. User reviews questions, answers, images, time limits
+5. User makes informed decision to Host Game or Copy quiz
+6. Click outside dialog or X to close
+
+**Own Quizzes:**
+1. User clicks "Preview Quiz" button
+2. Dialog opens instantly (no fetch needed)
+3. User reviews quiz content
+4. Click outside dialog or X to close
+
+### Design Decisions
+
+**Why separate QuizPreview component?**
+- Reusability across SharedQuizzes and HostDashboard
+- Single source of truth for quiz display logic
+- Easier to maintain and update styling
+- Could be reused in quiz edit page, results page, etc.
+
+**Why showCorrectAnswers prop?**
+- Flexibility for future use cases (e.g., preview without revealing answers)
+- Currently always true, but architecture supports hiding answers
+
+**Why fetch quiz data for shared quizzes?**
+- Share objects only contain minimal data (quizId, title, sharedByEmail)
+- Full quiz data (questions, answers, images) stored in quiz document
+- Fetching on-demand reduces initial load time and data transfer
+
+**Why max-w-4xl dialog?**
+- Wide enough to show answer grid comfortably (2 columns on desktop)
+- Not too wide on large screens
+- Works well with responsive design
+
+**Why max-h-[90vh] with overflow-y-auto?**
+- Long quizzes (20+ questions) need scrolling
+- 90vh ensures dialog doesn't touch screen edges
+- Allows viewing quiz without hiding other UI
+
+### Files Modified
+
+- `src/components/app/quiz-preview.tsx` - Created new component (112 lines)
+- `src/components/app/shared-quizzes.tsx:42-43,53-73,280-292,344-352` - Added preview state, handler, button, dialog
+- `src/app/host/page.tsx:11,77,362-364,456-464` - Added preview state, button, dialog
+
+### Testing Checklist
+
+- [ ] Preview shared quiz - shows all questions correctly
+- [ ] Preview shared quiz with images - images display correctly
+- [ ] Preview shared quiz with multiple correct answers - all marked correctly
+- [ ] Preview own quiz - opens instantly without fetch
+- [ ] Preview long quiz (10+ questions) - dialog scrolls properly
+- [ ] Close preview dialog - reopening works correctly
+- [ ] Preview quiz with no description - layout still works
+- [ ] Preview quiz with varied time limits - all show correctly
+- [ ] Preview loading state - spinner shows while fetching
+- [ ] Preview error handling - shows error toast on failure
 
 ---
 

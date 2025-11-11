@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
+import { EnvironmentBadge } from '@/components/app/environment-badge';
 
 export const metadata: Metadata = {
   title: 'gQuiz',
@@ -29,6 +30,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
+          <EnvironmentBadge />
           {children}
           <Toaster />
         </FirebaseClientProvider>

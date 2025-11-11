@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Share2, Copy, Trash2, Loader2, Play } from 'lucide-react';
+import { Share2, Copy, Trash2, Loader2, Play, Eye } from 'lucide-react';
 import { useFirestore, useUser, useStorage } from '@/firebase';
 import { useSharedQuizzes } from '@/firebase/firestore/use-shared-quizzes';
 import { collection, addDoc, deleteDoc, doc, serverTimestamp, getDoc, updateDoc } from 'firebase/firestore';
@@ -12,6 +12,7 @@ import type { QuizShare, Quiz } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { nanoid } from 'nanoid';
+import { QuizPreview } from './quiz-preview';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +24,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function SharedQuizzes() {
   const firestore = useFirestore();
@@ -32,6 +39,8 @@ export function SharedQuizzes() {
   const router = useRouter();
   const [copying, setCopying] = useState<string | null>(null);
   const [hosting, setHosting] = useState<string | null>(null);
+  const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   const { shares: initialShares, loading } = useSharedQuizzes();
   const [shares, setShares] = useState(initialShares);
@@ -40,6 +49,28 @@ export function SharedQuizzes() {
   useEffect(() => {
     setShares(initialShares);
   }, [initialShares]);
+
+  const handlePreviewQuiz = async (share: QuizShare) => {
+    setLoadingPreview(true);
+    try {
+      const quizDoc = await getDoc(doc(firestore, 'quizzes', share.quizId));
+      if (!quizDoc.exists()) {
+        throw new Error('Quiz not found');
+      }
+
+      const quiz = quizDoc.data() as Quiz;
+      setPreviewQuiz(quiz);
+    } catch (error) {
+      console.error('Error loading quiz preview:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Failed to load quiz preview',
+        description: 'Please try again.',
+      });
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
 
   /**
    * Copy image from original quiz to new quiz in Firebase Storage
@@ -248,6 +279,19 @@ export function SharedQuizzes() {
                 </Button>
                 <Button
                   className="w-full"
+                  variant="outline"
+                  onClick={() => handlePreviewQuiz(share)}
+                  disabled={loadingPreview}
+                >
+                  {loadingPreview ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Eye className="mr-2 h-4 w-4" />
+                  )}
+                  Preview Quiz
+                </Button>
+                <Button
+                  className="w-full"
                   variant="secondary"
                   onClick={() => handleCopyQuiz(share)}
                   disabled={copying === share.id}
@@ -296,6 +340,16 @@ export function SharedQuizzes() {
           </CardContent>
         </Card>
       )}
+
+      {/* Preview Dialog */}
+      <Dialog open={!!previewQuiz} onOpenChange={(open) => !open && setPreviewQuiz(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Quiz Preview</DialogTitle>
+          </DialogHeader>
+          {previewQuiz && <QuizPreview quiz={previewQuiz} showCorrectAnswers={true} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
