@@ -6,6 +6,14 @@
 
 set -e  # Exit on error
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the project root directory (two levels up from deployment/scripts/)
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Change to project root
+cd "$ROOT_DIR"
+
 echo "🚀 gQuiz PRODUCTION Deployment"
 echo "=============================="
 echo ""
@@ -15,7 +23,7 @@ echo ""
 
 # Configuration
 ENVIRONMENT="production"
-FIREBASE_CONFIG="firebase.prod.json"
+FIREBASE_CONFIG="deployment/configs/firebase.prod.json"
 REGION="europe-west4"
 
 # Safety check: Ensure we're on main branch
@@ -47,7 +55,7 @@ command -v firebase >/dev/null 2>&1 || { echo "❌ Firebase CLI is not installed
 command -v gcloud >/dev/null 2>&1 || { echo "❌ Google Cloud CLI is not installed. Visit: https://cloud.google.com/sdk/docs/install"; exit 1; }
 
 # Check if .env.production exists
-if [ ! -f .env.production ]; then
+if [ ! -f "$ROOT_DIR/.env.production" ]; then
     echo "❌ .env.production file not found!"
     echo "Please create .env.production with your Firebase production project configuration."
     echo "You can copy from .env.production.template:"
@@ -58,7 +66,7 @@ fi
 
 # Load environment variables
 echo "📋 Loading production environment variables..."
-source .env.production
+source "$ROOT_DIR/.env.production"
 
 # Extract project ID from environment
 if [ -z "$NEXT_PUBLIC_FIREBASE_PROJECT_ID" ]; then

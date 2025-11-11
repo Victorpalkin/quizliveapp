@@ -5,13 +5,21 @@
 
 set -e  # Exit on error
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get the project root directory (two levels up from deployment/scripts/)
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Change to project root
+cd "$ROOT_DIR"
+
 echo "🚀 gQuiz Development Deployment"
 echo "==============================="
 echo ""
 
 # Configuration
 ENVIRONMENT="dev"
-FIREBASE_CONFIG="firebase.dev.json"
+FIREBASE_CONFIG="deployment/configs/firebase.dev.json"
 REGION="europe-west4"
 
 # Check if required tools are installed
@@ -19,7 +27,7 @@ command -v firebase >/dev/null 2>&1 || { echo "❌ Firebase CLI is not installed
 command -v gcloud >/dev/null 2>&1 || { echo "❌ Google Cloud CLI is not installed. Visit: https://cloud.google.com/sdk/docs/install"; exit 1; }
 
 # Check if .env.development exists
-if [ ! -f .env.development ]; then
+if [ ! -f "$ROOT_DIR/.env.development" ]; then
     echo "❌ .env.development file not found!"
     echo "Please create .env.development with your Firebase dev project configuration."
     echo "You can copy from .env.development.template:"
@@ -30,7 +38,7 @@ fi
 
 # Load environment variables
 echo "📋 Loading development environment variables..."
-source .env.development
+source "$ROOT_DIR/.env.development"
 
 # Extract project ID from environment
 if [ -z "$NEXT_PUBLIC_FIREBASE_PROJECT_ID" ]; then

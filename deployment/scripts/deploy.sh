@@ -25,32 +25,36 @@ case $option in
   1)
     echo "🔧 Launching development deployment..."
     echo ""
-    if [ ! -f ./deploy-dev.sh ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ ! -f "$SCRIPT_DIR/deploy-dev.sh" ]; then
       echo "❌ deploy-dev.sh not found!"
       exit 1
     fi
-    exec ./deploy-dev.sh
+    exec "$SCRIPT_DIR/deploy-dev.sh"
     ;;
   2)
     echo "⚠️  Launching PRODUCTION deployment..."
     echo ""
-    if [ ! -f ./deploy-prod.sh ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ ! -f "$SCRIPT_DIR/deploy-prod.sh" ]; then
       echo "❌ deploy-prod.sh not found!"
       exit 1
     fi
-    exec ./deploy-prod.sh
+    exec "$SCRIPT_DIR/deploy-prod.sh"
     ;;
   3)
     echo "📖 Opening deployment documentation..."
     echo ""
-    if [ -f ./DEPLOYMENT.md ]; then
-      ${PAGER:-less} ./DEPLOYMENT.md
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+    if [ -f "$ROOT_DIR/docs/deployment/DEPLOYMENT.md" ]; then
+      ${PAGER:-less} "$ROOT_DIR/docs/deployment/DEPLOYMENT.md"
     else
       echo "❌ DEPLOYMENT.md not found!"
       echo ""
       echo "Quick guide:"
-      echo "  • For dev: ./deploy-dev.sh"
-      echo "  • For prod: ./deploy-prod.sh"
+      echo "  • For dev: deployment/scripts/deploy-dev.sh"
+      echo "  • For prod: deployment/scripts/deploy-prod.sh"
       echo "  • See README.md for more info"
     fi
     exit 0

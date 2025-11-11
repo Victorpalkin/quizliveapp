@@ -87,10 +87,32 @@ Open [http://localhost:9002](http://localhost:9002) with your browser to see the
 
 ## Deployment
 
+This application supports separate **production** and **development/test** environments with automated CI/CD deployment from GitHub using Cloud Build.
+
+### Quick Start
+
+For detailed deployment instructions, see **[docs/deployment/DEPLOYMENT.md](docs/deployment/DEPLOYMENT.md)**.
+
+**Quick deployment commands:**
+
+```bash
+# Deploy to development environment
+./deployment/scripts/deploy-dev.sh
+
+# Deploy to production environment (with safety checks)
+./deployment/scripts/deploy-prod.sh
+
+# Interactive deployment menu
+./deployment/scripts/deploy.sh
+```
+
+### Architecture
+
 This application uses a hybrid deployment approach:
 - **Client Application**: Deployed to Google Cloud Run
 - **Cloud Functions**: Deployed to Firebase for server-side validation
 - **Database & Storage**: Firebase Firestore and Cloud Storage
+- **CI/CD**: Cloud Build with automatic dev deployments on push to `develop` branch
 
 ### Prerequisites
 
@@ -569,4 +591,80 @@ This application implements several security measures:
 - **Strong Game PINs**: 8-character PINs provide 208 billion combinations
 - **Transaction-based updates**: Prevents race conditions in score updates
 
-For detailed security implementation, see `SECURITY_IMPROVEMENTS.md`.
+For detailed security implementation, see [docs/architecture/SECURITY.md](docs/architecture/SECURITY.md).
+
+## Project Structure
+
+```
+quizliveapp/
+├── README.md                          # This file
+├── package.json                       # Project dependencies
+├── next.config.ts                     # Next.js configuration
+├── tsconfig.json                      # TypeScript configuration
+│
+├── .env.development.template          # Development environment template
+├── .env.production.template           # Production environment template
+├── .env.example                       # Environment variables example
+│
+├── src/                               # Source code
+│   ├── app/                           # Next.js app router pages
+│   │   ├── host/                      # Host dashboard and game management
+│   │   ├── play/                      # Player game interface
+│   │   ├── join/                      # Player join page
+│   │   └── login/                     # Authentication
+│   ├── components/                    # React components
+│   │   ├── app/                       # Application-specific components
+│   │   └── ui/                        # Reusable UI components
+│   ├── firebase/                      # Firebase integration
+│   │   ├── auth/                      # Authentication hooks
+│   │   └── firestore/                 # Firestore hooks and utilities
+│   ├── hooks/                         # Custom React hooks
+│   └── lib/                           # Utilities and types
+│
+├── functions/                         # Cloud Functions (server-side)
+│   ├── src/
+│   │   └── index.ts                   # submitAnswer function
+│   └── package.json
+│
+├── deployment/                        # Deployment resources
+│   ├── scripts/                       # Deployment automation scripts
+│   │   ├── deploy.sh                  # Environment selector
+│   │   ├── deploy-dev.sh              # Dev deployment
+│   │   └── deploy-prod.sh             # Production deployment
+│   └── configs/                       # Deployment configurations
+│       ├── cloudbuild.yaml            # CI/CD pipeline
+│       ├── firebase.dev.json          # Firebase dev config
+│       └── firebase.prod.json         # Firebase prod config
+│
+├── docs/                              # Documentation
+│   ├── deployment/                    # Deployment guides
+│   │   ├── DEPLOYMENT.md              # Complete deployment guide
+│   │   └── DEPLOYMENT_SETUP_SUMMARY.md # Quick reference
+│   ├── architecture/                  # Architecture documentation
+│   │   ├── blueprint.md               # Project design
+│   │   ├── PLAYER_STATE_FLOW.md       # State machine
+│   │   └── SECURITY.md                # Security architecture
+│   └── development/                   # Development docs
+│       ├── FIXES_AND_SOLUTIONS.md     # Bug fixes and solutions
+│       ├── BACKLOG.md                 # Feature backlog
+│       └── backend.json               # API structure
+│
+├── firebase.json                      # Main Firebase configuration
+├── firestore.rules                    # Firestore security rules
+├── firestore.indexes.json             # Firestore indexes
+└── storage.rules                      # Cloud Storage security rules
+```
+
+## Documentation
+
+All project documentation is organized in the [`docs/`](docs/) directory:
+
+- **[Deployment Guide](docs/deployment/DEPLOYMENT.md)** - Complete deployment setup for production and dev/test
+- **[Quick Deployment Reference](docs/deployment/DEPLOYMENT_SETUP_SUMMARY.md)** - Quick lookup guide
+- **[Architecture Blueprint](docs/architecture/blueprint.md)** - Project design and architecture
+- **[Player State Flow](docs/architecture/PLAYER_STATE_FLOW.md)** - State synchronization logic
+- **[Security Documentation](docs/architecture/SECURITY.md)** - Security implementation details
+- **[Bug Fixes & Solutions](docs/development/FIXES_AND_SOLUTIONS.md)** - Technical solutions and lessons learned
+- **[Feature Backlog](docs/development/BACKLOG.md)** - Planned features and improvements
+
+See [docs/README.md](docs/README.md) for a complete documentation index.

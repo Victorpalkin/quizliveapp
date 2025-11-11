@@ -3,13 +3,13 @@
 #
 # Substitution variables (set by trigger):
 #   _ENVIRONMENT: 'dev' or 'production'
-#   _FIREBASE_CONFIG: 'firebase.dev.json' or 'firebase.prod.json'
+#   _FIREBASE_CONFIG: 'deployment/configs/firebase.dev.json' or 'deployment/configs/firebase.prod.json'
 #   _REGION: 'europe-west4'
 #   _SERVICE_NAME: 'gquiz-dev' or 'gquiz-prod'
 
 substitutions:
   _ENVIRONMENT: 'dev'
-  _FIREBASE_CONFIG: 'firebase.dev.json'
+  _FIREBASE_CONFIG: 'deployment/configs/firebase.dev.json'
   _REGION: 'europe-west4'
   _SERVICE_NAME: 'gquiz-dev'
 
