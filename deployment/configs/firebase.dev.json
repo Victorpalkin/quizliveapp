@@ -5,7 +5,7 @@
   },
   "storage": [
     {
-      "bucket": "gquiz-dev.appspot.com",
+      "bucket": "gqzuiz-dev-f424.firebasestorage.app",
       "rules": "storage.rules"
     }
   ],

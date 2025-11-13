@@ -41,9 +41,10 @@ next-env.d.ts
 
 # Environment files (contains sensitive Firebase credentials)
 # Keep .env.example, .env.*.template committed for reference
-.env*
 !.env.example
 !.env.*.template
+.env*
+
 
 # firebase
 firebase-debug.log

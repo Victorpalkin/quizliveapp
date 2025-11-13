@@ -5,7 +5,7 @@
   },
   "storage": [
     {
-      "bucket": "gquiz-production.appspot.com",
+      "bucket": "gquiz-prod-3r5f.firebasestorage.app",
       "rules": "storage.rules"
     }
   ],
