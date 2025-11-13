@@ -108,22 +108,58 @@ quizliveapp/
 
 ---
 
+## Configuration Variables
+
+Before starting, set your project IDs as environment variables. This allows you to copy-paste all commands without modification.
+
+**Set these variables in your terminal:**
+
+```bash
+# Set your Firebase project IDs
+export DEV_PROJECT_ID="your-dev-project-id"
+export PROD_PROJECT_ID="your-prod-project-id"
+
+# Set your deployment region (optional, defaults to europe-west4)
+export DEPLOY_REGION="europe-west4"
+
+# Verify they're set
+echo "Dev Project: $DEV_PROJECT_ID"
+echo "Prod Project: $PROD_PROJECT_ID"
+echo "Region: $DEPLOY_REGION"
+```
+
+**Note**: These variables are only set for your current terminal session. You'll need to set them again if you open a new terminal, or add them to your `~/.bashrc` or `~/.zshrc` for persistence.
+
+**To make them permanent (optional):**
+
+```bash
+# Add to ~/.bashrc or ~/.zshrc
+echo 'export DEV_PROJECT_ID="your-dev-project-id"' >> ~/.bashrc
+echo 'export PROD_PROJECT_ID="your-prod-project-id"' >> ~/.bashrc
+echo 'export DEPLOY_REGION="europe-west4"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+---
+
 ## Phase 1: Create Firebase Projects
 
 ### 1.1 Create Development Project
 
 1. Go to [Firebase Console](https://console.firebase.google.com)
 2. Click "Add project"
-3. **Project name**: `gquiz-dev`
+3. **Project name**: Choose a name for your dev project (e.g., `gquiz-dev`, `your-app-dev`, etc.)
 4. Disable Google Analytics (optional for dev)
 5. Click "Create project"
+6. **Note the Project ID** - you'll use this for `$DEV_PROJECT_ID` later
 
 ### 1.2 Create Production Project
 
 1. Click "Add project" again
-2. **Project name**: `gquiz-production`
+2. **Project name**: Choose a name for your production project (e.g., `gquiz-production`, `your-app-prod`, etc.)
 3. Enable Google Analytics (recommended for prod)
 4. Click "Create project"
+5. **Note the Project ID** - you'll use this for `$PROD_PROJECT_ID` later
 
 ### 1.3 Enable Services (Do this for BOTH projects)
 
@@ -161,20 +197,20 @@ quizliveapp/
 
 **For Development Project:**
 
-1. In Firebase Console, select `gquiz-dev`
+1. In Firebase Console, select **your development project**
 2. Click gear icon → Project settings
 3. Scroll to "Your apps"
 4. Click "Web" icon (</>) to create web app
-5. Register app name: `gQuiz Dev`
+5. Register app name (e.g., `gQuiz Dev`, `Your App Dev`, etc.)
 6. Copy the Firebase configuration object
 7. Save these values - you'll need them for `.env.development`
 
 ```javascript
 const firebaseConfig = {
   apiKey: "...",
-  authDomain: "gquiz-dev.firebaseapp.com",
-  projectId: "gquiz-dev",
-  storageBucket: "gquiz-dev.appspot.com",
+  authDomain: "your-dev-project.firebaseapp.com",
+  projectId: "your-dev-project-id",
+  storageBucket: "your-dev-project.appspot.com",
   messagingSenderId: "...",
   appId: "...",
   measurementId: "..."
@@ -183,7 +219,7 @@ const firebaseConfig = {
 
 **For Production Project:**
 
-Repeat the same steps for `gquiz-production`
+Repeat the same steps for **your production project**, saving those values for `.env.production`
 
 ---
 
@@ -203,16 +239,34 @@ nano .env.development  # or use your preferred editor
 
 ```bash
 NEXT_PUBLIC_FIREBASE_API_KEY=your-dev-api-key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=gquiz-dev.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=gquiz-dev
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=gquiz-dev.appspot.com
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${DEV_PROJECT_ID}.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=${DEV_PROJECT_ID}
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${DEV_PROJECT_ID}.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-dev-sender-id
 NEXT_PUBLIC_FIREBASE_APP_ID=your-dev-app-id
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-dev-measurement-id
 
 NEXT_PUBLIC_ENVIRONMENT=development
-GCP_REGION=europe-west4
-CLOUD_RUN_SERVICE_NAME=gquiz-dev
+GCP_REGION=${DEPLOY_REGION}
+CLOUD_RUN_SERVICE_NAME=${DEV_PROJECT_ID}
+```
+
+**Or create it automatically using the variables:**
+
+```bash
+cat > .env.development <<EOF
+NEXT_PUBLIC_FIREBASE_API_KEY=your-dev-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${DEV_PROJECT_ID}.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=${DEV_PROJECT_ID}
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${DEV_PROJECT_ID}.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-dev-sender-id
+NEXT_PUBLIC_FIREBASE_APP_ID=your-dev-app-id
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-dev-measurement-id
+
+NEXT_PUBLIC_ENVIRONMENT=development
+GCP_REGION=${DEPLOY_REGION}
+CLOUD_RUN_SERVICE_NAME=${DEV_PROJECT_ID}
+EOF
 ```
 
 ### 2.2 Create Production Environment File
@@ -229,16 +283,34 @@ nano .env.production
 
 ```bash
 NEXT_PUBLIC_FIREBASE_API_KEY=your-prod-api-key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=gquiz-production.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=gquiz-production
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=gquiz-production.appspot.com
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${PROD_PROJECT_ID}.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=${PROD_PROJECT_ID}
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${PROD_PROJECT_ID}.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-prod-sender-id
 NEXT_PUBLIC_FIREBASE_APP_ID=your-prod-app-id
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-prod-measurement-id
 
 NEXT_PUBLIC_ENVIRONMENT=production
-GCP_REGION=europe-west4
-CLOUD_RUN_SERVICE_NAME=gquiz-prod
+GCP_REGION=${DEPLOY_REGION}
+CLOUD_RUN_SERVICE_NAME=${PROD_PROJECT_ID}
+```
+
+**Or create it automatically using the variables:**
+
+```bash
+cat > .env.production <<EOF
+NEXT_PUBLIC_FIREBASE_API_KEY=your-prod-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${PROD_PROJECT_ID}.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=${PROD_PROJECT_ID}
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${PROD_PROJECT_ID}.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-prod-sender-id
+NEXT_PUBLIC_FIREBASE_APP_ID=your-prod-app-id
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-prod-measurement-id
+
+NEXT_PUBLIC_ENVIRONMENT=production
+GCP_REGION=${DEPLOY_REGION}
+CLOUD_RUN_SERVICE_NAME=${PROD_PROJECT_ID}
+EOF
 ```
 
 ### 2.3 Verify Environment Files
@@ -268,7 +340,7 @@ git status  # Should NOT show .env.development or .env.production
 
 ```bash
 # Set current project
-gcloud config set project gquiz-dev
+gcloud config set project $DEV_PROJECT_ID
 
 # Enable Cloud Build API
 gcloud services enable cloudbuild.googleapis.com
@@ -280,7 +352,7 @@ gcloud services enable secretmanager.googleapis.com
 
 ```bash
 # Set current project
-gcloud config set project gquiz-production
+gcloud config set project $PROD_PROJECT_ID
 
 # Enable Cloud Build API
 gcloud services enable cloudbuild.googleapis.com
@@ -294,25 +366,25 @@ gcloud services enable secretmanager.googleapis.com
 
 ```bash
 # Get project number
-PROJECT_NUMBER=$(gcloud projects describe gquiz-dev --format="value(projectNumber)")
+PROJECT_NUMBER=$(gcloud projects describe $DEV_PROJECT_ID --format="value(projectNumber)")
 
 # Cloud Build service account
 SERVICE_ACCOUNT="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
 
 # Grant necessary roles
-gcloud projects add-iam-policy-binding gquiz-dev \
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${SERVICE_ACCOUNT}" \
   --role="roles/run.admin"
 
-gcloud projects add-iam-policy-binding gquiz-dev \
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${SERVICE_ACCOUNT}" \
   --role="roles/iam.serviceAccountUser"
 
-gcloud projects add-iam-policy-binding gquiz-dev \
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${SERVICE_ACCOUNT}" \
   --role="roles/firebase.admin"
 
-gcloud projects add-iam-policy-binding gquiz-dev \
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${SERVICE_ACCOUNT}" \
   --role="roles/secretmanager.secretAccessor"
 ```
@@ -321,25 +393,25 @@ gcloud projects add-iam-policy-binding gquiz-dev \
 
 ```bash
 # Get project number
-PROJECT_NUMBER=$(gcloud projects describe gquiz-production --format="value(projectNumber)")
+PROJECT_NUMBER=$(gcloud projects describe $PROD_PROJECT_ID --format="value(projectNumber)")
 
 # Cloud Build service account
 SERVICE_ACCOUNT="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
 
 # Grant necessary roles
-gcloud projects add-iam-policy-binding gquiz-production \
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
   --member="serviceAccount:${SERVICE_ACCOUNT}" \
   --role="roles/run.admin"
 
-gcloud projects add-iam-policy-binding gquiz-production \
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
   --member="serviceAccount:${SERVICE_ACCOUNT}" \
   --role="roles/iam.serviceAccountUser"
 
-gcloud projects add-iam-policy-binding gquiz-production \
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
   --member="serviceAccount:${SERVICE_ACCOUNT}" \
   --role="roles/firebase.admin"
 
-gcloud projects add-iam-policy-binding gquiz-production \
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
   --member="serviceAccount:${SERVICE_ACCOUNT}" \
   --role="roles/secretmanager.secretAccessor"
 ```
@@ -350,7 +422,7 @@ gcloud projects add-iam-policy-binding gquiz-production \
 
 ```bash
 # Set project
-gcloud config set project gquiz-dev
+gcloud config set project $DEV_PROJECT_ID
 
 # Create secret from .env.development
 gcloud secrets create firebase-config-dev \
@@ -364,7 +436,7 @@ gcloud secrets versions access latest --secret=firebase-config-dev
 
 ```bash
 # Set project
-gcloud config set project gquiz-production
+gcloud config set project $PROD_PROJECT_ID
 
 # Create secret from .env.production
 gcloud secrets create firebase-config-production \
@@ -416,13 +488,13 @@ git push -u origin main
 **Option A: Via Google Cloud Console (Recommended)**
 
 1. Go to [Cloud Build Triggers](https://console.cloud.google.com/cloud-build/triggers)
-2. Select project: `gquiz-dev`
+2. Select project: **YOUR DEV PROJECT** (the one you set in `$DEV_PROJECT_ID`)
 3. Click "Connect Repository"
 4. Select "GitHub (Cloud Build GitHub App)"
 5. Authenticate with GitHub
 6. Select your repository: `YOUR-USERNAME/quizliveapp`
 7. Click "Connect"
-8. Repeat for `gquiz-production` project
+8. Repeat for **YOUR PROD PROJECT** (the one you set in `$PROD_PROJECT_ID`)
 
 **Option B: Via gcloud CLI**
 
@@ -432,8 +504,8 @@ gcloud alpha builds triggers create github \
   --repo-name=quizliveapp \
   --repo-owner=YOUR-USERNAME \
   --branch-pattern=^develop$ \
-  --build-config=cloudbuild.yaml \
-  --project=gquiz-dev
+  --build-config=deployment/configs/cloudbuild.yaml \
+  --project=$DEV_PROJECT_ID
 ```
 
 ---
@@ -443,12 +515,12 @@ gcloud alpha builds triggers create github \
 ### 5.1 Create Development Trigger (Auto-Deploy)
 
 1. Go to [Cloud Build Triggers](https://console.cloud.google.com/cloud-build/triggers)
-2. Select project: `gquiz-dev`
+2. Select project: **YOUR DEV PROJECT** (the one you set in `$DEV_PROJECT_ID`)
 3. Click "Create Trigger"
 
 **Trigger Configuration:**
 
-- **Name**: `gquiz-dev-auto-deploy`
+- **Name**: `${DEV_PROJECT_ID}-auto-deploy` (e.g., `gquiz-dev-auto-deploy`)
 - **Description**: `Auto-deploy to dev on push to develop branch`
 - **Event**: Push to a branch
 - **Source**: Select your connected repository
@@ -461,20 +533,23 @@ gcloud alpha builds triggers create github \
 _ENVIRONMENT = dev
 _FIREBASE_CONFIG = firebase.dev.json
 _REGION = europe-west4
-_SERVICE_NAME = gquiz-dev
+_SERVICE_NAME = <your-dev-project-id>
 ```
+
+**Note**: Replace `<your-dev-project-id>` with your actual dev project ID (the value you set in `$DEV_PROJECT_ID`).
 
 - **Service account**: Use default Cloud Build service account
 - Click "Create"
 
 ### 5.2 Create Production Trigger (Manual Only)
 
-1. Still in `gquiz-dev` project triggers (we'll move it later)
-2. Click "Create Trigger"
+1. Switch to **YOUR PROD PROJECT** in Cloud Console (the one you set in `$PROD_PROJECT_ID`)
+2. Go to Cloud Build Triggers
+3. Click "Create Trigger"
 
 **Trigger Configuration:**
 
-- **Name**: `gquiz-prod-manual-deploy`
+- **Name**: `${PROD_PROJECT_ID}-manual-deploy` (e.g., `gquiz-prod-manual-deploy`)
 - **Description**: `Manual deployment to production from main branch`
 - **Event**: Manual invocation
 - **Source**: Select your connected repository
@@ -487,8 +562,10 @@ _SERVICE_NAME = gquiz-dev
 _ENVIRONMENT = production
 _FIREBASE_CONFIG = firebase.prod.json
 _REGION = europe-west4
-_SERVICE_NAME = gquiz-prod
+_SERVICE_NAME = <your-prod-project-id>
 ```
+
+**Note**: Replace `<your-prod-project-id>` with your actual production project ID (the value you set in `$PROD_PROJECT_ID`).
 
 - **Service account**: Use default Cloud Build service account
 - Click "Create"
@@ -533,10 +610,10 @@ ls -la .env.development
 ```
 ✅ Deployment Complete!
 
-🌐 Application URL: https://gquiz-dev-XXXXXXXXXX-ew.a.run.app
+🌐 Application URL: https://${DEV_PROJECT_ID}-XXXXXXXXXX-ew.a.run.app
 
 📝 Next Steps:
-1. Test the dev environment at: https://gquiz-dev-XXXXXXXXXX-ew.a.run.app
+1. Test the dev environment at: https://${DEV_PROJECT_ID}-XXXXXXXXXX-ew.a.run.app
 ...
 ```
 
@@ -553,14 +630,14 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:3001',
   'https://localhost:3000',
-  'https://gquiz-dev-XXXXXXXXXX-ew.a.run.app',  // ✅ Add dev URL
+  'https://YOUR-DEV-PROJECT-XXXXXXXXXX-ew.a.run.app',  // ✅ Add dev URL
 ];
 ```
 
 4. Redeploy functions:
 
 ```bash
-firebase deploy --only functions --config firebase.dev.json --project gquiz-dev
+firebase deploy --only functions --config firebase.dev.json --project $DEV_PROJECT_ID
 ```
 
 ### 6.3 Test Automatic Deployment
@@ -580,7 +657,7 @@ git push origin develop
 **Monitor the deployment:**
 
 1. Go to [Cloud Build History](https://console.cloud.google.com/cloud-build/builds)
-2. Select project: `gquiz-dev`
+2. Select project: **YOUR DEV PROJECT** (the one you set in `$DEV_PROJECT_ID`)
 3. You should see a new build running
 4. Click on it to see live logs
 5. Wait for "✅ Deployment Complete!" message
@@ -621,15 +698,15 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:3001',
   'https://localhost:3000',
-  'https://gquiz-dev-XXXXXXXXXX-ew.a.run.app',
-  'https://gquiz-prod-XXXXXXXXXX-ew.a.run.app',  // ✅ Add prod URL
+  'https://YOUR-DEV-PROJECT-XXXXXXXXXX-ew.a.run.app',
+  'https://YOUR-PROD-PROJECT-XXXXXXXXXX-ew.a.run.app',  // ✅ Add prod URL
 ];
 ```
 
 Redeploy functions:
 
 ```bash
-firebase deploy --only functions --config firebase.prod.json --project gquiz-production
+firebase deploy --only functions --config firebase.prod.json --project $PROD_PROJECT_ID
 ```
 
 ---
@@ -660,7 +737,7 @@ git push origin feature/new-feature
 # This triggers automatic deployment to dev
 
 # 7. Test in dev environment
-# Visit: https://gquiz-dev-XXXXXXXXXX-ew.a.run.app
+# Visit: https://${DEV_PROJECT_ID}-XXXXXXXXXX-ew.a.run.app
 
 # 8. If tests pass, create PR: develop → main
 # After approval, merge to main
@@ -709,12 +786,12 @@ git push origin develop
 Check that Cloud Build service account has correct permissions:
 
 ```bash
-# Get service account
-PROJECT_NUMBER=$(gcloud projects describe YOUR-PROJECT --format="value(projectNumber)")
+# For dev environment (or use $PROD_PROJECT_ID for production)
+PROJECT_NUMBER=$(gcloud projects describe $DEV_PROJECT_ID --format="value(projectNumber)")
 SERVICE_ACCOUNT="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
 
 # Re-grant permissions
-gcloud projects add-iam-policy-binding YOUR-PROJECT \
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${SERVICE_ACCOUNT}" \
   --role="roles/run.admin"
 ```
@@ -731,20 +808,23 @@ This is normal - Firebase CLI is installed during the build. Check the `install-
 
 1. Verify secret exists:
    ```bash
-   gcloud secrets list --project YOUR-PROJECT
+   # For dev (or use $PROD_PROJECT_ID for production)
+   gcloud secrets list --project $DEV_PROJECT_ID
    ```
 
 2. Check secret content:
    ```bash
-   gcloud secrets versions access latest --secret=firebase-config-dev --project YOUR-PROJECT
+   # For dev (or use $PROD_PROJECT_ID and firebase-config-production for production)
+   gcloud secrets versions access latest --secret=firebase-config-dev --project $DEV_PROJECT_ID
    ```
 
 3. Verify Cloud Build has access:
    ```bash
+   # For dev (or use $PROD_PROJECT_ID and firebase-config-production for production)
    gcloud secrets add-iam-policy-binding firebase-config-dev \
      --member="serviceAccount:${SERVICE_ACCOUNT}" \
      --role="roles/secretmanager.secretAccessor" \
-     --project YOUR-PROJECT
+     --project $DEV_PROJECT_ID
    ```
 
 ### Issue: Deploy script fails with "NEXT_PUBLIC_FIREBASE_PROJECT_ID not set"
@@ -765,7 +845,7 @@ cat .env.development | grep NEXT_PUBLIC_FIREBASE_PROJECT_ID
 2. Add it to `functions/src/index.ts` ALLOWED_ORIGINS
 3. Redeploy functions:
    ```bash
-   firebase deploy --only functions --config firebase.prod.json
+   firebase deploy --only functions --config firebase.prod.json --project $PROD_PROJECT_ID
    ```
 
 ### Issue: Build timeout
@@ -796,30 +876,37 @@ Reconnect GitHub repository:
 ### View Cloud Build Logs
 
 ```bash
-# List recent builds
-gcloud builds list --project=gquiz-dev --limit=10
+# List recent builds (dev)
+gcloud builds list --project=$DEV_PROJECT_ID --limit=10
 
-# View specific build logs
-gcloud builds log BUILD_ID --project=gquiz-dev
+# View specific build logs (dev)
+gcloud builds log BUILD_ID --project=$DEV_PROJECT_ID
+
+# For production, replace $DEV_PROJECT_ID with $PROD_PROJECT_ID
 ```
 
 ### View Cloud Run Logs
 
 ```bash
-# Stream logs
-gcloud run services logs read gquiz-dev --region=europe-west4 --project=gquiz-dev
+# Stream logs (dev)
+gcloud run services logs read $DEV_PROJECT_ID --region=$DEPLOY_REGION --project=$DEV_PROJECT_ID
 
-# Filter logs
-gcloud run services logs read gquiz-dev --region=europe-west4 --project=gquiz-dev --filter="severity=ERROR"
+# Filter logs (dev)
+gcloud run services logs read $DEV_PROJECT_ID --region=$DEPLOY_REGION --project=$DEV_PROJECT_ID --filter="severity=ERROR"
+
+# For production, replace $DEV_PROJECT_ID with $PROD_PROJECT_ID
 ```
 
 ### View Cloud Functions Logs
 
 ```bash
-firebase functions:log --project gquiz-dev
+# Dev environment
+firebase functions:log --project $DEV_PROJECT_ID
 
 # Or via gcloud
-gcloud functions logs read --region=europe-west4 --project=gquiz-dev
+gcloud functions logs read --region=$DEPLOY_REGION --project=$DEV_PROJECT_ID
+
+# For production, replace $DEV_PROJECT_ID with $PROD_PROJECT_ID
 ```
 
 ### Cost Monitoring
