@@ -47,7 +47,7 @@ if [ -z "$NEXT_PUBLIC_FIREBASE_PROJECT_ID" ]; then
 fi
 
 PROJECT_ID=$NEXT_PUBLIC_FIREBASE_PROJECT_ID
-SERVICE_NAME=${CLOUD_RUN_SERVICE_NAME:-gquiz-dev}
+SERVICE_NAME=$PROJECT_ID
 
 echo ""
 echo "📋 Deployment Configuration:"
