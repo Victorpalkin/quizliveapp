@@ -23,8 +23,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { nanoid } from 'nanoid';
+import {
+  getPlayerSession,
+  savePlayerSession,
+  clearPlayerSession,
+  sessionMatchesPin
+} from '@/lib/player-session';
 
-type PlayerState = 'joining' | 'lobby' | 'preparing' | 'question' | 'waiting' | 'result' | 'ended' | 'cancelled';
+type PlayerState = 'joining' | 'lobby' | 'preparing' | 'question' | 'waiting' | 'result' | 'ended' | 'cancelled' | 'reconnecting' | 'session-invalid';
 
 const answerIcons = [
   TriangleIcon,
@@ -65,10 +71,26 @@ export default function PlayerGamePage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const [state, setState] = useState<PlayerState>('joining');
-  const [nickname, setNickname] = useState('');
-  const [gameDocId, setGameDocId] = useState<string | null>(null);
-  const [playerId] = useState(() => nanoid());
+  // Initialize from session if available
+  const [state, setState] = useState<PlayerState>(() => {
+    const session = getPlayerSession();
+    if (session && session.gamePin === gamePin) {
+      return 'reconnecting';
+    }
+    return 'joining';
+  });
+  const [nickname, setNickname] = useState(() => {
+    const session = getPlayerSession();
+    return session && session.gamePin === gamePin ? session.nickname : '';
+  });
+  const [gameDocId, setGameDocId] = useState<string | null>(() => {
+    const session = getPlayerSession();
+    return session && session.gamePin === gamePin ? session.gameDocId : null;
+  });
+  const [playerId] = useState(() => {
+    const session = getPlayerSession();
+    return session && session.gamePin === gamePin ? session.playerId : nanoid();
+  });
   
   const gameRef = useMemoFirebase(() => gameDocId ? doc(firestore, 'games', gameDocId) as DocumentReference<Game> : null, [firestore, gameDocId]);
   const { data: game, loading: gameLoading } = useDoc(gameRef);
@@ -97,6 +119,96 @@ export default function PlayerGamePage() {
   const lastQuestionIndexRef = useRef<number>(-1);
 
   const isLastQuestion = game && quiz ? game.currentQuestionIndex >= quiz.questions.length - 1 : false;
+
+  // Session restore effect - runs once on mount
+  useEffect(() => {
+    if (state === 'reconnecting') {
+      const attemptReconnect = async () => {
+        try {
+          // Verify game exists
+          if (!gameRef) {
+            console.log('[Reconnect] No game reference, clearing session');
+            clearPlayerSession();
+            setState('session-invalid');
+            return;
+          }
+
+          // Wait for game data to load
+          if (gameLoading) {
+            return; // Will retry when gameLoading changes
+          }
+
+          if (!game) {
+            console.log('[Reconnect] Game not found, clearing session');
+            clearPlayerSession();
+            setState('session-invalid');
+            toast({
+              variant: 'destructive',
+              title: 'Session Expired',
+              description: 'The game has ended or was cancelled.'
+            });
+            return;
+          }
+
+          // Check if game has ended
+          if (game.state === 'ended') {
+            console.log('[Reconnect] Game has ended');
+            clearPlayerSession();
+            setState('ended');
+            return;
+          }
+
+          // Verify player document exists
+          const playerRef = doc(firestore, 'games', gameDocId!, 'players', playerId) as DocumentReference<Player>;
+          const playerDoc = await getDocs(query(collection(firestore, 'games', gameDocId!, 'players'), where('__name__', '==', playerId)));
+
+          if (playerDoc.empty) {
+            // Player document doesn't exist, try to recreate it
+            console.log('[Reconnect] Player document missing, attempting to recreate');
+            const newPlayer = { id: playerId, name: nickname, score: 0, lastAnswerIndex: null };
+            await setDoc(playerRef, newPlayer);
+            setPlayer(newPlayer);
+            toast({
+              title: 'Reconnected!',
+              description: 'Successfully rejoined the game.'
+            });
+          } else {
+            // Player exists, restore their data
+            const playerData = playerDoc.docs[0].data() as Player;
+            setPlayer(playerData);
+            toast({
+              title: 'Reconnected!',
+              description: 'Successfully resumed your session.'
+            });
+          }
+
+          // Transition to appropriate state based on game state
+          if (game.state === 'lobby') {
+            setState('lobby');
+          } else if (game.state === 'preparing') {
+            setState('preparing');
+          } else if (game.state === 'question') {
+            setState('question');
+          } else if (game.state === 'leaderboard') {
+            setState('result');
+          }
+
+        } catch (error) {
+          console.error('[Reconnect] Error during reconnection:', error);
+          clearPlayerSession();
+          setState('session-invalid');
+          toast({
+            variant: 'destructive',
+            title: 'Reconnection Failed',
+            description: 'Could not restore your session. Please rejoin the game.'
+          });
+        }
+      };
+
+      attemptReconnect();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, game, gameLoading]);
 
   useEffect(() => {
     if (!game && !gameLoading && state !== 'joining' && state !== 'cancelled') {
@@ -300,6 +412,8 @@ export default function PlayerGamePage() {
         setDoc(playerRef, newPlayer)
           .then(() => {
             setPlayer({ ...newPlayer, id: playerId });
+            // Save session for reconnection
+            savePlayerSession(playerId, gameDoc.id, gamePin.toUpperCase(), trimmedNickname);
             setState('lobby');
           })
           .catch(error => {
@@ -401,6 +515,40 @@ export default function PlayerGamePage() {
   
   const renderContent = () => {
     switch (state) {
+      case 'reconnecting':
+        return (
+          <div className="text-center">
+            <h1 className="text-4xl font-bold">Reconnecting...</h1>
+            <p className="text-muted-foreground mt-2 text-xl">Restoring your session</p>
+            <div className="mt-12 flex flex-col items-center">
+              <Loader2 className="animate-spin w-12 h-12 text-primary"/>
+              <p className="mt-4">Please wait while we reconnect you to the game...</p>
+            </div>
+          </div>
+        );
+      case 'session-invalid':
+        return (
+          <div className="text-center w-full max-w-sm">
+            <h1 className="text-4xl font-bold text-destructive">Session Expired</h1>
+            <p className="text-muted-foreground mt-4 text-lg">
+              Your previous session could not be restored.
+            </p>
+            <p className="text-muted-foreground mt-2">
+              Please join the game again with the PIN.
+            </p>
+            <Button
+              onClick={() => {
+                clearPlayerSession();
+                setState('joining');
+                setNickname('');
+              }}
+              size="lg"
+              className="w-full mt-8"
+            >
+              Join Game
+            </Button>
+          </div>
+        );
       case 'joining':
         return (
           <div className="text-center w-full max-w-sm">
@@ -525,24 +673,38 @@ export default function PlayerGamePage() {
           </div>
         );
       case 'ended':
+        // Clear session when game ends
+        if (sessionMatchesPin(gamePin)) {
+          clearPlayerSession();
+        }
         return (
             <div className="flex flex-col items-center justify-center text-center p-8 w-full h-full bg-primary text-primary-foreground">
                 <Trophy className="w-24 h-24 mb-4 text-yellow-400" />
                 <h1 className="text-5xl font-bold">Quiz Finished!</h1>
                 <p className="text-3xl mt-4">Your final score is:</p>
                 <p className="text-8xl font-bold my-8">{player?.score}</p>
-                <Button onClick={() => router.push('/')} size="lg" variant="secondary" className="mt-12 text-xl">
+                <Button onClick={() => {
+                    clearPlayerSession();
+                    router.push('/');
+                }} size="lg" variant="secondary" className="mt-12 text-xl">
                     Play Again
                 </Button>
             </div>
         );
       case 'cancelled':
+        // Clear session when game is cancelled
+        if (sessionMatchesPin(gamePin)) {
+          clearPlayerSession();
+        }
         return (
             <div className="flex flex-col items-center justify-center text-center p-8 w-full h-full bg-destructive text-destructive-foreground">
                 <XCircle className="w-24 h-24 mb-4" />
                 <h1 className="text-5xl font-bold">Game Canceled</h1>
                 <p className="text-2xl mt-4">The host has canceled the game.</p>
-                <Button onClick={() => router.push('/')} size="lg" variant="secondary" className="mt-12 text-xl">
+                <Button onClick={() => {
+                    clearPlayerSession();
+                    router.push('/');
+                }} size="lg" variant="secondary" className="mt-12 text-xl">
                     Return Home
                 </Button>
             </div>
