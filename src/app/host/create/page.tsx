@@ -24,6 +24,9 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { nanoid } from 'nanoid';
+import type { MultipleChoiceQuestion, SliderQuestion } from '@/lib/types';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 const answerSchema = z.object({
   text: z.string().min(1, "Answer text can't be empty."),
@@ -99,13 +102,33 @@ export default function CreateQuizPage() {
   }, [storage]);
 
 
-  const addQuestion = (text: string = '') => {
-    const newQuestion: Omit<Question, 'id'> = {
-      text: text,
-      answers: [{ text: '' }, { text: '' }],
-      correctAnswerIndices: [0],
-      timeLimit: 20,
-    };
+  const addQuestion = (text: string = '', type: 'multiple-choice' | 'slider' = 'multiple-choice') => {
+    let newQuestion: Omit<Question, 'id'>;
+
+    if (type === 'slider') {
+      newQuestion = {
+        type: 'slider',
+        text: text,
+        minValue: 0,
+        maxValue: 100,
+        correctValue: 50,
+        step: 1,
+        unit: '',
+        timeLimit: 20,
+      } as Omit<SliderQuestion, 'id'>;
+    } else {
+      newQuestion = {
+        type: 'multiple-choice',
+        text: text,
+        answers: [{ text: '' }, { text: '' }],
+        correctAnswerIndices: [0],
+        timeLimit: 20,
+        allowMultipleAnswers: false,
+        scoringMode: 'proportional',
+        showAnswerCount: true,
+      } as Omit<MultipleChoiceQuestion, 'id'>;
+    }
+
     const newQuestions = [...questions, newQuestion];
     setQuestions(newQuestions);
     form.setValue('questions', newQuestions);
@@ -351,6 +374,54 @@ export default function CreateQuizPage() {
                       )}
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {/* Question Type Selector */}
+                        <FormItem>
+                          <FormLabel>Question Type</FormLabel>
+                          <RadioGroup
+                            value={q.type}
+                            onValueChange={(value: 'multiple-choice' | 'slider') => {
+                              // Convert question type
+                              if (value === 'slider' && q.type === 'multiple-choice') {
+                                const sliderQ: Omit<SliderQuestion, 'id'> = {
+                                  type: 'slider',
+                                  text: q.text,
+                                  minValue: 0,
+                                  maxValue: 100,
+                                  correctValue: 50,
+                                  step: 1,
+                                  unit: '',
+                                  timeLimit: q.timeLimit || 20,
+                                  imageUrl: q.imageUrl,
+                                };
+                                updateQuestion(qIndex, sliderQ);
+                              } else if (value === 'multiple-choice' && q.type === 'slider') {
+                                const mcQ: Omit<MultipleChoiceQuestion, 'id'> = {
+                                  type: 'multiple-choice',
+                                  text: q.text,
+                                  answers: [{ text: '' }, { text: '' }],
+                                  correctAnswerIndices: [0],
+                                  timeLimit: q.timeLimit || 20,
+                                  allowMultipleAnswers: false,
+                                  scoringMode: 'proportional',
+                                  showAnswerCount: true,
+                                  imageUrl: q.imageUrl,
+                                };
+                                updateQuestion(qIndex, mcQ);
+                              }
+                            }}
+                            className="flex gap-4"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="multiple-choice" id={`type-mc-${qIndex}`} />
+                              <Label htmlFor={`type-mc-${qIndex}`}>Multiple Choice</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="slider" id={`type-slider-${qIndex}`} />
+                              <Label htmlFor={`type-slider-${qIndex}`}>Slider (Numeric)</Label>
+                            </div>
+                          </RadioGroup>
+                        </FormItem>
+
                         <FormField
                             control={form.control}
                             name={`questions.${qIndex}.text`}
@@ -425,17 +496,85 @@ export default function CreateQuizPage() {
                                 )}
                             />
                         </div>
-                      
-                        <FormField
-                          control={form.control}
-                          name={`questions.${qIndex}.correctAnswerIndices`}
-                          render={() => (
-                            <FormItem>
-                                <div className="mb-4">
-                                    <FormLabel className="text-base">Answers</FormLabel>
-                                    <p className="text-sm text-muted-foreground">Select one or more correct answers.</p>
-                                </div>
-                                {q.answers.map((ans, aIndex) => (
+
+                        {/* Multi-Answer Configuration (for Multiple Choice) */}
+                        {q.type === 'multiple-choice' && (
+                          <div className="space-y-4 border-l-2 border-primary pl-4">
+                            <FormItem className="flex flex-row items-center justify-between">
+                              <div className="space-y-0.5">
+                                <FormLabel>Allow Multiple Answers</FormLabel>
+                                <p className="text-sm text-muted-foreground">
+                                  Let players select more than one answer
+                                </p>
+                              </div>
+                              <FormControl>
+                                <Checkbox
+                                  checked={q.allowMultipleAnswers || false}
+                                  onCheckedChange={(checked) => {
+                                    updateQuestion(qIndex, { ...q, allowMultipleAnswers: !!checked });
+                                  }}
+                                />
+                              </FormControl>
+                            </FormItem>
+
+                            {q.allowMultipleAnswers && (
+                              <>
+                                <FormItem>
+                                  <FormLabel>Scoring Mode</FormLabel>
+                                  <RadioGroup
+                                    value={q.scoringMode || 'proportional'}
+                                    onValueChange={(value: 'all-or-nothing' | 'proportional') => {
+                                      updateQuestion(qIndex, { ...q, scoringMode: value });
+                                    }}
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <RadioGroupItem value="proportional" id={`scoring-prop-${qIndex}`} />
+                                      <Label htmlFor={`scoring-prop-${qIndex}`} className="font-normal">
+                                        Proportional - Award partial credit for correct answers
+                                      </Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <RadioGroupItem value="all-or-nothing" id={`scoring-all-${qIndex}`} />
+                                      <Label htmlFor={`scoring-all-${qIndex}`} className="font-normal">
+                                        All or Nothing - Full points only if all correct
+                                      </Label>
+                                    </div>
+                                  </RadioGroup>
+                                </FormItem>
+
+                                <FormItem className="flex flex-row items-center justify-between">
+                                  <div className="space-y-0.5">
+                                    <FormLabel>Show Answer Count</FormLabel>
+                                    <p className="text-sm text-muted-foreground">
+                                      Tell players how many answers to select
+                                    </p>
+                                  </div>
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={q.showAnswerCount !== false}
+                                      onCheckedChange={(checked) => {
+                                        updateQuestion(qIndex, { ...q, showAnswerCount: !!checked });
+                                      }}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Multiple Choice Question Configuration */}
+                        {q.type === 'multiple-choice' && (
+                          <FormField
+                            control={form.control}
+                            name={`questions.${qIndex}.correctAnswerIndices`}
+                            render={() => (
+                              <FormItem>
+                                  <div className="mb-4">
+                                      <FormLabel className="text-base">Answers</FormLabel>
+                                      <p className="text-sm text-muted-foreground">Select one or more correct answers.</p>
+                                  </div>
+                                  {q.answers.map((ans, aIndex) => (
                                     <FormField
                                     key={aIndex}
                                     control={form.control}
@@ -494,6 +633,91 @@ export default function CreateQuizPage() {
                             </FormItem>
                           )}
                         />
+                        )}
+
+                        {/* Slider Question Configuration */}
+                        {q.type === 'slider' && (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-3 gap-4">
+                              <FormItem>
+                                <FormLabel>Minimum Value</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    value={q.minValue}
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value);
+                                      updateQuestion(qIndex, { ...q, minValue: val });
+                                    }}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                              <FormItem>
+                                <FormLabel>Maximum Value</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    value={q.maxValue}
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value);
+                                      updateQuestion(qIndex, { ...q, maxValue: val });
+                                    }}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                              <FormItem>
+                                <FormLabel>Correct Value</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    value={q.correctValue}
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value);
+                                      updateQuestion(qIndex, { ...q, correctValue: val });
+                                    }}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <FormItem>
+                                <FormLabel>Decimal Precision</FormLabel>
+                                <Select
+                                  value={String(q.step || 1)}
+                                  onValueChange={(value) => {
+                                    const step = parseFloat(value);
+                                    updateQuestion(qIndex, { ...q, step });
+                                  }}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="1">Whole numbers (1)</SelectItem>
+                                    <SelectItem value="0.1">1 decimal (0.1)</SelectItem>
+                                    <SelectItem value="0.01">2 decimals (0.01)</SelectItem>
+                                    <SelectItem value="0.001">3 decimals (0.001)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </FormItem>
+                              <FormItem>
+                                <FormLabel>Unit (Optional)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="e.g., kg, %, °C"
+                                    value={q.unit || ''}
+                                    onChange={(e) => {
+                                      updateQuestion(qIndex, { ...q, unit: e.target.value });
+                                    }}
+                                    maxLength={10}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            </div>
+                          </div>
+                        )}
                     </CardContent>
                   </Card>
                 ))}

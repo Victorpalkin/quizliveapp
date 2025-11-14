@@ -19,6 +19,7 @@ import { Progress } from '@/components/ui/progress';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, updateDoc, DocumentReference, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import type { Player, Quiz, Game, Question } from '@/lib/types';
+import { migrateQuestion } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -153,21 +154,6 @@ function DeleteGameButton({ gameRef }: { gameRef: DocumentReference<Game> | null
     );
 }
 
-// Helper to migrate old questions with `correctAnswerIndex` to the new `correctAnswerIndices`
-const migrateQuestion = (q: any): Question => {
-  const { correctAnswerIndex, correctAnswerIndices, ...rest } = q;
-  let newCorrectAnswerIndices = correctAnswerIndices;
-
-  if (typeof correctAnswerIndex === 'number' && !correctAnswerIndices) {
-    newCorrectAnswerIndices = [correctAnswerIndex];
-  } else if (!Array.isArray(newCorrectAnswerIndices)) {
-    newCorrectAnswerIndices = [0];
-  }
-
-  return { ...rest, correctAnswerIndices: newCorrectAnswerIndices };
-};
-
-
 export default function HostGamePage() {
   const params = useParams();
   const gameId = params.gameId as string;
@@ -197,14 +183,34 @@ export default function HostGamePage() {
 
   const isLastQuestion = game && quiz ? game.currentQuestionIndex >= quiz.questions.length - 1 : false;
 
-  const answeredPlayers = players?.filter(p => p.lastAnswerIndex !== null && p.lastAnswerIndex !== undefined).length || 0;
+  // Count players who have answered (any answer type)
+  const answeredPlayers = players?.filter(p => {
+    return (p.lastAnswerIndex !== null && p.lastAnswerIndex !== undefined) ||
+           (p.lastAnswerIndices !== null && p.lastAnswerIndices !== undefined) ||
+           (p.lastSliderValue !== null && p.lastSliderValue !== undefined);
+  }).length || 0;
 
   const answerDistribution = useMemo(() => {
     if (!question || !players) return [];
 
+    // For slider questions, return empty array (we'll handle this differently)
+    if (question.type === 'slider') {
+      return [];
+    }
+
+    // For multiple choice questions
     const counts = Array(question.answers.length).fill(0);
     players.forEach(player => {
-        if (player.lastAnswerIndex !== null && player.lastAnswerIndex !== undefined && player.lastAnswerIndex >= 0) {
+        // Handle multi-answer responses
+        if (player.lastAnswerIndices && Array.isArray(player.lastAnswerIndices)) {
+          player.lastAnswerIndices.forEach(idx => {
+            if (idx >= 0 && idx < counts.length) {
+              counts[idx]++;
+            }
+          });
+        }
+        // Handle single answer responses (backward compatible)
+        else if (player.lastAnswerIndex !== null && player.lastAnswerIndex !== undefined && player.lastAnswerIndex >= 0) {
             counts[player.lastAnswerIndex]++;
         }
     });
@@ -216,6 +222,18 @@ export default function HostGamePage() {
     }));
 }, [question, players]);
 
+  // Slider question responses
+  const sliderResponses = useMemo(() => {
+    if (!question || question.type !== 'slider' || !players) return [];
+
+    return players
+      .filter(p => p.lastSliderValue !== null && p.lastSliderValue !== undefined)
+      .map(p => ({
+        name: p.name,
+        value: p.lastSliderValue!,
+      }))
+      .sort((a, b) => a.value - b.value);
+  }, [question, players]);
 
   const finishQuestion = () => {
     if (game?.state === 'question' && gameRef) {
@@ -269,7 +287,11 @@ export default function HostGamePage() {
         const batch = writeBatch(firestore);
         players.forEach(player => {
             const playerRef = doc(firestore, 'games', gameId, 'players', player.id);
-            batch.update(playerRef, { lastAnswerIndex: null });
+            batch.update(playerRef, {
+              lastAnswerIndex: null,
+              lastAnswerIndices: null,
+              lastSliderValue: null
+            });
         });
         await batch.commit();
 
@@ -357,24 +379,52 @@ export default function HostGamePage() {
               )}
             </div>
             
-            <div className="grid grid-cols-2 gap-4 mt-auto w-full max-w-4xl">
-              {question.answers.map((ans, i) => {
-                const Icon = answerIcons[i % answerIcons.length];
-                return (
-                    <div key={i} className={cn(`flex items-center gap-4 p-4 rounded-lg text-white`, answerColors[i % answerColors.length])}>
-                        <Icon className="w-8 h-8" />
-                        <span className="text-2xl font-medium">{ans.text}</span>
-                    </div>
-                )
-              })}
-            </div>
+            {question.type === 'slider' ? (
+              <Card className="w-full max-w-2xl mx-auto mt-8">
+                <CardContent className="p-8 text-center">
+                  <p className="text-lg text-muted-foreground mb-4">Players are submitting their answers...</p>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Range:</p>
+                    <p className="text-4xl font-bold">
+                      {question.minValue}{question.unit} - {question.maxValue}{question.unit}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 mt-auto w-full max-w-4xl">
+                {question.answers.map((ans, i) => {
+                  const Icon = answerIcons[i % answerIcons.length];
+                  const isCorrect = question.correctAnswerIndices.includes(i);
+                  return (
+                      <div key={i} className={cn(`flex items-center gap-4 p-4 rounded-lg text-white relative`, answerColors[i % answerColors.length])}>
+                          <Icon className="w-8 h-8" />
+                          <span className="text-2xl font-medium">{ans.text}</span>
+                          {question.allowMultipleAnswers && isCorrect && (
+                            <CheckCircle className="absolute top-2 right-2 w-6 h-6" />
+                          )}
+                      </div>
+                  )
+                })}
+              </div>
+            )}
         </main>
       )}
 
       {game?.state === 'leaderboard' && (
         <main className="flex-1 flex flex-col items-center justify-center gap-8 md:flex-row md:items-start">
             <LeaderboardView players={players || []} />
-            <AnswerDistributionChart data={answerDistribution} />
+            {question?.type === 'slider' ? (
+              <SliderResultsView
+                responses={sliderResponses}
+                correctValue={question.correctValue}
+                minValue={question.minValue}
+                maxValue={question.maxValue}
+                unit={question.unit}
+              />
+            ) : (
+              <AnswerDistributionChart data={answerDistribution} />
+            )}
         </main>
       )}
 
@@ -510,4 +560,74 @@ function AnswerDistributionChart({ data }: { data: { name: string; total: number
     );
 }
 
-    
+function SliderResultsView({
+  responses,
+  correctValue,
+  minValue,
+  maxValue,
+  unit
+}: {
+  responses: { name: string; value: number }[];
+  correctValue: number;
+  minValue: number;
+  maxValue: number;
+  unit?: string;
+}) {
+  return (
+    <Card className="w-full max-w-2xl flex-1">
+      <CardHeader>
+        <CardTitle>Player Responses</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary">
+            <p className="text-sm text-muted-foreground mb-1">Correct Answer</p>
+            <p className="text-3xl font-bold text-primary">
+              {correctValue}{unit}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Range: {minValue}{unit} - {maxValue}{unit}
+            </p>
+          </div>
+
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {responses.length === 0 ? (
+              <p className="text-muted-foreground text-center p-4">No responses yet</p>
+            ) : (
+              responses.map((response, idx) => {
+                const distance = Math.abs(response.value - correctValue);
+                const range = maxValue - minValue;
+                const accuracy = Math.max(0, 1 - (distance / range));
+                const isClose = accuracy > 0.5;
+
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-md",
+                      isClose ? "bg-primary/10" : "bg-background/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-sm">{response.name}</span>
+                      {isClose && <CheckCircle className="w-4 h-4 text-primary" />}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-lg">
+                        {response.value}{unit}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        ({distance > 0 ? `±${distance.toFixed(1)}` : 'exact'})
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
