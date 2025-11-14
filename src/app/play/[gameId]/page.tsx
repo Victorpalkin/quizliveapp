@@ -29,6 +29,7 @@ import {
   clearPlayerSession,
   sessionMatchesPin
 } from '@/lib/player-session';
+import { useWakeLock } from '@/hooks/use-wake-lock';
 
 type PlayerState = 'joining' | 'lobby' | 'preparing' | 'question' | 'waiting' | 'result' | 'ended' | 'cancelled' | 'reconnecting' | 'session-invalid';
 
@@ -119,6 +120,11 @@ export default function PlayerGamePage() {
   const lastQuestionIndexRef = useRef<number>(-1);
 
   const isLastQuestion = game && quiz ? game.currentQuestionIndex >= quiz.questions.length - 1 : false;
+
+  // Keep screen awake during active gameplay
+  // Enable wake lock for active states, disable for terminal states
+  const shouldKeepAwake = ['lobby', 'preparing', 'question', 'waiting', 'result'].includes(state);
+  useWakeLock(shouldKeepAwake);
 
   // Session restore effect - runs once on mount
   useEffect(() => {
