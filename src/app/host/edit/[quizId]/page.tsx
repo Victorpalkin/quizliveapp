@@ -15,6 +15,27 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { nanoid } from 'nanoid';
 import type { Quiz } from '@/lib/types';
 
+// Helper to remove undefined values from an object (Firestore doesn't accept undefined)
+function removeUndefined<T extends Record<string, any>>(obj: T): Partial<T> {
+  const cleaned: any = {};
+  for (const key in obj) {
+    const value = obj[key];
+    if (value !== undefined) {
+      // Recursively clean nested objects
+      if (Array.isArray(value)) {
+        cleaned[key] = value.map(item =>
+          typeof item === 'object' && item !== null ? removeUndefined(item) : item
+        );
+      } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
+        cleaned[key] = removeUndefined(value);
+      } else {
+        cleaned[key] = value;
+      }
+    }
+  }
+  return cleaned;
+}
+
 export default function EditQuizPage() {
   const router = useRouter();
   const params = useParams();
@@ -46,15 +67,46 @@ export default function EditQuizPage() {
     }
   }, [user, userLoading, router]);
 
+  // Check ownership - prevent editing quizzes the user doesn't own
+  useEffect(() => {
+    if (!quizLoading && quizData && user) {
+      if (quizData.hostId !== user.uid) {
+        toast({
+          variant: "destructive",
+          title: "Access Denied",
+          description: "You can only edit quizzes that you created.",
+        });
+        router.push('/host');
+      }
+    }
+  }, [quizData, quizLoading, user, router, toast]);
+
   const handleSubmit = async (data: QuizFormData, imageFiles: Record<number, File>, imagesToDelete: string[]) => {
     if (!user) {
       toast({ variant: "destructive", title: "You must be signed in" });
       return;
     }
 
+    // Double-check ownership before submitting
+    if (quizData && quizData.hostId !== user.uid) {
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: "You can only edit quizzes that you created.",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      console.log('Update attempt:', {
+        quizId,
+        userUid: user.uid,
+        quizHostId: quizData?.hostId,
+        match: user.uid === quizData?.hostId
+      });
+
       const quizDataForUpload = { ...data, questions: [...data.questions] };
 
       // Upload new/updated images
@@ -70,10 +122,22 @@ export default function EditQuizPage() {
       }
 
       // Final update data for Firestore
-      const finalQuizUpdate = {
-        ...quizDataForUpload,
+      // Only update the fields that can change - preserve hostId and createdAt
+      // Filter out undefined values (Firestore doesn't accept undefined)
+
+      // Clean each question to remove undefined values
+      const cleanedQuestions = quizDataForUpload.questions.map(q => removeUndefined(q));
+
+      const finalQuizUpdate: any = {
+        title: quizDataForUpload.title,
+        questions: cleanedQuestions,
         updatedAt: serverTimestamp(),
       };
+
+      // Only include description if it has a value
+      if (quizDataForUpload.description !== undefined && quizDataForUpload.description !== '') {
+        finalQuizUpdate.description = quizDataForUpload.description;
+      }
 
       await updateDoc(quizRef, finalQuizUpdate);
 
@@ -96,17 +160,32 @@ export default function EditQuizPage() {
         description: 'Your quiz has been successfully updated.',
       });
       router.push(`/host`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating quiz: ", error);
+      console.error("Error details:", {
+        code: error?.code,
+        message: error?.message,
+        quizId,
+        userUid: user?.uid,
+        quizHostId: quizData?.hostId
+      });
+
       const permissionError = new FirestorePermissionError({
         path: quizRef.path,
         operation: 'update',
       });
       errorEmitter.emit('permission-error', permissionError);
+
+      // Provide more helpful error message
+      let description = "Could not update the quiz. Please try again.";
+      if (error?.code === 'permission-denied') {
+        description = "Permission denied. You may not have access to edit this quiz. Please refresh and try again.";
+      }
+
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not update the quiz. Please try again.",
+        description,
       });
     } finally {
       setIsSubmitting(false);
