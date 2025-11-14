@@ -1,4 +1,6 @@
 
+import { Timestamp } from 'firebase/firestore';
+
 export interface Answer {
   text: string;
   isCorrect?: boolean;
@@ -45,5 +47,5 @@ export interface Game {
     state: 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
     currentQuestionIndex: number;
     gamePin: string;
-    questionStartTime?: number; // Timestamp when current question started (for timer sync)
+    questionStartTime?: Timestamp; // Firestore server timestamp when current question started (for timer sync)
 }

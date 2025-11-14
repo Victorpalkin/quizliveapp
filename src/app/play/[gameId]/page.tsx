@@ -14,7 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { useDoc, useFirestore, useMemoFirebase, useFunctions } from '@/firebase';
-import { doc, collection, query, where, getDocs, setDoc, DocumentReference } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, setDoc, DocumentReference, Timestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import type { Quiz, Player, Game, Question } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -189,8 +189,9 @@ export default function PlayerGamePage() {
             setState('preparing');
           } else if (game.state === 'question') {
             // Sync timer with host when reconnecting during question
+            // Use Firestore server timestamp to avoid client clock sync issues
             if (game.questionStartTime && question) {
-              const elapsedSeconds = Math.floor((Date.now() - game.questionStartTime) / 1000);
+              const elapsedSeconds = Math.floor((Date.now() - game.questionStartTime.toMillis()) / 1000);
               const remainingTime = Math.max(0, timeLimit - elapsedSeconds);
               console.log(`[Reconnect] Syncing timer: elapsed=${elapsedSeconds}s, remaining=${remainingTime}s`);
               setTime(remainingTime);
@@ -337,9 +338,10 @@ export default function PlayerGamePage() {
   useEffect(() => {
     if (state === 'question') {
       // Sync timer with host's questionStartTime if available
+      // Use Firestore server timestamp to avoid client clock sync issues
       let initialTime = timeLimit;
       if (game?.questionStartTime) {
-        const elapsedSeconds = Math.floor((Date.now() - game.questionStartTime) / 1000);
+        const elapsedSeconds = Math.floor((Date.now() - game.questionStartTime.toMillis()) / 1000);
         initialTime = Math.max(0, timeLimit - elapsedSeconds);
         console.log(`[Timer] Syncing with host: elapsed=${elapsedSeconds}s, remaining=${initialTime}s`);
       }

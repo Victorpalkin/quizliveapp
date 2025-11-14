@@ -17,7 +17,7 @@ import {
 } from '@/components/app/quiz-icons';
 import { Progress } from '@/components/ui/progress';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, updateDoc, DocumentReference, deleteDoc, writeBatch } from 'firebase/firestore';
+import { doc, collection, updateDoc, DocumentReference, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import type { Player, Quiz, Game, Question } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -254,7 +254,7 @@ export default function HostGamePage() {
     if (game?.state === 'preparing' && gameRef) {
       updateGame(gameRef, {
         state: 'question',
-        questionStartTime: Date.now() // Set timestamp for timer sync
+        questionStartTime: serverTimestamp() // Use Firestore server timestamp for clock-independent sync
       });
     }
   }, [game?.state, gameRef]);
