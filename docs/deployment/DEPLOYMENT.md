@@ -347,6 +347,9 @@ gcloud services enable cloudbuild.googleapis.com
 gcloud services enable run.googleapis.com
 gcloud services enable secretmanager.googleapis.com
 gcloud services enable iam.googleapis.com
+gcloud services enable storage.googleapis.com
+gcloud services enable cloudbilling.googleapis.com
+gcloud services enable cloudfunctions.googleapis.com
 ```
 
 **For Production Project:**
@@ -360,6 +363,9 @@ gcloud services enable cloudbuild.googleapis.com
 gcloud services enable run.googleapis.com
 gcloud services enable secretmanager.googleapis.com
 gcloud services enable iam.googleapis.com
+gcloud services enable storage.googleapis.com
+gcloud services enable cloudbilling.googleapis.com
+gcloud services enable cloudfunctions.googleapis.com
 ```
 
 ### 3.2 Create Custom Service Accounts for Cloud Build
@@ -450,6 +456,11 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${DEV_SA_EMAIL}" \
   --role="roles/cloudbuild.serviceAgent"
 
+# Grant Service Usage Consumer role (to use Google Cloud services)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/serviceusage.serviceUsageConsumer"
+
 # Verify permissions
 echo "Permissions granted to: ${DEV_SA_EMAIL}"
 gcloud projects get-iam-policy $DEV_PROJECT_ID \
@@ -503,6 +514,11 @@ gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
 gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
   --member="serviceAccount:${PROD_SA_EMAIL}" \
   --role="roles/cloudbuild.serviceAgent"
+
+# Grant Service Usage Consumer role (to use Google Cloud services)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/serviceusage.serviceUsageConsumer"
 
 # Verify permissions
 echo "Permissions granted to: ${PROD_SA_EMAIL}"
@@ -1006,6 +1022,10 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
 gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${DEV_SA_EMAIL}" \
   --role="roles/cloudbuild.serviceAgent"
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/serviceusage.serviceUsageConsumer"
 ```
 
 ### Issue: Cloud Build trigger using wrong service account
