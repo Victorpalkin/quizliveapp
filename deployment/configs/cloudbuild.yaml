@@ -194,8 +194,8 @@ steps:
         echo ""
 
         URL=$(gcloud run services describe ${_SERVICE_NAME} --region=${_REGION} --project=${PROJECT_ID} --format='value(status.url)')
-        echo "🌐 Application URL: $URL"
-        echo "$URL" > /workspace/cloud_run_url.txt
+        echo "🌐 Application URL: $$URL"
+        echo "$$URL" > /workspace/cloud_run_url.txt
 
         echo ""
         echo "================================================"
@@ -204,11 +204,11 @@ steps:
         echo ""
         echo "Next Steps:"
         if [ "${_ENVIRONMENT}" = "dev" ]; then
-          echo "1. Test the application at: $URL"
+          echo "1. Test the application at: $$URL"
           echo "2. Check Cloud Functions logs: firebase functions:log --project ${PROJECT_ID}"
           echo "3. If tests pass, merge to main for production deployment"
         else
-          echo "1. Verify production deployment: $URL"
+          echo "1. Verify production deployment: $$URL"
           echo "2. Update CORS origins in Cloud Functions if needed"
           echo "3. Monitor Cloud Run logs: gcloud run services logs read ${_SERVICE_NAME} --region ${_REGION}"
         fi
