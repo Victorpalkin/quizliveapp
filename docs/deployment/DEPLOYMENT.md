@@ -334,7 +334,7 @@ git status  # Should NOT show .env.development or .env.production
 
 ## Phase 3: Set Up Cloud Build
 
-### 3.1 Enable Cloud Build API
+### 3.1 Enable Required APIs
 
 **For Development Project:**
 
@@ -342,10 +342,11 @@ git status  # Should NOT show .env.development or .env.production
 # Set current project
 gcloud config set project $DEV_PROJECT_ID
 
-# Enable Cloud Build API
+# Enable required APIs
 gcloud services enable cloudbuild.googleapis.com
 gcloud services enable run.googleapis.com
 gcloud services enable secretmanager.googleapis.com
+gcloud services enable iam.googleapis.com
 ```
 
 **For Production Project:**
@@ -354,69 +355,164 @@ gcloud services enable secretmanager.googleapis.com
 # Set current project
 gcloud config set project $PROD_PROJECT_ID
 
-# Enable Cloud Build API
+# Enable required APIs
 gcloud services enable cloudbuild.googleapis.com
 gcloud services enable run.googleapis.com
 gcloud services enable secretmanager.googleapis.com
+gcloud services enable iam.googleapis.com
 ```
 
-### 3.2 Grant Cloud Build Permissions
+### 3.2 Create Custom Service Accounts for Cloud Build
+
+Instead of using the default Cloud Build service account, we'll create custom service accounts with specific permissions for better security control.
 
 **For Development Project:**
 
 ```bash
-# Get project number
-PROJECT_NUMBER=$(gcloud projects describe $DEV_PROJECT_ID --format="value(projectNumber)")
+# Set current project
+gcloud config set project $DEV_PROJECT_ID
 
-# Cloud Build service account
-SERVICE_ACCOUNT="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+# Create custom service account for Cloud Build
+gcloud iam service-accounts create cloudbuild-sa-dev \
+  --display-name="Cloud Build Service Account - Dev" \
+  --description="Custom service account for Cloud Build deployments in dev environment"
 
-# Grant necessary roles
-gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/run.admin"
+# Get the service account email
+DEV_SA_EMAIL="cloudbuild-sa-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
 
-gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/iam.serviceAccountUser"
-
-gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/firebase.admin"
-
-gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/secretmanager.secretAccessor"
+# Verify service account was created
+gcloud iam service-accounts list --filter="email:${DEV_SA_EMAIL}"
 ```
 
-**Repeat for Production Project:**
+**For Production Project:**
 
 ```bash
-# Get project number
-PROJECT_NUMBER=$(gcloud projects describe $PROD_PROJECT_ID --format="value(projectNumber)")
+# Set current project
+gcloud config set project $PROD_PROJECT_ID
 
-# Cloud Build service account
-SERVICE_ACCOUNT="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+# Create custom service account for Cloud Build
+gcloud iam service-accounts create cloudbuild-sa-prod \
+  --display-name="Cloud Build Service Account - Prod" \
+  --description="Custom service account for Cloud Build deployments in production environment"
 
-# Grant necessary roles
-gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/run.admin"
+# Get the service account email
+PROD_SA_EMAIL="cloudbuild-sa-prod@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
 
-gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/iam.serviceAccountUser"
-
-gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/firebase.admin"
-
-gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/secretmanager.secretAccessor"
+# Verify service account was created
+gcloud iam service-accounts list --filter="email:${PROD_SA_EMAIL}"
 ```
 
-### 3.3 Store Environment Variables in Secret Manager
+### 3.3 Grant Permissions to Custom Service Accounts
+
+**For Development Project:**
+
+```bash
+# Set the service account email
+DEV_SA_EMAIL="cloudbuild-sa-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Grant Cloud Run Admin role (to deploy to Cloud Run)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/run.admin"
+
+# Grant Service Account User role (to deploy Cloud Run as a service)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/iam.serviceAccountUser"
+
+# Grant Firebase Admin role (to deploy Firestore rules, Storage rules, and Functions)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/firebase.admin"
+
+# Grant Secret Manager Secret Accessor role (to read environment variables)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/secretmanager.secretAccessor"
+
+# Grant Storage Admin role (for Cloud Build artifacts and logs)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/storage.admin"
+
+# Grant Logs Writer role (to write build logs)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/logging.logWriter"
+
+# Grant Cloud Build Editor role (to manage builds)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/cloudbuild.builds.editor"
+
+# Grant Cloud Build Service Agent role (for Cloud Build operations)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/cloudbuild.serviceAgent"
+
+# Verify permissions
+echo "Permissions granted to: ${DEV_SA_EMAIL}"
+gcloud projects get-iam-policy $DEV_PROJECT_ID \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:serviceAccount:${DEV_SA_EMAIL}" \
+  --format="table(bindings.role)"
+```
+
+**For Production Project:**
+
+```bash
+# Set the service account email
+PROD_SA_EMAIL="cloudbuild-sa-prod@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Grant Cloud Run Admin role (to deploy to Cloud Run)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/run.admin"
+
+# Grant Service Account User role (to deploy Cloud Run as a service)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/iam.serviceAccountUser"
+
+# Grant Firebase Admin role (to deploy Firestore rules, Storage rules, and Functions)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/firebase.admin"
+
+# Grant Secret Manager Secret Accessor role (to read environment variables)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/secretmanager.secretAccessor"
+
+# Grant Storage Admin role (for Cloud Build artifacts and logs)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/storage.admin"
+
+# Grant Logs Writer role (to write build logs)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/logging.logWriter"
+
+# Grant Cloud Build Editor role (to manage builds)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/cloudbuild.builds.editor"
+
+# Grant Cloud Build Service Agent role (for Cloud Build operations)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/cloudbuild.serviceAgent"
+
+# Verify permissions
+echo "Permissions granted to: ${PROD_SA_EMAIL}"
+gcloud projects get-iam-policy $PROD_PROJECT_ID \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:serviceAccount:${PROD_SA_EMAIL}" \
+  --format="table(bindings.role)"
+```
+
+### 3.4 Store Environment Variables in Secret Manager
 
 **For Development:**
 
@@ -499,13 +595,24 @@ git push -u origin main
 **Option B: Via gcloud CLI**
 
 ```bash
-# This requires interactive authentication
+# For development trigger (requires interactive authentication)
 gcloud alpha builds triggers create github \
   --repo-name=quizliveapp \
   --repo-owner=YOUR-USERNAME \
   --branch-pattern=^develop$ \
   --build-config=deployment/configs/cloudbuild.yaml \
+  --service-account="projects/${DEV_PROJECT_ID}/serviceAccounts/cloudbuild-sa-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com" \
   --project=$DEV_PROJECT_ID
+
+# For production trigger (manual invocation only)
+gcloud alpha builds triggers create github \
+  --repo-name=quizliveapp \
+  --repo-owner=YOUR-USERNAME \
+  --branch-pattern=^main$ \
+  --build-config=deployment/configs/cloudbuild.yaml \
+  --service-account="projects/${PROD_PROJECT_ID}/serviceAccounts/cloudbuild-sa-prod@${PROD_PROJECT_ID}.iam.gserviceaccount.com" \
+  --require-approval \
+  --project=$PROD_PROJECT_ID
 ```
 
 ---
@@ -526,7 +633,7 @@ gcloud alpha builds triggers create github \
 - **Source**: Select your connected repository
 - **Branch**: `^develop$`
 - **Configuration**: Cloud Build configuration file (yaml or json)
-- **Location**: `/cloudbuild.yaml`
+- **Location**: `/deployment/configs/cloudbuild.yaml`
 
 **Substitution variables:**
 ```
@@ -538,7 +645,9 @@ _SERVICE_NAME = <your-dev-project-id>
 
 **Note**: Replace `<your-dev-project-id>` with your actual dev project ID (the value you set in `$DEV_PROJECT_ID`).
 
-- **Service account**: Use default Cloud Build service account
+- **Service account**: Select the custom service account `cloudbuild-sa-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com`
+  - Click "Connect service account"
+  - Select the service account you created in Phase 3.2
 - Click "Create"
 
 ### 5.2 Create Production Trigger (Manual Only)
@@ -555,7 +664,7 @@ _SERVICE_NAME = <your-dev-project-id>
 - **Source**: Select your connected repository
 - **Branch**: `^main$`
 - **Configuration**: Cloud Build configuration file (yaml or json)
-- **Location**: `/cloudbuild.yaml`
+- **Location**: `/deployment/configs/cloudbuild.yaml`
 
 **Substitution variables:**
 ```
@@ -567,7 +676,9 @@ _SERVICE_NAME = <your-prod-project-id>
 
 **Note**: Replace `<your-prod-project-id>` with your actual production project ID (the value you set in `$PROD_PROJECT_ID`).
 
-- **Service account**: Use default Cloud Build service account
+- **Service account**: Select the custom service account `cloudbuild-sa-prod@${PROD_PROJECT_ID}.iam.gserviceaccount.com`
+  - Click "Connect service account"
+  - Select the service account you created in Phase 3.2
 - Click "Create"
 
 **Important**: For the production trigger, you need to:
@@ -783,17 +894,25 @@ git push origin develop
 
 **Solution:**
 
-Check that Cloud Build service account has correct permissions:
+Check that your custom Cloud Build service account has correct permissions:
 
 ```bash
-# For dev environment (or use $PROD_PROJECT_ID for production)
-PROJECT_NUMBER=$(gcloud projects describe $DEV_PROJECT_ID --format="value(projectNumber)")
-SERVICE_ACCOUNT="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+# For dev environment (or use PROD_SA_EMAIL for production)
+DEV_SA_EMAIL="cloudbuild-sa-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
 
-# Re-grant permissions
+# Verify current permissions
+gcloud projects get-iam-policy $DEV_PROJECT_ID \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:serviceAccount:${DEV_SA_EMAIL}" \
+  --format="table(bindings.role)"
+
+# Re-grant missing permissions if needed
 gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
   --role="roles/run.admin"
+
+# Verify the Cloud Build trigger is using the correct service account
+gcloud builds triggers list --project=$DEV_PROJECT_ID --format="table(name,serviceAccount)"
 ```
 
 ### Issue: "firebase: command not found" in Cloud Build
@@ -818,11 +937,13 @@ This is normal - Firebase CLI is installed during the build. Check the `install-
    gcloud secrets versions access latest --secret=firebase-config-dev --project $DEV_PROJECT_ID
    ```
 
-3. Verify Cloud Build has access:
+3. Verify Cloud Build service account has access:
    ```bash
-   # For dev (or use $PROD_PROJECT_ID and firebase-config-production for production)
+   # For dev (or use $PROD_PROJECT_ID, PROD_SA_EMAIL, and firebase-config-production for production)
+   DEV_SA_EMAIL="cloudbuild-sa-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
+
    gcloud secrets add-iam-policy-binding firebase-config-dev \
-     --member="serviceAccount:${SERVICE_ACCOUNT}" \
+     --member="serviceAccount:${DEV_SA_EMAIL}" \
      --role="roles/secretmanager.secretAccessor" \
      --project $DEV_PROJECT_ID
    ```
@@ -835,6 +956,74 @@ Verify `.env.development` or `.env.production` file exists and contains the vari
 
 ```bash
 cat .env.development | grep NEXT_PUBLIC_FIREBASE_PROJECT_ID
+```
+
+### Issue: Service account does not have required permissions
+
+**Solution:**
+
+If you see errors like "The caller does not have permission" or "Failed to deploy to Cloud Run", verify and re-grant all required permissions:
+
+```bash
+# For dev (or use PROD_SA_EMAIL and $PROD_PROJECT_ID for production)
+DEV_SA_EMAIL="cloudbuild-sa-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
+
+# List all current permissions
+gcloud projects get-iam-policy $DEV_PROJECT_ID \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:serviceAccount:${DEV_SA_EMAIL}" \
+  --format="table(bindings.role)"
+
+# Required roles (re-run the commands from Phase 3.3 if any are missing):
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/run.admin"
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/iam.serviceAccountUser"
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/firebase.admin"
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/storage.admin"
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/logging.logWriter"
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/cloudbuild.builds.editor"
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/cloudbuild.serviceAgent"
+```
+
+### Issue: Cloud Build trigger using wrong service account
+
+**Solution:**
+
+Verify the trigger is configured with the custom service account:
+
+```bash
+# List all triggers and their service accounts
+gcloud builds triggers list --project=$DEV_PROJECT_ID --format="table(name,serviceAccount)"
+
+# If needed, update the trigger via Cloud Console:
+# 1. Go to Cloud Build → Triggers
+# 2. Click on your trigger
+# 3. Click "Edit"
+# 4. Under "Service account", select your custom service account
+# 5. Click "Save"
 ```
 
 ### Issue: CORS errors in production
@@ -925,14 +1114,16 @@ Monitor costs in [Google Cloud Console](https://console.cloud.google.com/billing
 
 - [ ] Environment files (`.env.development`, `.env.production`) are gitignored
 - [ ] Secrets stored in Secret Manager, not in code
+- [ ] Custom service accounts created for Cloud Build (not using default service accounts)
+- [ ] Cloud Build service accounts have minimal required permissions (only necessary roles granted)
+- [ ] Service account permissions verified using `gcloud projects get-iam-policy`
 - [ ] CORS origins properly configured in Cloud Functions
 - [ ] Firestore security rules deployed and tested
 - [ ] Storage security rules deployed and tested
 - [ ] Production deployments require approval
 - [ ] Branch protection enabled on `main` branch
 - [ ] Only authorized users can trigger production builds
-- [ ] Cloud Build service accounts have minimal required permissions
-- [ ] Regular security audits of IAM roles
+- [ ] Regular security audits of IAM roles and service account permissions
 
 ---
 

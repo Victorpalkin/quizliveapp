@@ -10,7 +10,9 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3001',           // Alternative local port
   'https://localhost:3000',          // Local HTTPS
   // Cloud Run URLs - Update these after deployment
-  'https://gquiz-880039882047.europe-west4.run.app'
+  'https://gquiz-880039882047.europe-west4.run.app',
+  'https://gquiz-dev-czsrxlt5hq-ez.a.run.app',
+  'https://gquiz-dev-986405642892.europe-west4.run.app'
   // Example: 'https://gquiz-abc123-ew.a.run.app'
   // Note: You can get the actual URL after first deployment via:
   // gcloud run services describe gquiz --region=europe-west4 --format='value(status.url)'

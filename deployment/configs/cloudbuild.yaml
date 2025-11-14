@@ -3,13 +3,13 @@
 #
 # Substitution variables (set by trigger):
 #   _ENVIRONMENT: 'dev' or 'production'
-#   _FIREBASE_CONFIG: 'deployment/configs/firebase.dev.json' or 'deployment/configs/firebase.prod.json'
+#   _FIREBASE_CONFIG: 'firebase.dev.json' or 'firebase.prod.json'
 #   _REGION: 'europe-west4'
 #   _SERVICE_NAME: 'gquiz-dev' or 'gquiz-prod'
 
 substitutions:
   _ENVIRONMENT: 'dev'
-  _FIREBASE_CONFIG: 'deployment/configs/firebase.dev.json'
+  _FIREBASE_CONFIG: 'firebase.dev.json'
   _REGION: 'europe-west4'
   _SERVICE_NAME: 'gquiz-dev'
 
@@ -54,40 +54,29 @@ steps:
   #   waitFor: ['install-deps']
 
   # ============================================================================
-  # Step 5: Install Firebase CLI
+  # Step 5: Deploy Firestore rules and indexes
   # ============================================================================
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'node:20'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         npm install -g firebase-tools
-        firebase --version
-    id: 'install-firebase-cli'
-    waitFor: ['-']
-
-  # ============================================================================
-  # Step 6: Deploy Firestore rules and indexes
-  # ============================================================================
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
         echo "Deploying Firestore rules and indexes to ${PROJECT_ID}..."
         firebase deploy --only firestore --config ${_FIREBASE_CONFIG} --project ${PROJECT_ID} --non-interactive --force
         echo "✅ Firestore deployed successfully"
     id: 'deploy-firestore'
-    waitFor: ['install-firebase-cli', 'build-functions']
+    waitFor: ['build-functions']
 
   # ============================================================================
-  # Step 7: Deploy Storage rules
+  # Step 6: Deploy Storage rules
   # ============================================================================
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'node:20'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
+        npm install -g firebase-tools
         echo "Deploying Storage rules to ${PROJECT_ID}..."
         firebase deploy --only storage --config ${_FIREBASE_CONFIG} --project ${PROJECT_ID} --non-interactive --force
         echo "✅ Storage deployed successfully"
@@ -95,13 +84,14 @@ steps:
     waitFor: ['deploy-firestore']
 
   # ============================================================================
-  # Step 8: Deploy Cloud Functions
+  # Step 7: Deploy Cloud Functions
   # ============================================================================
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'node:20'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
+        npm install -g firebase-tools
         echo "Deploying Cloud Functions to ${PROJECT_ID}..."
         firebase deploy --only functions --config ${_FIREBASE_CONFIG} --project ${PROJECT_ID} --non-interactive --force
         echo "✅ Cloud Functions deployed successfully"
@@ -109,7 +99,7 @@ steps:
     waitFor: ['deploy-storage']
 
   # ============================================================================
-  # Step 9: Load environment variables from Secret Manager
+  # Step 8: Load environment variables from Secret Manager
   # ============================================================================
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
@@ -129,7 +119,7 @@ steps:
     waitFor: ['deploy-functions']
 
   # ============================================================================
-  # Step 10: Build and deploy to Cloud Run
+  # Step 9: Build and deploy to Cloud Run
   # ============================================================================
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
@@ -177,7 +167,7 @@ steps:
     waitFor: ['load-env-vars']
 
   # ============================================================================
-  # Step 11: Get and display Cloud Run URL
+  # Step 10: Get and display Cloud Run URL
   # ============================================================================
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
@@ -194,8 +184,8 @@ steps:
         echo ""
 
         URL=$(gcloud run services describe ${_SERVICE_NAME} --region=${_REGION} --project=${PROJECT_ID} --format='value(status.url)')
-        echo "🌐 Application URL: $URL"
-        echo "$URL" > /workspace/cloud_run_url.txt
+        echo "🌐 Application URL: $$URL"
+        echo "$$URL" > /workspace/cloud_run_url.txt
 
         echo ""
         echo "================================================"
@@ -204,11 +194,11 @@ steps:
         echo ""
         echo "Next Steps:"
         if [ "${_ENVIRONMENT}" = "dev" ]; then
-          echo "1. Test the application at: $URL"
+          echo "1. Test the application at: $$URL"
           echo "2. Check Cloud Functions logs: firebase functions:log --project ${PROJECT_ID}"
           echo "3. If tests pass, merge to main for production deployment"
         else
-          echo "1. Verify production deployment: $URL"
+          echo "1. Verify production deployment: $$URL"
           echo "2. Update CORS origins in Cloud Functions if needed"
           echo "3. Monitor Cloud Run logs: gcloud run services logs read ${_SERVICE_NAME} --region ${_REGION}"
         fi
