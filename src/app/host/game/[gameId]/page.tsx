@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, LabelList, Cell, Rectangle, Text } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Trophy, XCircle, Home, Trash2, CheckCircle, Users } from 'lucide-react';
 import {
   DiamondIcon,
@@ -245,12 +246,21 @@ export default function HostGamePage() {
 
   useEffect(() => {
     if (game?.state === 'question') {
-      setTime(timeLimit);
+      // Sync timer with questionStartTime (same logic as players)
+      // This ensures host and players use the same time reference
+      let initialTime = timeLimit;
+      if (game?.questionStartTime) {
+        const elapsedSeconds = Math.floor((Date.now() - game.questionStartTime.toMillis()) / 1000);
+        initialTime = Math.max(0, timeLimit - elapsedSeconds);
+        console.log(`[Host Timer] Syncing with server: elapsed=${elapsedSeconds}s, remaining=${initialTime}s`);
+      }
+      setTime(initialTime);
+
       const timer = setInterval(() => {
         setTime(prev => {
           if (prev <= 1) {
             clearInterval(timer);
-            finishQuestion(); 
+            finishQuestion();
             return 0;
           }
           return prev - 1;
@@ -259,7 +269,7 @@ export default function HostGamePage() {
       return () => clearInterval(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game?.currentQuestionIndex, game?.state, timeLimit]);
+  }, [game?.currentQuestionIndex, game?.state, timeLimit, game?.questionStartTime]);
 
   useEffect(() => {
     if (game?.state === 'preparing' && gameRef) {
@@ -361,7 +371,19 @@ export default function HostGamePage() {
             <div className="w-full max-w-4xl">
               <Card className="bg-card text-card-foreground mb-4">
                   <CardContent className="p-8">
-                      <p className="text-3xl font-bold">{question.text}</p>
+                      <div className="flex flex-col items-center gap-3">
+                        <p className="text-3xl font-bold">{question.text}</p>
+                        {question.type === 'multiple-choice' && question.allowMultipleAnswers && (
+                          <div className="flex gap-2">
+                            <Badge variant="secondary" className="text-sm">
+                              Multiple Answers
+                            </Badge>
+                            <Badge variant={question.scoringMode === 'all-or-nothing' ? 'destructive' : 'default'} className="text-sm">
+                              {question.scoringMode === 'all-or-nothing' ? 'All or Nothing' : 'Proportional'}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
                   </CardContent>
               </Card>
 
@@ -376,11 +398,21 @@ export default function HostGamePage() {
               <Card className="w-full max-w-2xl mx-auto mt-8">
                 <CardContent className="p-8 text-center">
                   <p className="text-lg text-muted-foreground mb-4">Players are submitting their answers...</p>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Range:</p>
-                    <p className="text-4xl font-bold">
-                      {question.minValue}{question.unit} - {question.maxValue}{question.unit}
-                    </p>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">Range:</p>
+                      <p className="text-4xl font-bold">
+                        {question.minValue}{question.unit} - {question.maxValue}{question.unit}
+                      </p>
+                    </div>
+                    <div className="flex justify-center gap-2">
+                      <Badge variant="default" className="text-sm">
+                        Correct: ≤10% error
+                      </Badge>
+                      <Badge variant="secondary" className="text-sm">
+                        Partial: ≤20% error
+                      </Badge>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

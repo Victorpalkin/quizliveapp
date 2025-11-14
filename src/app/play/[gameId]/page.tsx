@@ -92,7 +92,7 @@ export default function PlayerGamePage() {
   const timeLimit = question?.timeLimit || 20;
 
   const [player, setPlayer] = useState<Player | null>(null);
-  const [lastAnswer, setLastAnswer] = useState<{ selected: number; correct: number[]; points: number; wasTimeout: boolean } | null>(null);
+  const [lastAnswer, setLastAnswer] = useState<{ selected: number; correct: number[]; points: number; wasTimeout: boolean; isPartiallyCorrect?: boolean } | null>(null);
   const [time, setTime] = useState(timeLimit);
   const [answerSelected, setAnswerSelected] = useState<number | null>(null);
   const [timedOut, setTimedOut] = useState(false);
@@ -516,9 +516,10 @@ export default function PlayerGamePage() {
       const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
       const result = await submitAnswerFn(submitData);
 
-      const { isCorrect, points, newScore } = result.data as {
+      const { isCorrect, isPartiallyCorrect, points, newScore } = result.data as {
         success: boolean;
         isCorrect: boolean;
+        isPartiallyCorrect: boolean;
         points: number;
         newScore: number;
       };
@@ -535,19 +536,32 @@ export default function PlayerGamePage() {
 
       // Update last answer for result display
       if (question && question.type === 'multiple-choice') {
-        const selectedIndex = answerData?.type === 'single' ? (answerData.value as number) : -1;
-        setLastAnswer({
-          selected: selectedIndex,
-          correct: question.correctAnswerIndices,
-          points,
-          wasTimeout: isTimeout
-        });
+        if (answerData?.type === 'single') {
+          // Single-choice: use actual selected index
+          const selectedIndex = answerData.value as number;
+          setLastAnswer({
+            selected: selectedIndex,
+            correct: question.correctAnswerIndices,
+            points,
+            wasTimeout: isTimeout
+          });
+        } else {
+          // Multi-answer: use isCorrect from server (same pattern as slider)
+          setLastAnswer({
+            selected: isCorrect ? 1 : 0,
+            correct: [1],
+            points,
+            wasTimeout: isTimeout,
+            isPartiallyCorrect
+          });
+        }
       } else if (question && question.type === 'slider') {
         setLastAnswer({
           selected: isCorrect ? 1 : 0,
           correct: [1],
           points,
-          wasTimeout: isTimeout
+          wasTimeout: isTimeout,
+          isPartiallyCorrect
         });
       }
     } catch (error: any) {
@@ -820,6 +834,7 @@ export default function PlayerGamePage() {
       case 'result':
         const isCorrect = lastAnswer ? lastAnswer.correct.includes(lastAnswer.selected) : false;
         const wasTimeout = lastAnswer?.wasTimeout || false;
+        const isPartiallyCorrect = lastAnswer?.isPartiallyCorrect || false;
 
         let bgColor = 'bg-red-500';
         let icon = <Frown className="w-24 h-24 mb-4" />;
@@ -829,6 +844,10 @@ export default function PlayerGamePage() {
           bgColor = 'bg-green-500';
           icon = <PartyPopper className="w-24 h-24 mb-4" />;
           message = 'Correct!';
+        } else if (isPartiallyCorrect) {
+          bgColor = 'bg-yellow-500';
+          icon = <PartyPopper className="w-24 h-24 mb-4" />;
+          message = 'Partially Correct!';
         } else if (wasTimeout) {
           bgColor = 'bg-orange-500';
           icon = <Clock className="w-24 h-24 mb-4" />;

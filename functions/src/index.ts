@@ -275,6 +275,7 @@ export const submitAnswer = onCall(
 
     let points = 0;
     let isCorrect = false;
+    let isPartiallyCorrect = false;
 
     if (question.type === 'multiple-choice') {
       const { correctAnswerIndices, allowMultipleAnswers, scoringMode } = question;
@@ -298,7 +299,12 @@ export const submitAnswer = onCall(
           // Base 1000 points, multiplied by correctness, then add time bonus
           const basePoints = Math.round(1000 * scoreMultiplier);
           points = basePoints;
-          isCorrect = scoreMultiplier > 0;
+
+          // Fully correct: all correct selected, no wrong
+          isCorrect = correctSelected === totalCorrect && wrongSelected === 0;
+
+          // Partially correct: got some points but not fully correct
+          isPartiallyCorrect = !isCorrect && scoreMultiplier > 0;
         }
       } else {
         // Single answer mode (backward compatible)
@@ -324,6 +330,7 @@ export const submitAnswer = onCall(
       const range = question.maxValue - question.minValue;
       const distance = Math.abs(sliderValue! - question.correctValue);
       const accuracy = Math.max(0, 1 - (distance / range));  // 1.0 = perfect, 0.0 = worst
+      const errorMargin = distance / range;  // 0.0 = perfect, 1.0 = worst
 
       // Quadratic scoring: rewards closeness, penalizes distance
       const scoreMultiplier = Math.pow(accuracy, 2);
@@ -333,7 +340,11 @@ export const submitAnswer = onCall(
       const timeBonus = Math.round((timeRemaining / timeLimit) * 0);  // No time bonus for slider questions
       points = Math.min(1000, basePoints + timeBonus);
 
-      isCorrect = accuracy > 0.5;  // Consider it "correct" if within 50% of range
+      // Fully correct: within 10% error margin
+      isCorrect = errorMargin <= 0.1;
+
+      // Partially correct: within 20% error margin but not fully correct
+      isPartiallyCorrect = !isCorrect && errorMargin <= 0.2;
     }
 
     const newScore = player.score + points;
@@ -383,6 +394,7 @@ export const submitAnswer = onCall(
     return {
       success: true,
       isCorrect,
+      isPartiallyCorrect,
       points,
       newScore,
     };
