@@ -23,7 +23,7 @@ echo ""
 
 # Configuration
 ENVIRONMENT="production"
-FIREBASE_CONFIG="deployment/configs/firebase.prod.json"
+FIREBASE_CONFIG="firebase.prod.json"
 REGION="europe-west4"
 
 # Safety check: Ensure we're on main branch

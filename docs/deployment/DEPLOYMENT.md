@@ -613,7 +613,7 @@ gcloud alpha builds triggers create github \
 - **Source**: Select your connected repository
 - **Branch**: `^develop$`
 - **Configuration**: Cloud Build configuration file (yaml or json)
-- **Location**: `/cloudbuild.yaml`
+- **Location**: `/deployment/configs/cloudbuild.yaml`
 
 **Substitution variables:**
 ```
@@ -644,7 +644,7 @@ _SERVICE_NAME = <your-dev-project-id>
 - **Source**: Select your connected repository
 - **Branch**: `^main$`
 - **Configuration**: Cloud Build configuration file (yaml or json)
-- **Location**: `/cloudbuild.yaml`
+- **Location**: `/deployment/configs/cloudbuild.yaml`
 
 **Substitution variables:**
 ```

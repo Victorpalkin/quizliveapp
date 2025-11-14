@@ -12,9 +12,11 @@ deployment/
 │   └── deploy-prod.sh  # Production deployment
 │
 └── configs/            # Deployment configuration files
-    ├── cloudbuild.yaml # Cloud Build CI/CD pipeline
-    ├── firebase.dev.json    # Firebase config for dev
-    └── firebase.prod.json   # Firebase config for production
+    └── cloudbuild.yaml # Cloud Build CI/CD pipeline
+
+Root directory also contains:
+├── firebase.dev.json       # Firebase config for dev
+└── firebase.prod.json      # Firebase config for production
 ```
 
 ---
@@ -142,38 +144,14 @@ Defines the Cloud Build pipeline for automated deployments.
 **Substitution Variables:**
 ```yaml
 _ENVIRONMENT: 'dev' or 'production'
-_FIREBASE_CONFIG: 'deployment/configs/firebase.dev.json' or 'deployment/configs/firebase.prod.json'
+_FIREBASE_CONFIG: 'firebase.dev.json' or 'firebase.prod.json'
 _REGION: 'europe-west4'
 _SERVICE_NAME: 'gquiz-dev' or 'gquiz-prod'
 ```
 
 **Used by:** Google Cloud Build triggers (configured in Cloud Console)
 
-### `configs/firebase.dev.json` - Development Firebase Config
-
-Firebase CLI configuration for development environment.
-
-**Points to:**
-- Firestore rules: `firestore.rules`
-- Firestore indexes: `firestore.indexes.json`
-- Storage bucket: `gquiz-dev.appspot.com`
-- Storage rules: `storage.rules`
-- Functions source: `functions/`
-
-**Used by:** `deploy-dev.sh`, Cloud Build (dev trigger)
-
-### `configs/firebase.prod.json` - Production Firebase Config
-
-Firebase CLI configuration for production environment.
-
-**Points to:**
-- Firestore rules: `firestore.rules`
-- Firestore indexes: `firestore.indexes.json`
-- Storage bucket: `gquiz-production.appspot.com`
-- Storage rules: `storage.rules`
-- Functions source: `functions/`
-
-**Used by:** `deploy-prod.sh`, Cloud Build (prod trigger)
+**Note:** Firebase config files (`firebase.dev.json` and `firebase.prod.json`) are located in the **project root**, not in the deployment/configs directory, to ensure Firebase CLI can properly resolve file paths.
 
 ---
 
@@ -191,7 +169,7 @@ gcloud run services describe gquiz-dev --region=europe-west4 --format='value(sta
 # Add the URL to ALLOWED_ORIGINS array
 
 # 3. Redeploy functions
-firebase deploy --only functions --config deployment/configs/firebase.dev.json --project gquiz-dev
+firebase deploy --only functions --config firebase.dev.json --project gquiz-dev
 ```
 
 ### Troubleshoot Deployment

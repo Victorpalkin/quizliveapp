@@ -19,7 +19,7 @@ echo ""
 
 # Configuration
 ENVIRONMENT="dev"
-FIREBASE_CONFIG="deployment/configs/firebase.dev.json"
+FIREBASE_CONFIG="firebase.dev.json"
 REGION="europe-west4"
 
 # Check if required tools are installed
