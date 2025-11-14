@@ -350,6 +350,7 @@ gcloud services enable iam.googleapis.com
 gcloud services enable storage.googleapis.com
 gcloud services enable cloudbilling.googleapis.com
 gcloud services enable cloudfunctions.googleapis.com
+gcloud services enable firebaseextensions.googleapis.com
 ```
 
 **For Production Project:**
@@ -366,6 +367,7 @@ gcloud services enable iam.googleapis.com
 gcloud services enable storage.googleapis.com
 gcloud services enable cloudbilling.googleapis.com
 gcloud services enable cloudfunctions.googleapis.com
+gcloud services enable firebaseextensions.googleapis.com
 ```
 
 ### 3.2 Create Custom Service Accounts for Cloud Build
