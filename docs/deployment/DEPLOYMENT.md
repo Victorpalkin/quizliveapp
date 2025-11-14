@@ -440,6 +440,16 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${DEV_SA_EMAIL}" \
   --role="roles/logging.logWriter"
 
+# Grant Cloud Build Editor role (to manage builds)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/cloudbuild.builds.editor"
+
+# Grant Cloud Build Service Agent role (for Cloud Build operations)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/cloudbuild.serviceAgent"
+
 # Verify permissions
 echo "Permissions granted to: ${DEV_SA_EMAIL}"
 gcloud projects get-iam-policy $DEV_PROJECT_ID \
@@ -483,6 +493,16 @@ gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
 gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
   --member="serviceAccount:${PROD_SA_EMAIL}" \
   --role="roles/logging.logWriter"
+
+# Grant Cloud Build Editor role (to manage builds)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/cloudbuild.builds.editor"
+
+# Grant Cloud Build Service Agent role (for Cloud Build operations)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/cloudbuild.serviceAgent"
 
 # Verify permissions
 echo "Permissions granted to: ${PROD_SA_EMAIL}"
@@ -978,6 +998,14 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
 gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${DEV_SA_EMAIL}" \
   --role="roles/logging.logWriter"
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/cloudbuild.builds.editor"
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/cloudbuild.serviceAgent"
 ```
 
 ### Issue: Cloud Build trigger using wrong service account
