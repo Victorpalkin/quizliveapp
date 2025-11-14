@@ -12,6 +12,7 @@ export const mockQuiz: Quiz = {
   questions: [
     {
       id: 'q1',
+      type: 'multiple-choice',
       text: 'What is the capital of Japan?',
       timeLimit: 20,
       answers: [
@@ -20,10 +21,14 @@ export const mockQuiz: Quiz = {
         { text: 'Tokyo' },
         { text: 'Bangkok' },
       ],
-      correctAnswerIndex: 2,
+      correctAnswerIndices: [2],
+      allowMultipleAnswers: false,
+      scoringMode: 'proportional',
+      showAnswerCount: true,
     },
     {
       id: 'q2',
+      type: 'multiple-choice',
       text: 'What is the capital of Australia?',
       timeLimit: 20,
       answers: [
@@ -32,7 +37,10 @@ export const mockQuiz: Quiz = {
         { text: 'Melbourne' },
         { text: 'Wellington' },
       ],
-      correctAnswerIndex: 1,
+      correctAnswerIndices: [1],
+      allowMultipleAnswers: false,
+      scoringMode: 'proportional',
+      showAnswerCount: true,
     },
   ],
 };

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Clock } from 'lucide-react';
+import { CheckCircle, Clock, Gauge } from 'lucide-react';
 import Image from 'next/image';
 import type { Quiz } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -37,11 +37,16 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
           <Card key={qIndex}>
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">
-                    Question {qIndex + 1}
-                  </CardTitle>
-                  <CardDescription className="text-base mt-2">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg">
+                      Question {qIndex + 1}
+                    </CardTitle>
+                    <Badge variant="outline" className="text-xs">
+                      {question.type === 'slider' ? 'Slider' : 'Multiple Choice'}
+                    </Badge>
+                  </div>
+                  <CardDescription className="text-base">
                     {question.text}
                   </CardDescription>
                 </div>
@@ -65,44 +70,113 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
             </CardHeader>
 
             <CardContent>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground mb-3">
-                  {showCorrectAnswers
-                    ? question.correctAnswerIndices.length > 1
-                      ? 'Correct Answers:'
-                      : 'Correct Answer:'
-                    : 'Answers:'}
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {question.answers.map((answer, aIndex) => {
-                    const isCorrect = question.correctAnswerIndices.includes(aIndex);
-                    const colorClass = answerColors[aIndex % answerColors.length];
+              {/* Multiple Choice Question */}
+              {question.type === 'multiple-choice' && (
+                <div className="space-y-4">
+                  {/* Multi-answer configuration display */}
+                  {question.allowMultipleAnswers && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      <Badge variant="secondary" className="text-xs">
+                        Multiple answers allowed
+                      </Badge>
+                      {question.scoringMode && (
+                        <Badge variant="secondary" className="text-xs">
+                          Scoring: {question.scoringMode === 'all-or-nothing' ? 'All or Nothing' : 'Proportional'}
+                        </Badge>
+                      )}
+                      {question.showAnswerCount && (
+                        <Badge variant="secondary" className="text-xs">
+                          Shows answer count
+                        </Badge>
+                      )}
+                    </div>
+                  )}
 
-                    return (
-                      <div
-                        key={aIndex}
-                        className={cn(
-                          'p-4 rounded-lg text-white relative',
-                          colorClass,
-                          showCorrectAnswers && isCorrect && 'ring-4 ring-green-400 ring-offset-2'
-                        )}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium">{answer.text}</span>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {showCorrectAnswers
+                      ? question.correctAnswerIndices.length > 1
+                        ? 'Correct Answers:'
+                        : 'Correct Answer:'
+                      : 'Answers:'}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {question.answers.map((answer, aIndex) => {
+                      const isCorrect = question.correctAnswerIndices.includes(aIndex);
+                      const colorClass = answerColors[aIndex % answerColors.length];
+
+                      return (
+                        <div
+                          key={aIndex}
+                          className={cn(
+                            'p-4 rounded-lg text-white relative',
+                            colorClass,
+                            showCorrectAnswers && isCorrect && 'ring-4 ring-green-400 ring-offset-2'
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium">{answer.text}</span>
+                            {showCorrectAnswers && isCorrect && (
+                              <CheckCircle className="h-5 w-5 flex-shrink-0" />
+                            )}
+                          </div>
                           {showCorrectAnswers && isCorrect && (
-                            <CheckCircle className="h-5 w-5 flex-shrink-0" />
+                            <Badge className="absolute -top-2 -right-2 bg-green-500 text-white">
+                              Correct
+                            </Badge>
                           )}
                         </div>
-                        {showCorrectAnswers && isCorrect && (
-                          <Badge className="absolute -top-2 -right-2 bg-green-500 text-white">
-                            Correct
-                          </Badge>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Slider Question */}
+              {question.type === 'slider' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Gauge className="h-5 w-5" />
+                    <p className="text-sm font-medium">
+                      Numeric Range Question
+                    </p>
+                  </div>
+
+                  <div className="bg-muted p-6 rounded-lg space-y-4">
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Minimum</p>
+                        <p className="text-2xl font-bold">{question.minValue}{question.unit}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Maximum</p>
+                        <p className="text-2xl font-bold">{question.maxValue}{question.unit}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Step</p>
+                        <p className="text-2xl font-bold">{question.step || 1}</p>
+                      </div>
+                    </div>
+
+                    {showCorrectAnswers && (
+                      <div className="pt-4 border-t border-border">
+                        <div className="flex items-center justify-center gap-2">
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Correct Answer</p>
+                            <p className="text-3xl font-bold text-green-600">
+                              {question.correctValue}{question.unit}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground italic">
+                    Players will use a slider to select a value. Scoring is based on proximity to the correct answer.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

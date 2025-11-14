@@ -17,7 +17,6 @@ import { useDoc, useFirestore, useMemoFirebase, useFunctions } from '@/firebase'
 import { doc, collection, query, where, getDocs, setDoc, DocumentReference, Timestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import type { Quiz, Player, Game, Question } from '@/lib/types';
-import { migrateQuestion } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -87,13 +86,7 @@ export default function PlayerGamePage() {
   const quizRef = useMemoFirebase(() => game ? doc(firestore, 'quizzes', game.quizId) : null, [firestore, game]);
   const { data: quizData, loading: quizLoading } = useDoc(quizRef);
 
-  const quiz = useMemo(() => {
-    if (!quizData) return null;
-    return {
-      ...quizData,
-      questions: quizData.questions.map(migrateQuestion)
-    }
-  }, [quizData]);
+  const quiz = quizData;
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;

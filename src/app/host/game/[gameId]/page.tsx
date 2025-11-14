@@ -19,7 +19,6 @@ import { Progress } from '@/components/ui/progress';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, updateDoc, DocumentReference, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import type { Player, Quiz, Game, Question } from '@/lib/types';
-import { migrateQuestion } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -165,13 +164,7 @@ export default function HostGamePage() {
   const quizRef = useMemoFirebase(() => game ? doc(firestore, 'quizzes', game.quizId) : null, [firestore, game]);
   const { data: quizData, loading: quizLoading } = useDoc(quizRef);
 
-  const quiz = useMemo(() => {
-    if (!quizData) return null;
-    return {
-      ...quizData,
-      questions: quizData.questions.map(migrateQuestion)
-    }
-  }, [quizData]);
+  const quiz = quizData;
 
   const playersQuery = useMemoFirebase(() => collection(firestore, 'games', gameId, 'players'), [firestore, gameId]);
   const { data: players, loading: playersLoading } = useCollection<Player>(playersQuery);

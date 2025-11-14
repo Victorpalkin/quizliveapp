@@ -217,41 +217,29 @@ export const submitAnswer = onCall(
       throw new HttpsError('not-found', 'Question not found');
     }
 
-    // Migrate legacy questions if needed
-    const migratedQuestion: Question = question.type
-      ? question as Question
-      : {
-          ...(question as any),
-          type: 'multiple-choice' as const,
-          correctAnswerIndices: (question as any).correctAnswerIndices || [0],
-          allowMultipleAnswers: false,
-          scoringMode: 'proportional' as const,
-          showAnswerCount: true,
-        } as MultipleChoiceQuestion;
-
     // Validate answer based on question type
-    if (migratedQuestion.type === 'multiple-choice') {
+    if (question.type === 'multiple-choice') {
       if (answerIndices) {
         // Multi-choice validation
         for (const idx of answerIndices) {
-          if (idx < 0 || idx >= migratedQuestion.answers.length) {
+          if (idx < 0 || idx >= question.answers.length) {
             throw new HttpsError('invalid-argument', `Invalid answer index: ${idx}`);
           }
         }
       } else if (answerIndex !== undefined) {
         // Single choice validation (-1 means no answer/timeout)
-        if (answerIndex !== -1 && (answerIndex < 0 || answerIndex >= migratedQuestion.answers.length)) {
+        if (answerIndex !== -1 && (answerIndex < 0 || answerIndex >= question.answers.length)) {
           throw new HttpsError('invalid-argument', 'Invalid answer index');
         }
       }
-    } else if (migratedQuestion.type === 'slider') {
+    } else if (question.type === 'slider') {
       if (sliderValue === undefined) {
         throw new HttpsError('invalid-argument', 'Slider question requires sliderValue');
       }
-      if (sliderValue < migratedQuestion.minValue || sliderValue > migratedQuestion.maxValue) {
+      if (sliderValue < question.minValue || sliderValue > question.maxValue) {
         throw new HttpsError(
           'invalid-argument',
-          `Slider value ${sliderValue} out of range [${migratedQuestion.minValue}, ${migratedQuestion.maxValue}]`
+          `Slider value ${sliderValue} out of range [${question.minValue}, ${question.maxValue}]`
         );
       }
     }
@@ -275,7 +263,7 @@ export const submitAnswer = onCall(
     }
 
     // Calculate score based on question type
-    const timeLimit = migratedQuestion.timeLimit || 20;
+    const timeLimit = question.timeLimit || 20;
 
     // Validate time remaining is within bounds
     if (timeRemaining > timeLimit) {
@@ -288,8 +276,8 @@ export const submitAnswer = onCall(
     let points = 0;
     let isCorrect = false;
 
-    if (migratedQuestion.type === 'multiple-choice') {
-      const { correctAnswerIndices, allowMultipleAnswers, scoringMode } = migratedQuestion;
+    if (question.type === 'multiple-choice') {
+      const { correctAnswerIndices, allowMultipleAnswers, scoringMode } = question;
 
       if (allowMultipleAnswers && answerIndices) {
         // Multi-answer mode
@@ -331,10 +319,10 @@ export const submitAnswer = onCall(
         points = Math.min(1000, points + timeBonus);
       }
 
-    } else if (migratedQuestion.type === 'slider') {
+    } else if (question.type === 'slider') {
       // Slider question: proximity-based scoring
-      const range = migratedQuestion.maxValue - migratedQuestion.minValue;
-      const distance = Math.abs(sliderValue! - migratedQuestion.correctValue);
+      const range = question.maxValue - question.minValue;
+      const distance = Math.abs(sliderValue! - question.correctValue);
       const accuracy = Math.max(0, 1 - (distance / range));  // 1.0 = perfect, 0.0 = worst
 
       // Quadratic scoring: rewards closeness, penalizes distance
@@ -373,8 +361,8 @@ export const submitAnswer = onCall(
         score: newScore,
       };
 
-      if (migratedQuestion.type === 'multiple-choice') {
-        if (migratedQuestion.allowMultipleAnswers && answerIndices) {
+      if (question.type === 'multiple-choice') {
+        if (question.allowMultipleAnswers && answerIndices) {
           updateData.lastAnswerIndices = answerIndices;
           updateData.lastAnswerIndex = null;  // Clear old field
         } else {
@@ -382,7 +370,7 @@ export const submitAnswer = onCall(
           updateData.lastAnswerIndices = null;  // Clear new field
         }
         updateData.lastSliderValue = null;
-      } else if (migratedQuestion.type === 'slider') {
+      } else if (question.type === 'slider') {
         updateData.lastSliderValue = sliderValue;
         updateData.lastAnswerIndex = null;
         updateData.lastAnswerIndices = null;
