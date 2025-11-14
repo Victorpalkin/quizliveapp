@@ -104,6 +104,9 @@ export default function PlayerGamePage() {
   // Use ref to track question index - refs don't trigger re-renders
   const lastQuestionIndexRef = useRef<number>(-1);
 
+  // Use ref to track if answer was submitted - prevents timeout race condition
+  const answerSubmittedRef = useRef<boolean>(false);
+
   const isLastQuestion = game && quiz ? game.currentQuestionIndex >= quiz.questions.length - 1 : false;
 
   // Keep screen awake during active gameplay
@@ -308,6 +311,7 @@ export default function PlayerGamePage() {
       setTimedOut(false);
       setLastAnswer(null);
       setSelectedAnswerIndices([]);
+      answerSubmittedRef.current = false; // Reset answer submission flag
 
       // Reset slider to midpoint of range
       if (question?.type === 'slider') {
@@ -361,7 +365,8 @@ export default function PlayerGamePage() {
 
   // Handle timeout when time reaches 0
   useEffect(() => {
-    if (state === 'question' && time === 0 && answerSelected === null && !timedOut) {
+    // Check both state and ref to prevent race condition with answer submission
+    if (state === 'question' && time === 0 && answerSelected === null && !timedOut && !answerSubmittedRef.current) {
       setTimedOut(true);
 
       // Set answer selection to prevent multiple submissions
@@ -449,6 +454,12 @@ export default function PlayerGamePage() {
   const handleAnswer = async (answerData?: { type: 'single' | 'multi' | 'slider'; value: number | number[] }) => {
     // Determine answer type based on question type if not provided (for backward compatibility)
     const isTimeout = !answerData;
+
+    // Mark answer as submitted immediately to prevent timeout race condition
+    if (!isTimeout) {
+      answerSubmittedRef.current = true;
+    }
+
     let submitData: any = {
       gameId: gameDocId,
       playerId: playerId,
