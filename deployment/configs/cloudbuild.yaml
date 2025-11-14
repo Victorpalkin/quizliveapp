@@ -61,6 +61,11 @@ steps:
     args:
       - '-c'
       - |
+        # Install Node.js and npm
+        apt-get update
+        apt-get install -y nodejs npm
+
+        # Install Firebase CLI
         npm install -g firebase-tools
         firebase --version
     id: 'install-firebase-cli'
