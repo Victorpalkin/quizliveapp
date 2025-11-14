@@ -188,6 +188,13 @@ export default function PlayerGamePage() {
           } else if (game.state === 'preparing') {
             setState('preparing');
           } else if (game.state === 'question') {
+            // Sync timer with host when reconnecting during question
+            if (game.questionStartTime && question) {
+              const elapsedSeconds = Math.floor((Date.now() - game.questionStartTime) / 1000);
+              const remainingTime = Math.max(0, timeLimit - elapsedSeconds);
+              console.log(`[Reconnect] Syncing timer: elapsed=${elapsedSeconds}s, remaining=${remainingTime}s`);
+              setTime(remainingTime);
+            }
             setState('question');
           } else if (game.state === 'leaderboard') {
             setState('result');
@@ -329,7 +336,14 @@ export default function PlayerGamePage() {
   // Start timer when question is shown
   useEffect(() => {
     if (state === 'question') {
-      setTime(timeLimit);
+      // Sync timer with host's questionStartTime if available
+      let initialTime = timeLimit;
+      if (game?.questionStartTime) {
+        const elapsedSeconds = Math.floor((Date.now() - game.questionStartTime) / 1000);
+        initialTime = Math.max(0, timeLimit - elapsedSeconds);
+        console.log(`[Timer] Syncing with host: elapsed=${elapsedSeconds}s, remaining=${initialTime}s`);
+      }
+      setTime(initialTime);
 
       const timer = setInterval(() => {
         setTime(prev => {
@@ -343,7 +357,7 @@ export default function PlayerGamePage() {
       return () => clearInterval(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, game?.currentQuestionIndex, timeLimit]);
+  }, [state, game?.currentQuestionIndex, timeLimit, game?.questionStartTime]);
 
   // Handle timeout when time reaches 0
   useEffect(() => {

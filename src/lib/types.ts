@@ -45,4 +45,5 @@ export interface Game {
     state: 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
     currentQuestionIndex: number;
     gamePin: string;
+    questionStartTime?: number; // Timestamp when current question started (for timer sync)
 }

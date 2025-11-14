@@ -252,7 +252,10 @@ export default function HostGamePage() {
 
   useEffect(() => {
     if (game?.state === 'preparing' && gameRef) {
-      updateGame(gameRef, { state: 'question' });
+      updateGame(gameRef, {
+        state: 'question',
+        questionStartTime: Date.now() // Set timestamp for timer sync
+      });
     }
   }, [game?.state, gameRef]);
 
