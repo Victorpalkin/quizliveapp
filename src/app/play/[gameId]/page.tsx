@@ -26,7 +26,8 @@ import { useWakeLock } from '@/hooks/use-wake-lock';
 import {
   SingleChoiceQuestionComponent,
   MultipleChoiceQuestionComponent,
-  SliderQuestionComponent
+  SliderQuestionComponent,
+  SlideQuestionComponent
 } from '@/components/app/player-question';
 
 type PlayerState = 'joining' | 'lobby' | 'preparing' | 'question' | 'waiting' | 'result' | 'ended' | 'cancelled' | 'reconnecting' | 'session-invalid';
@@ -336,6 +337,11 @@ export default function PlayerGamePage() {
   useEffect(() => {
     // Check both state and ref to prevent race condition with answer submission
     if (state === 'question' && time === 0 && !answerSelected && !timedOut && !answerSubmittedRef.current) {
+      // Skip timeout for slides - they don't have a time limit for viewing
+      if (question?.type === 'slide') {
+        return;
+      }
+
       setTimedOut(true);
 
       // Set answer selection to prevent multiple submissions
@@ -613,9 +619,41 @@ export default function PlayerGamePage() {
     }
   };
 
+  // Handle slide view (no scoring, just mark as viewed)
+  const handleSlideView = () => {
+    if (answerSelected || !gameDocId || !game || !question || question.type !== 'slide') return;
+
+    answerSubmittedRef.current = true;
+    setAnswerSelected(true);
+    setState('waiting');
+
+    // Show "No Answer" result with 0 points (like timeout but informational)
+    setLastAnswer({
+      selected: -1,
+      correct: [-1],
+      points: 0,
+      wasTimeout: false
+    });
+
+    // Update player state locally - mark as viewed with lastAnswerIndex = -1
+    if (gameDocId && player) {
+      const playerRef = doc(firestore, 'games', gameDocId, 'players', playerId) as DocumentReference<Player>;
+      setDoc(playerRef, { ...player, lastAnswerIndex: -1 }, { merge: true }).catch(error => {
+        console.error("Error marking slide as viewed:", error);
+      });
+      setPlayer(p => p ? { ...p, lastAnswerIndex: -1 } : null);
+    }
+  };
+
   // Handle timeout
   const handleTimeout = async () => {
     if (!gameDocId || !game || !question) return;
+
+    // Slides don't timeout - players just view them
+    if (question.type === 'slide') {
+      console.log('[Timeout] Skipping timeout for slide question');
+      return;
+    }
 
     const submitData: any = {
       gameId: gameDocId,
@@ -762,6 +800,14 @@ export default function PlayerGamePage() {
                 <SliderQuestionComponent
                   question={question}
                   onSubmit={handleSliderAnswer}
+                  disabled={answerSelected}
+                />
+              )}
+
+              {question.type === 'slide' && (
+                <SlideQuestionComponent
+                  question={question}
+                  onSubmit={handleSlideView}
                   disabled={answerSelected}
                 />
               )}

@@ -11,7 +11,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { PlusCircle, Trash2, Loader2, Save, X, ImagePlus, ImageOff } from 'lucide-react';
-import type { Question, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion } from '@/lib/types';
+import type { Question, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -59,11 +59,22 @@ const sliderQuestionSchema = z.object({
   timeLimit: z.number().optional(),
 });
 
+// Slide question schema - informational only
+const slideQuestionSchema = z.object({
+  type: z.literal('slide'),
+  text: z.string().min(1, 'Slide title cannot be empty.'),
+  title: z.string().min(1, 'Slide title cannot be empty.'),
+  description: z.string().optional(),
+  imageUrl: z.string().url().optional(),
+  timeLimit: z.number().optional(),
+});
+
 // Discriminated union for question types
 const questionSchema = z.discriminatedUnion('type', [
   singleChoiceQuestionSchema,
   multipleChoiceQuestionSchema,
   sliderQuestionSchema,
+  slideQuestionSchema,
 ]);
 
 const quizSchema = z.object({
@@ -86,7 +97,7 @@ interface QuizFormProps {
 export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, additionalContent }: QuizFormProps) {
   const { toast } = useToast();
   const storage = useStorage();
-  const [questions, setQuestions] = useState<(SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion)[]>([]);
+  const [questions, setQuestions] = useState<(SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion)[]>([]);
 
   const imageFiles = useRef<Record<number, File>>({});
   const imagesToDelete = useRef<string[]>([]);
@@ -102,7 +113,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
 
   useEffect(() => {
     if (initialData) {
-      setQuestions(initialData.questions as (SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion)[]);
+      setQuestions(initialData.questions as (SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion)[]);
     } else if (questions.length === 0) {
       addQuestion();
     }
@@ -126,10 +137,18 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     }
   }, [storage]);
 
-  const addQuestion = (text: string = '', type: 'single-choice' | 'multiple-choice' | 'slider' = 'single-choice') => {
-    let newQuestion: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion;
+  const addQuestion = (text: string = '', type: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' = 'single-choice') => {
+    let newQuestion: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion;
 
-    if (type === 'slider') {
+    if (type === 'slide') {
+      newQuestion = {
+        type: 'slide',
+        text: text || 'New Slide',
+        title: text || 'New Slide',
+        description: '',
+        timeLimit: 10,
+      };
+    } else if (type === 'slider') {
       newQuestion = {
         type: 'slider',
         text: text,
@@ -164,7 +183,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     form.setValue('questions', newQuestions);
   };
 
-  const updateQuestion = (index: number, updatedQuestion: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion) => {
+  const updateQuestion = (index: number, updatedQuestion: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion) => {
     const newQuestions = [...questions];
     newQuestions[index] = updatedQuestion;
     setQuestions(newQuestions);
@@ -355,11 +374,23 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                     <FormLabel>Question Type</FormLabel>
                     <RadioGroup
                       value={q.type}
-                      onValueChange={(value: 'single-choice' | 'multiple-choice' | 'slider') => {
+                      onValueChange={(value: 'single-choice' | 'multiple-choice' | 'slider' | 'slide') => {
                         if (value === q.type) return;
 
+                        // Convert to slide
+                        if (value === 'slide') {
+                          const slideQ: SlideQuestion = {
+                            type: 'slide',
+                            text: q.text || 'New Slide',
+                            title: q.text || 'New Slide',
+                            description: '',
+                            timeLimit: q.timeLimit || 10,
+                            imageUrl: q.imageUrl,
+                          };
+                          updateQuestion(qIndex, slideQ);
+                        }
                         // Convert to slider
-                        if (value === 'slider') {
+                        else if (value === 'slider') {
                           const sliderQ: SliderQuestion = {
                             type: 'slider',
                             text: q.text,
@@ -375,7 +406,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                         }
                         // Convert to single-choice
                         else if (value === 'single-choice') {
-                          const answers = q.type === 'slider' ? [{ text: '' }, { text: '' }] : (q as SingleChoiceQuestion | MultipleChoiceQuestion).answers;
+                          const answers = (q.type === 'slider' || q.type === 'slide') ? [{ text: '' }, { text: '' }] : (q as SingleChoiceQuestion | MultipleChoiceQuestion).answers;
                           const scQ: SingleChoiceQuestion = {
                             type: 'single-choice',
                             text: q.text,
@@ -388,7 +419,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                         }
                         // Convert to multiple-choice
                         else if (value === 'multiple-choice') {
-                          const answers = q.type === 'slider' ? [{ text: '' }, { text: '' }] : (q as SingleChoiceQuestion | MultipleChoiceQuestion).answers;
+                          const answers = (q.type === 'slider' || q.type === 'slide') ? [{ text: '' }, { text: '' }] : (q as SingleChoiceQuestion | MultipleChoiceQuestion).answers;
                           const mcQ: MultipleChoiceQuestion = {
                             type: 'multiple-choice',
                             text: q.text,
@@ -414,6 +445,10 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="slider" id={`type-slider-${qIndex}`} />
                         <Label htmlFor={`type-slider-${qIndex}`}>Slider (Numeric)</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="slide" id={`type-slide-${qIndex}`} />
+                        <Label htmlFor={`type-slide-${qIndex}`}>Slide (Info)</Label>
                       </div>
                     </RadioGroup>
                   </FormItem>
@@ -737,6 +772,45 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                           </FormControl>
                         </FormItem>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Slide Question Configuration */}
+                  {q.type === 'slide' && (
+                    <div className="space-y-4">
+                      <div className="space-y-0.5">
+                        <FormLabel>Slide Content</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Informational slide - no answer required
+                        </p>
+                      </div>
+                      <FormItem>
+                        <FormLabel>Slide Title</FormLabel>
+                        <FormControl>
+                          <Input
+                            value={q.title}
+                            onChange={(e) => {
+                              updateQuestion(qIndex, { ...q, title: e.target.value, text: e.target.value });
+                            }}
+                            placeholder="Enter slide title"
+                            maxLength={200}
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel>Description (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            value={q.description || ''}
+                            onChange={(e) => {
+                              updateQuestion(qIndex, { ...q, description: e.target.value });
+                            }}
+                            placeholder="Enter slide description or additional information"
+                            maxLength={1000}
+                            rows={4}
+                          />
+                        </FormControl>
+                      </FormItem>
                     </div>
                   )}
                 </CardContent>

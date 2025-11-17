@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
-import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion } from '@/lib/types';
+import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion } from '@/lib/types';
 import {
   DiamondIcon,
   TriangleIcon,
@@ -177,6 +177,45 @@ export function SliderQuestionComponent({ question, onSubmit, disabled }: Slider
         className="w-full text-xl py-8"
       >
         {submitted ? 'Answer Submitted' : 'Submit Answer'}
+      </Button>
+    </div>
+  );
+}
+
+interface SlideQuestionProps {
+  question: SlideQuestion;
+  onSubmit: () => void;
+  disabled: boolean;
+}
+
+export function SlideQuestionComponent({ question, onSubmit, disabled }: SlideQuestionProps) {
+  const [viewed, setViewed] = useState(false);
+
+  const handleContinue = () => {
+    if (disabled || viewed) return;
+    setViewed(true);
+    onSubmit();
+  };
+
+  return (
+    <div className="w-full max-w-2xl px-8 space-y-8">
+      <div className="text-center space-y-6">
+        <h2 className="text-4xl font-bold text-primary">
+          {question.title}
+        </h2>
+        {question.description && (
+          <p className="text-xl text-muted-foreground whitespace-pre-wrap">
+            {question.description}
+          </p>
+        )}
+      </div>
+      <Button
+        onClick={handleContinue}
+        disabled={disabled || viewed}
+        size="lg"
+        className="w-full text-xl py-8"
+      >
+        {viewed ? 'Viewed' : 'Continue'}
       </Button>
     </div>
   );

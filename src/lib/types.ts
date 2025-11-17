@@ -39,8 +39,15 @@ export interface SliderQuestion extends BaseQuestion {
   unit?: string;  // Optional display unit (e.g., "kg", "%", "°C")
 }
 
+// Slide question - informational only, no answer required
+export interface SlideQuestion extends BaseQuestion {
+  type: 'slide';
+  title: string;
+  description?: string;
+}
+
 // Discriminated union of all question types
-export type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion;
+export type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion;
 
 export interface Quiz {
   id: string;

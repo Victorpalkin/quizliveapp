@@ -187,8 +187,8 @@ export default function HostGamePage() {
   const answerDistribution = useMemo(() => {
     if (!question || !players) return [];
 
-    // For slider questions, return empty array (we'll handle this differently)
-    if (question.type === 'slider') {
+    // For slider and slide questions, return empty array (we'll handle these differently)
+    if (question.type === 'slider' || question.type === 'slide') {
       return [];
     }
 
@@ -400,8 +400,31 @@ export default function HostGamePage() {
                 </div>
               )}
             </div>
-            
-            {question.type === 'slider' ? (
+
+            {question.type === 'slide' ? (
+              <Card className="w-full max-w-2xl mx-auto mt-8">
+                <CardContent className="p-8 text-center">
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <Badge variant="secondary" className="text-sm">
+                        Informational Slide
+                      </Badge>
+                      <h2 className="text-4xl font-bold text-primary">
+                        {question.title}
+                      </h2>
+                      {question.description && (
+                        <p className="text-xl text-muted-foreground whitespace-pre-wrap mt-4">
+                          {question.description}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-lg text-muted-foreground">
+                      Players are viewing this slide...
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : question.type === 'slider' ? (
               <Card className="w-full max-w-2xl mx-auto mt-8">
                 <CardContent className="p-8 text-center">
                   <p className="text-lg text-muted-foreground mb-4">Players are submitting their answers...</p>
@@ -449,7 +472,33 @@ export default function HostGamePage() {
       {game?.state === 'leaderboard' && (
         <main className="flex-1 flex flex-col items-center justify-center gap-8 md:flex-row md:items-start">
             <LeaderboardView players={players || []} />
-            {question?.type === 'slider' ? (
+            {question?.type === 'slide' ? (
+              <Card className="w-full max-w-2xl flex-1">
+                <CardHeader>
+                  <CardTitle>Slide Viewed</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center p-8 space-y-4">
+                    <Badge variant="secondary" className="text-lg">
+                      Informational Content
+                    </Badge>
+                    <p className="text-lg text-muted-foreground">
+                      This was an informational slide. No scoring applied.
+                    </p>
+                    <div className="space-y-2 pt-4">
+                      <h3 className="text-2xl font-bold text-primary">
+                        {question.title}
+                      </h3>
+                      {question.description && (
+                        <p className="text-muted-foreground whitespace-pre-wrap">
+                          {question.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : question?.type === 'slider' ? (
               <SliderResultsView
                 responses={sliderResponses}
                 correctValue={question.correctValue}

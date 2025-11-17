@@ -43,7 +43,7 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
                       Question {qIndex + 1}
                     </CardTitle>
                     <Badge variant="outline" className="text-xs">
-                      {question.type === 'slider' ? 'Slider' : question.type === 'single-choice' ? 'Single Choice' : 'Multiple Choice'}
+                      {question.type === 'slider' ? 'Slider' : question.type === 'slide' ? 'Slide' : question.type === 'single-choice' ? 'Single Choice' : 'Multiple Choice'}
                     </Badge>
                   </div>
                   <CardDescription className="text-base">
@@ -203,6 +203,39 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
 
                   <p className="text-xs text-muted-foreground italic">
                     Players will use a slider to select a value. Scoring is based on proximity to the correct answer.
+                  </p>
+                </div>
+              )}
+
+              {/* Slide Question */}
+              {question.type === 'slide' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      Informational Only
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      No Scoring
+                    </Badge>
+                  </div>
+
+                  <div className="bg-muted p-6 rounded-lg space-y-4">
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Slide Title</p>
+                        <p className="text-2xl font-bold">{question.title}</p>
+                      </div>
+                      {question.description && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Description</p>
+                          <p className="text-sm whitespace-pre-wrap">{question.description}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground italic">
+                    Players will view this slide and click Continue. No answer required and no points awarded.
                   </p>
                 </div>
               )}
