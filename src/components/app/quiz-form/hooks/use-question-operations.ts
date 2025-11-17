@@ -1,0 +1,222 @@
+import { useState, useCallback } from 'react';
+import { UseFormSetValue } from 'react-hook-form';
+import { useToast } from '@/hooks/use-toast';
+import type {
+  SingleChoiceQuestion,
+  MultipleChoiceQuestion,
+  SliderQuestion,
+  SlideQuestion
+} from '@/lib/types';
+import type { QuizFormData } from '../../quiz-form';
+
+type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion;
+
+export function useQuestionOperations(
+  setValue: UseFormSetValue<QuizFormData>,
+  imagesToDelete: React.MutableRefObject<string[]>
+) {
+  const { toast } = useToast();
+  const [questions, setQuestions] = useState<Question[]>([]);
+
+  const addQuestion = useCallback((
+    text: string = '',
+    type: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' = 'single-choice'
+  ) => {
+    let newQuestion: Question;
+
+    if (type === 'slide') {
+      newQuestion = {
+        type: 'slide',
+        text: text || 'New Slide',
+        title: text || 'New Slide',
+        description: '',
+        timeLimit: 10,
+      };
+    } else if (type === 'slider') {
+      newQuestion = {
+        type: 'slider',
+        text: text,
+        minValue: 0,
+        maxValue: 100,
+        correctValue: 50,
+        step: 1,
+        unit: '',
+        timeLimit: 20,
+      };
+    } else if (type === 'multiple-choice') {
+      newQuestion = {
+        type: 'multiple-choice',
+        text: text,
+        answers: [{ text: '' }, { text: '' }],
+        correctAnswerIndices: [0, 1],
+        timeLimit: 20,
+        showAnswerCount: true,
+      };
+    } else {
+      newQuestion = {
+        type: 'single-choice',
+        text: text,
+        answers: [{ text: '' }, { text: '' }],
+        correctAnswerIndex: 0,
+        timeLimit: 20,
+      };
+    }
+
+    const newQuestions = [...questions, newQuestion];
+    setQuestions(newQuestions);
+    setValue('questions', newQuestions);
+  }, [questions, setValue]);
+
+  const updateQuestion = useCallback((index: number, updatedQuestion: Question) => {
+    const newQuestions = [...questions];
+    newQuestions[index] = updatedQuestion;
+    setQuestions(newQuestions);
+    setValue('questions', newQuestions, { shouldValidate: true });
+  }, [questions, setValue]);
+
+  const removeQuestion = useCallback((index: number) => {
+    const questionToRemove = questions[index];
+    if (questionToRemove.imageUrl) {
+      imagesToDelete.current.push(questionToRemove.imageUrl);
+    }
+    const newQuestions = questions.filter((_, qIndex) => qIndex !== index);
+    setQuestions(newQuestions);
+    setValue('questions', newQuestions, { shouldValidate: true });
+  }, [questions, setValue, imagesToDelete]);
+
+  const addAnswer = useCallback((qIndex: number) => {
+    const newQuestions = [...questions];
+    const question = newQuestions[qIndex];
+
+    if (question.type !== 'single-choice' && question.type !== 'multiple-choice') return;
+
+    if (question.answers.length < 8) {
+      question.answers.push({ text: '' });
+      setQuestions(newQuestions);
+      setValue('questions', newQuestions, { shouldValidate: true });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Answer limit reached",
+        description: "You can only have a maximum of 8 answers per question.",
+      });
+    }
+  }, [questions, setValue, toast]);
+
+  const removeAnswer = useCallback((qIndex: number, aIndex: number) => {
+    const newQuestions = [...questions];
+    const question = newQuestions[qIndex];
+
+    if (question.type !== 'single-choice' && question.type !== 'multiple-choice') return;
+
+    if (question.answers.length > 2) {
+      question.answers.splice(aIndex, 1);
+
+      if (question.type === 'single-choice') {
+        // Adjust correctAnswerIndex
+        if (question.correctAnswerIndex === aIndex) {
+          question.correctAnswerIndex = 0; // Default to first answer
+        } else if (question.correctAnswerIndex > aIndex) {
+          question.correctAnswerIndex -= 1;
+        }
+      } else {
+        // Adjust correctAnswerIndices
+        const newCorrectIndices = question.correctAnswerIndices
+          .filter(i => i !== aIndex)
+          .map(i => i > aIndex ? i - 1 : i);
+        if (newCorrectIndices.length < 2) {
+          // Ensure at least 2 correct answers for multiple-choice
+          newCorrectIndices.push(...[0, 1].filter(i => !newCorrectIndices.includes(i) && i < question.answers.length - 1));
+        }
+        question.correctAnswerIndices = newCorrectIndices;
+      }
+
+      setQuestions(newQuestions);
+      setValue('questions', newQuestions, { shouldValidate: true });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Answer limit reached",
+        description: "You must have at least 2 answers per question.",
+      });
+    }
+  }, [questions, setValue, toast]);
+
+  const convertQuestionType = useCallback((
+    qIndex: number,
+    targetType: 'single-choice' | 'multiple-choice' | 'slider' | 'slide'
+  ) => {
+    const q = questions[qIndex];
+    if (targetType === q.type) return;
+
+    let convertedQuestion: Question;
+
+    // Convert to slide
+    if (targetType === 'slide') {
+      convertedQuestion = {
+        type: 'slide',
+        text: q.text || 'New Slide',
+        title: q.text || 'New Slide',
+        description: '',
+        timeLimit: q.timeLimit || 10,
+        imageUrl: q.imageUrl,
+      };
+    }
+    // Convert to slider
+    else if (targetType === 'slider') {
+      convertedQuestion = {
+        type: 'slider',
+        text: q.text,
+        minValue: 0,
+        maxValue: 100,
+        correctValue: 50,
+        step: 1,
+        unit: '',
+        timeLimit: q.timeLimit || 20,
+        imageUrl: q.imageUrl,
+      };
+    }
+    // Convert to single-choice
+    else if (targetType === 'single-choice') {
+      const answers = (q.type === 'slider' || q.type === 'slide')
+        ? [{ text: '' }, { text: '' }]
+        : (q as SingleChoiceQuestion | MultipleChoiceQuestion).answers;
+      convertedQuestion = {
+        type: 'single-choice',
+        text: q.text,
+        answers: answers,
+        correctAnswerIndex: 0,
+        timeLimit: q.timeLimit || 20,
+        imageUrl: q.imageUrl,
+      };
+    }
+    // Convert to multiple-choice
+    else {
+      const answers = (q.type === 'slider' || q.type === 'slide')
+        ? [{ text: '' }, { text: '' }]
+        : (q as SingleChoiceQuestion | MultipleChoiceQuestion).answers;
+      convertedQuestion = {
+        type: 'multiple-choice',
+        text: q.text,
+        answers: answers,
+        correctAnswerIndices: [0, 1],
+        timeLimit: q.timeLimit || 20,
+        showAnswerCount: true,
+        imageUrl: q.imageUrl,
+      };
+    }
+
+    updateQuestion(qIndex, convertedQuestion);
+  }, [questions, updateQuestion]);
+
+  return {
+    questions,
+    setQuestions,
+    addQuestion,
+    updateQuestion,
+    removeQuestion,
+    addAnswer,
+    removeAnswer,
+    convertQuestionType,
+  };
+}
