@@ -11,6 +11,24 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { nanoid } from 'nanoid';
 
+// Helper function to remove undefined values from objects
+function removeUndefined<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefined) as T;
+  }
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        cleaned[key] = removeUndefined(value);
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
 export default function CreateQuizPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -58,7 +76,10 @@ export default function CreateQuizPage() {
         createdAt: serverTimestamp(),
       };
 
-      await addDoc(collection(firestore, 'quizzes'), finalQuizData);
+      // Remove undefined values to prevent Firestore errors
+      const cleanedQuizData = removeUndefined(finalQuizData);
+
+      await addDoc(collection(firestore, 'quizzes'), cleanedQuizData);
 
       // Clean up deleted images from storage
       for (const url of imagesToDelete) {
