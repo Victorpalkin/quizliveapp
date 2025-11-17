@@ -14,16 +14,19 @@ interface BaseQuestion {
   imageUrl?: string;
 }
 
-// Multiple choice question
+// Single choice question - exactly one correct answer
+export interface SingleChoiceQuestion extends BaseQuestion {
+  type: 'single-choice';
+  answers: Answer[];
+  correctAnswerIndex: number; // Single index for the one correct answer
+}
+
+// Multiple choice question - multiple correct answers with proportional scoring
 export interface MultipleChoiceQuestion extends BaseQuestion {
   type: 'multiple-choice';
   answers: Answer[];
-  correctAnswerIndices: number[];
-
-  // Multi-answer configuration
-  allowMultipleAnswers?: boolean;  // Default: false (single select)
-  scoringMode?: 'all-or-nothing' | 'proportional';  // Default: 'proportional', only applies when allowMultipleAnswers = true
-  showAnswerCount?: boolean;  // Default: true, only applies when allowMultipleAnswers = true
+  correctAnswerIndices: number[]; // Multiple indices for correct answers
+  showAnswerCount?: boolean; // Default: true, show how many answers to select
 }
 
 // Slider question
@@ -37,7 +40,7 @@ export interface SliderQuestion extends BaseQuestion {
 }
 
 // Discriminated union of all question types
-export type Question = MultipleChoiceQuestion | SliderQuestion;
+export type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion;
 
 export interface Quiz {
   id: string;

@@ -43,7 +43,7 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
                       Question {qIndex + 1}
                     </CardTitle>
                     <Badge variant="outline" className="text-xs">
-                      {question.type === 'slider' ? 'Slider' : 'Multiple Choice'}
+                      {question.type === 'slider' ? 'Slider' : question.type === 'single-choice' ? 'Single Choice' : 'Multiple Choice'}
                     </Badge>
                   </div>
                   <CardDescription className="text-base">
@@ -70,34 +70,63 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
             </CardHeader>
 
             <CardContent>
+              {/* Single Choice Question */}
+              {question.type === 'single-choice' && (
+                <div className="space-y-4">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {showCorrectAnswers ? 'Correct Answer:' : 'Answers:'}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {question.answers.map((answer, aIndex) => {
+                      const isCorrect = question.correctAnswerIndex === aIndex;
+                      const colorClass = answerColors[aIndex % answerColors.length];
+
+                      return (
+                        <div
+                          key={aIndex}
+                          className={cn(
+                            'p-4 rounded-lg text-white relative',
+                            colorClass,
+                            showCorrectAnswers && isCorrect && 'ring-4 ring-green-400 ring-offset-2'
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium">{answer.text}</span>
+                            {showCorrectAnswers && isCorrect && (
+                              <CheckCircle className="h-5 w-5 flex-shrink-0" />
+                            )}
+                          </div>
+                          {showCorrectAnswers && isCorrect && (
+                            <Badge className="absolute -top-2 -right-2 bg-green-500 text-white">
+                              Correct
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Multiple Choice Question */}
               {question.type === 'multiple-choice' && (
                 <div className="space-y-4">
-                  {/* Multi-answer configuration display */}
-                  {question.allowMultipleAnswers && (
-                    <div className="flex flex-wrap gap-2 mb-2">
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {question.correctAnswerIndices.length} correct answers
+                    </Badge>
+                    <Badge variant="default" className="text-xs">
+                      Proportional scoring
+                    </Badge>
+                    {question.showAnswerCount !== false && (
                       <Badge variant="secondary" className="text-xs">
-                        Multiple answers allowed
+                        Shows answer count
                       </Badge>
-                      {question.scoringMode && (
-                        <Badge variant="secondary" className="text-xs">
-                          Scoring: {question.scoringMode === 'all-or-nothing' ? 'All or Nothing' : 'Proportional'}
-                        </Badge>
-                      )}
-                      {question.showAnswerCount && (
-                        <Badge variant="secondary" className="text-xs">
-                          Shows answer count
-                        </Badge>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   <p className="text-sm font-medium text-muted-foreground">
-                    {showCorrectAnswers
-                      ? question.correctAnswerIndices.length > 1
-                        ? 'Correct Answers:'
-                        : 'Correct Answer:'
-                      : 'Answers:'}
+                    {showCorrectAnswers ? 'Correct Answers:' : 'Answers:'}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {question.answers.map((answer, aIndex) => {

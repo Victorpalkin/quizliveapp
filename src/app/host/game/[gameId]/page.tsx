@@ -192,7 +192,7 @@ export default function HostGamePage() {
       return [];
     }
 
-    // For multiple choice questions
+    // For single-choice and multiple-choice questions
     const counts = Array(question.answers.length).fill(0);
     players.forEach(player => {
         // Handle multi-answer responses
@@ -203,17 +203,24 @@ export default function HostGamePage() {
             }
           });
         }
-        // Handle single answer responses (backward compatible)
+        // Handle single answer responses
         else if (player.lastAnswerIndex !== null && player.lastAnswerIndex !== undefined && player.lastAnswerIndex >= 0) {
             counts[player.lastAnswerIndex]++;
         }
     });
 
-    return question.answers.map((ans, index) => ({
+    return question.answers.map((ans, index) => {
+      // Determine if this answer is correct based on question type
+      const isCorrect = question.type === 'single-choice'
+        ? question.correctAnswerIndex === index
+        : question.correctAnswerIndices.includes(index);
+
+      return {
         name: ans.text,
         total: counts[index],
-        isCorrect: question.correctAnswerIndices.includes(index),
-    }));
+        isCorrect,
+      };
+    });
 }, [question, players]);
 
   // Slider question responses
@@ -373,13 +380,13 @@ export default function HostGamePage() {
                   <CardContent className="p-8">
                       <div className="flex flex-col items-center gap-3">
                         <p className="text-3xl font-bold">{question.text}</p>
-                        {question.type === 'multiple-choice' && question.allowMultipleAnswers && (
+                        {question.type === 'multiple-choice' && (
                           <div className="flex gap-2">
                             <Badge variant="secondary" className="text-sm">
-                              Multiple Answers
+                              Multiple Answers ({question.correctAnswerIndices.length})
                             </Badge>
-                            <Badge variant={question.scoringMode === 'all-or-nothing' ? 'destructive' : 'default'} className="text-sm">
-                              {question.scoringMode === 'all-or-nothing' ? 'All or Nothing' : 'Proportional'}
+                            <Badge variant="default" className="text-sm">
+                              Proportional Scoring
                             </Badge>
                           </div>
                         )}
@@ -420,12 +427,15 @@ export default function HostGamePage() {
               <div className="grid grid-cols-2 gap-4 mt-auto w-full max-w-4xl">
                 {question.answers.map((ans, i) => {
                   const Icon = answerIcons[i % answerIcons.length];
-                  const isCorrect = question.correctAnswerIndices.includes(i);
+                  // Determine if answer is correct based on question type
+                  const isCorrect = question.type === 'single-choice'
+                    ? question.correctAnswerIndex === i
+                    : question.correctAnswerIndices.includes(i);
                   return (
                       <div key={i} className={cn(`flex items-center gap-4 p-4 rounded-lg text-white relative`, answerColors[i % answerColors.length])}>
                           <Icon className="w-8 h-8" />
                           <span className="text-2xl font-medium">{ans.text}</span>
-                          {question.allowMultipleAnswers && isCorrect && (
+                          {question.type === 'multiple-choice' && isCorrect && (
                             <CheckCircle className="absolute top-2 right-2 w-6 h-6" />
                           )}
                       </div>

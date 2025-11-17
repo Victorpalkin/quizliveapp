@@ -5,13 +5,6 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { PartyPopper, Frown, Trophy, Loader2, XCircle, Timer, Clock } from 'lucide-react';
-import {
-  DiamondIcon,
-  TriangleIcon,
-  CircleIcon,
-  SquareIcon,
-} from '@/components/app/quiz-icons';
-import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { useDoc, useFirestore, useMemoFirebase, useFunctions } from '@/firebase';
 import { doc, collection, query, where, getDocs, setDoc, DocumentReference, Timestamp } from 'firebase/firestore';
@@ -30,26 +23,13 @@ import {
   sessionMatchesPin
 } from '@/lib/player-session';
 import { useWakeLock } from '@/hooks/use-wake-lock';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Slider } from '@/components/ui/slider';
+import {
+  SingleChoiceQuestionComponent,
+  MultipleChoiceQuestionComponent,
+  SliderQuestionComponent
+} from '@/components/app/player-question';
 
 type PlayerState = 'joining' | 'lobby' | 'preparing' | 'question' | 'waiting' | 'result' | 'ended' | 'cancelled' | 'reconnecting' | 'session-invalid';
-
-const answerIcons = [
-  TriangleIcon,
-  DiamondIcon,
-  SquareIcon,
-  CircleIcon,
-  TriangleIcon, // Repeat for more than 4
-  DiamondIcon,
-  SquareIcon,
-  CircleIcon,
-];
-
-const answerColors = [
-  'bg-red-500', 'bg-blue-500', 'bg-yellow-500', 'bg-green-500',
-  'bg-purple-500', 'bg-pink-500', 'bg-orange-500', 'bg-teal-500',
-];
 
 export default function PlayerGamePage() {
   const params = useParams();
@@ -94,12 +74,8 @@ export default function PlayerGamePage() {
   const [player, setPlayer] = useState<Player | null>(null);
   const [lastAnswer, setLastAnswer] = useState<{ selected: number; correct: number[]; points: number; wasTimeout: boolean; isPartiallyCorrect?: boolean } | null>(null);
   const [time, setTime] = useState(timeLimit);
-  const [answerSelected, setAnswerSelected] = useState<number | null>(null);
+  const [answerSelected, setAnswerSelected] = useState<boolean>(false);
   const [timedOut, setTimedOut] = useState(false);
-
-  // Multi-select and slider state
-  const [selectedAnswerIndices, setSelectedAnswerIndices] = useState<number[]>([]);
-  const [sliderValue, setSliderValue] = useState<number>(50);
 
   // Use ref to track question index - refs don't trigger re-renders
   const lastQuestionIndexRef = useRef<number>(-1);
@@ -307,17 +283,10 @@ export default function PlayerGamePage() {
   useEffect(() => {
     if (state === 'preparing') {
       console.log('[Player State] Resetting for new question');
-      setAnswerSelected(null);
+      setAnswerSelected(false);
       setTimedOut(false);
       setLastAnswer(null);
-      setSelectedAnswerIndices([]);
       answerSubmittedRef.current = false; // Reset answer submission flag
-
-      // Reset slider to midpoint of range
-      if (question?.type === 'slider') {
-        const midpoint = (question.minValue + question.maxValue) / 2;
-        setSliderValue(midpoint);
-      }
 
       // CRITICAL: Reset time to prevent false timeout on next question
       // Without this, if player timed out on previous question (time = 0),
@@ -366,17 +335,17 @@ export default function PlayerGamePage() {
   // Handle timeout when time reaches 0
   useEffect(() => {
     // Check both state and ref to prevent race condition with answer submission
-    if (state === 'question' && time === 0 && answerSelected === null && !timedOut && !answerSubmittedRef.current) {
+    if (state === 'question' && time === 0 && !answerSelected && !timedOut && !answerSubmittedRef.current) {
       setTimedOut(true);
 
       // Set answer selection to prevent multiple submissions
-      setAnswerSelected(-1);
+      setAnswerSelected(true);
 
       // Set local state immediately for display (in case submission fails)
       if (question) {
         setLastAnswer({
           selected: -1,
-          correct: question.correctAnswerIndices,
+          correct: question.type === 'single-choice' ? [question.correctAnswerIndex] : (question.type === 'multiple-choice' ? question.correctAnswerIndices : [1]),
           points: 0,
           wasTimeout: true
         });
@@ -387,7 +356,7 @@ export default function PlayerGamePage() {
 
       // Try to submit to server (may fail if game state changed due to race condition)
       // But local state is already set, so player will see correct "No Answer" screen
-      handleAnswer(); // No parameters = timeout
+      handleTimeout();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [time, state, answerSelected, timedOut]);
@@ -451,143 +420,231 @@ export default function PlayerGamePage() {
     }
   };
 
-  const handleAnswer = async (answerData?: { type: 'single' | 'multi' | 'slider'; value: number | number[] }) => {
-    // Determine answer type based on question type if not provided (for backward compatibility)
-    const isTimeout = !answerData;
+  // Handle single choice answer submission
+  const handleSingleChoiceAnswer = async (answerIndex: number) => {
+    if (answerSelected || !gameDocId || !game || !question || question.type !== 'single-choice') return;
 
-    // Mark answer as submitted immediately to prevent timeout race condition
-    if (!isTimeout) {
-      answerSubmittedRef.current = true;
+    answerSubmittedRef.current = true;
+    setAnswerSelected(true);
+    setState('waiting');
+
+    // Optimistic UI: Calculate estimated points client-side
+    const isCorrectAnswer = answerIndex === question.correctAnswerIndex;
+    let estimatedPoints = 0;
+    if (isCorrectAnswer) {
+      estimatedPoints = 100;
+      const timeBonus = Math.round((time / timeLimit) * 900);
+      estimatedPoints = Math.min(1000, estimatedPoints + timeBonus);
     }
 
-    let submitData: any = {
+    // Show result immediately (optimistic)
+    setLastAnswer({
+      selected: answerIndex,
+      correct: [question.correctAnswerIndex],
+      points: estimatedPoints,
+      wasTimeout: false
+    });
+    setPlayer(p => p ? { ...p, score: p.score + estimatedPoints, lastAnswerIndex: answerIndex } : null);
+
+    // Submit to server in background
+    const submitData = {
       gameId: gameDocId,
       playerId: playerId,
-      questionIndex: game?.currentQuestionIndex,
+      questionIndex: game.currentQuestionIndex,
+      answerIndex,
       timeRemaining: time,
+      // Question metadata to avoid server quiz fetch
+      questionType: 'single-choice' as const,
+      questionTimeLimit: question.timeLimit,
+      correctAnswerIndex: question.correctAnswerIndex,
     };
 
-    if (isTimeout) {
-      // Timeout submission
+    try {
+      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
+      const result = await submitAnswerFn(submitData);
+      const { points: actualPoints, newScore } = result.data as any;
+
+      // Update with actual values if different
+      if (actualPoints !== estimatedPoints) {
+        setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
+      }
+      setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndex: answerIndex } : null);
+    } catch (error: any) {
+      console.error('Error submitting answer:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit answer. Your score may not be saved.' });
+      // Keep optimistic UI - don't rollback as it creates bad UX
+    }
+  };
+
+  // Handle multiple choice answer submission
+  const handleMultipleChoiceAnswer = async (answerIndices: number[]) => {
+    if (answerSelected || !gameDocId || !game || !question || question.type !== 'multiple-choice') return;
+
+    answerSubmittedRef.current = true;
+    setAnswerSelected(true);
+    setState('waiting');
+
+    // Optimistic UI: Calculate estimated points client-side
+    const correctAnswerIndices = question.correctAnswerIndices;
+    const correctSelected = answerIndices.filter(i => correctAnswerIndices.includes(i)).length;
+    const wrongSelected = answerIndices.filter(i => !correctAnswerIndices.includes(i)).length;
+    const totalCorrect = correctAnswerIndices.length;
+
+    const correctRatio = correctSelected / totalCorrect;
+    const penalty = wrongSelected * 0.2;
+    const scoreMultiplier = Math.max(0, correctRatio - penalty);
+    const basePoints = Math.round(1000 * scoreMultiplier);
+
+    const isCorrectAnswer = correctSelected === totalCorrect && wrongSelected === 0;
+    const isPartiallyCorrectAnswer = !isCorrectAnswer && scoreMultiplier > 0;
+
+    let estimatedPoints = basePoints;
+    if (isCorrectAnswer && estimatedPoints > 0) {
+      const timeBonus = Math.round((time / timeLimit) * 900);
+      estimatedPoints = Math.min(1000, estimatedPoints + timeBonus);
+    }
+
+    // Show result immediately (optimistic)
+    setLastAnswer({
+      selected: isCorrectAnswer ? 1 : 0,
+      correct: [1],
+      points: estimatedPoints,
+      wasTimeout: false,
+      isPartiallyCorrect: isPartiallyCorrectAnswer
+    });
+    setPlayer(p => p ? { ...p, score: p.score + estimatedPoints, lastAnswerIndices: answerIndices } : null);
+
+    // Submit to server in background
+    const submitData = {
+      gameId: gameDocId,
+      playerId: playerId,
+      questionIndex: game.currentQuestionIndex,
+      answerIndices,
+      timeRemaining: time,
+      // Question metadata to avoid server quiz fetch
+      questionType: 'multiple-choice' as const,
+      questionTimeLimit: question.timeLimit,
+      correctAnswerIndices: question.correctAnswerIndices,
+    };
+
+    try {
+      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
+      const result = await submitAnswerFn(submitData);
+      const { points: actualPoints, newScore, isPartiallyCorrect } = result.data as any;
+
+      // Update with actual values if different
+      if (actualPoints !== estimatedPoints) {
+        setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
+      }
+      if (isPartiallyCorrect !== isPartiallyCorrectAnswer) {
+        setLastAnswer(prev => prev ? { ...prev, isPartiallyCorrect } : null);
+      }
+      setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndices: answerIndices } : null);
+    } catch (error: any) {
+      console.error('Error submitting answer:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit answer. Your score may not be saved.' });
+      // Keep optimistic UI - don't rollback as it creates bad UX
+    }
+  };
+
+  // Handle slider answer submission
+  const handleSliderAnswer = async (sliderValue: number) => {
+    if (answerSelected || !gameDocId || !game || !question || question.type !== 'slider') return;
+
+    answerSubmittedRef.current = true;
+    setAnswerSelected(true);
+    setState('waiting');
+
+    // Optimistic UI: Calculate estimated points client-side
+    const range = question.maxValue - question.minValue;
+    const distance = Math.abs(sliderValue - question.correctValue);
+    const accuracy = Math.max(0, 1 - (distance / range));
+    const errorMargin = distance / range;
+
+    const scoreMultiplier = Math.pow(accuracy, 2);
+    const basePoints = Math.round(1000 * scoreMultiplier);
+    const estimatedPoints = basePoints; // No time bonus for sliders
+
+    const isCorrectAnswer = errorMargin <= 0.1;
+    const isPartiallyCorrectAnswer = !isCorrectAnswer && errorMargin <= 0.2;
+
+    // Show result immediately (optimistic)
+    setLastAnswer({
+      selected: isCorrectAnswer ? 1 : 0,
+      correct: [1],
+      points: estimatedPoints,
+      wasTimeout: false,
+      isPartiallyCorrect: isPartiallyCorrectAnswer
+    });
+    setPlayer(p => p ? { ...p, score: p.score + estimatedPoints, lastSliderValue: sliderValue } : null);
+
+    // Submit to server in background
+    const submitData = {
+      gameId: gameDocId,
+      playerId: playerId,
+      questionIndex: game.currentQuestionIndex,
+      sliderValue,
+      timeRemaining: time,
+      // Question metadata to avoid server quiz fetch
+      questionType: 'slider' as const,
+      questionTimeLimit: question.timeLimit,
+      correctValue: question.correctValue,
+      minValue: question.minValue,
+      maxValue: question.maxValue,
+    };
+
+    try {
+      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
+      const result = await submitAnswerFn(submitData);
+      const { points: actualPoints, newScore, isPartiallyCorrect } = result.data as any;
+
+      // Update with actual values if different
+      if (actualPoints !== estimatedPoints) {
+        setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
+      }
+      if (isPartiallyCorrect !== isPartiallyCorrectAnswer) {
+        setLastAnswer(prev => prev ? { ...prev, isPartiallyCorrect } : null);
+      }
+      setPlayer(p => p ? { ...p, score: newScore, lastSliderValue: sliderValue } : null);
+    } catch (error: any) {
+      console.error('Error submitting answer:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit answer. Your score may not be saved.' });
+      // Keep optimistic UI - don't rollback as it creates bad UX
+    }
+  };
+
+  // Handle timeout
+  const handleTimeout = async () => {
+    if (!gameDocId || !game || !question) return;
+
+    const submitData: any = {
+      gameId: gameDocId,
+      playerId: playerId,
+      questionIndex: game.currentQuestionIndex,
+      timeRemaining: 0,
+      questionType: question.type,
+      questionTimeLimit: question.timeLimit,
+    };
+
+    // Add appropriate field based on question type
+    if (question.type === 'single-choice') {
       submitData.answerIndex = -1;
-      setAnswerSelected(-1);
-    } else if (!question) {
-      return;
-    } else if (answerData.type === 'single') {
-      // Single answer submission
-      if (answerSelected !== null) return; // Prevent multiple submissions
-      const selectedIndex = answerData.value as number;
-      submitData.answerIndex = selectedIndex;
-      setAnswerSelected(selectedIndex);
-    } else if (answerData.type === 'multi') {
-      // Multi-answer submission
-      if (answerSelected !== null) return;
-      submitData.answerIndices = answerData.value as number[];
-      setAnswerSelected(0); // Use 0 as a marker that answer was submitted
-    } else if (answerData.type === 'slider') {
-      // Slider submission
-      if (answerSelected !== null) return;
-      submitData.sliderValue = answerData.value as number;
-      setAnswerSelected(0); // Use 0 as a marker
-    }
-
-    // Only change state if still in question state
-    if (state === 'question') {
-      setState('waiting');
-    }
-
-    if (!gameDocId || !game) {
-      toast({ variant: 'destructive', title: 'Error', description: "Game not found" });
-      return;
-    }
-
-    // Set local state immediately for display (in case submission fails)
-    if (isTimeout && question && question.type === 'multiple-choice') {
-      setLastAnswer({
-        selected: -1,
-        correct: question.correctAnswerIndices,
-        points: 0,
-        wasTimeout: true
-      });
+      submitData.correctAnswerIndex = question.correctAnswerIndex;
+    } else if (question.type === 'multiple-choice') {
+      submitData.answerIndices = [];
+      submitData.correctAnswerIndices = question.correctAnswerIndices;
+    } else if (question.type === 'slider') {
+      submitData.sliderValue = question.minValue;
+      submitData.correctValue = question.correctValue;
+      submitData.minValue = question.minValue;
+      submitData.maxValue = question.maxValue;
     }
 
     try {
-      // Call Cloud Function to validate and score the answer
       const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
-      const result = await submitAnswerFn(submitData);
-
-      const { isCorrect, isPartiallyCorrect, points, newScore } = result.data as {
-        success: boolean;
-        isCorrect: boolean;
-        isPartiallyCorrect: boolean;
-        points: number;
-        newScore: number;
-      };
-
-      // Update local player state with server-validated score
-      if (answerData?.type === 'multi') {
-        setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndices: answerData.value as number[] } : null);
-      } else if (answerData?.type === 'slider') {
-        setPlayer(p => p ? { ...p, score: newScore, lastSliderValue: answerData.value as number } : null);
-      } else {
-        const selectedIndex = isTimeout ? -1 : (answerData?.value as number);
-        setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndex: selectedIndex } : null);
-      }
-
-      // Update last answer for result display
-      if (question && question.type === 'multiple-choice') {
-        if (answerData?.type === 'single') {
-          // Single-choice: use actual selected index
-          const selectedIndex = answerData.value as number;
-          setLastAnswer({
-            selected: selectedIndex,
-            correct: question.correctAnswerIndices,
-            points,
-            wasTimeout: isTimeout
-          });
-        } else {
-          // Multi-answer: use isCorrect from server (same pattern as slider)
-          setLastAnswer({
-            selected: isCorrect ? 1 : 0,
-            correct: [1],
-            points,
-            wasTimeout: isTimeout,
-            isPartiallyCorrect
-          });
-        }
-      } else if (question && question.type === 'slider') {
-        setLastAnswer({
-          selected: isCorrect ? 1 : 0,
-          correct: [1],
-          points,
-          wasTimeout: isTimeout,
-          isPartiallyCorrect
-        });
-      }
+      await submitAnswerFn(submitData);
     } catch (error: any) {
-      console.error('Error submitting answer:', error);
-
-      // For timeouts, don't show error toasts or reset state
-      if (!isTimeout) {
-        // Handle specific error cases for normal answers
-        if (error.code === 'functions/failed-precondition') {
-          toast({
-            variant: 'destructive',
-            title: 'Already Answered',
-            description: error.message
-          });
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Failed to submit answer. Please try again.'
-          });
-        }
-
-        // Reset UI state on error (only for normal answers, not timeouts)
-        setAnswerSelected(null);
-        setState('question');
-      }
+      console.error('Error submitting timeout:', error);
     }
   };
   
@@ -670,147 +727,44 @@ export default function PlayerGamePage() {
           return <Skeleton className="w-full h-full" />;
         }
 
-        // Render slider question
-        if (question.type === 'slider') {
-          return (
-            <div className="w-full h-full flex flex-col">
-              <header className="p-4 flex items-center justify-center">
-                <p className="text-2xl font-bold text-center">{question.text}</p>
-              </header>
-              <div className="flex-grow flex items-center justify-center w-full relative">
-                <Progress value={(time / timeLimit) * 100} className="absolute top-0 left-0 w-full h-2 rounded-none" />
-                <div className="absolute top-4 right-4 text-2xl font-bold bg-background/80 px-4 py-2 rounded-lg">{time}</div>
-                <div className="w-full max-w-2xl px-8 space-y-8">
-                  <div className="text-center">
-                    <p className="text-6xl font-bold text-primary mb-4">
-                      {sliderValue.toFixed(question.step && question.step < 1 ? Math.abs(Math.log10(question.step)) : 0)}
-                      {question.unit && <span className="text-4xl ml-2 text-muted-foreground">{question.unit}</span>}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Range: {question.minValue}{question.unit} - {question.maxValue}{question.unit}
-                    </p>
-                  </div>
-                  <Slider
-                    value={[sliderValue]}
-                    onValueChange={(val) => setSliderValue(val[0])}
-                    min={question.minValue}
-                    max={question.maxValue}
-                    step={question.step || 1}
-                    disabled={answerSelected !== null}
-                    className="w-full"
-                  />
-                  <Button
-                    onClick={() => handleAnswer({ type: 'slider', value: sliderValue })}
-                    disabled={answerSelected !== null}
-                    size="lg"
-                    className="w-full text-xl py-8"
-                  >
-                    {answerSelected !== null ? 'Answer Submitted' : 'Submit Answer'}
-                  </Button>
-                </div>
-              </div>
-              <footer className="p-4 text-center">
-                <p>Question {game.currentQuestionIndex + 1} of {quiz.questions.length}</p>
-              </footer>
-            </div>
-          );
-        }
-
-        // Render multi-select question
-        if (question.type === 'multiple-choice' && question.allowMultipleAnswers) {
-          return (
-            <div className="w-full h-full flex flex-col">
-              <header className="p-4 flex items-center justify-center flex-col gap-2">
-                <p className="text-2xl font-bold text-center">{question.text}</p>
-                {question.showAnswerCount !== false && (
-                  <p className="text-sm text-muted-foreground">
-                    Select {question.correctAnswerIndices.length} answer{question.correctAnswerIndices.length > 1 ? 's' : ''}
-                  </p>
-                )}
-              </header>
-              <div className="flex-grow flex items-center justify-center w-full relative">
-                <Progress value={(time / timeLimit) * 100} className="absolute top-0 left-0 w-full h-2 rounded-none" />
-                <div className="absolute top-4 right-4 text-2xl font-bold bg-background/80 px-4 py-2 rounded-lg">{time}</div>
-                <div className="w-full h-full flex flex-col p-4 gap-4">
-                  <div className={cn("grid gap-4 flex-1", question.answers.length > 4 ? "grid-cols-2" : "grid-cols-2")}>
-                    {question.answers.map((ans, i) => {
-                      const Icon = answerIcons[i % answerIcons.length];
-                      const isSelected = selectedAnswerIndices.includes(i);
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            if (answerSelected !== null) return;
-                            setSelectedAnswerIndices(prev =>
-                              prev.includes(i) ? prev.filter(idx => idx !== i) : [...prev, i]
-                            );
-                          }}
-                          disabled={answerSelected !== null}
-                          className={cn(
-                            'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 p-4 relative',
-                            answerColors[i % answerColors.length],
-                            isSelected ? 'scale-105 border-4 border-white' : '',
-                            answerSelected !== null && !isSelected ? 'opacity-25' : ''
-                          )}
-                        >
-                          <Checkbox
-                            checked={isSelected}
-                            className="absolute top-2 right-2 h-6 w-6 border-2 border-white data-[state=checked]:bg-white data-[state=checked]:text-primary"
-                            disabled={answerSelected !== null}
-                          />
-                          <Icon className="w-16 h-16 md:w-20 md:h-20 mb-2" />
-                          <span className="text-lg md:text-xl font-bold">{ans.text}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <Button
-                    onClick={() => handleAnswer({ type: 'multi', value: selectedAnswerIndices })}
-                    disabled={answerSelected !== null || selectedAnswerIndices.length === 0}
-                    size="lg"
-                    className="w-full text-xl py-6"
-                  >
-                    {answerSelected !== null ? 'Answers Submitted' : `Submit ${selectedAnswerIndices.length} Answer${selectedAnswerIndices.length !== 1 ? 's' : ''}`}
-                  </Button>
-                </div>
-              </div>
-              <footer className="p-4 text-center">
-                <p>Question {game.currentQuestionIndex + 1} of {quiz.questions.length}</p>
-              </footer>
-            </div>
-          );
-        }
-
-        // Render single-select question (default)
+        // Render using modular components based on question type
         return (
           <div className="w-full h-full flex flex-col">
-            <header className="p-4 flex items-center justify-center">
+            <header className="p-4 flex items-center justify-center flex-col gap-2">
               <p className="text-2xl font-bold text-center">{question.text}</p>
+              {question.type === 'multiple-choice' && question.showAnswerCount !== false && (
+                <p className="text-sm text-muted-foreground">
+                  Select {question.correctAnswerIndices.length} answer{question.correctAnswerIndices.length > 1 ? 's' : ''}
+                </p>
+              )}
             </header>
             <div className="flex-grow flex items-center justify-center w-full relative">
               <Progress value={(time / timeLimit) * 100} className="absolute top-0 left-0 w-full h-2 rounded-none" />
               <div className="absolute top-4 right-4 text-2xl font-bold bg-background/80 px-4 py-2 rounded-lg">{time}</div>
-              <div className={cn("grid gap-4 w-full h-full p-4", question.answers.length > 4 ? "grid-cols-2 grid-rows-4" : "grid-cols-2 grid-rows-2")}>
-                {question.answers.map((ans, i) => {
-                  const Icon = answerIcons[i % answerIcons.length];
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => handleAnswer({ type: 'single', value: i })}
-                      disabled={answerSelected !== null}
-                      className={cn(
-                        'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform hover:scale-105 p-4',
-                        answerColors[i % answerColors.length],
-                         answerSelected !== null && answerSelected !== i ? 'opacity-25' : '',
-                         answerSelected !== null && answerSelected === i ? 'scale-110 border-4 border-white' : ''
-                      )}
-                    >
-                      <Icon className="w-16 h-16 md:w-24 md:h-24 mb-2" />
-                      <span className="text-xl md:text-2xl font-bold">{ans.text}</span>
-                    </button>
-                  );
-                })}
-              </div>
+
+              {question.type === 'single-choice' && (
+                <SingleChoiceQuestionComponent
+                  question={question}
+                  onSubmit={handleSingleChoiceAnswer}
+                  disabled={answerSelected}
+                />
+              )}
+
+              {question.type === 'multiple-choice' && (
+                <MultipleChoiceQuestionComponent
+                  question={question}
+                  onSubmit={handleMultipleChoiceAnswer}
+                  disabled={answerSelected}
+                />
+              )}
+
+              {question.type === 'slider' && (
+                <SliderQuestionComponent
+                  question={question}
+                  onSubmit={handleSliderAnswer}
+                  disabled={answerSelected}
+                />
+              )}
             </div>
             <footer className="p-4 text-center">
               <p>Question {game.currentQuestionIndex + 1} of {quiz.questions.length}</p>

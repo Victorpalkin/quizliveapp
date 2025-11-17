@@ -11,7 +11,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { PlusCircle, Trash2, Loader2, Save, X, ImagePlus, ImageOff } from 'lucide-react';
-import type { Question, MultipleChoiceQuestion, SliderQuestion } from '@/lib/types';
+import type { Question, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -25,17 +25,25 @@ const answerSchema = z.object({
   text: z.string().min(1, "Answer text can't be empty."),
 });
 
-// Multiple choice question schema
+// Single choice question schema - exactly one correct answer
+const singleChoiceQuestionSchema = z.object({
+  type: z.literal('single-choice'),
+  text: z.string().min(1, 'Question text cannot be empty.'),
+  imageUrl: z.string().url().optional(),
+  answers: z.array(answerSchema).min(2, 'Each question must have at least 2 answers.').max(8, 'Each question can have at most 8 answers.'),
+  correctAnswerIndex: z.number().min(0, 'Must select a correct answer.'),
+  timeLimit: z.number().optional(),
+});
+
+// Multiple choice question schema - multiple correct answers with proportional scoring
 const multipleChoiceQuestionSchema = z.object({
   type: z.literal('multiple-choice'),
   text: z.string().min(1, 'Question text cannot be empty.'),
   imageUrl: z.string().url().optional(),
   answers: z.array(answerSchema).min(2, 'Each question must have at least 2 answers.').max(8, 'Each question can have at most 8 answers.'),
-  correctAnswerIndices: z.array(z.number()).min(1, 'Each question must have at least one correct answer.'),
-  timeLimit: z.number().optional(),
-  allowMultipleAnswers: z.boolean().optional(),
-  scoringMode: z.enum(['all-or-nothing', 'proportional']).optional(),
+  correctAnswerIndices: z.array(z.number()).min(2, 'Multiple choice questions must have at least 2 correct answers.'),
   showAnswerCount: z.boolean().optional(),
+  timeLimit: z.number().optional(),
 });
 
 // Slider question schema
@@ -53,6 +61,7 @@ const sliderQuestionSchema = z.object({
 
 // Discriminated union for question types
 const questionSchema = z.discriminatedUnion('type', [
+  singleChoiceQuestionSchema,
   multipleChoiceQuestionSchema,
   sliderQuestionSchema,
 ]);
@@ -77,7 +86,7 @@ interface QuizFormProps {
 export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, additionalContent }: QuizFormProps) {
   const { toast } = useToast();
   const storage = useStorage();
-  const [questions, setQuestions] = useState<(MultipleChoiceQuestion | SliderQuestion)[]>([]);
+  const [questions, setQuestions] = useState<(SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion)[]>([]);
 
   const imageFiles = useRef<Record<number, File>>({});
   const imagesToDelete = useRef<string[]>([]);
@@ -93,7 +102,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
 
   useEffect(() => {
     if (initialData) {
-      setQuestions(initialData.questions as (MultipleChoiceQuestion | SliderQuestion)[]);
+      setQuestions(initialData.questions as (SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion)[]);
     } else if (questions.length === 0) {
       addQuestion();
     }
@@ -117,8 +126,8 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     }
   }, [storage]);
 
-  const addQuestion = (text: string = '', type: 'multiple-choice' | 'slider' = 'multiple-choice') => {
-    let newQuestion: MultipleChoiceQuestion | SliderQuestion;
+  const addQuestion = (text: string = '', type: 'single-choice' | 'multiple-choice' | 'slider' = 'single-choice') => {
+    let newQuestion: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion;
 
     if (type === 'slider') {
       newQuestion = {
@@ -131,16 +140,22 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
         unit: '',
         timeLimit: 20,
       };
-    } else {
+    } else if (type === 'multiple-choice') {
       newQuestion = {
         type: 'multiple-choice',
         text: text,
         answers: [{ text: '' }, { text: '' }],
-        correctAnswerIndices: [0],
+        correctAnswerIndices: [0, 1],
         timeLimit: 20,
-        allowMultipleAnswers: false,
-        scoringMode: 'proportional',
         showAnswerCount: true,
+      };
+    } else {
+      newQuestion = {
+        type: 'single-choice',
+        text: text,
+        answers: [{ text: '' }, { text: '' }],
+        correctAnswerIndex: 0,
+        timeLimit: 20,
       };
     }
 
@@ -149,7 +164,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     form.setValue('questions', newQuestions);
   };
 
-  const updateQuestion = (index: number, updatedQuestion: MultipleChoiceQuestion | SliderQuestion) => {
+  const updateQuestion = (index: number, updatedQuestion: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion) => {
     const newQuestions = [...questions];
     newQuestions[index] = updatedQuestion;
     setQuestions(newQuestions);
@@ -170,7 +185,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     const newQuestions = [...questions];
     const question = newQuestions[qIndex];
 
-    if (question.type !== 'multiple-choice') return;
+    if (question.type !== 'single-choice' && question.type !== 'multiple-choice') return;
 
     if (question.answers.length < 8) {
       question.answers.push({ text: '' });
@@ -189,17 +204,29 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     const newQuestions = [...questions];
     const question = newQuestions[qIndex];
 
-    if (question.type !== 'multiple-choice') return;
+    if (question.type !== 'single-choice' && question.type !== 'multiple-choice') return;
 
     if (question.answers.length > 2) {
       question.answers.splice(aIndex, 1);
-      const newCorrectIndices = question.correctAnswerIndices
-        .filter(i => i !== aIndex)
-        .map(i => i > aIndex ? i - 1 : i);
-      if (newCorrectIndices.length === 0) {
-        newCorrectIndices.push(0);
+
+      if (question.type === 'single-choice') {
+        // Adjust correctAnswerIndex
+        if (question.correctAnswerIndex === aIndex) {
+          question.correctAnswerIndex = 0; // Default to first answer
+        } else if (question.correctAnswerIndex > aIndex) {
+          question.correctAnswerIndex -= 1;
+        }
+      } else {
+        // Adjust correctAnswerIndices
+        const newCorrectIndices = question.correctAnswerIndices
+          .filter(i => i !== aIndex)
+          .map(i => i > aIndex ? i - 1 : i);
+        if (newCorrectIndices.length < 2) {
+          // Ensure at least 2 correct answers for multiple-choice
+          newCorrectIndices.push(...[0, 1].filter(i => !newCorrectIndices.includes(i) && i < question.answers.length - 1));
+        }
+        question.correctAnswerIndices = newCorrectIndices;
       }
-      question.correctAnswerIndices = newCorrectIndices;
 
       setQuestions(newQuestions);
       form.setValue('questions', newQuestions, { shouldValidate: true });
@@ -328,8 +355,11 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                     <FormLabel>Question Type</FormLabel>
                     <RadioGroup
                       value={q.type}
-                      onValueChange={(value: 'multiple-choice' | 'slider') => {
-                        if (value === 'slider' && q.type === 'multiple-choice') {
+                      onValueChange={(value: 'single-choice' | 'multiple-choice' | 'slider') => {
+                        if (value === q.type) return;
+
+                        // Convert to slider
+                        if (value === 'slider') {
                           const sliderQ: SliderQuestion = {
                             type: 'slider',
                             text: q.text,
@@ -342,15 +372,29 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                             imageUrl: q.imageUrl,
                           };
                           updateQuestion(qIndex, sliderQ);
-                        } else if (value === 'multiple-choice' && q.type === 'slider') {
+                        }
+                        // Convert to single-choice
+                        else if (value === 'single-choice') {
+                          const answers = q.type === 'slider' ? [{ text: '' }, { text: '' }] : (q as SingleChoiceQuestion | MultipleChoiceQuestion).answers;
+                          const scQ: SingleChoiceQuestion = {
+                            type: 'single-choice',
+                            text: q.text,
+                            answers: answers,
+                            correctAnswerIndex: 0,
+                            timeLimit: q.timeLimit || 20,
+                            imageUrl: q.imageUrl,
+                          };
+                          updateQuestion(qIndex, scQ);
+                        }
+                        // Convert to multiple-choice
+                        else if (value === 'multiple-choice') {
+                          const answers = q.type === 'slider' ? [{ text: '' }, { text: '' }] : (q as SingleChoiceQuestion | MultipleChoiceQuestion).answers;
                           const mcQ: MultipleChoiceQuestion = {
                             type: 'multiple-choice',
                             text: q.text,
-                            answers: [{ text: '' }, { text: '' }],
-                            correctAnswerIndices: [0],
+                            answers: answers,
+                            correctAnswerIndices: [0, 1],
                             timeLimit: q.timeLimit || 20,
-                            allowMultipleAnswers: false,
-                            scoringMode: 'proportional',
                             showAnswerCount: true,
                             imageUrl: q.imageUrl,
                           };
@@ -359,6 +403,10 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                       }}
                       className="flex gap-4"
                     >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="single-choice" id={`type-sc-${qIndex}`} />
+                        <Label htmlFor={`type-sc-${qIndex}`}>Single Choice</Label>
+                      </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="multiple-choice" id={`type-mc-${qIndex}`} />
                         <Label htmlFor={`type-mc-${qIndex}`}>Multiple Choice</Label>
@@ -451,70 +499,92 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                     />
                   </div>
 
-                  {/* Multi-Answer Configuration (for Multiple Choice) */}
+                  {/* Multiple Choice Configuration */}
                   {q.type === 'multiple-choice' && (
                     <div className="space-y-4 border-l-2 border-primary pl-4">
+                      <div className="space-y-0.5">
+                        <FormLabel>Multiple Choice Settings</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Multiple correct answers with proportional scoring
+                        </p>
+                      </div>
+
                       <FormItem className="flex flex-row items-center justify-between">
                         <div className="space-y-0.5">
-                          <FormLabel>Allow Multiple Answers</FormLabel>
+                          <FormLabel>Show Answer Count</FormLabel>
                           <p className="text-sm text-muted-foreground">
-                            Let players select more than one answer
+                            Tell players how many answers to select
                           </p>
                         </div>
                         <FormControl>
                           <Checkbox
-                            checked={q.allowMultipleAnswers || false}
+                            checked={q.showAnswerCount !== false}
                             onCheckedChange={(checked) => {
-                              updateQuestion(qIndex, { ...q, allowMultipleAnswers: !!checked });
+                              updateQuestion(qIndex, { ...q, showAnswerCount: !!checked });
                             }}
                           />
                         </FormControl>
                       </FormItem>
-
-                      {q.allowMultipleAnswers && (
-                        <>
-                          <FormItem>
-                            <FormLabel>Scoring Mode</FormLabel>
-                            <RadioGroup
-                              value={q.scoringMode || 'proportional'}
-                              onValueChange={(value: 'all-or-nothing' | 'proportional') => {
-                                updateQuestion(qIndex, { ...q, scoringMode: value });
-                              }}
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="proportional" id={`scoring-prop-${qIndex}`} />
-                                <Label htmlFor={`scoring-prop-${qIndex}`} className="font-normal">
-                                  Proportional - Award partial credit for correct answers
-                                </Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="all-or-nothing" id={`scoring-all-${qIndex}`} />
-                                <Label htmlFor={`scoring-all-${qIndex}`} className="font-normal">
-                                  All or Nothing - Full points only if all correct
-                                </Label>
-                              </div>
-                            </RadioGroup>
-                          </FormItem>
-
-                          <FormItem className="flex flex-row items-center justify-between">
-                            <div className="space-y-0.5">
-                              <FormLabel>Show Answer Count</FormLabel>
-                              <p className="text-sm text-muted-foreground">
-                                Tell players how many answers to select
-                              </p>
-                            </div>
-                            <FormControl>
-                              <Checkbox
-                                checked={q.showAnswerCount !== false}
-                                onCheckedChange={(checked) => {
-                                  updateQuestion(qIndex, { ...q, showAnswerCount: !!checked });
-                                }}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        </>
-                      )}
                     </div>
+                  )}
+
+                  {/* Single Choice Question Configuration */}
+                  {q.type === 'single-choice' && (
+                    <FormField
+                      control={form.control}
+                      name={`questions.${qIndex}.correctAnswerIndex`}
+                      render={() => (
+                        <FormItem>
+                          <div className="mb-4">
+                            <FormLabel className="text-base">Answers</FormLabel>
+                            <p className="text-sm text-muted-foreground">Select one correct answer.</p>
+                          </div>
+                          {q.answers.map((ans, aIndex) => (
+                            <FormField
+                              key={aIndex}
+                              control={form.control}
+                              name={`questions.${qIndex}.answers.${aIndex}.text`}
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                  <FormControl>
+                                    <RadioGroupItem
+                                      value={String(aIndex)}
+                                      checked={q.correctAnswerIndex === aIndex}
+                                      onClick={() => {
+                                        updateQuestion(qIndex, { ...q, correctAnswerIndex: aIndex });
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <Input
+                                    {...field}
+                                    placeholder={`Answer ${aIndex + 1}`}
+                                    maxLength={200}
+                                    onChange={(e) => {
+                                      field.onChange(e);
+                                      const newAnswers = [...q.answers];
+                                      newAnswers[aIndex] = { text: e.target.value };
+                                      updateQuestion(qIndex, { ...q, answers: newAnswers });
+                                    }}
+                                  />
+                                  {q.answers.length > 2 && (
+                                    <Button variant="ghost" size="icon" onClick={() => removeAnswer(qIndex, aIndex)} type="button">
+                                      <X className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                  )}
+                                </FormItem>
+                              )}
+                            />
+                          ))}
+                          <FormMessage>{form.formState.errors.questions?.[qIndex]?.correctAnswerIndex?.message}</FormMessage>
+                          {q.answers.length < 8 && (
+                            <Button type="button" variant="outline" size="sm" onClick={() => addAnswer(qIndex)} className="mt-2">
+                              <PlusCircle className="mr-2 h-4 w-4" />
+                              Add Answer
+                            </Button>
+                          )}
+                        </FormItem>
+                      )}
+                    />
                   )}
 
                   {/* Multiple Choice Question Configuration */}
@@ -526,7 +596,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                         <FormItem>
                           <div className="mb-4">
                             <FormLabel className="text-base">Answers</FormLabel>
-                            <p className="text-sm text-muted-foreground">Select one or more correct answers.</p>
+                            <p className="text-sm text-muted-foreground">Select at least 2 correct answers.</p>
                           </div>
                           {q.answers.map((ans, aIndex) => (
                             <FormField
@@ -545,8 +615,8 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                                         } else {
                                           newCorrectIndices = q.correctAnswerIndices.filter((i) => i !== aIndex);
                                         }
-                                        if (newCorrectIndices.length === 0) {
-                                          toast({ variant: 'destructive', title: "You must have at least one correct answer." });
+                                        if (newCorrectIndices.length < 2) {
+                                          toast({ variant: 'destructive', title: "You must have at least 2 correct answers for multiple choice questions." });
                                           return;
                                         }
                                         updateQuestion(qIndex, { ...q, correctAnswerIndices: newCorrectIndices });
