@@ -6,11 +6,7 @@ import { CheckCircle, Clock, Gauge } from 'lucide-react';
 import Image from 'next/image';
 import type { Quiz } from '@/lib/types';
 import { cn } from '@/lib/utils';
-
-const answerColors = [
-  'bg-red-500', 'bg-blue-500', 'bg-yellow-500', 'bg-green-500',
-  'bg-purple-500', 'bg-pink-500', 'bg-orange-500', 'bg-teal-500',
-];
+import { ANSWER_COLORS } from '@/lib/constants';
 
 interface QuizPreviewProps {
   quiz: Quiz;
@@ -79,7 +75,7 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {question.answers.map((answer, aIndex) => {
                       const isCorrect = question.correctAnswerIndex === aIndex;
-                      const colorClass = answerColors[aIndex % answerColors.length];
+                      const colorClass = ANSWER_COLORS[aIndex % ANSWER_COLORS.length];
 
                       return (
                         <div
@@ -131,7 +127,7 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {question.answers.map((answer, aIndex) => {
                       const isCorrect = question.correctAnswerIndices.includes(aIndex);
-                      const colorClass = answerColors[aIndex % answerColors.length];
+                      const colorClass = ANSWER_COLORS[aIndex % ANSWER_COLORS.length];
 
                       return (
                         <div
