@@ -27,8 +27,8 @@ export function useQuestionOperations(
     if (type === 'slide') {
       newQuestion = {
         type: 'slide',
-        text: text || 'New Slide',
-        title: text || 'New Slide',
+        text: text,
+        title: text,
         description: '',
         timeLimit: 10,
       };
@@ -155,8 +155,8 @@ export function useQuestionOperations(
     if (targetType === 'slide') {
       convertedQuestion = {
         type: 'slide',
-        text: q.text || 'New Slide',
-        title: q.text || 'New Slide',
+        text: q.text,
+        title: q.text,
         description: '',
         timeLimit: q.timeLimit || 10,
         imageUrl: q.imageUrl,
