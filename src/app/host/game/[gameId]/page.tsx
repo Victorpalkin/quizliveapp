@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, LabelList, Cell, Rectangle, Text } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Trophy, XCircle, Home, Trash2, CheckCircle, Users } from 'lucide-react';
 import {
   DiamondIcon,
@@ -17,7 +18,7 @@ import {
 } from '@/components/app/quiz-icons';
 import { Progress } from '@/components/ui/progress';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, updateDoc, DocumentReference, deleteDoc, writeBatch } from 'firebase/firestore';
+import { doc, collection, updateDoc, DocumentReference, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import type { Player, Quiz, Game, Question } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -153,21 +154,6 @@ function DeleteGameButton({ gameRef }: { gameRef: DocumentReference<Game> | null
     );
 }
 
-// Helper to migrate old questions with `correctAnswerIndex` to the new `correctAnswerIndices`
-const migrateQuestion = (q: any): Question => {
-  const { correctAnswerIndex, correctAnswerIndices, ...rest } = q;
-  let newCorrectAnswerIndices = correctAnswerIndices;
-
-  if (typeof correctAnswerIndex === 'number' && !correctAnswerIndices) {
-    newCorrectAnswerIndices = [correctAnswerIndex];
-  } else if (!Array.isArray(newCorrectAnswerIndices)) {
-    newCorrectAnswerIndices = [0];
-  }
-
-  return { ...rest, correctAnswerIndices: newCorrectAnswerIndices };
-};
-
-
 export default function HostGamePage() {
   const params = useParams();
   const gameId = params.gameId as string;
@@ -179,13 +165,7 @@ export default function HostGamePage() {
   const quizRef = useMemoFirebase(() => game ? doc(firestore, 'quizzes', game.quizId) : null, [firestore, game]);
   const { data: quizData, loading: quizLoading } = useDoc(quizRef);
 
-  const quiz = useMemo(() => {
-    if (!quizData) return null;
-    return {
-      ...quizData,
-      questions: quizData.questions.map(migrateQuestion)
-    }
-  }, [quizData]);
+  const quiz = quizData;
 
   const playersQuery = useMemoFirebase(() => collection(firestore, 'games', gameId, 'players'), [firestore, gameId]);
   const { data: players, loading: playersLoading } = useCollection<Player>(playersQuery);
@@ -197,25 +177,64 @@ export default function HostGamePage() {
 
   const isLastQuestion = game && quiz ? game.currentQuestionIndex >= quiz.questions.length - 1 : false;
 
-  const answeredPlayers = players?.filter(p => p.lastAnswerIndex !== null && p.lastAnswerIndex !== undefined).length || 0;
+  // Count players who have answered (any answer type)
+  const answeredPlayers = players?.filter(p => {
+    return (p.lastAnswerIndex !== null && p.lastAnswerIndex !== undefined) ||
+           (p.lastAnswerIndices !== null && p.lastAnswerIndices !== undefined) ||
+           (p.lastSliderValue !== null && p.lastSliderValue !== undefined);
+  }).length || 0;
 
   const answerDistribution = useMemo(() => {
     if (!question || !players) return [];
 
+    // For slider and slide questions, return empty array (we'll handle these differently)
+    if (question.type === 'slider' || question.type === 'slide') {
+      return [];
+    }
+
+    // For single-choice and multiple-choice questions
     const counts = Array(question.answers.length).fill(0);
     players.forEach(player => {
-        if (player.lastAnswerIndex !== null && player.lastAnswerIndex !== undefined && player.lastAnswerIndex >= 0) {
+        // Handle multi-answer responses
+        if (player.lastAnswerIndices && Array.isArray(player.lastAnswerIndices)) {
+          player.lastAnswerIndices.forEach(idx => {
+            if (idx >= 0 && idx < counts.length) {
+              counts[idx]++;
+            }
+          });
+        }
+        // Handle single answer responses
+        else if (player.lastAnswerIndex !== null && player.lastAnswerIndex !== undefined && player.lastAnswerIndex >= 0) {
             counts[player.lastAnswerIndex]++;
         }
     });
 
-    return question.answers.map((ans, index) => ({
+    return question.answers.map((ans, index) => {
+      // Determine if this answer is correct based on question type
+      const isCorrect = question.type === 'single-choice'
+        ? question.correctAnswerIndex === index
+        : question.correctAnswerIndices.includes(index);
+
+      return {
         name: ans.text,
         total: counts[index],
-        isCorrect: question.correctAnswerIndices.includes(index),
-    }));
+        isCorrect,
+      };
+    });
 }, [question, players]);
 
+  // Slider question responses
+  const sliderResponses = useMemo(() => {
+    if (!question || question.type !== 'slider' || !players) return [];
+
+    return players
+      .filter(p => p.lastSliderValue !== null && p.lastSliderValue !== undefined)
+      .map(p => ({
+        name: p.name,
+        value: p.lastSliderValue!,
+      }))
+      .sort((a, b) => a.value - b.value);
+  }, [question, players]);
 
   const finishQuestion = () => {
     if (game?.state === 'question' && gameRef) {
@@ -234,12 +253,21 @@ export default function HostGamePage() {
 
   useEffect(() => {
     if (game?.state === 'question') {
-      setTime(timeLimit);
+      // Sync timer with questionStartTime (same logic as players)
+      // This ensures host and players use the same time reference
+      let initialTime = timeLimit;
+      if (game?.questionStartTime) {
+        const elapsedSeconds = Math.floor((Date.now() - game.questionStartTime.toMillis()) / 1000);
+        initialTime = Math.max(0, timeLimit - elapsedSeconds);
+        console.log(`[Host Timer] Syncing with server: elapsed=${elapsedSeconds}s, remaining=${initialTime}s`);
+      }
+      setTime(initialTime);
+
       const timer = setInterval(() => {
         setTime(prev => {
           if (prev <= 1) {
             clearInterval(timer);
-            finishQuestion(); 
+            finishQuestion();
             return 0;
           }
           return prev - 1;
@@ -248,11 +276,14 @@ export default function HostGamePage() {
       return () => clearInterval(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game?.currentQuestionIndex, game?.state, timeLimit]);
+  }, [game?.currentQuestionIndex, game?.state, timeLimit, game?.questionStartTime]);
 
   useEffect(() => {
     if (game?.state === 'preparing' && gameRef) {
-      updateGame(gameRef, { state: 'question' });
+      updateGame(gameRef, {
+        state: 'question',
+        questionStartTime: serverTimestamp() // Use Firestore server timestamp for clock-independent sync
+      });
     }
   }, [game?.state, gameRef]);
 
@@ -266,7 +297,11 @@ export default function HostGamePage() {
         const batch = writeBatch(firestore);
         players.forEach(player => {
             const playerRef = doc(firestore, 'games', gameId, 'players', player.id);
-            batch.update(playerRef, { lastAnswerIndex: null });
+            batch.update(playerRef, {
+              lastAnswerIndex: null,
+              lastAnswerIndices: null,
+              lastSliderValue: null
+            });
         });
         await batch.commit();
 
@@ -343,7 +378,19 @@ export default function HostGamePage() {
             <div className="w-full max-w-4xl">
               <Card className="bg-card text-card-foreground mb-4">
                   <CardContent className="p-8">
-                      <p className="text-3xl font-bold">{question.text}</p>
+                      <div className="flex flex-col items-center gap-3">
+                        <p className="text-3xl font-bold">{question.text}</p>
+                        {question.type === 'multiple-choice' && (
+                          <div className="flex gap-2">
+                            <Badge variant="secondary" className="text-sm">
+                              Multiple Answers ({question.correctAnswerIndices.length})
+                            </Badge>
+                            <Badge variant="default" className="text-sm">
+                              Proportional Scoring
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
                   </CardContent>
               </Card>
 
@@ -353,25 +400,115 @@ export default function HostGamePage() {
                 </div>
               )}
             </div>
-            
-            <div className="grid grid-cols-2 gap-4 mt-auto w-full max-w-4xl">
-              {question.answers.map((ans, i) => {
-                const Icon = answerIcons[i % answerIcons.length];
-                return (
-                    <div key={i} className={cn(`flex items-center gap-4 p-4 rounded-lg text-white`, answerColors[i % answerColors.length])}>
-                        <Icon className="w-8 h-8" />
-                        <span className="text-2xl font-medium">{ans.text}</span>
+
+            {question.type === 'slide' ? (
+              <Card className="w-full max-w-2xl mx-auto mt-8">
+                <CardContent className="p-8 text-center">
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <Badge variant="secondary" className="text-sm">
+                        Informational Slide
+                      </Badge>
+                      <h2 className="text-4xl font-bold text-primary">
+                        {question.title}
+                      </h2>
+                      {question.description && (
+                        <p className="text-xl text-muted-foreground whitespace-pre-wrap mt-4">
+                          {question.description}
+                        </p>
+                      )}
                     </div>
-                )
-              })}
-            </div>
+                    <p className="text-lg text-muted-foreground">
+                      Players are viewing this slide...
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : question.type === 'slider' ? (
+              <Card className="w-full max-w-2xl mx-auto mt-8">
+                <CardContent className="p-8 text-center">
+                  <p className="text-lg text-muted-foreground mb-4">Players are submitting their answers...</p>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">Range:</p>
+                      <p className="text-4xl font-bold">
+                        {question.minValue}{question.unit} - {question.maxValue}{question.unit}
+                      </p>
+                    </div>
+                    <div className="flex justify-center gap-2">
+                      <Badge variant="default" className="text-sm">
+                        Correct: ≤10% error
+                      </Badge>
+                      <Badge variant="secondary" className="text-sm">
+                        Partial: ≤20% error
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 mt-auto w-full max-w-4xl">
+                {question.answers.map((ans, i) => {
+                  const Icon = answerIcons[i % answerIcons.length];
+                  // Determine if answer is correct based on question type
+                  const isCorrect = question.type === 'single-choice'
+                    ? question.correctAnswerIndex === i
+                    : question.correctAnswerIndices.includes(i);
+                  return (
+                      <div key={i} className={cn(`flex items-center gap-4 p-4 rounded-lg text-white relative`, answerColors[i % answerColors.length])}>
+                          <Icon className="w-8 h-8" />
+                          <span className="text-2xl font-medium">{ans.text}</span>
+                          {question.type === 'multiple-choice' && isCorrect && (
+                            <CheckCircle className="absolute top-2 right-2 w-6 h-6" />
+                          )}
+                      </div>
+                  )
+                })}
+              </div>
+            )}
         </main>
       )}
 
       {game?.state === 'leaderboard' && (
         <main className="flex-1 flex flex-col items-center justify-center gap-8 md:flex-row md:items-start">
             <LeaderboardView players={players || []} />
-            <AnswerDistributionChart data={answerDistribution} />
+            {question?.type === 'slide' ? (
+              <Card className="w-full max-w-2xl flex-1">
+                <CardHeader>
+                  <CardTitle>Slide Viewed</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center p-8 space-y-4">
+                    <Badge variant="secondary" className="text-lg">
+                      Informational Content
+                    </Badge>
+                    <p className="text-lg text-muted-foreground">
+                      This was an informational slide. No scoring applied.
+                    </p>
+                    <div className="space-y-2 pt-4">
+                      <h3 className="text-2xl font-bold text-primary">
+                        {question.title}
+                      </h3>
+                      {question.description && (
+                        <p className="text-muted-foreground whitespace-pre-wrap">
+                          {question.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : question?.type === 'slider' ? (
+              <SliderResultsView
+                responses={sliderResponses}
+                correctValue={question.correctValue}
+                minValue={question.minValue}
+                maxValue={question.maxValue}
+                unit={question.unit}
+              />
+            ) : (
+              <AnswerDistributionChart data={answerDistribution} />
+            )}
         </main>
       )}
 
@@ -507,4 +644,74 @@ function AnswerDistributionChart({ data }: { data: { name: string; total: number
     );
 }
 
-    
+function SliderResultsView({
+  responses,
+  correctValue,
+  minValue,
+  maxValue,
+  unit
+}: {
+  responses: { name: string; value: number }[];
+  correctValue: number;
+  minValue: number;
+  maxValue: number;
+  unit?: string;
+}) {
+  return (
+    <Card className="w-full max-w-2xl flex-1">
+      <CardHeader>
+        <CardTitle>Player Responses</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary">
+            <p className="text-sm text-muted-foreground mb-1">Correct Answer</p>
+            <p className="text-3xl font-bold text-primary">
+              {correctValue}{unit}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Range: {minValue}{unit} - {maxValue}{unit}
+            </p>
+          </div>
+
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {responses.length === 0 ? (
+              <p className="text-muted-foreground text-center p-4">No responses yet</p>
+            ) : (
+              responses.map((response, idx) => {
+                const distance = Math.abs(response.value - correctValue);
+                const range = maxValue - minValue;
+                const accuracy = Math.max(0, 1 - (distance / range));
+                const isClose = accuracy > 0.5;
+
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-md",
+                      isClose ? "bg-primary/10" : "bg-background/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-sm">{response.name}</span>
+                      {isClose && <CheckCircle className="w-4 h-4 text-primary" />}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-lg">
+                        {response.value}{unit}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        ({distance > 0 ? `±${distance.toFixed(1)}` : 'exact'})
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+

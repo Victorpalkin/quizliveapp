@@ -77,11 +77,13 @@ service cloud.firestore {
                         request.resource.data.name.size() >= 2 &&
                         request.resource.data.name.size() <= 20;
 
-        // Players can ONLY update lastAnswerIndex to null (resetting between questions)
+        // Players can ONLY update answer fields to null (resetting between questions)
         // Score updates are handled by Cloud Functions only
-        allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastAnswerIndex']) &&
-                        (request.resource.data.lastAnswerIndex == null ||
-                         request.resource.data.lastAnswerIndex is int);
+        // Allow updating: lastAnswerIndex (legacy/single choice), lastAnswerIndices (multi-choice), lastSliderValue (slider)
+        allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastAnswerIndex', 'lastAnswerIndices', 'lastSliderValue']) &&
+                        (request.resource.data.get('lastAnswerIndex', null) == null || request.resource.data.get('lastAnswerIndex', null) is int) &&
+                        (request.resource.data.get('lastAnswerIndices', null) == null || request.resource.data.get('lastAnswerIndices', null) is list) &&
+                        (request.resource.data.get('lastSliderValue', null) == null || request.resource.data.get('lastSliderValue', null) is number);
 
         // Players cannot be deleted
         allow delete: if false;

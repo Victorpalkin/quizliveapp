@@ -351,6 +351,7 @@ gcloud services enable storage.googleapis.com
 gcloud services enable cloudbilling.googleapis.com
 gcloud services enable cloudfunctions.googleapis.com
 gcloud services enable firebaseextensions.googleapis.com
+gcloud services enable eventarc.googleapis.com
 ```
 
 **For Production Project:**
@@ -368,6 +369,7 @@ gcloud services enable storage.googleapis.com
 gcloud services enable cloudbilling.googleapis.com
 gcloud services enable cloudfunctions.googleapis.com
 gcloud services enable firebaseextensions.googleapis.com
+gcloud services enable eventarc.googleapis.com
 ```
 
 ### 3.2 Create Custom Service Accounts for Cloud Build

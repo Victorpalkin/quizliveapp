@@ -69,23 +69,23 @@ interface SubmitAnswerRequest {
   gameId: string;
   playerId: string;
   questionIndex: number;
-  answerIndex: number;
   timeRemaining: number; // Time remaining when answer was submitted
-}
 
-interface Question {
-  text: string;
-  answers: Array<{ text: string }>;
-  correctAnswerIndices: number[];
-  timeLimit?: number;
-  imageUrl?: string;
-}
+  // Answer data (one will be used based on question type)
+  answerIndex?: number;        // For single-choice
+  answerIndices?: number[];    // For multi-choice questions
+  sliderValue?: number;        // For slider questions
 
-interface Quiz {
-  title: string;
-  description: string;
-  questions: Question[];
-  hostId: string;
+  // Question metadata (passed from client to avoid quiz fetch)
+  questionType: 'single-choice' | 'multiple-choice' | 'slider';
+  questionTimeLimit?: number;
+
+  // Type-specific metadata
+  correctAnswerIndex?: number;       // For single-choice
+  correctAnswerIndices?: number[];   // For multiple-choice
+  correctValue?: number;             // For slider
+  minValue?: number;                 // For slider
+  maxValue?: number;                 // For slider
 }
 
 interface Game {
@@ -101,6 +101,8 @@ interface Player {
   name: string;
   score: number;
   lastAnswerIndex?: number | null;
+  lastAnswerIndices?: number[] | null;
+  lastSliderValue?: number | null;
 }
 
 /**
@@ -125,13 +127,36 @@ export const submitAnswer = onCall(
     validateOrigin(origin);
 
     const data = request.data as SubmitAnswerRequest;
-    const { gameId, playerId, questionIndex, answerIndex, timeRemaining } = data;
+    const {
+      gameId,
+      playerId,
+      questionIndex,
+      answerIndex,
+      answerIndices,
+      sliderValue,
+      timeRemaining,
+      questionType,
+      questionTimeLimit,
+      correctAnswerIndex,
+      correctAnswerIndices,
+      correctValue,
+      minValue,
+      maxValue
+    } = data;
 
   // Validate input
-  if (!gameId || !playerId || questionIndex === undefined || answerIndex === undefined) {
+  if (!gameId || !playerId || questionIndex === undefined) {
     throw new HttpsError(
       'invalid-argument',
-      'Missing required fields: gameId, playerId, questionIndex, answerIndex'
+      'Missing required fields: gameId, playerId, questionIndex'
+    );
+  }
+
+  // At least one answer type must be provided
+  if (answerIndex === undefined && !answerIndices && sliderValue === undefined) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Missing answer: must provide answerIndex, answerIndices, or sliderValue'
     );
   }
 
@@ -145,13 +170,23 @@ export const submitAnswer = onCall(
   const db = admin.firestore();
 
   try {
-    // Get game document
-    const gameDoc = await db.collection('games').doc(gameId).get();
+    // Parallel fetch: Get game and player documents simultaneously
+    const playerRef = db.collection('games').doc(gameId).collection('players').doc(playerId);
+    const [gameDoc, playerDoc] = await Promise.all([
+      db.collection('games').doc(gameId).get(),
+      playerRef.get()
+    ]);
+
     if (!gameDoc.exists) {
       throw new HttpsError('not-found', 'Game not found');
     }
 
+    if (!playerDoc.exists) {
+      throw new HttpsError('not-found', 'Player not found');
+    }
+
     const game = gameDoc.data() as Game;
+    const player = playerDoc.data() as Player;
 
     // Verify game is in question state
     if (game.state !== 'question') {
@@ -169,38 +204,7 @@ export const submitAnswer = onCall(
       );
     }
 
-    // Get quiz to validate answer
-    const quizDoc = await db.collection('quizzes').doc(game.quizId).get();
-    if (!quizDoc.exists) {
-      throw new HttpsError('not-found', 'Quiz not found');
-    }
-
-    const quiz = quizDoc.data() as Quiz;
-    const question = quiz.questions[questionIndex];
-
-    if (!question) {
-      throw new HttpsError('not-found', 'Question not found');
-    }
-
-    // Validate answer index (-1 means no answer/timeout)
-    if (answerIndex !== -1 && (answerIndex < 0 || answerIndex >= question.answers.length)) {
-      throw new HttpsError(
-        'invalid-argument',
-        'Invalid answer index'
-      );
-    }
-
-    // Get player document
-    const playerRef = db.collection('games').doc(gameId).collection('players').doc(playerId);
-    const playerDoc = await playerRef.get();
-
-    if (!playerDoc.exists) {
-      throw new HttpsError('not-found', 'Player not found');
-    }
-
-    const player = playerDoc.data() as Player;
-
-    // Check if player already answered this question
+    // Check if player already answered this question (early validation)
     if (player.lastAnswerIndex !== null && player.lastAnswerIndex !== undefined) {
       throw new HttpsError(
         'failed-precondition',
@@ -208,10 +212,53 @@ export const submitAnswer = onCall(
       );
     }
 
-    // Calculate score
-    // -1 means no answer (timeout), which is always incorrect
-    const isCorrect = answerIndex !== -1 && question.correctAnswerIndices.includes(answerIndex);
-    const timeLimit = question.timeLimit || 20;
+    // Validate question metadata is provided
+    if (!questionType) {
+      throw new HttpsError('invalid-argument', 'Question type is required');
+    }
+
+    // Basic validation based on question type (client has already validated)
+    if (questionType === 'single-choice') {
+      if (answerIndex === undefined) {
+        throw new HttpsError('invalid-argument', 'Single choice question requires answerIndex');
+      }
+      if (correctAnswerIndex === undefined) {
+        throw new HttpsError('invalid-argument', 'correctAnswerIndex is required for single-choice');
+      }
+      // -1 means no answer/timeout - minimal validation only
+      if (answerIndex !== -1 && answerIndex < 0) {
+        throw new HttpsError('invalid-argument', 'Invalid answer index');
+      }
+    } else if (questionType === 'multiple-choice') {
+      if (!answerIndices) {
+        throw new HttpsError('invalid-argument', 'Multiple choice question requires answerIndices');
+      }
+      if (!correctAnswerIndices || correctAnswerIndices.length === 0) {
+        throw new HttpsError('invalid-argument', 'correctAnswerIndices is required for multiple-choice');
+      }
+      // Minimal validation - check indices aren't negative
+      for (const idx of answerIndices) {
+        if (idx < 0) {
+          throw new HttpsError('invalid-argument', `Invalid answer index: ${idx}`);
+        }
+      }
+    } else if (questionType === 'slider') {
+      if (sliderValue === undefined) {
+        throw new HttpsError('invalid-argument', 'Slider question requires sliderValue');
+      }
+      if (correctValue === undefined || minValue === undefined || maxValue === undefined) {
+        throw new HttpsError('invalid-argument', 'Slider metadata (correctValue, minValue, maxValue) is required');
+      }
+      if (sliderValue < minValue || sliderValue > maxValue) {
+        throw new HttpsError(
+          'invalid-argument',
+          `Slider value ${sliderValue} out of range [${minValue}, ${maxValue}]`
+        );
+      }
+    }
+
+    // Calculate score based on question type
+    const timeLimit = questionTimeLimit || 20;
 
     // Validate time remaining is within bounds
     if (timeRemaining > timeLimit) {
@@ -222,11 +269,70 @@ export const submitAnswer = onCall(
     }
 
     let points = 0;
-    if (isCorrect) {
-      // Score: 100 base + up to 900 bonus based on speed
-      points = Math.round(100 + (timeRemaining / timeLimit) * 900);
-      // Ensure points are in valid range
-      points = Math.max(100, Math.min(1000, points));
+    let isCorrect = false;
+    let isPartiallyCorrect = false;
+
+    if (questionType === 'single-choice') {
+      // Single choice: exactly one correct answer
+      const selectedIndex = answerIndex !== undefined ? answerIndex : -1;
+      isCorrect = selectedIndex !== -1 && selectedIndex === correctAnswerIndex;
+
+      if (isCorrect) {
+        // Base 100 points + up to 900 time bonus
+        points = 100;
+        const timeBonus = Math.round((timeRemaining / timeLimit) * 900);
+        points = Math.min(1000, points + timeBonus);
+      } else {
+        points = 0;
+      }
+
+    } else if (questionType === 'multiple-choice') {
+      // Multiple choice: multiple correct answers with proportional scoring
+      const correctSelected = answerIndices!.filter(i => correctAnswerIndices!.includes(i)).length;
+      const wrongSelected = answerIndices!.filter(i => !correctAnswerIndices!.includes(i)).length;
+      const totalCorrect = correctAnswerIndices!.length;
+
+      // Proportional scoring
+      const correctRatio = correctSelected / totalCorrect;
+      const penalty = wrongSelected * 0.2;  // 20% penalty per wrong answer
+      const scoreMultiplier = Math.max(0, correctRatio - penalty);
+
+      // Base 1000 points, multiplied by correctness
+      const basePoints = Math.round(1000 * scoreMultiplier);
+      points = basePoints;
+
+      // Fully correct: all correct selected, no wrong
+      isCorrect = correctSelected === totalCorrect && wrongSelected === 0;
+
+      // Partially correct: got some points but not fully correct
+      isPartiallyCorrect = !isCorrect && scoreMultiplier > 0;
+
+      // Apply time bonus for correct answers
+      if (isCorrect && points > 0) {
+        const timeBonus = Math.round((timeRemaining / timeLimit) * 900);
+        points = Math.min(1000, points + timeBonus);
+      }
+
+    } else if (questionType === 'slider') {
+      // Slider question: proximity-based scoring
+      const range = maxValue! - minValue!;
+      const distance = Math.abs(sliderValue! - correctValue!);
+      const accuracy = Math.max(0, 1 - (distance / range));  // 1.0 = perfect, 0.0 = worst
+      const errorMargin = distance / range;  // 0.0 = perfect, 1.0 = worst
+
+      // Quadratic scoring: rewards closeness, penalizes distance
+      const scoreMultiplier = Math.pow(accuracy, 2);
+      const basePoints = Math.round(1000 * scoreMultiplier);
+
+      // Apply time bonus
+      const timeBonus = Math.round((timeRemaining / timeLimit) * 0);  // No time bonus for slider questions
+      points = Math.min(1000, basePoints + timeBonus);
+
+      // Fully correct: within 10% error margin
+      isCorrect = errorMargin <= 0.1;
+
+      // Partially correct: within 20% error margin but not fully correct
+      isPartiallyCorrect = !isCorrect && errorMargin <= 0.2;
     }
 
     const newScore = player.score + points;
@@ -249,16 +355,33 @@ export const submitAnswer = onCall(
         );
       }
 
-      transaction.update(playerRef, {
+      // Update appropriate answer field based on question type
+      const updateData: any = {
         score: newScore,
-        lastAnswerIndex: answerIndex,
-      });
+      };
+
+      if (questionType === 'single-choice') {
+        updateData.lastAnswerIndex = answerIndex !== undefined ? answerIndex : -1;
+        updateData.lastAnswerIndices = null;
+        updateData.lastSliderValue = null;
+      } else if (questionType === 'multiple-choice') {
+        updateData.lastAnswerIndices = answerIndices!;
+        updateData.lastAnswerIndex = null;
+        updateData.lastSliderValue = null;
+      } else if (questionType === 'slider') {
+        updateData.lastSliderValue = sliderValue;
+        updateData.lastAnswerIndex = null;
+        updateData.lastAnswerIndices = null;
+      }
+
+      transaction.update(playerRef, updateData);
     });
 
     // Return result to client
     return {
       success: true,
       isCorrect,
+      isPartiallyCorrect,
       points,
       newScore,
     };
