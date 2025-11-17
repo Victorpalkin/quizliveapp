@@ -539,42 +539,43 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                             <FormLabel className="text-base">Answers</FormLabel>
                             <p className="text-sm text-muted-foreground">Select one correct answer.</p>
                           </div>
-                          {q.answers.map((ans, aIndex) => (
-                            <FormField
-                              key={aIndex}
-                              control={form.control}
-                              name={`questions.${qIndex}.answers.${aIndex}.text`}
-                              render={({ field }) => (
-                                <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                  <FormControl>
-                                    <RadioGroupItem
-                                      value={String(aIndex)}
-                                      checked={q.correctAnswerIndex === aIndex}
-                                      onClick={() => {
-                                        updateQuestion(qIndex, { ...q, correctAnswerIndex: aIndex });
+                          <RadioGroup
+                            value={String(q.correctAnswerIndex)}
+                            onValueChange={(value) => {
+                              updateQuestion(qIndex, { ...q, correctAnswerIndex: parseInt(value, 10) });
+                            }}
+                          >
+                            {q.answers.map((ans, aIndex) => (
+                              <FormField
+                                key={aIndex}
+                                control={form.control}
+                                name={`questions.${qIndex}.answers.${aIndex}.text`}
+                                render={({ field }) => (
+                                  <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                    <FormControl>
+                                      <RadioGroupItem value={String(aIndex)} />
+                                    </FormControl>
+                                    <Input
+                                      {...field}
+                                      placeholder={`Answer ${aIndex + 1}`}
+                                      maxLength={200}
+                                      onChange={(e) => {
+                                        field.onChange(e);
+                                        const newAnswers = [...q.answers];
+                                        newAnswers[aIndex] = { text: e.target.value };
+                                        updateQuestion(qIndex, { ...q, answers: newAnswers });
                                       }}
                                     />
-                                  </FormControl>
-                                  <Input
-                                    {...field}
-                                    placeholder={`Answer ${aIndex + 1}`}
-                                    maxLength={200}
-                                    onChange={(e) => {
-                                      field.onChange(e);
-                                      const newAnswers = [...q.answers];
-                                      newAnswers[aIndex] = { text: e.target.value };
-                                      updateQuestion(qIndex, { ...q, answers: newAnswers });
-                                    }}
-                                  />
-                                  {q.answers.length > 2 && (
-                                    <Button variant="ghost" size="icon" onClick={() => removeAnswer(qIndex, aIndex)} type="button">
-                                      <X className="h-4 w-4 text-muted-foreground" />
-                                    </Button>
-                                  )}
-                                </FormItem>
-                              )}
-                            />
-                          ))}
+                                    {q.answers.length > 2 && (
+                                      <Button variant="ghost" size="icon" onClick={() => removeAnswer(qIndex, aIndex)} type="button">
+                                        <X className="h-4 w-4 text-muted-foreground" />
+                                      </Button>
+                                    )}
+                                  </FormItem>
+                                )}
+                              />
+                            ))}
+                          </RadioGroup>
                           <FormMessage>{form.formState.errors.questions?.[qIndex]?.correctAnswerIndex?.message}</FormMessage>
                           {q.answers.length < 8 && (
                             <Button type="button" variant="outline" size="sm" onClick={() => addAnswer(qIndex)} className="mt-2">
