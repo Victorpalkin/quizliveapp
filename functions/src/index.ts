@@ -98,13 +98,23 @@ interface Game {
   gamePin: string;
 }
 
+interface PlayerAnswer {
+  questionIndex: number;
+  questionType: 'single-choice' | 'multiple-choice' | 'slider';
+  timestamp: admin.firestore.FieldValue;
+  answerIndex?: number;
+  answerIndices?: number[];
+  sliderValue?: number;
+  points: number;
+  isCorrect: boolean;
+  wasTimeout: boolean;
+}
+
 interface Player {
   id: string;
   name: string;
   score: number;
-  lastAnswerIndex?: number | null;
-  lastAnswerIndices?: number[] | null;
-  lastSliderValue?: number | null;
+  answers: PlayerAnswer[];
 }
 
 /**
@@ -208,7 +218,9 @@ export const submitAnswer = onCall(
     }
 
     // Check if player already answered this question (early validation)
-    if (player.lastAnswerIndex !== null && player.lastAnswerIndex !== undefined) {
+    const answers = player.answers || [];
+    const alreadyAnswered = answers.some(a => a.questionIndex === questionIndex);
+    if (alreadyAnswered) {
       throw new HttpsError(
         'failed-precondition',
         'Player already answered this question'
@@ -347,33 +359,39 @@ export const submitAnswer = onCall(
       const freshPlayer = freshPlayerDoc.data() as Player;
 
       // Double-check player hasn't answered in the meantime
-      if (freshPlayer.lastAnswerIndex !== null && freshPlayer.lastAnswerIndex !== undefined) {
+      const freshAnswers = freshPlayer.answers || [];
+      const alreadyAnsweredInTransaction = freshAnswers.some(a => a.questionIndex === questionIndex);
+      if (alreadyAnsweredInTransaction) {
         throw new HttpsError(
           'failed-precondition',
           'Player already answered this question'
         );
       }
 
-      // Update appropriate answer field based on question type
-      const updateData: any = {
-        score: newScore,
+      // Create answer object
+      const answer: PlayerAnswer = {
+        questionIndex: questionIndex,
+        questionType: questionType,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        points: points,
+        isCorrect: isCorrect,
+        wasTimeout: timeRemaining === 0,
       };
 
+      // Add type-specific answer data
       if (questionType === 'single-choice') {
-        updateData.lastAnswerIndex = answerIndex !== undefined ? answerIndex : -1;
-        updateData.lastAnswerIndices = null;
-        updateData.lastSliderValue = null;
+        answer.answerIndex = answerIndex !== undefined ? answerIndex : -1;
       } else if (questionType === 'multiple-choice') {
-        updateData.lastAnswerIndices = answerIndices!;
-        updateData.lastAnswerIndex = null;
-        updateData.lastSliderValue = null;
+        answer.answerIndices = answerIndices!;
       } else if (questionType === 'slider') {
-        updateData.lastSliderValue = sliderValue;
-        updateData.lastAnswerIndex = null;
-        updateData.lastAnswerIndices = null;
+        answer.sliderValue = sliderValue!;
       }
 
-      transaction.update(playerRef, updateData);
+      // Update player document: append to answers array and increment score
+      transaction.update(playerRef, {
+        score: newScore,
+        answers: admin.firestore.FieldValue.arrayUnion(answer)
+      });
     });
 
     // Return result to client

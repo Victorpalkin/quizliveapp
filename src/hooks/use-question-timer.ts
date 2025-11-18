@@ -33,11 +33,9 @@ export function useQuestionTimer({
   const finishedRef = useRef(false);
 
   // Count players who have answered (host only)
-  const answeredPlayers = players?.filter(p => {
-    return (p.lastAnswerIndex !== null && p.lastAnswerIndex !== undefined) ||
-           (p.lastAnswerIndices !== null && p.lastAnswerIndices !== undefined) ||
-           (p.lastSliderValue !== null && p.lastSliderValue !== undefined);
-  }).length || 0;
+  const answeredPlayers = players?.filter(p =>
+    p.answers?.some(a => a.questionIndex === currentQuestionIndex)
+  ).length || 0;
 
   // Auto-finish when all players answered (host only)
   useEffect(() => {

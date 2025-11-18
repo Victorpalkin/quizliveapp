@@ -1,9 +1,9 @@
 import { useCallback, useRef, Dispatch, SetStateAction } from 'react';
 import { useFirestore, useFunctions } from '@/firebase';
-import { doc, setDoc, DocumentReference } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
-import type { Player, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion } from '@/lib/types';
+import type { Player, PlayerAnswer, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion } from '@/lib/types';
 
 type AnswerResult = {
   selected: number;
@@ -53,7 +53,22 @@ export function useAnswerSubmission(
       points: estimatedPoints,
       wasTimeout: false
     });
-    setPlayer(p => p ? { ...p, score: p.score + estimatedPoints, lastAnswerIndex: answerIndex } : null);
+
+    // Optimistic update: add answer to array
+    const optimisticAnswer: PlayerAnswer = {
+      questionIndex: currentQuestionIndex,
+      questionType: 'single-choice',
+      timestamp: Timestamp.now(),
+      answerIndex,
+      points: estimatedPoints,
+      isCorrect: isCorrectAnswer,
+      wasTimeout: false
+    };
+    setPlayer(p => p ? {
+      ...p,
+      score: p.score + estimatedPoints,
+      answers: [...(p.answers || []), optimisticAnswer]
+    } : null);
 
     // Submit to server in background
     const submitData = {
@@ -75,8 +90,17 @@ export function useAnswerSubmission(
       // Update with actual values if different
       if (actualPoints !== estimatedPoints) {
         setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
+        // Update answer in array with actual points
+        setPlayer(p => {
+          if (!p) return null;
+          const updatedAnswers = p.answers.map(a =>
+            a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints } : a
+          );
+          return { ...p, score: newScore, answers: updatedAnswers };
+        });
+      } else {
+        setPlayer(p => p ? { ...p, score: newScore } : null);
       }
-      setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndex: answerIndex } : null);
     } catch (error: any) {
       console.error('Error submitting answer:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit answer. Your score may not be saved.' });
@@ -122,7 +146,22 @@ export function useAnswerSubmission(
       wasTimeout: false,
       isPartiallyCorrect: isPartiallyCorrectAnswer
     });
-    setPlayer(p => p ? { ...p, score: p.score + estimatedPoints, lastAnswerIndices: answerIndices } : null);
+
+    // Optimistic update: add answer to array
+    const optimisticAnswer: PlayerAnswer = {
+      questionIndex: currentQuestionIndex,
+      questionType: 'multiple-choice',
+      timestamp: Timestamp.now(),
+      answerIndices,
+      points: estimatedPoints,
+      isCorrect: isCorrectAnswer,
+      wasTimeout: false
+    };
+    setPlayer(p => p ? {
+      ...p,
+      score: p.score + estimatedPoints,
+      answers: [...(p.answers || []), optimisticAnswer]
+    } : null);
 
     // Submit to server in background
     const submitData = {
@@ -142,13 +181,18 @@ export function useAnswerSubmission(
       const { points: actualPoints, newScore, isPartiallyCorrect } = result.data as any;
 
       // Update with actual values if different
-      if (actualPoints !== estimatedPoints) {
-        setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
+      if (actualPoints !== estimatedPoints || isPartiallyCorrect !== isPartiallyCorrectAnswer) {
+        setLastAnswer(prev => prev ? { ...prev, points: actualPoints, isPartiallyCorrect } : null);
+        setPlayer(p => {
+          if (!p) return null;
+          const updatedAnswers = p.answers.map(a =>
+            a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints } : a
+          );
+          return { ...p, score: newScore, answers: updatedAnswers };
+        });
+      } else {
+        setPlayer(p => p ? { ...p, score: newScore } : null);
       }
-      if (isPartiallyCorrect !== isPartiallyCorrectAnswer) {
-        setLastAnswer(prev => prev ? { ...prev, isPartiallyCorrect } : null);
-      }
-      setPlayer(p => p ? { ...p, score: newScore, lastAnswerIndices: answerIndices } : null);
     } catch (error: any) {
       console.error('Error submitting answer:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit answer. Your score may not be saved.' });
@@ -186,7 +230,22 @@ export function useAnswerSubmission(
       points: estimatedPoints,
       wasTimeout: false
     });
-    setPlayer(p => p ? { ...p, score: p.score + estimatedPoints, lastSliderValue: sliderValue } : null);
+
+    // Optimistic update: add answer to array
+    const optimisticAnswer: PlayerAnswer = {
+      questionIndex: currentQuestionIndex,
+      questionType: 'slider',
+      timestamp: Timestamp.now(),
+      sliderValue,
+      points: estimatedPoints,
+      isCorrect: isCorrectAnswer,
+      wasTimeout: false
+    };
+    setPlayer(p => p ? {
+      ...p,
+      score: p.score + estimatedPoints,
+      answers: [...(p.answers || []), optimisticAnswer]
+    } : null);
 
     // Submit to server in background
     const submitData = {
@@ -211,35 +270,21 @@ export function useAnswerSubmission(
       // Update with actual values if different
       if (actualPoints !== estimatedPoints) {
         setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
+        setPlayer(p => {
+          if (!p) return null;
+          const updatedAnswers = p.answers.map(a =>
+            a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints } : a
+          );
+          return { ...p, score: newScore, answers: updatedAnswers };
+        });
+      } else {
+        setPlayer(p => p ? { ...p, score: newScore } : null);
       }
-      setPlayer(p => p ? { ...p, score: newScore, lastSliderValue: sliderValue } : null);
     } catch (error: any) {
       console.error('Error submitting answer:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit answer. Your score may not be saved.' });
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
-
-  // Submit slide view (no scoring)
-  const submitSlideView = useCallback(() => {
-    if (!gameDocId || !player) return;
-
-    answerSubmittedRef.current = true;
-
-    // Show "No Answer" result with 0 points (like timeout but informational)
-    setLastAnswer({
-      selected: -1,
-      correct: [-1],
-      points: 0,
-      wasTimeout: false
-    });
-
-    // Update player state locally - mark as viewed with lastAnswerIndex = -1
-    const playerRef = doc(firestore, 'games', gameDocId, 'players', playerId) as DocumentReference<Player>;
-    setDoc(playerRef, { ...player, lastAnswerIndex: -1 }, { merge: true }).catch(error => {
-      console.error("Error marking slide as viewed:", error);
-    });
-    setPlayer(p => p ? { ...p, lastAnswerIndex: -1 } : null);
-  }, [gameDocId, playerId, player, firestore, answerSubmittedRef, setLastAnswer, setPlayer]);
 
   // Handle timeout
   const submitTimeout = useCallback(async (
@@ -288,7 +333,6 @@ export function useAnswerSubmission(
     submitSingleChoice,
     submitMultipleChoice,
     submitSlider,
-    submitSlideView,
     submitTimeout
   };
 }

@@ -67,13 +67,27 @@ export interface QuizShare {
   createdAt: Date;
 }
 
+export interface PlayerAnswer {
+    questionIndex: number;
+    questionType: 'single-choice' | 'multiple-choice' | 'slider';
+    timestamp: Timestamp;
+
+    // Answer data (type-specific, one will be populated)
+    answerIndex?: number;           // For single-choice
+    answerIndices?: number[];       // For multiple-choice
+    sliderValue?: number;           // For slider
+
+    // Scoring data
+    points: number;
+    isCorrect: boolean;
+    wasTimeout: boolean;
+}
+
 export interface Player {
     id: string;
     name: string;
     score: number;
-    lastAnswerIndex?: number | null;      // For single-choice questions
-    lastAnswerIndices?: number[] | null;  // For multi-choice questions
-    lastSliderValue?: number | null;      // For slider questions
+    answers: PlayerAnswer[];
 }
 
 export interface Game {

@@ -67,7 +67,7 @@ export default function HostGamePage() {
   const { time, answeredPlayers } = useQuestionTimer(game, players, timeLimit, finishQuestion);
 
   // Answer distribution
-  const { answerDistribution, sliderResponses } = useAnswerDistribution(question, players);
+  const { answerDistribution, sliderResponses } = useAnswerDistribution(question, players, game);
 
   // Auto-transition from preparing to question
   useEffect(() => {

@@ -143,7 +143,7 @@ export default function PlayerGamePage() {
           if (playerDoc.empty) {
             // Recreate player document
             console.log('[Reconnect] Player document missing, attempting to recreate');
-            const newPlayer = { id: playerId, name: nickname, score: 0, lastAnswerIndex: null };
+            const newPlayer = { id: playerId, name: nickname, score: 0, answers: [] };
             await setDoc(playerRef, newPlayer);
             setPlayer(newPlayer);
             toast({
@@ -194,17 +194,9 @@ export default function PlayerGamePage() {
       setLastAnswer(null);
       answerSubmittedRef.current = false;
       resetTimer();
-
-      // Reset lastAnswerIndex for new question
-      if (gameDocId && player?.lastAnswerIndex !== null && player?.lastAnswerIndex !== undefined) {
-        const playerRef = doc(firestore, 'games', gameDocId, 'players', playerId) as DocumentReference<Player>;
-        setDoc(playerRef, { ...player, lastAnswerIndex: null }, { merge: true }).catch(error => {
-          console.error("Error resetting lastAnswerIndex:", error);
-        });
-        setPlayer(p => p ? { ...p, lastAnswerIndex: null } : null);
-      }
+      // No Firestore reset needed - answers persist in array
     }
-  }, [state, game?.currentQuestionIndex, gameDocId, player, playerId, firestore, resetTimer]);
+  }, [state, game?.currentQuestionIndex, resetTimer]);
 
   // Handle timeout when time reaches 0
   useEffect(() => {
@@ -233,9 +225,13 @@ export default function PlayerGamePage() {
 
   // Handle forced result screen when host finishes question early (before player answered)
   useEffect(() => {
-    if (state === 'result' && !answerSelected && !answerSubmittedRef.current && question) {
+    if (state === 'result' && !answerSelected && !answerSubmittedRef.current && question && game) {
       // Skip for slides
       if (question.type === 'slide') return;
+
+      // Check if already answered this question in answers array
+      const hasAnswered = player?.answers?.some(a => a.questionIndex === game.currentQuestionIndex);
+      if (hasAnswered) return;
 
       console.log('[Player State] Forced to result without answering - showing "No answer"');
 
@@ -254,7 +250,7 @@ export default function PlayerGamePage() {
       // Submit timeout to record non-answer
       answerSubmission.submitTimeout(question);
     }
-  }, [state, answerSelected, question, answerSubmission]);
+  }, [state, answerSelected, question, answerSubmission, game, player?.answers]);
 
   // Join game handler
   const handleJoinGame = async (e: React.FormEvent) => {
@@ -291,7 +287,7 @@ export default function PlayerGamePage() {
       setGameDocId(gameDoc.id);
 
       const playerRef = doc(firestore, 'games', gameDoc.id, 'players', playerId);
-      const newPlayer = { id: playerId, name: trimmedNickname, score: 0, lastAnswerIndex: null };
+      const newPlayer = { id: playerId, name: trimmedNickname, score: 0, answers: [] };
 
       setDoc(playerRef, newPlayer)
         .then(() => {

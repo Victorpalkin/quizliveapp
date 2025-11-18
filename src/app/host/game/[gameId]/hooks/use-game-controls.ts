@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
-import { useFirestore } from '@/firebase';
-import { updateDoc, writeBatch, doc, serverTimestamp, DocumentReference, Timestamp } from 'firebase/firestore';
-import type { Game, Quiz, Player } from '@/lib/types';
+import { updateDoc, serverTimestamp, DocumentReference, Timestamp } from 'firebase/firestore';
+import type { Game, Quiz } from '@/lib/types';
 import { isLastQuestion as checkIsLastQuestion } from '@/lib/utils/game-utils';
 import { handleFirestoreError } from '@/lib/utils/error-utils';
 
@@ -10,9 +9,8 @@ export function useGameControls(
   gameRef: DocumentReference<Game> | null,
   game: Game | null,
   quiz: Quiz | null,
-  players: Player[]
+  players: any[] // Not used anymore but keeping for API compatibility
 ) {
-  const firestore = useFirestore();
 
   const updateGame = useCallback((data: Partial<Game>) => {
     if (!gameRef) return;
@@ -32,7 +30,7 @@ export function useGameControls(
   }, [game?.state, updateGame]);
 
   const handleNext = useCallback(async () => {
-    if (!game || !quiz || !gameRef || !players) return;
+    if (!game || !quiz || !gameRef) return;
 
     const isLast = checkIsLastQuestion(game, quiz);
 
@@ -40,17 +38,7 @@ export function useGameControls(
       updateGame({ state: 'leaderboard' });
     } else if (game.state === 'leaderboard') {
       if (!isLast) {
-        const batch = writeBatch(firestore);
-        players.forEach(player => {
-          const playerRef = doc(firestore, 'games', gameId, 'players', player.id);
-          batch.update(playerRef, {
-            lastAnswerIndex: null,
-            lastAnswerIndices: null,
-            lastSliderValue: null
-          });
-        });
-        await batch.commit();
-
+        // No cleanup needed - answers persist in array
         updateGame({
           state: 'preparing',
           currentQuestionIndex: game.currentQuestionIndex + 1
@@ -59,7 +47,7 @@ export function useGameControls(
         updateGame({ state: 'ended' });
       }
     }
-  }, [game, quiz, gameRef, players, firestore, gameId, updateGame]);
+  }, [game, quiz, gameRef, updateGame]);
 
   // Transition from preparing to question
   const startQuestion = useCallback(() => {
