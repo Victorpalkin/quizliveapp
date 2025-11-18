@@ -14,7 +14,8 @@ const ALLOWED_ORIGINS = [
   'https://gqzuiz-dev-f424-czsrxlt5hq-ez.a.run.app',
   'https://gqzuiz-dev-f424-986405642892.europe-west4.run.app',
   'https://gquiz-prod-3r5f-684066064060.europe-west4.run.app',
-  'https://gquiz-prod-3r5f-klvaspwmka-ez.a.run.app'
+  'https://gquiz-prod-3r5f-klvaspwmka-ez.a.run.app',
+  'https://quiz.palkin.nl/'
   // Example: 'https://gquiz-abc123-ew.a.run.app'
   // Note: You can get the actual URL after first deployment via:
   // gcloud run services describe gquiz --region=europe-west4 --format='value(status.url)'
