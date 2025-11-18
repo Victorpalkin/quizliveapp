@@ -209,13 +209,16 @@ export default function PlayerGamePage() {
   // Handle timeout when time reaches 0
   useEffect(() => {
     if (state === 'question' && time === 0 && !answerSelected && !timedOut && !answerSubmittedRef.current && question) {
-      // Skip timeout for slides
-      if (question.type === 'slide') return;
-
       setTimedOut(true);
       setAnswerSelected(true);
 
-      // Set local state immediately
+      // For slides, just transition to waiting without setting answer result
+      if (question.type === 'slide') {
+        setState('waiting');
+        return;
+      }
+
+      // Set local state immediately for question types that need answers
       setLastAnswer({
         selected: -1,
         correct: question.type === 'single-choice' ? [question.correctAnswerIndex] : (question.type === 'multiple-choice' ? question.correctAnswerIndices : [1]),
@@ -227,6 +230,31 @@ export default function PlayerGamePage() {
       answerSubmission.submitTimeout(question);
     }
   }, [time, state, answerSelected, timedOut, question, answerSubmission, setState]);
+
+  // Handle forced result screen when host finishes question early (before player answered)
+  useEffect(() => {
+    if (state === 'result' && !answerSelected && !answerSubmittedRef.current && question) {
+      // Skip for slides
+      if (question.type === 'slide') return;
+
+      console.log('[Player State] Forced to result without answering - showing "No answer"');
+
+      // Mark as answered to prevent re-triggering
+      setAnswerSelected(true);
+      setTimedOut(true);
+
+      // Set "No answer" result
+      setLastAnswer({
+        selected: -1,
+        correct: question.type === 'single-choice' ? [question.correctAnswerIndex] : (question.type === 'multiple-choice' ? question.correctAnswerIndices : []),
+        points: 0,
+        wasTimeout: true
+      });
+
+      // Submit timeout to record non-answer
+      answerSubmission.submitTimeout(question);
+    }
+  }, [state, answerSelected, question, answerSubmission]);
 
   // Join game handler
   const handleJoinGame = async (e: React.FormEvent) => {
@@ -307,13 +335,6 @@ export default function PlayerGamePage() {
     answerSubmission.submitSlider(sliderValue, question, time);
   };
 
-  const handleSlideView = () => {
-    if (answerSelected || !question || question.type !== 'slide') return;
-    setAnswerSelected(true);
-    setState('waiting');
-    answerSubmission.submitSlideView();
-  };
-
   // Render appropriate screen based on state
   const renderContent = () => {
     switch (state) {
@@ -352,7 +373,6 @@ export default function PlayerGamePage() {
             onSubmitSingleChoice={handleSingleChoiceAnswer}
             onSubmitMultipleChoice={handleMultipleChoiceAnswer}
             onSubmitSlider={handleSliderAnswer}
-            onSubmitSlide={handleSlideView}
             quizLoading={quizLoading}
           />
         );

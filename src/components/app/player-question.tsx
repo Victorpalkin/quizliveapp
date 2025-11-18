@@ -180,19 +180,9 @@ export function SliderQuestionComponent({ question, onSubmit, disabled }: Slider
 
 interface SlideQuestionProps {
   question: SlideQuestion;
-  onSubmit: () => void;
-  disabled: boolean;
 }
 
-export function SlideQuestionComponent({ question, onSubmit, disabled }: SlideQuestionProps) {
-  const [viewed, setViewed] = useState(false);
-
-  const handleContinue = () => {
-    if (disabled || viewed) return;
-    setViewed(true);
-    onSubmit();
-  };
-
+export function SlideQuestionComponent({ question }: SlideQuestionProps) {
   return (
     <div className="w-full max-w-2xl px-8 space-y-8">
       <div className="text-center space-y-6">
@@ -204,15 +194,10 @@ export function SlideQuestionComponent({ question, onSubmit, disabled }: SlideQu
             {question.description}
           </p>
         )}
+        <p className="text-lg text-muted-foreground pt-8">
+          Waiting for host to continue...
+        </p>
       </div>
-      <Button
-        onClick={handleContinue}
-        disabled={disabled || viewed}
-        size="lg"
-        className="w-full text-xl py-8"
-      >
-        {viewed ? 'Viewed' : 'Continue'}
-      </Button>
     </div>
   );
 }

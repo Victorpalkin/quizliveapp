@@ -19,7 +19,6 @@ interface QuestionScreenProps {
   onSubmitSingleChoice: (answerIndex: number) => void;
   onSubmitMultipleChoice: (answerIndices: number[]) => void;
   onSubmitSlider: (value: number) => void;
-  onSubmitSlide: () => void;
   quizLoading: boolean;
 }
 
@@ -33,7 +32,6 @@ export function QuestionScreen({
   onSubmitSingleChoice,
   onSubmitMultipleChoice,
   onSubmitSlider,
-  onSubmitSlide,
   quizLoading
 }: QuestionScreenProps) {
   if (quizLoading || !question || !game) {
@@ -81,8 +79,6 @@ export function QuestionScreen({
         {question.type === 'slide' && (
           <SlideQuestionComponent
             question={question}
-            onSubmit={onSubmitSlide}
-            disabled={answerSelected}
           />
         )}
       </div>

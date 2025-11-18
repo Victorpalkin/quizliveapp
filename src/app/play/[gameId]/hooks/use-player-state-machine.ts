@@ -80,9 +80,9 @@ export function usePlayerStateMachine(
       return;
     }
 
-    // 3. Leaderboard - show results to players who answered or timed out
+    // 3. Leaderboard - show results to all players (answered, timed out, or forced by host)
     if (hostState === 'leaderboard') {
-      if (state === 'waiting' || (state === 'question' && timedOut)) {
+      if (state === 'waiting' || state === 'question') {
         console.log(`[Player State] Showing result: ${state} → result`);
         setState('result');
       }
