@@ -58,6 +58,7 @@ export default function PlayerGamePage() {
   const [answerSelected, setAnswerSelected] = useState<boolean>(false);
   const [timedOut, setTimedOut] = useState(false);
   const answerSubmittedRef = useRef<boolean>(false);
+  const lastQuestionIndexShownRef = useRef<number>(-1);
 
   // Firebase data
   const gameRef = useMemoFirebase(() => gameDocId ? doc(firestore, 'games', gameDocId) as DocumentReference<Game> : null, [firestore, gameDocId]);
@@ -198,6 +199,14 @@ export default function PlayerGamePage() {
     }
   }, [state, game?.currentQuestionIndex, resetTimer]);
 
+  // Track which question index the player actually sees in question state
+  useEffect(() => {
+    if (state === 'question' && game?.currentQuestionIndex !== undefined) {
+      lastQuestionIndexShownRef.current = game.currentQuestionIndex;
+      console.log('[Player State] Now showing question index:', game.currentQuestionIndex);
+    }
+  }, [state, game?.currentQuestionIndex]);
+
   // Handle timeout when time reaches 0
   useEffect(() => {
     if (state === 'question' && time === 0 && !answerSelected && !timedOut && !answerSubmittedRef.current && question) {
@@ -228,6 +237,13 @@ export default function PlayerGamePage() {
     if (state === 'result' && !answerSelected && !answerSubmittedRef.current && question && game) {
       // Skip for slides
       if (question.type === 'slide') return;
+
+      // Only apply forced result if player actually saw this question in 'question' state
+      // This prevents false positives when transitioning through states quickly (e.g., after slides)
+      if (lastQuestionIndexShownRef.current !== game.currentQuestionIndex) {
+        console.log('[Player State] Skipping forced result - player never saw question', game.currentQuestionIndex);
+        return;
+      }
 
       // Check if already answered this question in answers array
       const hasAnswered = player?.answers?.some(a => a.questionIndex === game.currentQuestionIndex);
