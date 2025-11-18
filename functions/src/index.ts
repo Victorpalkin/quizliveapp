@@ -372,7 +372,7 @@ export const submitAnswer = onCall(
       const answer: PlayerAnswer = {
         questionIndex: questionIndex,
         questionType: questionType,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: admin.firestore.Timestamp.now(),
         points: points,
         isCorrect: isCorrect,
         wasTimeout: timeRemaining === 0,
