@@ -188,10 +188,6 @@ export default function HostGamePage() {
                       {question.minValue}{question.unit} - {question.maxValue}{question.unit}
                     </p>
                   </div>
-                  <div className="flex justify-center gap-2">
-                    <Badge variant="default" className="text-sm">Correct: ≤10% error</Badge>
-                    <Badge variant="secondary" className="text-sm">Partial: ≤20% error</Badge>
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -243,6 +239,7 @@ export default function HostGamePage() {
               minValue={question.minValue}
               maxValue={question.maxValue}
               unit={question.unit}
+              acceptableError={question.acceptableError}
             />
           ) : (
             <AnswerDistributionChart data={answerDistribution} />

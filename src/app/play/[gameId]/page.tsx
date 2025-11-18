@@ -381,6 +381,10 @@ export default function PlayerGamePage() {
         return <WaitingScreen isLastQuestion={isLastQuestion} />;
 
       case 'result':
+        // Slides are informational only - don't show result screen
+        if (question?.type === 'slide') {
+          return <WaitingScreen isLastQuestion={isLastQuestion} />;
+        }
         return <ResultScreen lastAnswer={lastAnswer} playerScore={player?.score || 0} isLastQuestion={isLastQuestion} />;
 
       case 'ended':

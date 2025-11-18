@@ -8,6 +8,7 @@ interface SliderResultsViewProps {
   minValue: number;
   maxValue: number;
   unit?: string;
+  acceptableError?: number;
 }
 
 export function SliderResultsView({
@@ -15,7 +16,8 @@ export function SliderResultsView({
   correctValue,
   minValue,
   maxValue,
-  unit
+  unit,
+  acceptableError
 }: SliderResultsViewProps) {
   return (
     <Card className="w-full max-w-2xl flex-1">
@@ -41,20 +43,21 @@ export function SliderResultsView({
               responses.map((response, idx) => {
                 const distance = Math.abs(response.value - correctValue);
                 const range = maxValue - minValue;
-                const accuracy = Math.max(0, 1 - (distance / range));
-                const isClose = accuracy > 0.5;
+                // Use configurable threshold (default: 5% of range) to match actual scoring logic
+                const threshold = acceptableError ?? (range * 0.05);
+                const isCorrect = distance <= threshold;
 
                 return (
                   <div
                     key={idx}
                     className={cn(
                       "flex items-center justify-between p-3 rounded-md",
-                      isClose ? "bg-primary/10" : "bg-background/50"
+                      isCorrect ? "bg-primary/10" : "bg-background/50"
                     )}
                   >
                     <div className="flex items-center gap-3">
                       <span className="font-medium text-sm">{response.name}</span>
-                      {isClose && <CheckCircle className="w-4 h-4 text-primary" />}
+                      {isCorrect && <CheckCircle className="w-4 h-4 text-primary" />}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-lg">
