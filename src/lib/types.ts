@@ -37,12 +37,12 @@ export interface SliderQuestion extends BaseQuestion {
   correctValue: number;
   step?: number;  // Decimal precision (e.g., 0.1)
   unit?: string;  // Optional display unit (e.g., "kg", "%", "°C")
+  acceptableError?: number;  // Absolute error margin for correct answers (default: 5% of range)
 }
 
 // Slide question - informational only, no answer required
 export interface SlideQuestion extends BaseQuestion {
   type: 'slide';
-  title: string;
   description?: string;
 }
 

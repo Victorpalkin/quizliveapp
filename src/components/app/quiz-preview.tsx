@@ -218,8 +218,8 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
                   <div className="bg-muted p-6 rounded-lg space-y-4">
                     <div className="space-y-3">
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Slide Title</p>
-                        <p className="text-2xl font-bold">{question.title}</p>
+                        <p className="text-xs text-muted-foreground mb-1">Slide Text</p>
+                        <p className="text-2xl font-bold">{question.text}</p>
                       </div>
                       {question.description && (
                         <div>

@@ -165,26 +165,26 @@ export function useAnswerSubmission(
 
     answerSubmittedRef.current = true;
 
-    // Optimistic UI: Calculate estimated points
+    // Optimistic UI: Calculate estimated points (50/50 accuracy/speed)
     const range = question.maxValue - question.minValue;
     const distance = Math.abs(sliderValue - question.correctValue);
     const accuracy = Math.max(0, 1 - (distance / range));
-    const errorMargin = distance / range;
 
     const scoreMultiplier = Math.pow(accuracy, 2);
-    const basePoints = Math.round(1000 * scoreMultiplier);
-    const estimatedPoints = basePoints; // No time bonus for sliders
+    const accuracyComponent = Math.round(500 * scoreMultiplier);
+    const speedComponent = Math.round(500 * (timeRemaining / (question.timeLimit || 20)));
+    const estimatedPoints = accuracyComponent + speedComponent;
 
-    const isCorrectAnswer = errorMargin <= 0.1;
-    const isPartiallyCorrectAnswer = !isCorrectAnswer && errorMargin <= 0.2;
+    // Configurable acceptable error threshold (default: 5% of range)
+    const threshold = question.acceptableError ?? (range * 0.05);
+    const isCorrectAnswer = distance <= threshold;
 
-    // Show result immediately (optimistic)
+    // Show result immediately (optimistic) - no "partially correct" for sliders
     setLastAnswer({
       selected: isCorrectAnswer ? 1 : 0,
       correct: [1],
       points: estimatedPoints,
-      wasTimeout: false,
-      isPartiallyCorrect: isPartiallyCorrectAnswer
+      wasTimeout: false
     });
     setPlayer(p => p ? { ...p, score: p.score + estimatedPoints, lastSliderValue: sliderValue } : null);
 
@@ -200,19 +200,17 @@ export function useAnswerSubmission(
       correctValue: question.correctValue,
       minValue: question.minValue,
       maxValue: question.maxValue,
+      acceptableError: question.acceptableError,
     };
 
     try {
       const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
       const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore, isPartiallyCorrect } = result.data as any;
+      const { points: actualPoints, newScore } = result.data as any;
 
       // Update with actual values if different
       if (actualPoints !== estimatedPoints) {
         setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
-      }
-      if (isPartiallyCorrect !== isPartiallyCorrectAnswer) {
-        setLastAnswer(prev => prev ? { ...prev, isPartiallyCorrect } : null);
       }
       setPlayer(p => p ? { ...p, score: newScore, lastSliderValue: sliderValue } : null);
     } catch (error: any) {

@@ -50,14 +50,14 @@ const sliderQuestionSchema = z.object({
   correctValue: z.number(),
   step: z.number().optional(),
   unit: z.string().optional(),
+  acceptableError: z.number().optional(),
   timeLimit: z.number().optional(),
 });
 
 // Slide question schema - informational only
 const slideQuestionSchema = z.object({
   type: z.literal('slide'),
-  text: z.string().min(1, 'Slide title cannot be empty.'),
-  title: z.string().min(1, 'Slide title cannot be empty.'),
+  text: z.string().min(1, 'Slide text cannot be empty.'),
   description: z.string().optional(),
   imageUrl: z.string().url().optional(),
   timeLimit: z.number().optional(),

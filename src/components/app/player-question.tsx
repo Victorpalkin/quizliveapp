@@ -197,7 +197,7 @@ export function SlideQuestionComponent({ question, onSubmit, disabled }: SlideQu
     <div className="w-full max-w-2xl px-8 space-y-8">
       <div className="text-center space-y-6">
         <h2 className="text-4xl font-bold text-primary">
-          {question.title}
+          {question.text}
         </h2>
         {question.description && (
           <p className="text-xl text-muted-foreground whitespace-pre-wrap">

@@ -86,6 +86,7 @@ interface SubmitAnswerRequest {
   correctValue?: number;             // For slider
   minValue?: number;                 // For slider
   maxValue?: number;                 // For slider
+  acceptableError?: number;          // For slider - absolute error threshold
 }
 
 interface Game {
@@ -141,7 +142,8 @@ export const submitAnswer = onCall(
       correctAnswerIndices,
       correctValue,
       minValue,
-      maxValue
+      maxValue,
+      acceptableError
     } = data;
 
   // Validate input
@@ -297,9 +299,11 @@ export const submitAnswer = onCall(
       const penalty = wrongSelected * 0.2;  // 20% penalty per wrong answer
       const scoreMultiplier = Math.max(0, correctRatio - penalty);
 
-      // Base 1000 points, multiplied by correctness
-      const basePoints = Math.round(1000 * scoreMultiplier);
-      points = basePoints;
+      // 50/50 split: 50% accuracy, 50% speed
+      // If scoreMultiplier = 0 (completely wrong), both components = 0
+      const accuracyComponent = Math.round(500 * scoreMultiplier);
+      const speedComponent = Math.round(500 * (timeRemaining / timeLimit));
+      points = accuracyComponent + speedComponent;
 
       // Fully correct: all correct selected, no wrong
       isCorrect = correctSelected === totalCorrect && wrongSelected === 0;
@@ -307,32 +311,26 @@ export const submitAnswer = onCall(
       // Partially correct: got some points but not fully correct
       isPartiallyCorrect = !isCorrect && scoreMultiplier > 0;
 
-      // Apply time bonus for correct answers
-      if (isCorrect && points > 0) {
-        const timeBonus = Math.round((timeRemaining / timeLimit) * 900);
-        points = Math.min(1000, points + timeBonus);
-      }
-
     } else if (questionType === 'slider') {
       // Slider question: proximity-based scoring
       const range = maxValue! - minValue!;
       const distance = Math.abs(sliderValue! - correctValue!);
       const accuracy = Math.max(0, 1 - (distance / range));  // 1.0 = perfect, 0.0 = worst
-      const errorMargin = distance / range;  // 0.0 = perfect, 1.0 = worst
 
       // Quadratic scoring: rewards closeness, penalizes distance
       const scoreMultiplier = Math.pow(accuracy, 2);
-      const basePoints = Math.round(1000 * scoreMultiplier);
 
-      // Apply time bonus
-      const timeBonus = Math.round((timeRemaining / timeLimit) * 0);  // No time bonus for slider questions
-      points = Math.min(1000, basePoints + timeBonus);
+      // 50/50 split: 50% accuracy, 50% speed
+      const accuracyComponent = Math.round(500 * scoreMultiplier);
+      const speedComponent = Math.round(500 * (timeRemaining / timeLimit));
+      points = accuracyComponent + speedComponent;
 
-      // Fully correct: within 10% error margin
-      isCorrect = errorMargin <= 0.1;
+      // Configurable acceptable error threshold (default: 5% of range)
+      const threshold = acceptableError ?? (range * 0.05);
+      isCorrect = distance <= threshold;
 
-      // Partially correct: within 20% error margin but not fully correct
-      isPartiallyCorrect = !isCorrect && errorMargin <= 0.2;
+      // No "partially correct" for sliders - only correct or incorrect
+      isPartiallyCorrect = false;
     }
 
     const newScore = player.score + points;

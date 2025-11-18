@@ -26,8 +26,7 @@ export const mockQuiz: Quiz = {
     {
       id: 'q2',
       type: 'slide',
-      text: 'Geography Facts',
-      title: 'Did You Know?',
+      text: 'Did You Know?',
       description: 'The Eiffel Tower can be 15 cm taller during the summer due to thermal expansion of the iron on hot days!',
       timeLimit: 10,
     },

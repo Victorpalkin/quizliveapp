@@ -166,7 +166,7 @@ export default function HostGamePage() {
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <Badge variant="secondary" className="text-sm">Informational Slide</Badge>
-                    <h2 className="text-4xl font-bold text-primary">{question.title}</h2>
+                    <h2 className="text-4xl font-bold text-primary">{question.text}</h2>
                     {question.description && (
                       <p className="text-xl text-muted-foreground whitespace-pre-wrap mt-4">
                         {question.description}
@@ -229,7 +229,7 @@ export default function HostGamePage() {
                   This was an informational slide. No scoring applied.
                 </p>
                 <div className="space-y-2 pt-4">
-                  <h3 className="text-2xl font-bold text-primary">{question.title}</h3>
+                  <h3 className="text-2xl font-bold text-primary">{question.text}</h3>
                   {question.description && (
                     <p className="text-muted-foreground whitespace-pre-wrap">{question.description}</p>
                   )}
