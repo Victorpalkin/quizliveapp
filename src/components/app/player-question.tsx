@@ -2,32 +2,12 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
-import { cn } from '@/lib/utils';
+import { AnswerButton } from '@/components/app/answer-button';
 import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
-import {
-  DiamondIcon,
-  TriangleIcon,
-  CircleIcon,
-  SquareIcon,
-  StarIcon,
-  PentagonIcon,
-  HexagonIcon,
-  HeartIcon,
-} from '@/components/app/quiz-icons';
-import { ANSWER_COLORS } from '@/lib/constants';
 
-const answerIcons = [
-  TriangleIcon,
-  DiamondIcon,
-  SquareIcon,
-  CircleIcon,
-  StarIcon,
-  PentagonIcon,
-  HexagonIcon,
-  HeartIcon,
-];
+// Helper to convert index to letter (0 = A, 1 = B, etc.)
+const indexToLetter = (index: number): string => String.fromCharCode(65 + index);
 
 interface SingleChoiceQuestionProps {
   question: SingleChoiceQuestion;
@@ -46,26 +26,18 @@ export const SingleChoiceQuestionComponent = React.memo(
     };
 
     return (
-      <div className={cn("grid gap-4 w-full h-full p-4", question.answers.length > 4 ? "grid-cols-2 grid-rows-4" : "grid-cols-2 grid-rows-2")}>
-        {question.answers.map((ans, i) => {
-          const Icon = answerIcons[i % answerIcons.length];
-          return (
-            <button
-              key={i}
-              onClick={() => handleAnswerClick(i)}
-              disabled={disabled || selectedIndex !== null}
-              className={cn(
-                'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform hover:scale-105 p-4',
-                ANSWER_COLORS[i % ANSWER_COLORS.length],
-                selectedIndex !== null && selectedIndex !== i ? 'opacity-25' : '',
-                selectedIndex !== null && selectedIndex === i ? 'scale-110 border-4 border-white' : ''
-              )}
-            >
-              <Icon className="w-16 h-16 md:w-24 md:h-24 mb-2" />
-              <span className="text-xl md:text-2xl font-bold">{ans.text}</span>
-            </button>
-          );
-        })}
+      <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 w-full max-w-4xl mx-auto px-4">
+        {question.answers.map((ans, i) => (
+          <AnswerButton
+            key={i}
+            letter={indexToLetter(i)}
+            text={ans.text}
+            selected={selectedIndex === i}
+            disabled={disabled || selectedIndex !== null}
+            onClick={() => handleAnswerClick(i)}
+            colorIndex={i}
+          />
+        ))}
       </div>
     );
   }
@@ -97,39 +69,26 @@ export const MultipleChoiceQuestionComponent = React.memo(
   };
 
   return (
-    <div className="w-full h-full flex flex-col p-4 gap-4">
-      <div className={cn("grid gap-4 flex-1", question.answers.length > 4 ? "grid-cols-2" : "grid-cols-2")}>
-        {question.answers.map((ans, i) => {
-          const Icon = answerIcons[i % answerIcons.length];
-          const isSelected = selectedIndices.includes(i);
-          return (
-            <button
-              key={i}
-              onClick={() => toggleAnswer(i)}
-              disabled={disabled || submitted}
-              className={cn(
-                'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 p-4 relative',
-                ANSWER_COLORS[i % ANSWER_COLORS.length],
-                isSelected ? 'scale-105 border-4 border-white' : '',
-                submitted && !isSelected ? 'opacity-25' : ''
-              )}
-            >
-              <Checkbox
-                checked={isSelected}
-                className="absolute top-2 right-2 h-6 w-6 border-2 border-white data-[state=checked]:bg-white data-[state=checked]:text-primary"
-                disabled={disabled || submitted}
-              />
-              <Icon className="w-16 h-16 md:w-20 md:h-20 mb-2" />
-              <span className="text-lg md:text-xl font-bold">{ans.text}</span>
-            </button>
-          );
-        })}
+    <div className="w-full h-full flex flex-col px-4 gap-4">
+      <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 flex-1">
+        {question.answers.map((ans, i) => (
+          <AnswerButton
+            key={i}
+            letter={indexToLetter(i)}
+            text={ans.text}
+            selected={selectedIndices.includes(i)}
+            disabled={disabled || submitted}
+            showCheck={true}
+            onClick={() => toggleAnswer(i)}
+            colorIndex={i}
+          />
+        ))}
       </div>
       <Button
         onClick={handleSubmit}
         disabled={disabled || submitted || selectedIndices.length === 0}
         size="lg"
-        className="w-full text-xl py-6"
+        className="w-full text-xl py-6 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
       >
         {submitted ? 'Answers Submitted' : `Submit ${selectedIndices.length} Answer${selectedIndices.length !== 1 ? 's' : ''}`}
       </Button>
@@ -159,29 +118,35 @@ export const SliderQuestionComponent = React.memo(
 
   return (
     <div className="w-full max-w-2xl px-8 space-y-8">
-      <div className="text-center">
-        <p className="text-6xl font-bold text-primary mb-4">
-          {sliderValue.toFixed(question.step && question.step < 1 ? Math.abs(Math.log10(question.step)) : 0)}
-          {question.unit && <span className="text-4xl ml-2 text-muted-foreground">{question.unit}</span>}
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Range: {question.minValue}{question.unit} - {question.maxValue}{question.unit}
-        </p>
+      <div className="bg-card border border-card-border rounded-2xl p-8 shadow-lg">
+        <div className="text-center space-y-4">
+          <p className="text-6xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            {sliderValue.toFixed(question.step && question.step < 1 ? Math.abs(Math.log10(question.step)) : 0)}
+            {question.unit && <span className="text-4xl ml-2">{question.unit}</span>}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Range: {question.minValue}{question.unit} - {question.maxValue}{question.unit}
+          </p>
+        </div>
+
+        <div className="mt-8">
+          <Slider
+            value={[sliderValue]}
+            onValueChange={(val) => setSliderValue(val[0])}
+            min={question.minValue}
+            max={question.maxValue}
+            step={question.step || 1}
+            disabled={disabled || submitted}
+            className="w-full"
+          />
+        </div>
       </div>
-      <Slider
-        value={[sliderValue]}
-        onValueChange={(val) => setSliderValue(val[0])}
-        min={question.minValue}
-        max={question.maxValue}
-        step={question.step || 1}
-        disabled={disabled || submitted}
-        className="w-full"
-      />
+
       <Button
         onClick={handleSubmit}
         disabled={disabled || submitted}
         size="lg"
-        className="w-full text-xl py-8"
+        className="w-full text-xl py-8 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
       >
         {submitted ? 'Answer Submitted' : 'Submit Answer'}
       </Button>
@@ -198,19 +163,21 @@ interface SlideQuestionProps {
 export const SlideQuestionComponent = React.memo(
   function SlideQuestionComponent({ question }: SlideQuestionProps) {
     return (
-      <div className="w-full max-w-2xl px-8 space-y-8">
-        <div className="text-center space-y-6">
-          <h2 className="text-4xl font-bold text-primary">
-            {question.text}
-          </h2>
-          {question.description && (
-            <p className="text-xl text-muted-foreground whitespace-pre-wrap">
-              {question.description}
+      <div className="w-full max-w-2xl px-8">
+        <div className="bg-card border border-card-border rounded-2xl p-10 shadow-lg">
+          <div className="text-center space-y-6">
+            <h2 className="text-4xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              {question.text}
+            </h2>
+            {question.description && (
+              <p className="text-xl text-foreground/80 whitespace-pre-wrap leading-relaxed">
+                {question.description}
+              </p>
+            )}
+            <p className="text-lg text-muted-foreground pt-8">
+              Waiting for host to continue...
             </p>
-          )}
-          <p className="text-lg text-muted-foreground pt-8">
-            Waiting for host to continue...
-          </p>
+          </div>
         </div>
       </div>
     );
@@ -235,26 +202,18 @@ export const PollSingleQuestionComponent = React.memo(
   };
 
   return (
-    <div className={cn("grid gap-4 w-full h-full p-4", question.answers.length > 4 ? "grid-cols-2 grid-rows-4" : "grid-cols-2 grid-rows-2")}>
-      {question.answers.map((ans, i) => {
-        const Icon = answerIcons[i % answerIcons.length];
-        return (
-          <button
-            key={i}
-            onClick={() => handleAnswerClick(i)}
-            disabled={disabled || selectedIndex !== null}
-            className={cn(
-              'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform hover:scale-105 p-4',
-              ANSWER_COLORS[i % ANSWER_COLORS.length],
-              selectedIndex !== null && selectedIndex !== i ? 'opacity-25' : '',
-              selectedIndex !== null && selectedIndex === i ? 'scale-110 border-4 border-white' : ''
-            )}
-          >
-            <Icon className="w-16 h-16 md:w-24 md:h-24 mb-2" />
-            <span className="text-xl md:text-2xl font-bold">{ans.text}</span>
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 w-full max-w-4xl mx-auto px-4">
+      {question.answers.map((ans, i) => (
+        <AnswerButton
+          key={i}
+          letter={indexToLetter(i)}
+          text={ans.text}
+          selected={selectedIndex === i}
+          disabled={disabled || selectedIndex !== null}
+          onClick={() => handleAnswerClick(i)}
+          colorIndex={i}
+        />
+      ))}
     </div>
   );
 }
@@ -286,41 +245,28 @@ export const PollMultipleQuestionComponent = React.memo(
   };
 
   return (
-    <div className="w-full h-full flex flex-col p-4 gap-4">
-      <div className={cn("grid gap-4 flex-1", question.answers.length > 4 ? "grid-cols-2" : "grid-cols-2")}>
-        {question.answers.map((ans, i) => {
-          const Icon = answerIcons[i % answerIcons.length];
-          const isSelected = selectedIndices.includes(i);
-          return (
-            <button
-              key={i}
-              onClick={() => toggleAnswer(i)}
-              disabled={disabled || submitted}
-              className={cn(
-                'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 p-4 relative',
-                ANSWER_COLORS[i % ANSWER_COLORS.length],
-                isSelected ? 'scale-105 border-4 border-white' : '',
-                submitted && !isSelected ? 'opacity-25' : ''
-              )}
-            >
-              <Checkbox
-                checked={isSelected}
-                className="absolute top-2 right-2 h-6 w-6 border-2 border-white data-[state=checked]:bg-white data-[state=checked]:text-primary"
-                disabled={disabled || submitted}
-              />
-              <Icon className="w-16 h-16 md:w-20 md:h-20 mb-2" />
-              <span className="text-lg md:text-xl font-bold">{ans.text}</span>
-            </button>
-          );
-        })}
+    <div className="w-full h-full flex flex-col px-4 gap-4">
+      <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 flex-1">
+        {question.answers.map((ans, i) => (
+          <AnswerButton
+            key={i}
+            letter={indexToLetter(i)}
+            text={ans.text}
+            selected={selectedIndices.includes(i)}
+            disabled={disabled || submitted}
+            showCheck={true}
+            onClick={() => toggleAnswer(i)}
+            colorIndex={i}
+          />
+        ))}
       </div>
       <Button
         onClick={handleSubmit}
         disabled={disabled || submitted || selectedIndices.length === 0}
         size="lg"
-        className="w-full text-xl py-6"
+        className="w-full text-xl py-6 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
       >
-        {submitted ? 'Answers Submitted' : `Submit ${selectedIndices.length} Answer${selectedIndices.length !== 1 ? 's' : ''}`}
+        {submitted ? 'Responses Submitted' : `Submit ${selectedIndices.length} Response${selectedIndices.length !== 1 ? 's' : ''}`}
       </Button>
     </div>
   );

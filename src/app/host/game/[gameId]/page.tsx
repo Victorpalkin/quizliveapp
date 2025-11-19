@@ -8,19 +8,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Home, CheckCircle, Users, XCircle } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  DiamondIcon,
-  TriangleIcon,
-  CircleIcon,
-  SquareIcon,
-  StarIcon,
-  PentagonIcon,
-  HexagonIcon,
-  HeartIcon,
-} from '@/components/app/quiz-icons';
-import { ANSWER_COLORS } from '@/lib/constants';
+import { CircularTimer } from '@/components/app/circular-timer';
+import { AnswerButton } from '@/components/app/answer-button';
 import { QuestionCounter } from '@/components/app/question-counter';
 import { QuestionTypeBadges } from '@/components/app/question-type-badges';
 import { isSingleChoice, isMultipleChoice, isPoll } from '@/lib/type-guards';
@@ -38,16 +28,8 @@ import { LeaderboardView } from './components/visualizations/leaderboard-view';
 import { AnswerDistributionChart } from './components/visualizations/answer-distribution-chart';
 import { SliderResultsView } from './components/visualizations/slider-results-view';
 
-const answerIcons = [
-  TriangleIcon,
-  DiamondIcon,
-  SquareIcon,
-  CircleIcon,
-  StarIcon,
-  PentagonIcon,
-  HexagonIcon,
-  HeartIcon,
-];
+// Helper to convert index to letter (0 = A, 1 = B, etc.)
+const indexToLetter = (index: number): string => String.fromCharCode(65 + index);
 
 export default function HostGamePage() {
   const params = useParams();
@@ -144,8 +126,10 @@ export default function HostGamePage() {
 
       {/* Question State */}
       {game?.state === 'question' && question && (
-        <main className="flex-1 flex flex-col items-center justify-center text-center">
-          <Progress value={(time / timeLimit) * 100} className="w-full max-w-4xl h-4 mb-4" />
+        <main className="flex-1 flex flex-col items-center justify-center text-center relative">
+          <div className="absolute top-4 right-4">
+            <CircularTimer time={time} timeLimit={timeLimit} size={80} />
+          </div>
 
           <div className="w-full max-w-4xl">
             <Card className="bg-card text-card-foreground mb-4">
@@ -197,21 +181,16 @@ export default function HostGamePage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-2 gap-4 mt-auto w-full max-w-4xl">
-              {question.answers.map((ans, i) => {
-                const isCorrect = isSingleChoice(question)
-                  ? question.correctAnswerIndex === i
-                  : isMultipleChoice(question)
-                  ? question.correctAnswerIndices.includes(i)
-                  : false; // Poll questions don't have correct answers
-                const Icon = answerIcons[i % answerIcons.length];
-                return (
-                  <div key={i} className={`flex items-center gap-4 p-4 rounded-lg text-white relative ${ANSWER_COLORS[i % ANSWER_COLORS.length]}`}>
-                    <Icon className="w-8 h-8 flex-shrink-0" />
-                    <span className="text-2xl font-medium">{ans.text}</span>
-                  </div>
-                );
-              })}
+            <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 w-full max-w-4xl">
+              {question.answers.map((ans, i) => (
+                <AnswerButton
+                  key={i}
+                  letter={indexToLetter(i)}
+                  text={ans.text}
+                  disabled={true}
+                  colorIndex={i}
+                />
+              ))}
             </div>
           )}
         </main>

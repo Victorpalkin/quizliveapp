@@ -180,10 +180,14 @@ export default function HostLobbyPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-primary text-primary-foreground flex flex-col justify-center items-center p-8">
+            <Card className="border-l-8 border-l-primary shadow-xl flex flex-col justify-center items-center p-8 bg-gradient-to-r from-primary/5 to-accent/5">
                 <CardTitle className="text-3xl">Ready to Start?</CardTitle>
-                <CardDescription className="text-primary-foreground/80 my-4">Once you begin, no more players can join.</CardDescription>
-                <Button onClick={handleStartGame} size="lg" variant="secondary" className="text-xl px-12 py-8">
+                <CardDescription className="my-4">Once you begin, no more players can join.</CardDescription>
+                <Button
+                  onClick={handleStartGame}
+                  size="lg"
+                  className="text-xl px-12 py-8 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
+                >
                     Start Game
                 </Button>
             </Card>

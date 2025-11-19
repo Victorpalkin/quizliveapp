@@ -1,5 +1,5 @@
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CircularTimer } from '@/components/app/circular-timer';
 import type { Question, Quiz, Game } from '@/lib/types';
 import {
   SingleChoiceQuestionComponent,
@@ -57,8 +57,9 @@ export function QuestionScreen({
         )}
       </header>
       <div className="flex-grow flex items-center justify-center w-full relative">
-        <Progress value={(time / timeLimit) * 100} className="absolute top-0 left-0 w-full h-2 rounded-none" />
-        <div className="absolute top-4 right-4 text-2xl font-bold bg-background/80 px-4 py-2 rounded-lg">{time}</div>
+        <div className="absolute top-4 right-4">
+          <CircularTimer time={time} timeLimit={timeLimit} size={80} />
+        </div>
 
         {question.type === 'single-choice' && (
           <SingleChoiceQuestionComponent
