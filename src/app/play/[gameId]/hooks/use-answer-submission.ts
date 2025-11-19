@@ -99,7 +99,27 @@ export function useAnswerSubmission(
       }
     } catch (error: any) {
       console.error('Error submitting answer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit answer. Your score may not be saved.' });
+
+      // Provide specific error messages based on error code
+      if (error.code === 'functions/deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Too Late',
+          description: 'Your answer was submitted after the time limit and was not counted.'
+        });
+      } else if (error.code === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Not Accepted',
+          description: error.message || 'The game state changed before your answer could be processed.'
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit answer. Your score may not be saved.'
+        });
+      }
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
@@ -188,7 +208,27 @@ export function useAnswerSubmission(
       }
     } catch (error: any) {
       console.error('Error submitting answer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit answer. Your score may not be saved.' });
+
+      // Provide specific error messages based on error code
+      if (error.code === 'functions/deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Too Late',
+          description: 'Your answer was submitted after the time limit and was not counted.'
+        });
+      } else if (error.code === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Not Accepted',
+          description: error.message || 'The game state changed before your answer could be processed.'
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit answer. Your score may not be saved.'
+        });
+      }
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
@@ -272,7 +312,27 @@ export function useAnswerSubmission(
       }
     } catch (error: any) {
       console.error('Error submitting answer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit answer. Your score may not be saved.' });
+
+      // Provide specific error messages based on error code
+      if (error.code === 'functions/deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Too Late',
+          description: 'Your answer was submitted after the time limit and was not counted.'
+        });
+      } else if (error.code === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Not Accepted',
+          description: error.message || 'The game state changed before your answer could be processed.'
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit answer. Your score may not be saved.'
+        });
+      }
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
@@ -374,7 +434,27 @@ export function useAnswerSubmission(
       await submitAnswerFn(submitData);
     } catch (error: any) {
       console.error('Error submitting poll answer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit poll response.' });
+
+      // Provide specific error messages based on error code
+      if (error.code === 'functions/deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Response Too Late',
+          description: 'Your poll response was submitted after the time limit.'
+        });
+      } else if (error.code === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Response Not Accepted',
+          description: error.message || 'The game state changed before your response could be processed.'
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit poll response.'
+        });
+      }
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
@@ -429,7 +509,27 @@ export function useAnswerSubmission(
       await submitAnswerFn(submitData);
     } catch (error: any) {
       console.error('Error submitting poll answer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit poll response.' });
+
+      // Provide specific error messages based on error code
+      if (error.code === 'functions/deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Response Too Late',
+          description: 'Your poll response was submitted after the time limit.'
+        });
+      } else if (error.code === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Response Not Accepted',
+          description: error.message || 'The game state changed before your response could be processed.'
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit poll response.'
+        });
+      }
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 

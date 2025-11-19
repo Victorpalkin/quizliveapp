@@ -96,6 +96,9 @@ interface Game {
   state: string;
   currentQuestionIndex: number;
   gamePin: string;
+  questionStartTime?: {
+    toMillis: () => number;
+  };
 }
 
 interface PlayerAnswer {
@@ -201,19 +204,49 @@ export const submitAnswer = onCall(
     const game = gameDoc.data() as Game;
     const player = playerDoc.data() as Player;
 
-    // Verify game is in question state
-    if (game.state !== 'question') {
+    // Timestamp-based validation with grace period (instead of strict state checking)
+    // This allows answers submitted during valid time to be accepted even if game state changed
+    const GRACE_PERIOD_MS = 2000; // 2 second grace period for network latency
+    const questionTimeLimit_local = questionTimeLimit || 20;
+    const timeLimitMs = questionTimeLimit_local * 1000;
+
+    // Check if game has questionStartTime (should always be set when state is 'question')
+    if (!game.questionStartTime) {
       throw new HttpsError(
         'failed-precondition',
-        'Game is not in question state'
+        'Question has not been started yet'
       );
     }
 
-    // Verify question index matches current question
-    if (game.currentQuestionIndex !== questionIndex) {
+    // Calculate elapsed time since question started (server-authoritative)
+    const questionStartMs = game.questionStartTime.toMillis();
+    const submissionTimeMs = Date.now();
+    const elapsedMs = submissionTimeMs - questionStartMs;
+
+    // Verify question index - accept current or previous question (with time check)
+    const isCurrentQuestion = game.currentQuestionIndex === questionIndex;
+    const isPreviousQuestion = game.currentQuestionIndex === questionIndex + 1;
+
+    if (!isCurrentQuestion && !isPreviousQuestion) {
       throw new HttpsError(
         'failed-precondition',
-        'Question index does not match current question'
+        `Question index mismatch: expected ${game.currentQuestionIndex}, got ${questionIndex}`
+      );
+    }
+
+    // For previous question, only accept if within grace period
+    if (isPreviousQuestion && elapsedMs > GRACE_PERIOD_MS) {
+      throw new HttpsError(
+        'deadline-exceeded',
+        'Answer submitted too late - question has moved on'
+      );
+    }
+
+    // Verify submission is within time limit + grace period
+    if (elapsedMs > timeLimitMs + GRACE_PERIOD_MS) {
+      throw new HttpsError(
+        'deadline-exceeded',
+        `Answer submitted after time limit (${Math.round(elapsedMs / 1000)}s elapsed, limit was ${questionTimeLimit_local}s)`
       );
     }
 

@@ -38,11 +38,23 @@ export function useQuestionTimer({
   ).length || 0;
 
   // Auto-finish when all players answered (host only)
+  // Includes delay to allow in-flight answer submissions to complete
   useEffect(() => {
     if (isActive && !finishedRef.current && onAutoFinish && players && players.length > 0) {
       if (answeredPlayers === players.length) {
-        finishedRef.current = true;
-        onAutoFinish();
+        console.log('[Timer] All players answered - delaying auto-finish by 1.5s for in-flight submissions');
+
+        // Delay auto-finish to allow in-flight answers to reach the server
+        const timeoutId = setTimeout(() => {
+          if (!finishedRef.current) {
+            finishedRef.current = true;
+            console.log('[Timer] Auto-finishing after delay');
+            onAutoFinish();
+          }
+        }, 1500); // 1.5 second delay
+
+        // Clean up timeout if effect re-runs or component unmounts
+        return () => clearTimeout(timeoutId);
       }
     }
   }, [players, answeredPlayers, isActive, onAutoFinish]);
