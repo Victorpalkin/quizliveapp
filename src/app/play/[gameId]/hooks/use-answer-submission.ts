@@ -3,7 +3,7 @@ import { useFirestore, useFunctions } from '@/firebase';
 import { Timestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
-import type { Player, PlayerAnswer, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion } from '@/lib/types';
+import type { Player, PlayerAnswer, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 
 type AnswerResult = {
   selected: number;
@@ -329,10 +329,122 @@ export function useAnswerSubmission(
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions]);
 
+  // Submit poll single choice answer (no scoring)
+  const submitPollSingle = useCallback(async (
+    answerIndex: number,
+    question: PollSingleQuestion,
+    timeRemaining: number,
+    timeLimit: number
+  ) => {
+    if (!gameDocId) return;
+
+    answerSubmittedRef.current = true;
+
+    // Poll questions don't have correct answers - always 0 points
+    setLastAnswer({
+      selected: answerIndex,
+      correct: [], // No correct answer for polls
+      points: 0,
+      wasTimeout: false
+    });
+
+    // Optimistic update: add answer to array
+    const optimisticAnswer: PlayerAnswer = {
+      questionIndex: currentQuestionIndex,
+      questionType: 'poll-single',
+      timestamp: Timestamp.now(),
+      answerIndex,
+      points: 0,
+      isCorrect: false, // Polls don't have correct answers
+      wasTimeout: false
+    };
+    setPlayer(p => p ? {
+      ...p,
+      score: p.score, // No score change for polls
+      answers: [...(p.answers || []), optimisticAnswer]
+    } : null);
+
+    // Submit to server in background
+    const submitData = {
+      gameId: gameDocId,
+      playerId: playerId,
+      questionIndex: currentQuestionIndex,
+      answerIndex,
+      timeRemaining,
+      questionType: 'poll-single' as const,
+      questionTimeLimit: question.timeLimit,
+    };
+
+    try {
+      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
+      await submitAnswerFn(submitData);
+    } catch (error: any) {
+      console.error('Error submitting poll answer:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit poll response.' });
+    }
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+
+  // Submit poll multiple choice answer (no scoring)
+  const submitPollMultiple = useCallback(async (
+    answerIndices: number[],
+    question: PollMultipleQuestion,
+    timeRemaining: number,
+    timeLimit: number
+  ) => {
+    if (!gameDocId) return;
+
+    answerSubmittedRef.current = true;
+
+    // Poll questions don't have correct answers - always 0 points
+    setLastAnswer({
+      selected: 0, // For polls, selected doesn't matter
+      correct: [], // No correct answer for polls
+      points: 0,
+      wasTimeout: false
+    });
+
+    // Optimistic update: add answer to array
+    const optimisticAnswer: PlayerAnswer = {
+      questionIndex: currentQuestionIndex,
+      questionType: 'poll-multiple',
+      timestamp: Timestamp.now(),
+      answerIndices,
+      points: 0,
+      isCorrect: false, // Polls don't have correct answers
+      wasTimeout: false
+    };
+    setPlayer(p => p ? {
+      ...p,
+      score: p.score, // No score change for polls
+      answers: [...(p.answers || []), optimisticAnswer]
+    } : null);
+
+    // Submit to server in background
+    const submitData = {
+      gameId: gameDocId,
+      playerId: playerId,
+      questionIndex: currentQuestionIndex,
+      answerIndices,
+      timeRemaining,
+      questionType: 'poll-multiple' as const,
+      questionTimeLimit: question.timeLimit,
+    };
+
+    try {
+      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
+      await submitAnswerFn(submitData);
+    } catch (error: any) {
+      console.error('Error submitting poll answer:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit poll response.' });
+    }
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+
   return {
     submitSingleChoice,
     submitMultipleChoice,
     submitSlider,
+    submitPollSingle,
+    submitPollMultiple,
     submitTimeout
   };
 }

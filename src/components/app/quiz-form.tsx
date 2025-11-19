@@ -10,7 +10,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { PlusCircle, Loader2, Save } from 'lucide-react';
-import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion } from '@/lib/types';
+import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import { useQuestionOperations } from './quiz-form/hooks/use-question-operations';
 import { useImageUpload } from './quiz-form/hooks/use-image-upload';
 import { QuestionCard } from './quiz-form/question-card';
@@ -63,12 +63,32 @@ const slideQuestionSchema = z.object({
   timeLimit: z.number().optional(),
 });
 
+// Poll single choice question schema - no correct answer, no scoring
+const pollSingleQuestionSchema = z.object({
+  type: z.literal('poll-single'),
+  text: z.string().min(1, 'Question text cannot be empty.'),
+  imageUrl: z.string().url().optional(),
+  answers: z.array(answerSchema).min(2, 'Each question must have at least 2 answers.').max(8, 'Each question can have at most 8 answers.'),
+  timeLimit: z.number().optional(),
+});
+
+// Poll multiple choice question schema - no correct answer, no scoring
+const pollMultipleQuestionSchema = z.object({
+  type: z.literal('poll-multiple'),
+  text: z.string().min(1, 'Question text cannot be empty.'),
+  imageUrl: z.string().url().optional(),
+  answers: z.array(answerSchema).min(2, 'Each question must have at least 2 answers.').max(8, 'Each question can have at most 8 answers.'),
+  timeLimit: z.number().optional(),
+});
+
 // Discriminated union for question types
 const questionSchema = z.discriminatedUnion('type', [
   singleChoiceQuestionSchema,
   multipleChoiceQuestionSchema,
   sliderQuestionSchema,
   slideQuestionSchema,
+  pollSingleQuestionSchema,
+  pollMultipleQuestionSchema,
 ]);
 
 const quizSchema = z.object({

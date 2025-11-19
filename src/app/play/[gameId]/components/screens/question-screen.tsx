@@ -5,7 +5,9 @@ import {
   SingleChoiceQuestionComponent,
   MultipleChoiceQuestionComponent,
   SliderQuestionComponent,
-  SlideQuestionComponent
+  SlideQuestionComponent,
+  PollSingleQuestionComponent,
+  PollMultipleQuestionComponent
 } from '@/components/app/player-question';
 import { QuestionCounter } from '@/components/app/question-counter';
 
@@ -19,6 +21,8 @@ interface QuestionScreenProps {
   onSubmitSingleChoice: (answerIndex: number) => void;
   onSubmitMultipleChoice: (answerIndices: number[]) => void;
   onSubmitSlider: (value: number) => void;
+  onSubmitPollSingle: (answerIndex: number) => void;
+  onSubmitPollMultiple: (answerIndices: number[]) => void;
   quizLoading: boolean;
 }
 
@@ -32,6 +36,8 @@ export function QuestionScreen({
   onSubmitSingleChoice,
   onSubmitMultipleChoice,
   onSubmitSlider,
+  onSubmitPollSingle,
+  onSubmitPollMultiple,
   quizLoading
 }: QuestionScreenProps) {
   if (quizLoading || !question || !game) {
@@ -79,6 +85,22 @@ export function QuestionScreen({
         {question.type === 'slide' && (
           <SlideQuestionComponent
             question={question}
+          />
+        )}
+
+        {question.type === 'poll-single' && (
+          <PollSingleQuestionComponent
+            question={question}
+            onSubmit={onSubmitPollSingle}
+            disabled={answerSelected}
+          />
+        )}
+
+        {question.type === 'poll-multiple' && (
+          <PollMultipleQuestionComponent
+            question={question}
+            onSubmit={onSubmitPollMultiple}
+            disabled={answerSelected}
           />
         )}
       </div>

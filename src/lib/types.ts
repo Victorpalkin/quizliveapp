@@ -46,8 +46,20 @@ export interface SlideQuestion extends BaseQuestion {
   description?: string;
 }
 
+// Poll question - single choice, no scoring
+export interface PollSingleQuestion extends BaseQuestion {
+  type: 'poll-single';
+  answers: Answer[];
+}
+
+// Poll question - multiple choice, no scoring
+export interface PollMultipleQuestion extends BaseQuestion {
+  type: 'poll-multiple';
+  answers: Answer[];
+}
+
 // Discriminated union of all question types
-export type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion;
+export type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion;
 
 export interface Quiz {
   id: string;
@@ -69,12 +81,12 @@ export interface QuizShare {
 
 export interface PlayerAnswer {
     questionIndex: number;
-    questionType: 'single-choice' | 'multiple-choice' | 'slider';
+    questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'poll-single' | 'poll-multiple';
     timestamp: Timestamp;
 
     // Answer data (type-specific, one will be populated)
-    answerIndex?: number;           // For single-choice
-    answerIndices?: number[];       // For multiple-choice
+    answerIndex?: number;           // For single-choice, poll-single
+    answerIndices?: number[];       // For multiple-choice, poll-multiple
     sliderValue?: number;           // For slider
 
     // Scoring data
