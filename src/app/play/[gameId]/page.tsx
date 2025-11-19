@@ -16,6 +16,9 @@ import { usePlayerStateMachine, type PlayerState } from './hooks/use-player-stat
 import { useQuestionTimer } from './hooks/use-question-timer';
 import { useAnswerSubmission } from './hooks/use-answer-submission';
 
+// Components
+import { ThemeToggle } from '@/components/app/theme-toggle';
+
 // Screens
 import { JoiningScreen } from './components/screens/joining-screen';
 import { LobbyScreen } from './components/screens/lobby-screen';
@@ -460,7 +463,12 @@ export default function PlayerGamePage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="flex items-center justify-center min-h-screen bg-background relative">
+      {/* Theme Toggle - Top Right */}
+      <div className="absolute top-6 right-6 z-20">
+        <ThemeToggle />
+      </div>
+
       <main className="w-full h-screen max-w-5xl mx-auto flex flex-col items-center justify-center">
         {renderContent()}
       </main>

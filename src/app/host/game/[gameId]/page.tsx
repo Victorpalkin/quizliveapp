@@ -11,6 +11,7 @@ import { Home, CheckCircle, Users, XCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CircularTimer } from '@/components/app/circular-timer';
 import { AnswerButton } from '@/components/app/answer-button';
+import { ThemeToggle } from '@/components/app/theme-toggle';
 import { QuestionCounter } from '@/components/app/question-counter';
 import { QuestionTypeBadges } from '@/components/app/question-type-badges';
 import { isSingleChoice, isMultipleChoice, isPoll } from '@/lib/type-guards';
@@ -114,7 +115,10 @@ export default function HostGamePage() {
           <h1 className="text-xl font-bold">gQuiz</h1>
           <div className="text-2xl font-mono bg-muted text-muted-foreground px-4 py-1 rounded-md">{game?.gamePin}</div>
         </div>
-        <CancelGameButton gameRef={gameRef} />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <CancelGameButton gameRef={gameRef} />
+        </div>
       </header>
 
       {/* Preparing State */}

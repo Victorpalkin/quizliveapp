@@ -26,7 +26,7 @@ export const SingleChoiceQuestionComponent = React.memo(
     };
 
     return (
-      <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 w-full max-w-4xl mx-auto px-4">
+      <div className="h-full flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 w-full max-w-4xl mx-auto px-4">
         {question.answers.map((ans, i) => (
           <AnswerButton
             key={i}
@@ -202,7 +202,7 @@ export const PollSingleQuestionComponent = React.memo(
   };
 
   return (
-    <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 w-full max-w-4xl mx-auto px-4">
+    <div className="h-full flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 w-full max-w-4xl mx-auto px-4">
       {question.answers.map((ans, i) => (
         <AnswerButton
           key={i}
