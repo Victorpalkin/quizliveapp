@@ -111,3 +111,12 @@ export interface Game {
     gamePin: string;
     questionStartTime?: Timestamp; // Firestore server timestamp when current question started (for timer sync)
 }
+
+// Cloud Function response interface for submitAnswer
+export interface SubmitAnswerResponse {
+  success: boolean;
+  isCorrect: boolean;
+  isPartiallyCorrect?: boolean; // Only for multiple-choice questions
+  points: number;
+  newScore: number;
+}

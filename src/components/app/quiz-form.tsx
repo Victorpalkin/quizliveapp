@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -17,6 +17,7 @@ import { useImageUpload } from './quiz-form/hooks/use-image-upload';
 import { QuestionCard } from './quiz-form/question-card';
 import { DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { QuizFormProvider, QuizFormContextValue } from './quiz-form/context';
 
 const answerSchema = z.object({
   text: z.string().min(1, "Answer text can't be empty."),
@@ -150,16 +151,20 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     })
   );
 
-  // Initialize questions on mount
+  // Initialize questions on mount (run once)
+  const initialized = useRef(false);
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
     if (initialData) {
       setQuestions(initialData.questions as (SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion)[]);
       // Generate stable IDs for initial questions
       setQuestionIds(initialData.questions.map(() => nanoid()));
-    } else if (questions.length === 0) {
+    } else {
       addQuestion();
     }
-  }, [initialData]);
+  }, []); // Empty deps - only run once on mount
 
   // Sync question IDs when questions array changes (add/remove)
   useEffect(() => {
@@ -186,6 +191,19 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     const question = questions[qIndex];
     removeImageBase(qIndex, question, updateQuestion);
   };
+
+  // Create context value for quiz form
+  const quizFormContextValue = useMemo<QuizFormContextValue>(() => ({
+    control: form.control,
+    updateQuestion,
+    removeQuestion,
+    convertType: convertQuestionType,
+    addAnswer,
+    removeAnswer,
+    uploadImage: handleImageUpload,
+    removeImage,
+    totalQuestions: questions.length,
+  }), [form.control, updateQuestion, removeQuestion, convertQuestionType, addAnswer, removeAnswer, questions.length]);
 
   const handleSubmit = async (data: QuizFormData) => {
     await onSubmit(data, imageFiles.current, imagesToDelete.current);
@@ -263,31 +281,24 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext items={questionIds} strategy={verticalListSortingStrategy}>
-                {questions.map((q, qIndex) => (
-                  <QuestionCard
-                    key={questionIds[qIndex]}
-                    id={questionIds[qIndex]}
-                    question={q}
-                    questionIndex={qIndex}
-                    totalQuestions={questions.length}
-                    control={form.control}
-                    onUpdateQuestion={(updatedQuestion) => updateQuestion(qIndex, updatedQuestion)}
-                    onRemoveQuestion={() => removeQuestion(qIndex)}
-                    onConvertType={(type) => convertQuestionType(qIndex, type)}
-                    onAddAnswer={() => addAnswer(qIndex)}
-                    onRemoveAnswer={(aIndex) => removeAnswer(qIndex, aIndex)}
-                    onImageUpload={(file) => handleImageUpload(qIndex, file)}
-                    onImageRemove={() => removeImage(qIndex)}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
+            <QuizFormProvider value={quizFormContextValue}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={questionIds} strategy={verticalListSortingStrategy}>
+                  {questions.map((q, qIndex) => (
+                    <QuestionCard
+                      key={questionIds[qIndex]}
+                      id={questionIds[qIndex]}
+                      question={q}
+                      questionIndex={qIndex}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </QuizFormProvider>
             <Button type="button" variant="outline" onClick={() => addQuestion()} className="w-full">
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Question

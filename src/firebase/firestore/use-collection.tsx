@@ -12,6 +12,17 @@ import { useFirestore } from '../provider';
 import { errorEmitter } from '../error-emitter';
 import { FirestorePermissionError } from '../errors';
 
+// Internal Firebase query type for accessing path information
+interface FirebaseQueryInternal {
+  _query?: { path: { segments: string[] } };
+}
+
+// Helper function to safely extract query path from Firebase internal API
+function getQueryPath(query: Query): string {
+  const internalQuery = query as unknown as FirebaseQueryInternal;
+  return internalQuery._query?.path.segments.join('/') || 'unknown';
+}
+
 interface CollectionState<T> {
   data: T[] | null;
   loading: boolean;
@@ -47,7 +58,7 @@ export function useCollection<T extends DocumentData>(
       async (err) => {
         console.error(err);
         const permissionError = new FirestorePermissionError({
-          path: (query as any)._query.path.segments.join('/'),
+          path: getQueryPath(query),
           operation: 'list',
         });
         errorEmitter.emit('permission-error', permissionError);

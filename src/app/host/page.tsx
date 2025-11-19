@@ -11,7 +11,7 @@ import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
 import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye, Edit, Share2 } from 'lucide-react';
 import { useCollection, useFirestore, useUser, useMemoFirebase, useStorage } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getDoc, CollectionReference, Query } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,7 @@ import type { Quiz, Game } from '@/lib/types';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { quizConverter, gameConverter } from '@/firebase/converters';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -78,13 +79,13 @@ export default function HostDashboardPage() {
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
 
   const quizzesQuery = useMemoFirebase(() =>
-    user ? query(collection(firestore, 'quizzes'), where('hostId', '==', user.uid)) as any : null
+    user ? query(collection(firestore, 'quizzes').withConverter(quizConverter), where('hostId', '==', user.uid)) as Query<Quiz> : null
   , [user, firestore]);
 
   const { data: quizzes, loading: quizzesLoading } = useCollection<Quiz>(quizzesQuery);
 
   const gamesQuery = useMemoFirebase(() =>
-    user ? query(collection(firestore, 'games'), where('hostId', '==', user.uid)) as any : null
+    user ? query(collection(firestore, 'games').withConverter(gameConverter), where('hostId', '==', user.uid)) as Query<Game> : null
     , [user, firestore]);
 
   const { data: games, loading: gamesLoading } = useCollection<Game>(gamesQuery);
