@@ -14,7 +14,7 @@ interface AnswerListProps {
   onRemoveAnswer: (answerIndex: number) => void;
   canAddMore: boolean;
   canRemove: boolean;
-  renderCorrectSelector: (answerIndex: number) => React.ReactNode;
+  renderCorrectSelector?: (answerIndex: number) => React.ReactNode;
 }
 
 export function AnswerList({
@@ -37,9 +37,11 @@ export function AnswerList({
           name={`questions.${questionIndex}.answers.${aIndex}.text`}
           render={({ field }) => (
             <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-              <FormControl>
-                {renderCorrectSelector(aIndex)}
-              </FormControl>
+              {renderCorrectSelector && (
+                <FormControl>
+                  {renderCorrectSelector(aIndex)}
+                </FormControl>
+              )}
               <Input
                 {...field}
                 placeholder={`Answer ${aIndex + 1}`}

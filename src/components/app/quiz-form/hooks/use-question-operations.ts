@@ -5,22 +5,25 @@ import type {
   SingleChoiceQuestion,
   MultipleChoiceQuestion,
   SliderQuestion,
-  SlideQuestion
+  SlideQuestion,
+  PollSingleQuestion,
+  PollMultipleQuestion
 } from '@/lib/types';
 import type { QuizFormData } from '../../quiz-form';
 
-type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion;
+type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion;
 
 export function useQuestionOperations(
   setValue: UseFormSetValue<QuizFormData>,
-  imagesToDelete: React.MutableRefObject<string[]>
+  imagesToDelete: React.MutableRefObject<string[]>,
+  imageFiles?: React.MutableRefObject<Record<number, File>>
 ) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<Question[]>([]);
 
   const addQuestion = useCallback((
     text: string = '',
-    type: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' = 'single-choice'
+    type: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'poll-single' | 'poll-multiple' = 'single-choice'
   ) => {
     let newQuestion: Question;
 
@@ -50,6 +53,20 @@ export function useQuestionOperations(
         correctAnswerIndices: [0, 1],
         timeLimit: 20,
         showAnswerCount: true,
+      };
+    } else if (type === 'poll-single') {
+      newQuestion = {
+        type: 'poll-single',
+        text: text,
+        answers: [{ text: '' }, { text: '' }],
+        timeLimit: 20,
+      };
+    } else if (type === 'poll-multiple') {
+      newQuestion = {
+        type: 'poll-multiple',
+        text: text,
+        answers: [{ text: '' }, { text: '' }],
+        timeLimit: 20,
       };
     } else {
       newQuestion = {
@@ -87,7 +104,7 @@ export function useQuestionOperations(
     const newQuestions = [...questions];
     const question = newQuestions[qIndex];
 
-    if (question.type !== 'single-choice' && question.type !== 'multiple-choice') return;
+    if (question.type !== 'single-choice' && question.type !== 'multiple-choice' && question.type !== 'poll-single' && question.type !== 'poll-multiple') return;
 
     if (question.answers.length < 8) {
       question.answers.push({ text: '' });
@@ -106,7 +123,7 @@ export function useQuestionOperations(
     const newQuestions = [...questions];
     const question = newQuestions[qIndex];
 
-    if (question.type !== 'single-choice' && question.type !== 'multiple-choice') return;
+    if (question.type !== 'single-choice' && question.type !== 'multiple-choice' && question.type !== 'poll-single' && question.type !== 'poll-multiple') return;
 
     if (question.answers.length > 2) {
       question.answers.splice(aIndex, 1);
@@ -118,7 +135,7 @@ export function useQuestionOperations(
         } else if (question.correctAnswerIndex > aIndex) {
           question.correctAnswerIndex -= 1;
         }
-      } else {
+      } else if (question.type === 'multiple-choice') {
         // Adjust correctAnswerIndices
         const newCorrectIndices = question.correctAnswerIndices
           .filter(i => i !== aIndex)
@@ -129,6 +146,7 @@ export function useQuestionOperations(
         }
         question.correctAnswerIndices = newCorrectIndices;
       }
+      // Poll types don't have correct answers, so no adjustment needed
 
       setQuestions(newQuestions);
       setValue('questions', newQuestions, { shouldValidate: true });
@@ -143,7 +161,7 @@ export function useQuestionOperations(
 
   const convertQuestionType = useCallback((
     qIndex: number,
-    targetType: 'single-choice' | 'multiple-choice' | 'slider' | 'slide'
+    targetType: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'poll-single' | 'poll-multiple'
   ) => {
     const q = questions[qIndex];
     if (targetType === q.type) return;
@@ -178,7 +196,7 @@ export function useQuestionOperations(
     else if (targetType === 'single-choice') {
       const answers = (q.type === 'slider' || q.type === 'slide')
         ? [{ text: '' }, { text: '' }]
-        : (q as SingleChoiceQuestion | MultipleChoiceQuestion).answers;
+        : (q as SingleChoiceQuestion | MultipleChoiceQuestion | PollSingleQuestion | PollMultipleQuestion).answers;
       convertedQuestion = {
         type: 'single-choice',
         text: q.text,
@@ -189,10 +207,10 @@ export function useQuestionOperations(
       };
     }
     // Convert to multiple-choice
-    else {
+    else if (targetType === 'multiple-choice') {
       const answers = (q.type === 'slider' || q.type === 'slide')
         ? [{ text: '' }, { text: '' }]
-        : (q as SingleChoiceQuestion | MultipleChoiceQuestion).answers;
+        : (q as SingleChoiceQuestion | MultipleChoiceQuestion | PollSingleQuestion | PollMultipleQuestion).answers;
       convertedQuestion = {
         type: 'multiple-choice',
         text: q.text,
@@ -203,9 +221,74 @@ export function useQuestionOperations(
         imageUrl: q.imageUrl,
       };
     }
+    // Convert to poll-single
+    else if (targetType === 'poll-single') {
+      const answers = (q.type === 'slider' || q.type === 'slide')
+        ? [{ text: '' }, { text: '' }]
+        : (q as SingleChoiceQuestion | MultipleChoiceQuestion | PollSingleQuestion | PollMultipleQuestion).answers;
+      convertedQuestion = {
+        type: 'poll-single',
+        text: q.text,
+        answers: answers,
+        timeLimit: q.timeLimit || 20,
+        imageUrl: q.imageUrl,
+      };
+    }
+    // Convert to poll-multiple
+    else {
+      const answers = (q.type === 'slider' || q.type === 'slide')
+        ? [{ text: '' }, { text: '' }]
+        : (q as SingleChoiceQuestion | MultipleChoiceQuestion | PollSingleQuestion | PollMultipleQuestion).answers;
+      convertedQuestion = {
+        type: 'poll-multiple',
+        text: q.text,
+        answers: answers,
+        timeLimit: q.timeLimit || 20,
+        imageUrl: q.imageUrl,
+      };
+    }
 
     updateQuestion(qIndex, convertedQuestion);
   }, [questions, updateQuestion]);
+
+  const reorderQuestion = useCallback((fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+
+    const newQuestions = [...questions];
+    const [movedQuestion] = newQuestions.splice(fromIndex, 1);
+    newQuestions.splice(toIndex, 0, movedQuestion);
+
+    // Remap imageFiles to match new indices if imageFiles ref is provided
+    if (imageFiles) {
+      const newImageFiles: Record<number, File> = {};
+      Object.keys(imageFiles.current).forEach(key => {
+        const index = parseInt(key, 10);
+        let newIndex = index;
+
+        if (index === fromIndex) {
+          newIndex = toIndex;
+        } else if (fromIndex < toIndex) {
+          // Moving down: shift questions between fromIndex and toIndex up
+          if (index > fromIndex && index <= toIndex) {
+            newIndex = index - 1;
+          }
+        } else {
+          // Moving up: shift questions between toIndex and fromIndex down
+          if (index >= toIndex && index < fromIndex) {
+            newIndex = index + 1;
+          }
+        }
+
+        newImageFiles[newIndex] = imageFiles.current[index];
+      });
+
+      // Replace imageFiles ref with remapped files
+      imageFiles.current = newImageFiles;
+    }
+
+    setQuestions(newQuestions);
+    setValue('questions', newQuestions, { shouldValidate: true });
+  }, [questions, setValue, imageFiles]);
 
   return {
     questions,
@@ -216,5 +299,6 @@ export function useQuestionOperations(
     addAnswer,
     removeAnswer,
     convertQuestionType,
+    reorderQuestion,
   };
 }

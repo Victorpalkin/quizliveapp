@@ -73,12 +73,12 @@ interface SubmitAnswerRequest {
   timeRemaining: number; // Time remaining when answer was submitted
 
   // Answer data (one will be used based on question type)
-  answerIndex?: number;        // For single-choice
-  answerIndices?: number[];    // For multi-choice questions
+  answerIndex?: number;        // For single-choice, poll-single
+  answerIndices?: number[];    // For multi-choice questions, poll-multiple
   sliderValue?: number;        // For slider questions
 
   // Question metadata (passed from client to avoid quiz fetch)
-  questionType: 'single-choice' | 'multiple-choice' | 'slider';
+  questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'poll-single' | 'poll-multiple';
   questionTimeLimit?: number;
 
   // Type-specific metadata
@@ -100,7 +100,7 @@ interface Game {
 
 interface PlayerAnswer {
   questionIndex: number;
-  questionType: 'single-choice' | 'multiple-choice' | 'slider';
+  questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'poll-single' | 'poll-multiple';
   timestamp: admin.firestore.FieldValue;
   answerIndex?: number;
   answerIndices?: number[];
@@ -270,6 +270,25 @@ export const submitAnswer = onCall(
           `Slider value ${sliderValue} out of range [${minValue}, ${maxValue}]`
         );
       }
+    } else if (questionType === 'poll-single') {
+      if (answerIndex === undefined) {
+        throw new HttpsError('invalid-argument', 'Poll single choice question requires answerIndex');
+      }
+      if (answerIndex < 0) {
+        throw new HttpsError('invalid-argument', 'Invalid answer index');
+      }
+      // Poll questions don't have correct answers
+    } else if (questionType === 'poll-multiple') {
+      if (!answerIndices || answerIndices.length === 0) {
+        throw new HttpsError('invalid-argument', 'Poll multiple choice question requires answerIndices');
+      }
+      // Minimal validation - check indices aren't negative
+      for (const idx of answerIndices) {
+        if (idx < 0) {
+          throw new HttpsError('invalid-argument', `Invalid answer index: ${idx}`);
+        }
+      }
+      // Poll questions don't have correct answers
     }
 
     // Calculate score based on question type
@@ -344,6 +363,11 @@ export const submitAnswer = onCall(
 
       // No "partially correct" for sliders - only correct or incorrect
       isPartiallyCorrect = false;
+    } else if (questionType === 'poll-single' || questionType === 'poll-multiple') {
+      // Poll questions: no scoring, informational/survey only
+      points = 0;
+      isCorrect = false; // Polls don't have correct answers
+      isPartiallyCorrect = false;
     }
 
     const newScore = player.score + points;
@@ -385,6 +409,10 @@ export const submitAnswer = onCall(
         answer.answerIndices = answerIndices!;
       } else if (questionType === 'slider') {
         answer.sliderValue = sliderValue!;
+      } else if (questionType === 'poll-single') {
+        answer.answerIndex = answerIndex!;
+      } else if (questionType === 'poll-multiple') {
+        answer.answerIndices = answerIndices!;
       }
 
       // Update player document: append to answers array and increment score

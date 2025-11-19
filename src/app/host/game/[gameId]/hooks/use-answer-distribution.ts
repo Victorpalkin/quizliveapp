@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { Question, Player, Game } from '@/lib/types';
 
 export function useAnswerDistribution(question: Question | undefined, players: Player[], game: Game | null) {
-  // Answer distribution for single-choice and multiple-choice questions
+  // Answer distribution for single-choice, multiple-choice, and poll questions
   const answerDistribution = useMemo(() => {
     if (!question || !players) return [];
 
@@ -11,7 +11,7 @@ export function useAnswerDistribution(question: Question | undefined, players: P
       return [];
     }
 
-    // For single-choice and multiple-choice questions
+    // For single-choice, multiple-choice, and poll questions
     if (!game) return [];
     const counts = Array(question.answers.length).fill(0);
 
@@ -32,9 +32,14 @@ export function useAnswerDistribution(question: Question | undefined, players: P
 
     return question.answers.map((ans, index) => {
       // Determine if this answer is correct based on question type
-      const isCorrect = question.type === 'single-choice'
-        ? question.correctAnswerIndex === index
-        : question.correctAnswerIndices.includes(index);
+      // Poll questions don't have correct answers
+      let isCorrect = false;
+      if (question.type === 'single-choice') {
+        isCorrect = question.correctAnswerIndex === index;
+      } else if (question.type === 'multiple-choice') {
+        isCorrect = question.correctAnswerIndices.includes(index);
+      }
+      // For poll-single and poll-multiple, isCorrect remains false
 
       return {
         name: ans.text,

@@ -39,7 +39,12 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
                       Question {qIndex + 1}
                     </CardTitle>
                     <Badge variant="outline" className="text-xs">
-                      {question.type === 'slider' ? 'Slider' : question.type === 'slide' ? 'Slide' : question.type === 'single-choice' ? 'Single Choice' : 'Multiple Choice'}
+                      {question.type === 'slider' ? 'Slider' :
+                       question.type === 'slide' ? 'Slide' :
+                       question.type === 'single-choice' ? 'Single Choice' :
+                       question.type === 'multiple-choice' ? 'Multiple Choice' :
+                       question.type === 'poll-single' ? 'Poll (Single)' :
+                       'Poll (Multiple)'}
                     </Badge>
                   </div>
                   <CardDescription className="text-base">
@@ -232,6 +237,87 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
 
                   <p className="text-xs text-muted-foreground italic">
                     Players will view this slide and click Continue. No answer required and no points awarded.
+                  </p>
+                </div>
+              )}
+
+              {/* Poll Single Question */}
+              {question.type === 'poll-single' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      Survey/Poll Question
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      No Scoring
+                    </Badge>
+                  </div>
+
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Answer Options:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {question.answers.map((answer, aIndex) => {
+                      const colorClass = ANSWER_COLORS[aIndex % ANSWER_COLORS.length];
+
+                      return (
+                        <div
+                          key={aIndex}
+                          className={cn(
+                            'p-4 rounded-lg text-white',
+                            colorClass
+                          )}
+                        >
+                          <span className="font-medium">{answer.text}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground italic">
+                    Players select one option. Results shown as distribution only. No points awarded.
+                  </p>
+                </div>
+              )}
+
+              {/* Poll Multiple Question */}
+              {question.type === 'poll-multiple' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      Survey/Poll Question
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      No Scoring
+                    </Badge>
+                    <Badge variant="default" className="text-xs">
+                      Multiple Selections
+                    </Badge>
+                  </div>
+
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Answer Options:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {question.answers.map((answer, aIndex) => {
+                      const colorClass = ANSWER_COLORS[aIndex % ANSWER_COLORS.length];
+
+                      return (
+                        <div
+                          key={aIndex}
+                          className={cn(
+                            'p-4 rounded-lg text-white',
+                            colorClass
+                          )}
+                        >
+                          <span className="font-medium">{answer.text}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground italic">
+                    Players can select multiple options. Results shown as distribution only. No points awarded.
                   </p>
                 </div>
               )}

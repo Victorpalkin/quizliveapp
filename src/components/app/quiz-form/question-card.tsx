@@ -6,25 +6,31 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Trash2 } from 'lucide-react';
-import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion } from '@/lib/types';
+import { Trash2, GripVertical } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { cn } from '@/lib/utils';
+import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import type { QuizFormData } from '../quiz-form';
 import { ImageUpload } from './shared/image-upload';
 import { SingleChoiceEditor } from './question-editors/single-choice-editor';
 import { MultipleChoiceEditor } from './question-editors/multiple-choice-editor';
 import { SliderEditor } from './question-editors/slider-editor';
 import { SlideEditor } from './question-editors/slide-editor';
+import { PollSingleEditor } from './question-editors/poll-single-editor';
+import { PollMultipleEditor } from './question-editors/poll-multiple-editor';
 
-type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion;
+type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion;
 
 interface QuestionCardProps {
+  id: string;
   question: Question;
   questionIndex: number;
   totalQuestions: number;
   control: Control<QuizFormData>;
   onUpdateQuestion: (updatedQuestion: Question) => void;
   onRemoveQuestion: () => void;
-  onConvertType: (type: 'single-choice' | 'multiple-choice' | 'slider' | 'slide') => void;
+  onConvertType: (type: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'poll-single' | 'poll-multiple') => void;
   onAddAnswer: () => void;
   onRemoveAnswer: (answerIndex: number) => void;
   onImageUpload: (file: File) => void;
@@ -32,6 +38,7 @@ interface QuestionCardProps {
 }
 
 export function QuestionCard({
+  id,
   question,
   questionIndex,
   totalQuestions,
@@ -44,8 +51,39 @@ export function QuestionCard({
   onImageUpload,
   onImageRemove,
 }: QuestionCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
   return (
-    <Card className="bg-background/50">
+    <div ref={setNodeRef} style={style} className="relative">
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className={cn(
+          "absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center cursor-grab active:cursor-grabbing z-10",
+          "text-muted-foreground hover:text-foreground transition-colors",
+          isDragging && "cursor-grabbing"
+        )}
+      >
+        <GripVertical className="h-5 w-5" />
+      </div>
+
+      <Card className={cn(
+        "bg-background/50 ml-8",
+        isDragging && "opacity-50 shadow-lg"
+      )}>
       <CardHeader className="flex-row items-start justify-between">
         <CardTitle className="text-lg">Question {questionIndex + 1}</CardTitle>
         {totalQuestions > 1 && (
@@ -60,10 +98,10 @@ export function QuestionCard({
           <FormLabel>Question Type</FormLabel>
           <RadioGroup
             value={question.type}
-            onValueChange={(value: 'single-choice' | 'multiple-choice' | 'slider' | 'slide') => {
+            onValueChange={(value: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'poll-single' | 'poll-multiple') => {
               onConvertType(value);
             }}
-            className="flex gap-4"
+            className="flex flex-wrap gap-4"
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="single-choice" id={`type-sc-${questionIndex}`} />
@@ -80,6 +118,14 @@ export function QuestionCard({
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="slide" id={`type-slide-${questionIndex}`} />
               <Label htmlFor={`type-slide-${questionIndex}`}>Slide (Info)</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="poll-single" id={`type-poll-single-${questionIndex}`} />
+              <Label htmlFor={`type-poll-single-${questionIndex}`}>Poll (Single)</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="poll-multiple" id={`type-poll-multiple-${questionIndex}`} />
+              <Label htmlFor={`type-poll-multiple-${questionIndex}`}>Poll (Multiple)</Label>
             </div>
           </RadioGroup>
         </FormItem>
@@ -183,7 +229,30 @@ export function QuestionCard({
             onUpdateQuestion={onUpdateQuestion}
           />
         )}
+
+        {question.type === 'poll-single' && (
+          <PollSingleEditor
+            question={question}
+            questionIndex={questionIndex}
+            control={control}
+            onUpdateQuestion={onUpdateQuestion}
+            onAddAnswer={onAddAnswer}
+            onRemoveAnswer={onRemoveAnswer}
+          />
+        )}
+
+        {question.type === 'poll-multiple' && (
+          <PollMultipleEditor
+            question={question}
+            questionIndex={questionIndex}
+            control={control}
+            onUpdateQuestion={onUpdateQuestion}
+            onAddAnswer={onAddAnswer}
+            onRemoveAnswer={onRemoveAnswer}
+          />
+        )}
       </CardContent>
     </Card>
+    </div>
   );
 }

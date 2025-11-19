@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
-import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion } from '@/lib/types';
+import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import {
   DiamondIcon,
   TriangleIcon,
@@ -198,6 +198,110 @@ export function SlideQuestionComponent({ question }: SlideQuestionProps) {
           Waiting for host to continue...
         </p>
       </div>
+    </div>
+  );
+}
+
+interface PollSingleQuestionProps {
+  question: PollSingleQuestion;
+  onSubmit: (answerIndex: number) => void;
+  disabled: boolean;
+}
+
+export function PollSingleQuestionComponent({ question, onSubmit, disabled }: PollSingleQuestionProps) {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  const handleAnswerClick = (index: number) => {
+    if (disabled || selectedIndex !== null) return;
+    setSelectedIndex(index);
+    onSubmit(index);
+  };
+
+  return (
+    <div className={cn("grid gap-4 w-full h-full p-4", question.answers.length > 4 ? "grid-cols-2 grid-rows-4" : "grid-cols-2 grid-rows-2")}>
+      {question.answers.map((ans, i) => {
+        const Icon = answerIcons[i % answerIcons.length];
+        return (
+          <button
+            key={i}
+            onClick={() => handleAnswerClick(i)}
+            disabled={disabled || selectedIndex !== null}
+            className={cn(
+              'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform hover:scale-105 p-4',
+              ANSWER_COLORS[i % ANSWER_COLORS.length],
+              selectedIndex !== null && selectedIndex !== i ? 'opacity-25' : '',
+              selectedIndex !== null && selectedIndex === i ? 'scale-110 border-4 border-white' : ''
+            )}
+          >
+            <Icon className="w-16 h-16 md:w-24 md:h-24 mb-2" />
+            <span className="text-xl md:text-2xl font-bold">{ans.text}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+interface PollMultipleQuestionProps {
+  question: PollMultipleQuestion;
+  onSubmit: (answerIndices: number[]) => void;
+  disabled: boolean;
+}
+
+export function PollMultipleQuestionComponent({ question, onSubmit, disabled }: PollMultipleQuestionProps) {
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [submitted, setSubmitted] = useState(false);
+
+  const toggleAnswer = (index: number) => {
+    if (disabled || submitted) return;
+    setSelectedIndices(prev =>
+      prev.includes(index) ? prev.filter(idx => idx !== index) : [...prev, index]
+    );
+  };
+
+  const handleSubmit = () => {
+    if (disabled || submitted || selectedIndices.length === 0) return;
+    setSubmitted(true);
+    onSubmit(selectedIndices);
+  };
+
+  return (
+    <div className="w-full h-full flex flex-col p-4 gap-4">
+      <div className={cn("grid gap-4 flex-1", question.answers.length > 4 ? "grid-cols-2" : "grid-cols-2")}>
+        {question.answers.map((ans, i) => {
+          const Icon = answerIcons[i % answerIcons.length];
+          const isSelected = selectedIndices.includes(i);
+          return (
+            <button
+              key={i}
+              onClick={() => toggleAnswer(i)}
+              disabled={disabled || submitted}
+              className={cn(
+                'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 p-4 relative',
+                ANSWER_COLORS[i % ANSWER_COLORS.length],
+                isSelected ? 'scale-105 border-4 border-white' : '',
+                submitted && !isSelected ? 'opacity-25' : ''
+              )}
+            >
+              <Checkbox
+                checked={isSelected}
+                className="absolute top-2 right-2 h-6 w-6 border-2 border-white data-[state=checked]:bg-white data-[state=checked]:text-primary"
+                disabled={disabled || submitted}
+              />
+              <Icon className="w-16 h-16 md:w-20 md:h-20 mb-2" />
+              <span className="text-lg md:text-xl font-bold">{ans.text}</span>
+            </button>
+          );
+        })}
+      </div>
+      <Button
+        onClick={handleSubmit}
+        disabled={disabled || submitted || selectedIndices.length === 0}
+        size="lg"
+        className="w-full text-xl py-6"
+      >
+        {submitted ? 'Answers Submitted' : `Submit ${selectedIndices.length} Answer${selectedIndices.length !== 1 ? 's' : ''}`}
+      </Button>
     </div>
   );
 }

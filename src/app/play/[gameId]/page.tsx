@@ -7,7 +7,7 @@ import { doc, collection, query, where, getDocs, setDoc, DocumentReference } fro
 import { useToast } from '@/hooks/use-toast';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
-import type { Quiz, Player, Game, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion } from '@/lib/types';
+import type { Quiz, Player, Game, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import { handleFirestoreError } from '@/lib/utils/error-utils';
 
 // Hooks
@@ -220,9 +220,17 @@ export default function PlayerGamePage() {
       }
 
       // Set local state immediately for question types that need answers
+      const correctAnswers = question.type === 'single-choice'
+        ? [question.correctAnswerIndex]
+        : question.type === 'multiple-choice'
+        ? question.correctAnswerIndices
+        : question.type === 'slider'
+        ? [1]
+        : []; // Poll types have no correct answers
+
       setLastAnswer({
         selected: -1,
-        correct: question.type === 'single-choice' ? [question.correctAnswerIndex] : (question.type === 'multiple-choice' ? question.correctAnswerIndices : [1]),
+        correct: correctAnswers,
         points: 0,
         wasTimeout: true
       });
@@ -256,9 +264,17 @@ export default function PlayerGamePage() {
       setTimedOut(true);
 
       // Set "No answer" result
+      const correctAnswers = question.type === 'single-choice'
+        ? [question.correctAnswerIndex]
+        : question.type === 'multiple-choice'
+        ? question.correctAnswerIndices
+        : question.type === 'slider'
+        ? [1]
+        : []; // Poll types have no correct answers
+
       setLastAnswer({
         selected: -1,
-        correct: question.type === 'single-choice' ? [question.correctAnswerIndex] : (question.type === 'multiple-choice' ? question.correctAnswerIndices : []),
+        correct: correctAnswers,
         points: 0,
         wasTimeout: true
       });
@@ -347,6 +363,20 @@ export default function PlayerGamePage() {
     answerSubmission.submitSlider(sliderValue, question, time);
   };
 
+  const handlePollSingleAnswer = (answerIndex: number) => {
+    if (answerSelected || !question || question.type !== 'poll-single') return;
+    setAnswerSelected(true);
+    setState('waiting');
+    answerSubmission.submitPollSingle(answerIndex, question, time, timeLimit);
+  };
+
+  const handlePollMultipleAnswer = (answerIndices: number[]) => {
+    if (answerSelected || !question || question.type !== 'poll-multiple') return;
+    setAnswerSelected(true);
+    setState('waiting');
+    answerSubmission.submitPollMultiple(answerIndices, question, time, timeLimit);
+  };
+
   // Render appropriate screen based on state
   const renderContent = () => {
     switch (state) {
@@ -385,6 +415,8 @@ export default function PlayerGamePage() {
             onSubmitSingleChoice={handleSingleChoiceAnswer}
             onSubmitMultipleChoice={handleMultipleChoiceAnswer}
             onSubmitSlider={handleSliderAnswer}
+            onSubmitPollSingle={handlePollSingleAnswer}
+            onSubmitPollMultiple={handlePollMultipleAnswer}
             quizLoading={quizLoading}
           />
         );
@@ -393,8 +425,8 @@ export default function PlayerGamePage() {
         return <WaitingScreen isLastQuestion={isLastQuestion} />;
 
       case 'result':
-        // Slides are informational only - don't show result screen
-        if (question?.type === 'slide') {
+        // Slides and polls are informational/survey only - don't show result screen
+        if (question?.type === 'slide' || question?.type === 'poll-single' || question?.type === 'poll-multiple') {
           return <WaitingScreen isLastQuestion={isLastQuestion} />;
         }
         return <ResultScreen lastAnswer={lastAnswer} playerScore={player?.score || 0} isLastQuestion={isLastQuestion} />;

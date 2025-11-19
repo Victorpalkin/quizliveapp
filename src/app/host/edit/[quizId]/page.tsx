@@ -23,10 +23,10 @@ function removeUndefined<T extends Record<string, any>>(obj: T): Partial<T> {
     if (value !== undefined) {
       // Recursively clean nested objects
       if (Array.isArray(value)) {
-        cleaned[key] = value.map(item =>
+        cleaned[key] = value.map((item: any) =>
           typeof item === 'object' && item !== null ? removeUndefined(item) : item
         );
-      } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
+      } else if (typeof value === 'object' && value !== null && Object.prototype.toString.call(value) !== '[object Date]') {
         cleaned[key] = removeUndefined(value);
       } else {
         cleaned[key] = value;

@@ -78,13 +78,13 @@ export default function HostDashboardPage() {
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
 
   const quizzesQuery = useMemoFirebase(() =>
-    user ? query(collection(firestore, 'quizzes'), where('hostId', '==', user.uid)) : null
+    user ? query(collection(firestore, 'quizzes'), where('hostId', '==', user.uid)) as any : null
   , [user, firestore]);
 
   const { data: quizzes, loading: quizzesLoading } = useCollection<Quiz>(quizzesQuery);
 
   const gamesQuery = useMemoFirebase(() =>
-    user ? query(collection(firestore, 'games'), where('hostId', '==', user.uid)) : null
+    user ? query(collection(firestore, 'games'), where('hostId', '==', user.uid)) as any : null
     , [user, firestore]);
 
   const { data: games, loading: gamesLoading } = useCollection<Game>(gamesQuery);
