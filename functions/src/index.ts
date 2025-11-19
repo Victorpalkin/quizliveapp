@@ -14,7 +14,8 @@ const ALLOWED_ORIGINS = [
   'https://gqzuiz-dev-f424-czsrxlt5hq-ez.a.run.app',
   'https://gqzuiz-dev-f424-986405642892.europe-west4.run.app',
   'https://gquiz-prod-3r5f-684066064060.europe-west4.run.app',
-  'https://gquiz-prod-3r5f-klvaspwmka-ez.a.run.app'
+  'https://gquiz-prod-3r5f-klvaspwmka-ez.a.run.app',
+  'https://quiz.palkin.nl/'
   // Example: 'https://gquiz-abc123-ew.a.run.app'
   // Note: You can get the actual URL after first deployment via:
   // gcloud run services describe gquiz --region=europe-west4 --format='value(status.url)'
@@ -86,6 +87,7 @@ interface SubmitAnswerRequest {
   correctValue?: number;             // For slider
   minValue?: number;                 // For slider
   maxValue?: number;                 // For slider
+  acceptableError?: number;          // For slider - absolute error threshold
 }
 
 interface Game {
@@ -96,13 +98,23 @@ interface Game {
   gamePin: string;
 }
 
+interface PlayerAnswer {
+  questionIndex: number;
+  questionType: 'single-choice' | 'multiple-choice' | 'slider';
+  timestamp: admin.firestore.FieldValue;
+  answerIndex?: number;
+  answerIndices?: number[];
+  sliderValue?: number;
+  points: number;
+  isCorrect: boolean;
+  wasTimeout: boolean;
+}
+
 interface Player {
   id: string;
   name: string;
   score: number;
-  lastAnswerIndex?: number | null;
-  lastAnswerIndices?: number[] | null;
-  lastSliderValue?: number | null;
+  answers: PlayerAnswer[];
 }
 
 /**
@@ -141,7 +153,8 @@ export const submitAnswer = onCall(
       correctAnswerIndices,
       correctValue,
       minValue,
-      maxValue
+      maxValue,
+      acceptableError
     } = data;
 
   // Validate input
@@ -205,7 +218,9 @@ export const submitAnswer = onCall(
     }
 
     // Check if player already answered this question (early validation)
-    if (player.lastAnswerIndex !== null && player.lastAnswerIndex !== undefined) {
+    const answers = player.answers || [];
+    const alreadyAnswered = answers.some(a => a.questionIndex === questionIndex);
+    if (alreadyAnswered) {
       throw new HttpsError(
         'failed-precondition',
         'Player already answered this question'
@@ -297,9 +312,11 @@ export const submitAnswer = onCall(
       const penalty = wrongSelected * 0.2;  // 20% penalty per wrong answer
       const scoreMultiplier = Math.max(0, correctRatio - penalty);
 
-      // Base 1000 points, multiplied by correctness
-      const basePoints = Math.round(1000 * scoreMultiplier);
-      points = basePoints;
+      // 50/50 split: 50% accuracy, 50% speed
+      // If scoreMultiplier = 0 (completely wrong), both components = 0
+      const accuracyComponent = Math.round(500 * scoreMultiplier);
+      const speedComponent = Math.round(500 * (timeRemaining / timeLimit));
+      points = accuracyComponent + speedComponent;
 
       // Fully correct: all correct selected, no wrong
       isCorrect = correctSelected === totalCorrect && wrongSelected === 0;
@@ -307,32 +324,26 @@ export const submitAnswer = onCall(
       // Partially correct: got some points but not fully correct
       isPartiallyCorrect = !isCorrect && scoreMultiplier > 0;
 
-      // Apply time bonus for correct answers
-      if (isCorrect && points > 0) {
-        const timeBonus = Math.round((timeRemaining / timeLimit) * 900);
-        points = Math.min(1000, points + timeBonus);
-      }
-
     } else if (questionType === 'slider') {
       // Slider question: proximity-based scoring
       const range = maxValue! - minValue!;
       const distance = Math.abs(sliderValue! - correctValue!);
       const accuracy = Math.max(0, 1 - (distance / range));  // 1.0 = perfect, 0.0 = worst
-      const errorMargin = distance / range;  // 0.0 = perfect, 1.0 = worst
 
       // Quadratic scoring: rewards closeness, penalizes distance
       const scoreMultiplier = Math.pow(accuracy, 2);
-      const basePoints = Math.round(1000 * scoreMultiplier);
 
-      // Apply time bonus
-      const timeBonus = Math.round((timeRemaining / timeLimit) * 0);  // No time bonus for slider questions
-      points = Math.min(1000, basePoints + timeBonus);
+      // 50/50 split: 50% accuracy, 50% speed
+      const accuracyComponent = Math.round(500 * scoreMultiplier);
+      const speedComponent = Math.round(500 * (timeRemaining / timeLimit));
+      points = accuracyComponent + speedComponent;
 
-      // Fully correct: within 10% error margin
-      isCorrect = errorMargin <= 0.1;
+      // Configurable acceptable error threshold (default: 5% of range)
+      const threshold = acceptableError ?? (range * 0.05);
+      isCorrect = distance <= threshold;
 
-      // Partially correct: within 20% error margin but not fully correct
-      isPartiallyCorrect = !isCorrect && errorMargin <= 0.2;
+      // No "partially correct" for sliders - only correct or incorrect
+      isPartiallyCorrect = false;
     }
 
     const newScore = player.score + points;
@@ -348,33 +359,39 @@ export const submitAnswer = onCall(
       const freshPlayer = freshPlayerDoc.data() as Player;
 
       // Double-check player hasn't answered in the meantime
-      if (freshPlayer.lastAnswerIndex !== null && freshPlayer.lastAnswerIndex !== undefined) {
+      const freshAnswers = freshPlayer.answers || [];
+      const alreadyAnsweredInTransaction = freshAnswers.some(a => a.questionIndex === questionIndex);
+      if (alreadyAnsweredInTransaction) {
         throw new HttpsError(
           'failed-precondition',
           'Player already answered this question'
         );
       }
 
-      // Update appropriate answer field based on question type
-      const updateData: any = {
-        score: newScore,
+      // Create answer object
+      const answer: PlayerAnswer = {
+        questionIndex: questionIndex,
+        questionType: questionType,
+        timestamp: admin.firestore.Timestamp.now(),
+        points: points,
+        isCorrect: isCorrect,
+        wasTimeout: timeRemaining === 0,
       };
 
+      // Add type-specific answer data
       if (questionType === 'single-choice') {
-        updateData.lastAnswerIndex = answerIndex !== undefined ? answerIndex : -1;
-        updateData.lastAnswerIndices = null;
-        updateData.lastSliderValue = null;
+        answer.answerIndex = answerIndex !== undefined ? answerIndex : -1;
       } else if (questionType === 'multiple-choice') {
-        updateData.lastAnswerIndices = answerIndices!;
-        updateData.lastAnswerIndex = null;
-        updateData.lastSliderValue = null;
+        answer.answerIndices = answerIndices!;
       } else if (questionType === 'slider') {
-        updateData.lastSliderValue = sliderValue;
-        updateData.lastAnswerIndex = null;
-        updateData.lastAnswerIndices = null;
+        answer.sliderValue = sliderValue!;
       }
 
-      transaction.update(playerRef, updateData);
+      // Update player document: append to answers array and increment score
+      transaction.update(playerRef, {
+        score: newScore,
+        answers: admin.firestore.FieldValue.arrayUnion(answer)
+      });
     });
 
     // Return result to client

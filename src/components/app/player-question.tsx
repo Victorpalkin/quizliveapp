@@ -12,6 +12,7 @@ import {
   CircleIcon,
   SquareIcon,
 } from '@/components/app/quiz-icons';
+import { ANSWER_COLORS } from '@/lib/constants';
 
 const answerIcons = [
   TriangleIcon,
@@ -22,11 +23,6 @@ const answerIcons = [
   DiamondIcon,
   SquareIcon,
   CircleIcon,
-];
-
-const answerColors = [
-  'bg-red-500', 'bg-blue-500', 'bg-yellow-500', 'bg-green-500',
-  'bg-purple-500', 'bg-pink-500', 'bg-orange-500', 'bg-teal-500',
 ];
 
 interface SingleChoiceQuestionProps {
@@ -55,7 +51,7 @@ export function SingleChoiceQuestionComponent({ question, onSubmit, disabled }: 
             disabled={disabled || selectedIndex !== null}
             className={cn(
               'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform hover:scale-105 p-4',
-              answerColors[i % answerColors.length],
+              ANSWER_COLORS[i % ANSWER_COLORS.length],
               selectedIndex !== null && selectedIndex !== i ? 'opacity-25' : '',
               selectedIndex !== null && selectedIndex === i ? 'scale-110 border-4 border-white' : ''
             )}
@@ -105,7 +101,7 @@ export function MultipleChoiceQuestionComponent({ question, onSubmit, disabled }
               disabled={disabled || submitted}
               className={cn(
                 'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 p-4 relative',
-                answerColors[i % answerColors.length],
+                ANSWER_COLORS[i % ANSWER_COLORS.length],
                 isSelected ? 'scale-105 border-4 border-white' : '',
                 submitted && !isSelected ? 'opacity-25' : ''
               )}
@@ -184,39 +180,24 @@ export function SliderQuestionComponent({ question, onSubmit, disabled }: Slider
 
 interface SlideQuestionProps {
   question: SlideQuestion;
-  onSubmit: () => void;
-  disabled: boolean;
 }
 
-export function SlideQuestionComponent({ question, onSubmit, disabled }: SlideQuestionProps) {
-  const [viewed, setViewed] = useState(false);
-
-  const handleContinue = () => {
-    if (disabled || viewed) return;
-    setViewed(true);
-    onSubmit();
-  };
-
+export function SlideQuestionComponent({ question }: SlideQuestionProps) {
   return (
     <div className="w-full max-w-2xl px-8 space-y-8">
       <div className="text-center space-y-6">
         <h2 className="text-4xl font-bold text-primary">
-          {question.title}
+          {question.text}
         </h2>
         {question.description && (
           <p className="text-xl text-muted-foreground whitespace-pre-wrap">
             {question.description}
           </p>
         )}
+        <p className="text-lg text-muted-foreground pt-8">
+          Waiting for host to continue...
+        </p>
       </div>
-      <Button
-        onClick={handleContinue}
-        disabled={disabled || viewed}
-        size="lg"
-        className="w-full text-xl py-8"
-      >
-        {viewed ? 'Viewed' : 'Continue'}
-      </Button>
     </div>
   );
 }

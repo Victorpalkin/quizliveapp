@@ -70,20 +70,17 @@ service cloud.firestore {
         // Anyone can read player data for leaderboards
         allow read: if true;
 
-        // Only allow creating player with initial score of 0
+        // Only allow creating player with initial score of 0 and empty answers array
         allow create: if request.resource.data.score == 0 &&
                         request.resource.data.id == playerId &&
                         request.resource.data.name is string &&
                         request.resource.data.name.size() >= 2 &&
-                        request.resource.data.name.size() <= 20;
+                        request.resource.data.name.size() <= 20 &&
+                        request.resource.data.answers == [];
 
-        // Players can ONLY update answer fields to null (resetting between questions)
-        // Score updates are handled by Cloud Functions only
-        // Allow updating: lastAnswerIndex (legacy/single choice), lastAnswerIndices (multi-choice), lastSliderValue (slider)
-        allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastAnswerIndex', 'lastAnswerIndices', 'lastSliderValue']) &&
-                        (request.resource.data.get('lastAnswerIndex', null) == null || request.resource.data.get('lastAnswerIndex', null) is int) &&
-                        (request.resource.data.get('lastAnswerIndices', null) == null || request.resource.data.get('lastAnswerIndices', null) is list) &&
-                        (request.resource.data.get('lastSliderValue', null) == null || request.resource.data.get('lastSliderValue', null) is number);
+        // All player updates (score, answers array) are handled by Cloud Functions only
+        // Cloud Functions use admin privileges and bypass these rules
+        allow update: if false;
 
         // Players cannot be deleted
         allow delete: if false;

@@ -14,22 +14,9 @@ export function SlideEditor({ question, onUpdateQuestion }: SlideEditorProps) {
       <div className="space-y-0.5">
         <FormLabel>Slide Content</FormLabel>
         <p className="text-sm text-muted-foreground">
-          Informational slide - no answer required
+          Informational slide - no answer required. Use the Question Text field above as the slide title.
         </p>
       </div>
-      <FormItem>
-        <FormLabel>Slide Title</FormLabel>
-        <FormControl>
-          <Input
-            value={question.title}
-            onChange={(e) => {
-              onUpdateQuestion({ ...question, title: e.target.value, text: e.target.value });
-            }}
-            placeholder="Enter slide title"
-            maxLength={200}
-          />
-        </FormControl>
-      </FormItem>
       <FormItem>
         <FormLabel>Description (Optional)</FormLabel>
         <FormControl>

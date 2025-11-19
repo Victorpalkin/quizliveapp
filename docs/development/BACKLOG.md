@@ -193,6 +193,37 @@
 
 ---
 
+## Code Quality & Refactoring
+
+### Phase 2: Additional Refactoring Opportunities
+
+| Feature | Effort | Lines Saved | Description |
+|---------|--------|-------------|-------------|
+| Extract host answer grid component | Low | ~20 | Component for answer rendering with colors/icons (`page.tsx:206-222`) |
+| Extract slide question display component | Medium | ~35 | Shared component for host/player slide rendering (removes duplication) |
+| Extract card wrapper patterns | Low | ~18 | `<StatCard>` component for common Card+CardContent patterns |
+| Slider display badges component | Trivial | ~8 | Component for "Correct: ≤10% error" badges |
+| Game not found state component | Low | ~15 | `<NotFoundState>` reusable across pages |
+| Centered screen layout wrapper | Trivial | ~10 | `<CenteredScreen>` wrapper used in 8+ player screens |
+| hasPlayerAnswered utility | Trivial | ~15 | Function to check answer fields (timer hook, answer distribution) |
+| Result display logic hook | Low | ~18 | `useResultDisplay(lastAnswer)` returns `{bgColor, icon, message}` |
+
+**Total potential savings**: ~139 lines
+**Estimated time**: 4-5 hours
+
+**Already completed (Phase 1)**:
+- ✅ Answer colors constant (~15 lines)
+- ✅ Merged timer hooks (~25 lines)
+- ✅ Loading spinner component (~12 lines)
+- ✅ Question counter component (~8 lines)
+- ✅ Question type badges component (~10 lines)
+- ✅ isLastQuestion utility (~6 lines)
+- ✅ Consolidated error handling (~30 lines)
+
+**Phase 1 savings**: ~106 lines + 58% reduction in main page files
+
+---
+
 ## Prioritization Framework
 
 ### Scoring Criteria
@@ -252,6 +283,7 @@ Based on impact/effort analysis, implement in this order:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1 | 2025-11-17 | Added Phase 1 refactoring completion notes and Phase 2 opportunities |
 | 1.0 | 2025-11-10 | Initial backlog based on implemented features and security review |
 
 ---

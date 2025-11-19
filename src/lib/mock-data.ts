@@ -26,8 +26,7 @@ export const mockQuiz: Quiz = {
     {
       id: 'q2',
       type: 'slide',
-      text: 'Geography Facts',
-      title: 'Did You Know?',
+      text: 'Did You Know?',
       description: 'The Eiffel Tower can be 15 cm taller during the summer due to thermal expansion of the iron on hot days!',
       timeLimit: 10,
     },
@@ -73,7 +72,7 @@ export const mockQuiz: Quiz = {
 };
 
 export const mockPlayers: Player[] = [
-    { id: 'p1', name: 'PlayerOne', score: 0 },
-    { id: 'p2', name: 'QuizMaster', score: 0 },
-    { id: 'p3', name: 'TriviaFan', score: 0 },
+    { id: 'p1', name: 'PlayerOne', score: 0, answers: [] },
+    { id: 'p2', name: 'QuizMaster', score: 0, answers: [] },
+    { id: 'p3', name: 'TriviaFan', score: 0, answers: [] },
 ];

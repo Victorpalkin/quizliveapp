@@ -89,6 +89,23 @@ export function SliderEditor({ question, onUpdateQuestion }: SliderEditorProps) 
           </FormControl>
         </FormItem>
       </div>
+      <FormItem>
+        <FormLabel>Acceptable Error (±)</FormLabel>
+        <FormControl>
+          <Input
+            type="number"
+            placeholder={`Default: ${((question.maxValue - question.minValue) * 0.05).toFixed(2)}`}
+            value={question.acceptableError ?? ''}
+            onChange={(e) => {
+              const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
+              onUpdateQuestion({ ...question, acceptableError: val });
+            }}
+          />
+        </FormControl>
+        <p className="text-sm text-muted-foreground mt-1">
+          Answers within ±{question.acceptableError ?? ((question.maxValue - question.minValue) * 0.05).toFixed(2)} of {question.correctValue} will be marked correct
+        </p>
+      </FormItem>
     </div>
   );
 }

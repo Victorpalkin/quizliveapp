@@ -28,7 +28,6 @@ export function useQuestionOperations(
       newQuestion = {
         type: 'slide',
         text: text,
-        title: text,
         description: '',
         timeLimit: 10,
       };
@@ -156,7 +155,6 @@ export function useQuestionOperations(
       convertedQuestion = {
         type: 'slide',
         text: q.text,
-        title: q.text,
         description: '',
         timeLimit: q.timeLimit || 10,
         imageUrl: q.imageUrl,
