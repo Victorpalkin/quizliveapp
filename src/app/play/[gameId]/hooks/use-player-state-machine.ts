@@ -9,8 +9,7 @@ export function usePlayerStateMachine(
   hasValidSession: boolean,
   game: Game | null,
   quiz: Quiz | null,
-  gameLoading: boolean,
-  timedOut: boolean
+  gameLoading: boolean
 ) {
   // Initialize state from session if available
   const [state, setState] = useState<PlayerState>(() => {
@@ -109,7 +108,7 @@ export function usePlayerStateMachine(
       // If in other states, question change handler above should have moved to preparing
       return;
     }
-  }, [game?.state, game?.currentQuestionIndex, gameLoading, state, timedOut]);
+  }, [game?.state, game?.currentQuestionIndex, gameLoading, state]);
 
   return {
     state,

@@ -80,8 +80,7 @@ export default function PlayerGamePage() {
     sessionManager.hasValidSession(),
     game,
     quiz,
-    gameLoading,
-    timedOut
+    gameLoading
   );
 
   // Timer

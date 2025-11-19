@@ -36,6 +36,12 @@ export function useAnswerSubmission(
   ) => {
     if (!gameDocId) return;
 
+    // Prevent duplicate submissions
+    if (answerSubmittedRef.current) {
+      console.log('[Answer] Submission already in progress, ignoring duplicate');
+      return;
+    }
+
     answerSubmittedRef.current = true;
 
     // Optimistic UI: Calculate estimated points using scoring utility
@@ -131,6 +137,12 @@ export function useAnswerSubmission(
     timeLimit: number
   ) => {
     if (!gameDocId) return;
+
+    // Prevent duplicate submissions
+    if (answerSubmittedRef.current) {
+      console.log('[Answer] Submission already in progress, ignoring duplicate');
+      return;
+    }
 
     answerSubmittedRef.current = true;
 
@@ -240,6 +252,12 @@ export function useAnswerSubmission(
   ) => {
     if (!gameDocId) return;
 
+    // Prevent duplicate submissions
+    if (answerSubmittedRef.current) {
+      console.log('[Answer] Submission already in progress, ignoring duplicate');
+      return;
+    }
+
     answerSubmittedRef.current = true;
 
     // Optimistic UI: Calculate estimated points using scoring utility
@@ -342,11 +360,20 @@ export function useAnswerSubmission(
   ) => {
     if (!gameDocId) return;
 
+    // Prevent duplicate timeout submissions
+    if (answerSubmittedRef.current) {
+      console.log('[Timeout] Submission already in progress, ignoring duplicate timeout');
+      return;
+    }
+
     // Slides don't timeout - players just view them
     if (question.type === 'slide') {
       console.log('[Timeout] Skipping timeout for slide question');
       return;
     }
+
+    // Set flag immediately to prevent race conditions
+    answerSubmittedRef.current = true;
 
     const submitData: any = {
       gameId: gameDocId,
@@ -391,6 +418,12 @@ export function useAnswerSubmission(
     timeLimit: number
   ) => {
     if (!gameDocId) return;
+
+    // Prevent duplicate submissions
+    if (answerSubmittedRef.current) {
+      console.log('[Answer] Submission already in progress, ignoring duplicate');
+      return;
+    }
 
     answerSubmittedRef.current = true;
 
@@ -466,6 +499,12 @@ export function useAnswerSubmission(
     timeLimit: number
   ) => {
     if (!gameDocId) return;
+
+    // Prevent duplicate submissions
+    if (answerSubmittedRef.current) {
+      console.log('[Answer] Submission already in progress, ignoring duplicate');
+      return;
+    }
 
     answerSubmittedRef.current = true;
 

@@ -18,6 +18,11 @@ import type { Firestore } from 'firebase/firestore';
  * Accuracy: Typically ±50-200ms depending on network conditions
  */
 
+// Clock synchronization constants
+const DEFAULT_SAMPLES = 3; // Number of offset samples to take
+const SAMPLE_DELAY_MS = 100; // Delay between samples to avoid overwhelming Firestore
+const MAX_OFFSET_SECONDS = 300; // Maximum acceptable clock offset (5 minutes)
+
 interface ClockSyncResult {
   /** Clock offset in milliseconds (positive = client ahead, negative = client behind) */
   offset: number;
@@ -29,8 +34,10 @@ interface ClockSyncResult {
 
 /**
  * Calculate clock offset between client and Firestore server
+ * Uses multi-sample approach with median filtering for accuracy
  *
  * @param firestore - Firestore instance
+ * @param samples - Number of samples to take (default: 3)
  * @returns Promise resolving to clock offset in milliseconds
  *
  * @example
@@ -38,9 +45,45 @@ interface ClockSyncResult {
  * // offset = 3000 means client clock is 3 seconds ahead of server
  * // offset = -2000 means client clock is 2 seconds behind server
  */
-export async function calculateClockOffset(firestore: Firestore): Promise<number> {
-  const result = await calculateClockOffsetDetailed(firestore);
-  return result.offset;
+export async function calculateClockOffset(firestore: Firestore, samples: number = DEFAULT_SAMPLES): Promise<number> {
+  // Take multiple samples
+  const results: ClockSyncResult[] = [];
+
+  for (let i = 0; i < samples; i++) {
+    try {
+      const result = await calculateClockOffsetDetailed(firestore);
+      results.push(result);
+
+      // Small delay between samples to avoid overwhelming Firestore
+      if (i < samples - 1) {
+        await new Promise(resolve => setTimeout(resolve, SAMPLE_DELAY_MS));
+      }
+    } catch (error) {
+      console.warn(`[ClockSync] Sample ${i + 1} failed:`, error);
+      // Continue with other samples
+    }
+  }
+
+  if (results.length === 0) {
+    throw new Error('Clock sync failed: all samples failed');
+  }
+
+  // Use median RTT to filter out network spikes
+  const sortedByRTT = [...results].sort((a, b) => a.roundTripTime - b.roundTripTime);
+
+  // Take offsets from fastest half of samples (lowest RTT = most reliable)
+  const fastSamples = sortedByRTT.slice(0, Math.ceil(results.length / 2));
+
+  // Average the offsets from fast samples
+  const averageOffset = fastSamples.reduce((sum, r) => sum + r.offset, 0) / fastSamples.length;
+
+  console.log(
+    `[ClockSync] Multi-sample sync complete: ${results.length} samples, ` +
+    `median RTT: ${sortedByRTT[Math.floor(sortedByRTT.length / 2)].roundTripTime.toFixed(0)}ms, ` +
+    `average offset: ${averageOffset.toFixed(0)}ms`
+  );
+
+  return averageOffset;
 }
 
 /**
@@ -55,8 +98,7 @@ export async function calculateClockOffsetDetailed(firestore: Firestore): Promis
   const syncRef = doc(firestore, '_clockSync', syncId);
 
   try {
-    // T1: Client send time (using performance.now for higher precision)
-    const perfStart = performance.now();
+    // T1: Client send time (use Date.now() consistently)
     const clientSendTime = Date.now();
 
     // Write to Firestore with server timestamp
@@ -68,8 +110,7 @@ export async function calculateClockOffsetDetailed(firestore: Firestore): Promis
     // Read back to get server timestamp
     const syncDoc = await getDoc(syncRef);
 
-    // T4: Client receive time
-    const perfEnd = performance.now();
+    // T4: Client receive time (use Date.now() consistently)
     const clientReceiveTime = Date.now();
 
     if (!syncDoc.exists()) {
@@ -84,8 +125,8 @@ export async function calculateClockOffsetDetailed(firestore: Firestore): Promis
     // T3: Server timestamp (when server wrote the document)
     const serverTime = data.timestamp.toMillis();
 
-    // Calculate round-trip time
-    const roundTripTime = perfEnd - perfStart;
+    // Calculate round-trip time (using Date.now() for consistency)
+    const roundTripTime = clientReceiveTime - clientSendTime;
 
     // Estimate server time at the moment we received the response
     // We assume network latency is symmetric (half on request, half on response)
@@ -201,7 +242,7 @@ export function detectDrift(
  * @param maxOffsetSeconds - Maximum acceptable offset in seconds (default: 300 = 5 minutes)
  * @returns True if offset is reasonable, false otherwise
  */
-export function isOffsetReasonable(offset: number, maxOffsetSeconds: number = 300): boolean {
+export function isOffsetReasonable(offset: number, maxOffsetSeconds: number = MAX_OFFSET_SECONDS): boolean {
   const maxOffsetMs = maxOffsetSeconds * 1000;
   const isReasonable = Math.abs(offset) < maxOffsetMs;
 
