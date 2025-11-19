@@ -209,9 +209,6 @@ export default function HostGamePage() {
                   <div key={i} className={`flex items-center gap-4 p-4 rounded-lg text-white relative ${ANSWER_COLORS[i % ANSWER_COLORS.length]}`}>
                     <Icon className="w-8 h-8 flex-shrink-0" />
                     <span className="text-2xl font-medium">{ans.text}</span>
-                    {isMultipleChoice(question) && isCorrect && (
-                      <CheckCircle className="absolute top-2 right-2 w-6 h-6" />
-                    )}
                   </div>
                 );
               })}
