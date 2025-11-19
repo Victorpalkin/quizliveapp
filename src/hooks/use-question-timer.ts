@@ -9,8 +9,6 @@ import {
 } from '@/lib/utils/clock-sync';
 
 // Timer synchronization constants
-const DRIFT_THRESHOLD_SECONDS = 0.2; // 200ms threshold for drift auto-correction
-const DRIFT_CHECK_INTERVAL_MS = 2000; // Check for drift every 2 seconds
 const AUTO_FINISH_DELAY_MS = 1500; // Delay before auto-finishing when all players answered
 
 interface UseQuestionTimerOptions {
@@ -18,47 +16,45 @@ interface UseQuestionTimerOptions {
   questionStartTime: Timestamp | undefined;
   currentQuestionIndex: number;
   isActive?: boolean;
-  isPreparing?: boolean; // Signal to pre-calculate offset before question starts
   players?: Player[];
   onAutoFinish?: () => void;
   firestore?: Firestore; // Optional: enables clock sync if provided
   enableClockSync?: boolean; // Optional: enable/disable clock sync (default: true if firestore provided)
+  initialClockOffset?: number; // Optional: pre-calculated offset (e.g., from lobby)
 }
 
 /**
  * Shared question timer hook for both host and player views
  *
- * Features:
- * - Hybrid clock synchronization (syncs with server, counts down locally, auto-corrects drift)
- * - Syncs timer with server timestamp using calculated clock offset
+ * Simplified approach for reliability:
+ * - Start countdown immediately (no blocking on async operations)
+ * - Sync with server timestamp using cached offset
+ * - Background clock sync (non-blocking, single sample)
+ * - Periodic drift correction (every 5s, 1s threshold)
  * - Auto-finish when all players answered (host only)
  * - Auto-finish when time expires (host only)
- * - Race condition protection
- * - Countdown to 0
- * - Drift detection and auto-correction every 5 seconds
  *
- * Clock Sync Algorithm:
- * 1. On question start: Calculate clock offset with Firestore server
- * 2. Use offset to calculate initial time remaining
- * 3. Countdown locally for smooth UX
- * 4. Every 5 seconds: Check for drift and auto-correct if needed
- * 5. Handle edge cases: tab backgrounding, device sleep
+ * Why simplified:
+ * - Timer must tick immediately for good UX
+ * - Complex multi-sample sync was blocking countdown start
+ * - Single sample is fast (~100-200ms) and accurate enough
+ * - Relaxed thresholds prevent unnecessary corrections
  */
 export function useQuestionTimer({
   timeLimit,
   questionStartTime,
   currentQuestionIndex,
   isActive = true,
-  isPreparing = false,
   players,
   onAutoFinish,
   firestore,
   enableClockSync = true,
+  initialClockOffset = 0, // Optional: pre-calculated offset from lobby
 }: UseQuestionTimerOptions) {
   const [time, setTime] = useState(timeLimit);
   const finishedRef = useRef(false);
-  const clockOffsetRef = useRef<number>(0);
-  const offsetReadyRef = useRef(false); // Track if offset is pre-calculated
+  const clockOffsetRef = useRef<number>(initialClockOffset); // Use pre-calculated offset if provided
+  const offsetReadyRef = useRef(initialClockOffset !== 0); // Already synced if initial offset provided
   const driftCheckIntervalRef = useRef<NodeJS.Timeout>();
   const countdownIntervalRef = useRef<NodeJS.Timeout>();
   const timeRef = useRef(time); // Track current time for drift detection
@@ -71,54 +67,8 @@ export function useQuestionTimer({
   // Determine if we should use clock sync
   const useClockSync = enableClockSync && firestore && questionStartTime;
 
-  // PRE-CALCULATE OFFSET IN PREPARING STATE
-  // This eliminates race condition between sync and question start
-  useEffect(() => {
-    let cancelled = false;
-
-    if (isPreparing && useClockSync && firestore && !offsetReadyRef.current) {
-      const preCalculateOffset = async () => {
-        try {
-          console.log('[Timer] Pre-calculating clock offset in preparing state...');
-          const offset = await calculateClockOffset(firestore);
-
-          // Check if component unmounted or state changed during async operation
-          if (cancelled) {
-            console.log('[Timer] Pre-calculation cancelled (state changed)');
-            return;
-          }
-
-          if (isOffsetReasonable(offset)) {
-            clockOffsetRef.current = offset;
-            offsetReadyRef.current = true;
-            console.log(`[Timer] Offset pre-calculated: ${offset.toFixed(0)}ms`);
-          } else {
-            console.warn(`[Timer] Unreasonable offset: ${offset.toFixed(0)}ms, using 0`);
-            clockOffsetRef.current = 0;
-            offsetReadyRef.current = true;
-          }
-        } catch (error) {
-          if (!cancelled) {
-            console.error('[Timer] Pre-calculation failed:', error);
-            clockOffsetRef.current = 0;
-            offsetReadyRef.current = true;
-          }
-        }
-      };
-
-      preCalculateOffset();
-    }
-
-    // Reset offset ready flag when question changes
-    if (!isPreparing && !isActive) {
-      offsetReadyRef.current = false;
-    }
-
-    // Cleanup: cancel async operation if component unmounts or state changes
-    return () => {
-      cancelled = true;
-    };
-  }, [isPreparing, useClockSync, firestore, isActive, currentQuestionIndex]);
+  // Simplified: No pre-calculation, just keep offset from last sync
+  // This avoids blocking and keeps timer simple
 
   // Count players who have answered (host only)
   // Memoize to avoid recalculating on every render
@@ -151,116 +101,96 @@ export function useQuestionTimer({
     }
   }, [players, answeredPlayers, isActive, onAutoFinish]);
 
-  // Timer countdown with hybrid clock synchronization
+  // Simplified timer with optional clock sync
   useEffect(() => {
     if (isActive) {
       // Reset finished flag for new question
       finishedRef.current = false;
 
-      // HYBRID SYNC PHASE 1: Initial synchronization
-      const syncAndStartTimer = async () => {
-        let initialTime = timeLimit;
+      // Calculate initial time (sync with server timestamp)
+      let initialTime = timeLimit;
 
-        if (useClockSync && questionStartTime && firestore) {
-          // Use pre-calculated offset if available, otherwise calculate now
-          if (!offsetReadyRef.current) {
-            try {
-              console.log('[Timer] Offset not pre-calculated, calculating now...');
-              const offset = await calculateClockOffset(firestore);
+      if (questionStartTime) {
+        const questionStartMillis = questionStartTime.toMillis();
+        const nowMillis = Date.now() + clockOffsetRef.current; // Use cached offset
+        const elapsedMillis = nowMillis - questionStartMillis;
+        const elapsedSeconds = Math.floor(elapsedMillis / 1000);
 
-              // Validate offset is reasonable (within ±5 minutes)
-              if (isOffsetReasonable(offset)) {
-                clockOffsetRef.current = offset;
-                console.log(`[Timer] Clock sync successful, offset: ${offset.toFixed(0)}ms`);
-              } else {
-                console.warn(`[Timer] Unreasonable offset detected (${offset.toFixed(0)}ms), using fallback`);
-                clockOffsetRef.current = 0;
-              }
-            } catch (error) {
-              console.error('[Timer] Clock sync failed, falling back to local time:', error);
-              clockOffsetRef.current = 0;
-            }
-          } else {
-            console.log(`[Timer] Using pre-calculated offset: ${clockOffsetRef.current.toFixed(0)}ms`);
-          }
-
-          // Calculate initial time using synchronized clock (pre-calculated or just calculated)
-          try {
-            initialTime = calculateTimeRemaining(
-              questionStartTime.toMillis(),
-              timeLimit,
-              clockOffsetRef.current
-            );
-
-            console.log(`[Timer] Initial time - Remaining: ${initialTime}s (offset: ${clockOffsetRef.current.toFixed(0)}ms)`);
-          } catch (error) {
-            console.error('[Timer] Time calculation failed:', error);
-            // Fallback to basic sync without offset
-            const elapsedSeconds = Math.floor((Date.now() - questionStartTime.toMillis()) / 1000);
-            if (elapsedSeconds >= 0 && elapsedSeconds < timeLimit) {
-              initialTime = Math.max(0, timeLimit - elapsedSeconds);
-            }
-          }
-        } else if (questionStartTime) {
-          // Fallback: Basic sync without clock offset
-          const questionStartMillis = questionStartTime.toMillis();
-          const nowMillis = Date.now();
-          const elapsedMillis = nowMillis - questionStartMillis;
-          const elapsedSeconds = Math.floor(elapsedMillis / 1000);
-
-          if (elapsedSeconds >= 0 && elapsedSeconds < timeLimit) {
-            initialTime = Math.max(0, timeLimit - elapsedSeconds);
-            console.log(`[Timer] Basic sync (no clock offset) - Remaining: ${initialTime}s`);
-          } else {
-            console.warn(`[Timer] Clock skew detected: elapsed=${elapsedSeconds}s, using full time`);
-            initialTime = timeLimit;
-          }
+        if (elapsedSeconds >= 0 && elapsedSeconds < timeLimit) {
+          initialTime = Math.max(0, timeLimit - elapsedSeconds);
+          console.log(`[Timer] Initial time: ${initialTime}s (elapsed: ${elapsedSeconds}s, offset: ${clockOffsetRef.current.toFixed(0)}ms)`);
+        } else if (elapsedSeconds < 0) {
+          console.warn(`[Timer] Question not started yet, using full time`);
+          initialTime = timeLimit;
+        } else {
+          console.warn(`[Timer] Time already expired (elapsed: ${elapsedSeconds}s), starting at 0`);
+          initialTime = 0;
         }
+      }
 
-        setTime(initialTime);
+      setTime(initialTime);
 
-        // HYBRID SYNC PHASE 2: Local countdown for smooth UX
-        countdownIntervalRef.current = setInterval(() => {
-          setTime(prev => {
-            if (prev <= 1) {
-              // Clear timer before calling auto-finish
-              if (countdownIntervalRef.current) {
-                clearInterval(countdownIntervalRef.current);
-              }
-              // Auto-finish on timeout (host only)
-              if (onAutoFinish && !finishedRef.current) {
-                finishedRef.current = true;
-                onAutoFinish();
-              }
-              return 0;
+      // Start countdown immediately (don't wait for async operations)
+      countdownIntervalRef.current = setInterval(() => {
+        setTime(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownIntervalRef.current!);
+            // Auto-finish on timeout (host only)
+            if (onAutoFinish && !finishedRef.current) {
+              finishedRef.current = true;
+              onAutoFinish();
             }
-            return prev - 1;
-          });
-        }, 1000);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
 
-        // HYBRID SYNC PHASE 3: Drift detection and auto-correction
-        if (useClockSync && questionStartTime) {
-          driftCheckIntervalRef.current = setInterval(() => {
-            const drift = detectDrift(
-              timeRef.current, // Use ref to get current value, not stale closure
-              questionStartTime.toMillis(),
-              timeLimit,
-              clockOffsetRef.current,
-              DRIFT_THRESHOLD_SECONDS
-            );
+      // Background: Sync clock offset once per question (non-blocking)
+      if (useClockSync && firestore && !offsetReadyRef.current) {
+        offsetReadyRef.current = true; // Mark as syncing to avoid duplicate calls
 
-            if (drift.hasDrift) {
-              console.warn(
-                `[Timer] Auto-correcting drift: ${timeRef.current}s → ${drift.correctTime}s ` +
-                `(drift: ${drift.driftAmount.toFixed(2)}s)`
+        // Single-sample sync (fast, ~100-200ms)
+        calculateClockOffset(firestore, 1).then(offset => {
+          if (isOffsetReasonable(offset)) {
+            const oldOffset = clockOffsetRef.current;
+            clockOffsetRef.current = offset;
+
+            // Adjust current time if offset changed significantly (>1 second)
+            if (Math.abs(offset - oldOffset) > 1000) {
+              const correctTime = calculateTimeRemaining(
+                questionStartTime!.toMillis(),
+                timeLimit,
+                offset
               );
-              setTime(drift.correctTime);
+              console.log(`[Timer] Offset updated: ${oldOffset.toFixed(0)}ms → ${offset.toFixed(0)}ms, adjusting time: ${timeRef.current}s → ${correctTime}s`);
+              setTime(correctTime);
+            } else {
+              console.log(`[Timer] Offset synced: ${offset.toFixed(0)}ms (no adjustment needed)`);
             }
-          }, DRIFT_CHECK_INTERVAL_MS);
-        }
-      };
+          }
+        }).catch(error => {
+          console.error('[Timer] Clock sync failed:', error);
+        });
+      }
 
-      syncAndStartTimer();
+      // Periodic drift check (every 5 seconds, relaxed threshold)
+      if (useClockSync && questionStartTime) {
+        driftCheckIntervalRef.current = setInterval(() => {
+          const drift = detectDrift(
+            timeRef.current,
+            questionStartTime.toMillis(),
+            timeLimit,
+            clockOffsetRef.current,
+            1.0 // 1 second threshold (relaxed from 0.2s)
+          );
+
+          if (drift.hasDrift) {
+            console.warn(`[Timer] Auto-correcting drift: ${timeRef.current}s → ${drift.correctTime}s`);
+            setTime(drift.correctTime);
+          }
+        }, 5000); // Check every 5 seconds
+      }
 
       // Cleanup function
       return () => {
@@ -270,58 +200,42 @@ export function useQuestionTimer({
         if (driftCheckIntervalRef.current) {
           clearInterval(driftCheckIntervalRef.current);
         }
+        // Reset offset ready flag for next question
+        offsetReadyRef.current = false;
       };
     }
   }, [currentQuestionIndex, isActive, timeLimit, questionStartTime, onAutoFinish, useClockSync, firestore]);
 
-  // HYBRID SYNC PHASE 4: Handle tab backgrounding / device sleep
+  // Handle tab backgrounding / device sleep - re-sync when tab becomes visible
   useEffect(() => {
     if (!useClockSync || !isActive || !questionStartTime || !firestore) {
       return;
     }
 
-    let cancelled = false;
-
-    const handleVisibilityChange = async () => {
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('[Timer] Tab became visible, re-syncing clock...');
+        console.log('[Timer] Tab became visible, re-syncing...');
 
-        try {
-          // Re-sync clock offset
-          const offset = await calculateClockOffset(firestore);
-
-          // Check if component unmounted or state changed during async operation
-          if (cancelled) {
-            console.log('[Timer] Re-sync cancelled (state changed)');
-            return;
-          }
-
+        // Background sync (non-blocking)
+        calculateClockOffset(firestore, 1).then(offset => {
           if (isOffsetReasonable(offset)) {
             clockOffsetRef.current = offset;
-
-            // Recalculate time remaining
             const correctTime = calculateTimeRemaining(
               questionStartTime.toMillis(),
               timeLimit,
               offset
             );
-
-            console.log(`[Timer] Re-synced after tab focus - Remaining: ${correctTime}s (offset: ${offset.toFixed(0)}ms)`);
+            console.log(`[Timer] Re-synced: ${correctTime}s (offset: ${offset.toFixed(0)}ms)`);
             setTime(correctTime);
           }
-        } catch (error) {
-          if (!cancelled) {
-            console.error('[Timer] Re-sync failed:', error);
-          }
-        }
+        }).catch(error => {
+          console.error('[Timer] Re-sync failed:', error);
+        });
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      cancelled = true;
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [useClockSync, isActive, questionStartTime, timeLimit, firestore]);
 
   // Reset timer function (player only)

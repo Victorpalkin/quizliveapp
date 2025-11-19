@@ -7,13 +7,15 @@ type PlayerState = 'joining' | 'lobby' | 'preparing' | 'question' | 'waiting' | 
 /**
  * Player-specific wrapper for shared question timer hook
  * Enables clock synchronization to prevent timer skew issues
- * Pre-calculates offset in preparing state for accurate initial time
+ *
+ * @param clockOffset - Pre-calculated clock offset from lobby (optimizes first question start)
  */
 export function useQuestionTimer(
   state: PlayerState,
   timeLimit: number,
   questionStartTime: Timestamp | undefined,
-  currentQuestionIndex: number
+  currentQuestionIndex: number,
+  clockOffset: number = 0
 ) {
   const firestore = useFirestore();
 
@@ -22,9 +24,9 @@ export function useQuestionTimer(
     questionStartTime,
     currentQuestionIndex,
     isActive: state === 'question',
-    isPreparing: state === 'preparing', // Signal to pre-calculate offset
     firestore,
     enableClockSync: true,
+    initialClockOffset: clockOffset,
   });
 
   return {

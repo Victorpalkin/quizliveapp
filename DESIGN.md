@@ -1,6 +1,6 @@
 # gQuiz Design System
 
-**Design Philosophy**: Minimalist, Apple-inspired aesthetic with clean cards, subtle gradients, and sophisticated typography. Completely distinct from Kahoot's colorful game-show aesthetic.
+**Design Philosophy**: Minimalist, Apple-inspired aesthetic with clean cards, subtle gradients, and sophisticated typography. Completely distinct from colorful game-show aesthetic.
 
 ---
 
@@ -8,7 +8,7 @@
 
 ### Light Theme
 ```css
-Background:       #FFFFFF (Pure white)
+Background:       #FFFFFF (Pure whsite)
 Foreground:       #171717 (Nearly black)
 Card:             #FFFFFF (White)
 Card Border:      #EDEDED (Subtle gray)

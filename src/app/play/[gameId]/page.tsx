@@ -9,6 +9,7 @@ import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
 import type { Quiz, Player, Game, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import { handleFirestoreError } from '@/lib/utils/error-utils';
+import { calculateClockOffset, isOffsetReasonable } from '@/lib/utils/clock-sync';
 
 // Hooks
 import { useSessionManager } from './hooks/use-session-manager';
@@ -55,6 +56,7 @@ export default function PlayerGamePage() {
   const [gameDocId, setGameDocId] = useState<string | null>(storedSession?.gameDocId || null);
   const [playerId] = useState(storedSession?.playerId || nanoid());
   const [player, setPlayer] = useState<Player | null>(null);
+  const [clockOffset, setClockOffset] = useState(0);
 
   // Answer state
   const [lastAnswer, setLastAnswer] = useState<AnswerResult | null>(null);
@@ -83,12 +85,13 @@ export default function PlayerGamePage() {
     gameLoading
   );
 
-  // Timer
+  // Timer (with pre-calculated clock offset from lobby)
   const { time, resetTimer } = useQuestionTimer(
     state,
     timeLimit,
     game?.questionStartTime,
-    game?.currentQuestionIndex || 0
+    game?.currentQuestionIndex || 0,
+    clockOffset
   );
 
   // Answer submission
@@ -105,6 +108,25 @@ export default function PlayerGamePage() {
   // Wake lock
   const shouldKeepAwake = ['lobby', 'preparing', 'question', 'waiting', 'result'].includes(state);
   useWakeLock(shouldKeepAwake);
+
+  // Pre-calculate clock offset when entering lobby (optimizes timer start on first question)
+  useEffect(() => {
+    if (state === 'lobby' && clockOffset === 0) {
+      console.log('[Lobby] Starting clock synchronization...');
+      calculateClockOffset(firestore, 1)
+        .then(offset => {
+          if (isOffsetReasonable(offset)) {
+            setClockOffset(offset);
+            console.log(`[Lobby] Clock synced: ${offset.toFixed(0)}ms offset`);
+          } else {
+            console.warn(`[Lobby] Clock offset unreasonable: ${offset}ms, using 0`);
+          }
+        })
+        .catch(error => {
+          console.error('[Lobby] Clock sync failed:', error);
+        });
+    }
+  }, [state, firestore, clockOffset]);
 
   // Handle reconnection
   useEffect(() => {
