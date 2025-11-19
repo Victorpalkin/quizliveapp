@@ -15,6 +15,10 @@ import {
   TriangleIcon,
   CircleIcon,
   SquareIcon,
+  StarIcon,
+  PentagonIcon,
+  HexagonIcon,
+  HeartIcon,
 } from '@/components/app/quiz-icons';
 import { ANSWER_COLORS } from '@/lib/constants';
 import { QuestionCounter } from '@/components/app/question-counter';
@@ -39,10 +43,10 @@ const answerIcons = [
   DiamondIcon,
   SquareIcon,
   CircleIcon,
-  TriangleIcon,
-  DiamondIcon,
-  SquareIcon,
-  CircleIcon,
+  StarIcon,
+  PentagonIcon,
+  HexagonIcon,
+  HeartIcon,
 ];
 
 export default function HostGamePage() {

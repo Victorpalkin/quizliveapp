@@ -11,6 +11,10 @@ import {
   TriangleIcon,
   CircleIcon,
   SquareIcon,
+  StarIcon,
+  PentagonIcon,
+  HexagonIcon,
+  HeartIcon,
 } from '@/components/app/quiz-icons';
 import { ANSWER_COLORS } from '@/lib/constants';
 
@@ -19,10 +23,10 @@ const answerIcons = [
   DiamondIcon,
   SquareIcon,
   CircleIcon,
-  TriangleIcon, // Repeat for more than 4
-  DiamondIcon,
-  SquareIcon,
-  CircleIcon,
+  StarIcon,
+  PentagonIcon,
+  HexagonIcon,
+  HeartIcon,
 ];
 
 interface SingleChoiceQuestionProps {
