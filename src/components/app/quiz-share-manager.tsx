@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Share2, Trash2, Loader2, UserPlus } from 'lucide-react';
 import { useCollection, useMemoFirebase, useFirestore, useUser } from '@/firebase';
-import { collection, addDoc, deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, serverTimestamp, setDoc, CollectionReference } from 'firebase/firestore';
 import type { QuizShare } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { quizShareConverter } from '@/firebase/converters';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +35,7 @@ export function QuizShareManager({ quizId, quizTitle }: QuizShareManagerProps) {
   const [sharing, setSharing] = useState(false);
 
   const sharesRef = useMemoFirebase(
-    () => collection(firestore, 'quizzes', quizId, 'shares') as any,
+    () => collection(firestore, 'quizzes', quizId, 'shares').withConverter(quizShareConverter) as CollectionReference<QuizShare>,
     [firestore, quizId]
   );
   const { data: shares, loading } = useCollection<QuizShare>(sharesRef);

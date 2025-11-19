@@ -15,10 +15,15 @@ import {
   TriangleIcon,
   CircleIcon,
   SquareIcon,
+  StarIcon,
+  PentagonIcon,
+  HexagonIcon,
+  HeartIcon,
 } from '@/components/app/quiz-icons';
 import { ANSWER_COLORS } from '@/lib/constants';
 import { QuestionCounter } from '@/components/app/question-counter';
 import { QuestionTypeBadges } from '@/components/app/question-type-badges';
+import { isSingleChoice, isMultipleChoice, isPoll } from '@/lib/type-guards';
 
 // Hooks
 import { useGameState } from './hooks/use-game-state';
@@ -38,10 +43,10 @@ const answerIcons = [
   DiamondIcon,
   SquareIcon,
   CircleIcon,
-  TriangleIcon,
-  DiamondIcon,
-  SquareIcon,
-  CircleIcon,
+  StarIcon,
+  PentagonIcon,
+  HexagonIcon,
+  HeartIcon,
 ];
 
 export default function HostGamePage() {
@@ -147,7 +152,7 @@ export default function HostGamePage() {
               <CardContent className="p-8">
                 <div className="flex flex-col items-center gap-3">
                   <p className="text-3xl font-bold">{question.text}</p>
-                  {question.type === 'multiple-choice' && <QuestionTypeBadges question={question} />}
+                  <QuestionTypeBadges question={question} />
                 </div>
               </CardContent>
             </Card>
@@ -194,9 +199,9 @@ export default function HostGamePage() {
           ) : (
             <div className="grid grid-cols-2 gap-4 mt-auto w-full max-w-4xl">
               {question.answers.map((ans, i) => {
-                const isCorrect = question.type === 'single-choice'
+                const isCorrect = isSingleChoice(question)
                   ? question.correctAnswerIndex === i
-                  : question.type === 'multiple-choice'
+                  : isMultipleChoice(question)
                   ? question.correctAnswerIndices.includes(i)
                   : false; // Poll questions don't have correct answers
                 const Icon = answerIcons[i % answerIcons.length];
@@ -204,9 +209,6 @@ export default function HostGamePage() {
                   <div key={i} className={`flex items-center gap-4 p-4 rounded-lg text-white relative ${ANSWER_COLORS[i % ANSWER_COLORS.length]}`}>
                     <Icon className="w-8 h-8 flex-shrink-0" />
                     <span className="text-2xl font-medium">{ans.text}</span>
-                    {question.type === 'multiple-choice' && isCorrect && (
-                      <CheckCircle className="absolute top-2 right-2 w-6 h-6" />
-                    )}
                   </div>
                 );
               })}

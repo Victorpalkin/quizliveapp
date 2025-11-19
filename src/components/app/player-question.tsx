@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
@@ -11,6 +11,10 @@ import {
   TriangleIcon,
   CircleIcon,
   SquareIcon,
+  StarIcon,
+  PentagonIcon,
+  HexagonIcon,
+  HeartIcon,
 } from '@/components/app/quiz-icons';
 import { ANSWER_COLORS } from '@/lib/constants';
 
@@ -19,10 +23,10 @@ const answerIcons = [
   DiamondIcon,
   SquareIcon,
   CircleIcon,
-  TriangleIcon, // Repeat for more than 4
-  DiamondIcon,
-  SquareIcon,
-  CircleIcon,
+  StarIcon,
+  PentagonIcon,
+  HexagonIcon,
+  HeartIcon,
 ];
 
 interface SingleChoiceQuestionProps {
@@ -31,39 +35,42 @@ interface SingleChoiceQuestionProps {
   disabled: boolean;
 }
 
-export function SingleChoiceQuestionComponent({ question, onSubmit, disabled }: SingleChoiceQuestionProps) {
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+export const SingleChoiceQuestionComponent = React.memo(
+  function SingleChoiceQuestionComponent({ question, onSubmit, disabled }: SingleChoiceQuestionProps) {
+    const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  const handleAnswerClick = (index: number) => {
-    if (disabled || selectedIndex !== null) return;
-    setSelectedIndex(index);
-    onSubmit(index);
-  };
+    const handleAnswerClick = (index: number) => {
+      if (disabled || selectedIndex !== null) return;
+      setSelectedIndex(index);
+      onSubmit(index);
+    };
 
-  return (
-    <div className={cn("grid gap-4 w-full h-full p-4", question.answers.length > 4 ? "grid-cols-2 grid-rows-4" : "grid-cols-2 grid-rows-2")}>
-      {question.answers.map((ans, i) => {
-        const Icon = answerIcons[i % answerIcons.length];
-        return (
-          <button
-            key={i}
-            onClick={() => handleAnswerClick(i)}
-            disabled={disabled || selectedIndex !== null}
-            className={cn(
-              'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform hover:scale-105 p-4',
-              ANSWER_COLORS[i % ANSWER_COLORS.length],
-              selectedIndex !== null && selectedIndex !== i ? 'opacity-25' : '',
-              selectedIndex !== null && selectedIndex === i ? 'scale-110 border-4 border-white' : ''
-            )}
-          >
-            <Icon className="w-16 h-16 md:w-24 md:h-24 mb-2" />
-            <span className="text-xl md:text-2xl font-bold">{ans.text}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+    return (
+      <div className={cn("grid gap-4 w-full h-full p-4", question.answers.length > 4 ? "grid-cols-2 grid-rows-4" : "grid-cols-2 grid-rows-2")}>
+        {question.answers.map((ans, i) => {
+          const Icon = answerIcons[i % answerIcons.length];
+          return (
+            <button
+              key={i}
+              onClick={() => handleAnswerClick(i)}
+              disabled={disabled || selectedIndex !== null}
+              className={cn(
+                'flex flex-col items-center justify-center rounded-lg text-white transition-all duration-300 transform hover:scale-105 p-4',
+                ANSWER_COLORS[i % ANSWER_COLORS.length],
+                selectedIndex !== null && selectedIndex !== i ? 'opacity-25' : '',
+                selectedIndex !== null && selectedIndex === i ? 'scale-110 border-4 border-white' : ''
+              )}
+            >
+              <Icon className="w-16 h-16 md:w-24 md:h-24 mb-2" />
+              <span className="text-xl md:text-2xl font-bold">{ans.text}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+);
+SingleChoiceQuestionComponent.displayName = 'SingleChoiceQuestionComponent';
 
 interface MultipleChoiceQuestionProps {
   question: MultipleChoiceQuestion;
@@ -71,7 +78,8 @@ interface MultipleChoiceQuestionProps {
   disabled: boolean;
 }
 
-export function MultipleChoiceQuestionComponent({ question, onSubmit, disabled }: MultipleChoiceQuestionProps) {
+export const MultipleChoiceQuestionComponent = React.memo(
+  function MultipleChoiceQuestionComponent({ question, onSubmit, disabled }: MultipleChoiceQuestionProps) {
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [submitted, setSubmitted] = useState(false);
 
@@ -128,6 +136,8 @@ export function MultipleChoiceQuestionComponent({ question, onSubmit, disabled }
     </div>
   );
 }
+);
+MultipleChoiceQuestionComponent.displayName = 'MultipleChoiceQuestionComponent';
 
 interface SliderQuestionProps {
   question: SliderQuestion;
@@ -135,7 +145,8 @@ interface SliderQuestionProps {
   disabled: boolean;
 }
 
-export function SliderQuestionComponent({ question, onSubmit, disabled }: SliderQuestionProps) {
+export const SliderQuestionComponent = React.memo(
+  function SliderQuestionComponent({ question, onSubmit, disabled }: SliderQuestionProps) {
   const midpoint = (question.minValue + question.maxValue) / 2;
   const [sliderValue, setSliderValue] = useState<number>(midpoint);
   const [submitted, setSubmitted] = useState(false);
@@ -177,30 +188,35 @@ export function SliderQuestionComponent({ question, onSubmit, disabled }: Slider
     </div>
   );
 }
+);
+SliderQuestionComponent.displayName = 'SliderQuestionComponent';
 
 interface SlideQuestionProps {
   question: SlideQuestion;
 }
 
-export function SlideQuestionComponent({ question }: SlideQuestionProps) {
-  return (
-    <div className="w-full max-w-2xl px-8 space-y-8">
-      <div className="text-center space-y-6">
-        <h2 className="text-4xl font-bold text-primary">
-          {question.text}
-        </h2>
-        {question.description && (
-          <p className="text-xl text-muted-foreground whitespace-pre-wrap">
-            {question.description}
+export const SlideQuestionComponent = React.memo(
+  function SlideQuestionComponent({ question }: SlideQuestionProps) {
+    return (
+      <div className="w-full max-w-2xl px-8 space-y-8">
+        <div className="text-center space-y-6">
+          <h2 className="text-4xl font-bold text-primary">
+            {question.text}
+          </h2>
+          {question.description && (
+            <p className="text-xl text-muted-foreground whitespace-pre-wrap">
+              {question.description}
+            </p>
+          )}
+          <p className="text-lg text-muted-foreground pt-8">
+            Waiting for host to continue...
           </p>
-        )}
-        <p className="text-lg text-muted-foreground pt-8">
-          Waiting for host to continue...
-        </p>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+);
+SlideQuestionComponent.displayName = 'SlideQuestionComponent';
 
 interface PollSingleQuestionProps {
   question: PollSingleQuestion;
@@ -208,7 +224,8 @@ interface PollSingleQuestionProps {
   disabled: boolean;
 }
 
-export function PollSingleQuestionComponent({ question, onSubmit, disabled }: PollSingleQuestionProps) {
+export const PollSingleQuestionComponent = React.memo(
+  function PollSingleQuestionComponent({ question, onSubmit, disabled }: PollSingleQuestionProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const handleAnswerClick = (index: number) => {
@@ -241,6 +258,8 @@ export function PollSingleQuestionComponent({ question, onSubmit, disabled }: Po
     </div>
   );
 }
+);
+PollSingleQuestionComponent.displayName = 'PollSingleQuestionComponent';
 
 interface PollMultipleQuestionProps {
   question: PollMultipleQuestion;
@@ -248,7 +267,8 @@ interface PollMultipleQuestionProps {
   disabled: boolean;
 }
 
-export function PollMultipleQuestionComponent({ question, onSubmit, disabled }: PollMultipleQuestionProps) {
+export const PollMultipleQuestionComponent = React.memo(
+  function PollMultipleQuestionComponent({ question, onSubmit, disabled }: PollMultipleQuestionProps) {
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [submitted, setSubmitted] = useState(false);
 
@@ -305,3 +325,5 @@ export function PollMultipleQuestionComponent({ question, onSubmit, disabled }: 
     </div>
   );
 }
+);
+PollMultipleQuestionComponent.displayName = 'PollMultipleQuestionComponent';

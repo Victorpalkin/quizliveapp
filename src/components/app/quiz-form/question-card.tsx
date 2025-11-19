@@ -1,4 +1,3 @@
-import { Control } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -11,7 +10,6 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
-import type { QuizFormData } from '../quiz-form';
 import { ImageUpload } from './shared/image-upload';
 import { SingleChoiceEditor } from './question-editors/single-choice-editor';
 import { MultipleChoiceEditor } from './question-editors/multiple-choice-editor';
@@ -19,6 +17,7 @@ import { SliderEditor } from './question-editors/slider-editor';
 import { SlideEditor } from './question-editors/slide-editor';
 import { PollSingleEditor } from './question-editors/poll-single-editor';
 import { PollMultipleEditor } from './question-editors/poll-multiple-editor';
+import { useQuizFormContext } from './context';
 
 type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion;
 
@@ -26,31 +25,25 @@ interface QuestionCardProps {
   id: string;
   question: Question;
   questionIndex: number;
-  totalQuestions: number;
-  control: Control<QuizFormData>;
-  onUpdateQuestion: (updatedQuestion: Question) => void;
-  onRemoveQuestion: () => void;
-  onConvertType: (type: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'poll-single' | 'poll-multiple') => void;
-  onAddAnswer: () => void;
-  onRemoveAnswer: (answerIndex: number) => void;
-  onImageUpload: (file: File) => void;
-  onImageRemove: () => void;
 }
 
 export function QuestionCard({
   id,
   question,
   questionIndex,
-  totalQuestions,
-  control,
-  onUpdateQuestion,
-  onRemoveQuestion,
-  onConvertType,
-  onAddAnswer,
-  onRemoveAnswer,
-  onImageUpload,
-  onImageRemove,
 }: QuestionCardProps) {
+  // Get operations from context
+  const {
+    control,
+    updateQuestion: onUpdateQuestion,
+    removeQuestion: onRemoveQuestion,
+    convertType: onConvertType,
+    addAnswer: onAddAnswer,
+    removeAnswer: onRemoveAnswer,
+    uploadImage: onImageUpload,
+    removeImage: onImageRemove,
+    totalQuestions,
+  } = useQuizFormContext();
   const {
     attributes,
     listeners,
@@ -87,7 +80,7 @@ export function QuestionCard({
       <CardHeader className="flex-row items-start justify-between">
         <CardTitle className="text-lg">Question {questionIndex + 1}</CardTitle>
         {totalQuestions > 1 && (
-          <Button variant="ghost" size="icon" onClick={onRemoveQuestion} type="button">
+          <Button variant="ghost" size="icon" onClick={() => onRemoveQuestion(questionIndex)} type="button">
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         )}
@@ -99,7 +92,7 @@ export function QuestionCard({
           <RadioGroup
             value={question.type}
             onValueChange={(value: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'poll-single' | 'poll-multiple') => {
-              onConvertType(value);
+              onConvertType(questionIndex, value);
             }}
             className="flex flex-wrap gap-4"
           >
@@ -144,7 +137,7 @@ export function QuestionCard({
                   maxLength={500}
                   onChange={(e) => {
                     field.onChange(e);
-                    onUpdateQuestion({ ...question, text: e.target.value });
+                    onUpdateQuestion(questionIndex, { ...question, text: e.target.value });
                   }}
                 />
               </FormControl>
@@ -157,8 +150,8 @@ export function QuestionCard({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <ImageUpload
             imageUrl={question.imageUrl}
-            onUpload={onImageUpload}
-            onRemove={onImageRemove}
+            onUpload={(file) => onImageUpload(questionIndex, file)}
+            onRemove={() => onImageRemove(questionIndex)}
             questionNumber={questionIndex + 1}
           />
           <FormField
@@ -171,7 +164,7 @@ export function QuestionCard({
                   onValueChange={(value) => {
                     const time = parseInt(value, 10);
                     field.onChange(time);
-                    onUpdateQuestion({ ...question, timeLimit: time });
+                    onUpdateQuestion(questionIndex, { ...question, timeLimit: time });
                   }}
                   defaultValue={String(field.value || 20)}
                 >
@@ -199,9 +192,9 @@ export function QuestionCard({
             question={question}
             questionIndex={questionIndex}
             control={control}
-            onUpdateQuestion={onUpdateQuestion}
-            onAddAnswer={onAddAnswer}
-            onRemoveAnswer={onRemoveAnswer}
+            onUpdateQuestion={(updatedQ) => onUpdateQuestion(questionIndex, updatedQ)}
+            onAddAnswer={() => onAddAnswer(questionIndex)}
+            onRemoveAnswer={(aIndex) => onRemoveAnswer(questionIndex, aIndex)}
           />
         )}
 
@@ -210,23 +203,23 @@ export function QuestionCard({
             question={question}
             questionIndex={questionIndex}
             control={control}
-            onUpdateQuestion={onUpdateQuestion}
-            onAddAnswer={onAddAnswer}
-            onRemoveAnswer={onRemoveAnswer}
+            onUpdateQuestion={(updatedQ) => onUpdateQuestion(questionIndex, updatedQ)}
+            onAddAnswer={() => onAddAnswer(questionIndex)}
+            onRemoveAnswer={(aIndex) => onRemoveAnswer(questionIndex, aIndex)}
           />
         )}
 
         {question.type === 'slider' && (
           <SliderEditor
             question={question}
-            onUpdateQuestion={onUpdateQuestion}
+            onUpdateQuestion={(updatedQ) => onUpdateQuestion(questionIndex, updatedQ)}
           />
         )}
 
         {question.type === 'slide' && (
           <SlideEditor
             question={question}
-            onUpdateQuestion={onUpdateQuestion}
+            onUpdateQuestion={(updatedQ) => onUpdateQuestion(questionIndex, updatedQ)}
           />
         )}
 
@@ -235,9 +228,9 @@ export function QuestionCard({
             question={question}
             questionIndex={questionIndex}
             control={control}
-            onUpdateQuestion={onUpdateQuestion}
-            onAddAnswer={onAddAnswer}
-            onRemoveAnswer={onRemoveAnswer}
+            onUpdateQuestion={(updatedQ) => onUpdateQuestion(questionIndex, updatedQ)}
+            onAddAnswer={() => onAddAnswer(questionIndex)}
+            onRemoveAnswer={(aIndex) => onRemoveAnswer(questionIndex, aIndex)}
           />
         )}
 
@@ -246,9 +239,9 @@ export function QuestionCard({
             question={question}
             questionIndex={questionIndex}
             control={control}
-            onUpdateQuestion={onUpdateQuestion}
-            onAddAnswer={onAddAnswer}
-            onRemoveAnswer={onRemoveAnswer}
+            onUpdateQuestion={(updatedQ) => onUpdateQuestion(questionIndex, updatedQ)}
+            onAddAnswer={() => onAddAnswer(questionIndex)}
+            onRemoveAnswer={(aIndex) => onRemoveAnswer(questionIndex, aIndex)}
           />
         )}
       </CardContent>

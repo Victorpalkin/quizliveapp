@@ -3,7 +3,8 @@ import { useFirestore, useFunctions } from '@/firebase';
 import { Timestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
-import type { Player, PlayerAnswer, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
+import type { Player, PlayerAnswer, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion, SubmitAnswerResponse } from '@/lib/types';
+import { calculateTimeBasedScore, calculateProportionalScore, calculateSliderScore } from '@/lib/scoring';
 
 type AnswerResult = {
   selected: number;
@@ -37,14 +38,9 @@ export function useAnswerSubmission(
 
     answerSubmittedRef.current = true;
 
-    // Optimistic UI: Calculate estimated points
+    // Optimistic UI: Calculate estimated points using scoring utility
     const isCorrectAnswer = answerIndex === question.correctAnswerIndex;
-    let estimatedPoints = 0;
-    if (isCorrectAnswer) {
-      estimatedPoints = 100;
-      const timeBonus = Math.round((timeRemaining / timeLimit) * 900);
-      estimatedPoints = Math.min(1000, estimatedPoints + timeBonus);
-    }
+    const estimatedPoints = calculateTimeBasedScore(isCorrectAnswer, timeRemaining, timeLimit);
 
     // Show result immediately (optimistic)
     setLastAnswer({
@@ -83,9 +79,9 @@ export function useAnswerSubmission(
     };
 
     try {
-      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
+      const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
       const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore } = result.data as any;
+      const { points: actualPoints, newScore } = result.data;
 
       // Update with actual values if different
       if (actualPoints !== estimatedPoints) {
@@ -103,7 +99,27 @@ export function useAnswerSubmission(
       }
     } catch (error: any) {
       console.error('Error submitting answer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit answer. Your score may not be saved.' });
+
+      // Provide specific error messages based on error code
+      if (error.code === 'functions/deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Too Late',
+          description: 'Your answer was submitted after the time limit and was not counted.'
+        });
+      } else if (error.code === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Not Accepted',
+          description: error.message || 'The game state changed before your answer could be processed.'
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit answer. Your score may not be saved.'
+        });
+      }
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
@@ -118,25 +134,22 @@ export function useAnswerSubmission(
 
     answerSubmittedRef.current = true;
 
-    // Optimistic UI: Calculate estimated points
+    // Optimistic UI: Calculate estimated points using scoring utility
     const correctAnswerIndices = question.correctAnswerIndices;
     const correctSelected = answerIndices.filter(i => correctAnswerIndices.includes(i)).length;
     const wrongSelected = answerIndices.filter(i => !correctAnswerIndices.includes(i)).length;
     const totalCorrect = correctAnswerIndices.length;
 
-    const correctRatio = correctSelected / totalCorrect;
-    const penalty = wrongSelected * 0.2;
-    const scoreMultiplier = Math.max(0, correctRatio - penalty);
-    const basePoints = Math.round(1000 * scoreMultiplier);
+    const estimatedPoints = calculateProportionalScore(
+      correctSelected,
+      wrongSelected,
+      totalCorrect,
+      timeRemaining,
+      timeLimit
+    );
 
     const isCorrectAnswer = correctSelected === totalCorrect && wrongSelected === 0;
-    const isPartiallyCorrectAnswer = !isCorrectAnswer && scoreMultiplier > 0;
-
-    let estimatedPoints = basePoints;
-    if (isCorrectAnswer && estimatedPoints > 0) {
-      const timeBonus = Math.round((timeRemaining / timeLimit) * 900);
-      estimatedPoints = Math.min(1000, estimatedPoints + timeBonus);
-    }
+    const isPartiallyCorrectAnswer = !isCorrectAnswer && estimatedPoints > 0;
 
     // Show result immediately (optimistic)
     setLastAnswer({
@@ -176,9 +189,9 @@ export function useAnswerSubmission(
     };
 
     try {
-      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
+      const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
       const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore, isPartiallyCorrect } = result.data as any;
+      const { points: actualPoints, newScore, isPartiallyCorrect } = result.data;
 
       // Update with actual values if different
       if (actualPoints !== estimatedPoints || isPartiallyCorrect !== isPartiallyCorrectAnswer) {
@@ -195,7 +208,27 @@ export function useAnswerSubmission(
       }
     } catch (error: any) {
       console.error('Error submitting answer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit answer. Your score may not be saved.' });
+
+      // Provide specific error messages based on error code
+      if (error.code === 'functions/deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Too Late',
+          description: 'Your answer was submitted after the time limit and was not counted.'
+        });
+      } else if (error.code === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Not Accepted',
+          description: error.message || 'The game state changed before your answer could be processed.'
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit answer. Your score may not be saved.'
+        });
+      }
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
@@ -209,19 +242,16 @@ export function useAnswerSubmission(
 
     answerSubmittedRef.current = true;
 
-    // Optimistic UI: Calculate estimated points (50/50 accuracy/speed)
-    const range = question.maxValue - question.minValue;
-    const distance = Math.abs(sliderValue - question.correctValue);
-    const accuracy = Math.max(0, 1 - (distance / range));
-
-    const scoreMultiplier = Math.pow(accuracy, 2);
-    const accuracyComponent = Math.round(500 * scoreMultiplier);
-    const speedComponent = Math.round(500 * (timeRemaining / (question.timeLimit || 20)));
-    const estimatedPoints = accuracyComponent + speedComponent;
-
-    // Configurable acceptable error threshold (default: 5% of range)
-    const threshold = question.acceptableError ?? (range * 0.05);
-    const isCorrectAnswer = distance <= threshold;
+    // Optimistic UI: Calculate estimated points using scoring utility
+    const { points: estimatedPoints, isCorrect: isCorrectAnswer } = calculateSliderScore(
+      sliderValue,
+      question.correctValue,
+      question.minValue,
+      question.maxValue,
+      timeRemaining,
+      question.timeLimit || 20,
+      question.acceptableError
+    );
 
     // Show result immediately (optimistic) - no "partially correct" for sliders
     setLastAnswer({
@@ -263,9 +293,9 @@ export function useAnswerSubmission(
     };
 
     try {
-      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
+      const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
       const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore } = result.data as any;
+      const { points: actualPoints, newScore } = result.data;
 
       // Update with actual values if different
       if (actualPoints !== estimatedPoints) {
@@ -282,7 +312,27 @@ export function useAnswerSubmission(
       }
     } catch (error: any) {
       console.error('Error submitting answer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit answer. Your score may not be saved.' });
+
+      // Provide specific error messages based on error code
+      if (error.code === 'functions/deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Too Late',
+          description: 'Your answer was submitted after the time limit and was not counted.'
+        });
+      } else if (error.code === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Not Accepted',
+          description: error.message || 'The game state changed before your answer could be processed.'
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit answer. Your score may not be saved.'
+        });
+      }
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
@@ -384,7 +434,27 @@ export function useAnswerSubmission(
       await submitAnswerFn(submitData);
     } catch (error: any) {
       console.error('Error submitting poll answer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit poll response.' });
+
+      // Provide specific error messages based on error code
+      if (error.code === 'functions/deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Response Too Late',
+          description: 'Your poll response was submitted after the time limit.'
+        });
+      } else if (error.code === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Response Not Accepted',
+          description: error.message || 'The game state changed before your response could be processed.'
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit poll response.'
+        });
+      }
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
@@ -439,7 +509,27 @@ export function useAnswerSubmission(
       await submitAnswerFn(submitData);
     } catch (error: any) {
       console.error('Error submitting poll answer:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit poll response.' });
+
+      // Provide specific error messages based on error code
+      if (error.code === 'functions/deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Response Too Late',
+          description: 'Your poll response was submitted after the time limit.'
+        });
+      } else if (error.code === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Response Not Accepted',
+          description: error.message || 'The game state changed before your response could be processed.'
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit poll response.'
+        });
+      }
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 

@@ -10,6 +10,7 @@ import {
   PollMultipleQuestionComponent
 } from '@/components/app/player-question';
 import { QuestionCounter } from '@/components/app/question-counter';
+import { QuestionTypeBadges } from '@/components/app/question-type-badges';
 
 interface QuestionScreenProps {
   question: Question;
@@ -48,6 +49,7 @@ export function QuestionScreen({
     <div className="w-full h-full flex flex-col">
       <header className="p-4 flex items-center justify-center flex-col gap-2">
         <p className="text-2xl font-bold text-center">{question.text}</p>
+        <QuestionTypeBadges question={question} />
         {question.type === 'multiple-choice' && question.showAnswerCount !== false && (
           <p className="text-sm text-muted-foreground">
             Select {question.correctAnswerIndices.length} answer{question.correctAnswerIndices.length > 1 ? 's' : ''}

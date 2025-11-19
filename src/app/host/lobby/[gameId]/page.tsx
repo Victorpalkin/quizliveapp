@@ -54,7 +54,8 @@ export default function HostLobbyPage() {
   const gameRef = useMemoFirebase(() => doc(firestore, 'games', gameId) as DocumentReference<Game>, [firestore, gameId]);
   const { data: game, loading: gameLoading } = useDoc(gameRef);
 
-  const playersQuery = useMemoFirebase(() => collection(firestore, 'games', gameId, 'players'), [firestore, gameId]);
+  // Only create players query after game is loaded to prevent race condition
+  const playersQuery = useMemoFirebase(() => game ? collection(firestore, 'games', gameId, 'players') : null, [firestore, gameId, game]);
   const { data: players, loading: playersLoading } = useCollection(playersQuery);
 
   useEffect(() => {
@@ -155,7 +156,9 @@ export default function HostLobbyPage() {
             <Card>
               <CardHeader className="flex-row items-center gap-2">
                 <Users className="text-primary" />
-                <CardTitle>Players Joined ({players?.length || 0})</CardTitle>
+                <CardTitle>
+                  Players Joined ({playersLoading || gameLoading ? '...' : players?.length || 0})
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {playersLoading ? (
