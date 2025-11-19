@@ -57,6 +57,7 @@ export default function PlayerGamePage() {
   const [playerId] = useState(storedSession?.playerId || nanoid());
   const [player, setPlayer] = useState<Player | null>(null);
   const [clockOffset, setClockOffset] = useState(0);
+  const [offsetReady, setOffsetReady] = useState(false);
 
   // Answer state
   const [lastAnswer, setLastAnswer] = useState<AnswerResult | null>(null);
@@ -117,13 +118,16 @@ export default function PlayerGamePage() {
         .then(offset => {
           if (isOffsetReasonable(offset)) {
             setClockOffset(offset);
+            setOffsetReady(true);
             console.log(`[Lobby] Clock synced: ${offset.toFixed(0)}ms offset`);
           } else {
             console.warn(`[Lobby] Clock offset unreasonable: ${offset}ms, using 0`);
+            setOffsetReady(true); // Mark ready even if offset is 0 (fallback)
           }
         })
         .catch(error => {
           console.error('[Lobby] Clock sync failed:', error);
+          setOffsetReady(true); // Mark ready to prevent blocking (use 0 offset as fallback)
         });
     }
   }, [state, firestore, clockOffset]);
@@ -428,6 +432,11 @@ export default function PlayerGamePage() {
         return <PreparingScreen />;
 
       case 'question':
+        // Wait for offset calculation to complete before showing question
+        // This prevents timer from starting with wrong initial value (0 offset)
+        if (!offsetReady) {
+          return <PreparingScreen />;
+        }
         return (
           <QuestionScreen
             question={question!}
