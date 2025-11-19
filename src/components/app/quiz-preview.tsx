@@ -1,65 +1,80 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Clock, Gauge } from 'lucide-react';
 import Image from 'next/image';
 import type { Quiz } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { ANSWER_COLORS } from '@/lib/constants';
 
 interface QuizPreviewProps {
   quiz: Quiz;
   showCorrectAnswers?: boolean;
 }
 
+const colorGradients = [
+  { bg: 'from-purple-500/15 to-purple-500/8', border: 'border-purple-200 dark:border-purple-900' },
+  { bg: 'from-blue-500/15 to-blue-500/8', border: 'border-blue-200 dark:border-blue-900' },
+  { bg: 'from-green-500/15 to-green-500/8', border: 'border-green-200 dark:border-green-900' },
+  { bg: 'from-amber-500/15 to-amber-500/8', border: 'border-amber-200 dark:border-amber-900' },
+  { bg: 'from-rose-500/15 to-rose-500/8', border: 'border-rose-200 dark:border-rose-900' },
+  { bg: 'from-cyan-500/15 to-cyan-500/8', border: 'border-cyan-200 dark:border-cyan-900' },
+  { bg: 'from-indigo-500/15 to-indigo-500/8', border: 'border-indigo-200 dark:border-indigo-900' },
+  { bg: 'from-pink-500/15 to-pink-500/8', border: 'border-pink-200 dark:border-pink-900' },
+];
+
+const indexToLetter = (index: number): string => {
+  return String.fromCharCode(65 + index); // A, B, C, D, etc.
+};
+
 export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProps) {
   return (
-    <div className="space-y-6">
-      {/* Quiz Header */}
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold">{quiz.title}</h2>
+    <div className="space-y-8">
+      {/* Quiz Header - Minimalist */}
+      <div className="space-y-3">
+        <h2 className="text-3xl font-semibold">{quiz.title}</h2>
         {quiz.description && (
-          <p className="text-muted-foreground">{quiz.description}</p>
+          <p className="text-lg text-muted-foreground">{quiz.description}</p>
         )}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Badge variant="secondary">{quiz.questions.length} questions</Badge>
-        </div>
+        <Badge variant="secondary" className="rounded-full">
+          {quiz.questions.length} {quiz.questions.length === 1 ? 'Question' : 'Questions'}
+        </Badge>
       </div>
 
       {/* Questions */}
       <div className="space-y-6">
         {quiz.questions.map((question, qIndex) => (
-          <Card key={qIndex}>
-            <CardHeader>
+          <Card key={qIndex} className="rounded-2xl shadow-md border-card-border">
+            <CardHeader className="space-y-4">
+              {/* Question Header */}
               <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-lg">
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="rounded-full text-sm font-normal">
                       Question {qIndex + 1}
-                    </CardTitle>
-                    <Badge variant="outline" className="text-xs">
+                    </Badge>
+                    <Badge variant="secondary" className="rounded-full text-xs">
                       {question.type === 'slider' ? 'Slider' :
                        question.type === 'slide' ? 'Slide' :
                        question.type === 'single-choice' ? 'Single Choice' :
                        question.type === 'multiple-choice' ? 'Multiple Choice' :
-                       question.type === 'poll-single' ? 'Poll (Single)' :
+                       question.type === 'poll-single' ? 'Poll' :
                        'Poll (Multiple)'}
                     </Badge>
                   </div>
-                  <CardDescription className="text-base">
+                  <p className="text-xl font-semibold leading-tight">
                     {question.text}
-                  </CardDescription>
+                  </p>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   <Clock className="h-4 w-4" />
-                  <span>{question.timeLimit || 20}s</span>
+                  <span className="text-sm font-medium">{question.timeLimit || 20}s</span>
                 </div>
               </div>
 
               {/* Question Image */}
               {question.imageUrl && (
-                <div className="relative w-full aspect-video rounded-lg overflow-hidden mt-4 bg-muted">
+                <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-muted">
                   <Image
                     src={question.imageUrl}
                     alt={`Question ${qIndex + 1} image`}
@@ -70,38 +85,37 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
               )}
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="space-y-4">
               {/* Single Choice Question */}
               {question.type === 'single-choice' && (
                 <div className="space-y-4">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {showCorrectAnswers ? 'Correct Answer:' : 'Answers:'}
-                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {question.answers.map((answer, aIndex) => {
                       const isCorrect = question.correctAnswerIndex === aIndex;
-                      const colorClass = ANSWER_COLORS[aIndex % ANSWER_COLORS.length];
+                      const colors = colorGradients[aIndex % colorGradients.length];
 
                       return (
                         <div
                           key={aIndex}
                           className={cn(
-                            'p-4 rounded-lg text-white relative',
-                            colorClass,
-                            showCorrectAnswers && isCorrect && 'ring-4 ring-green-400 ring-offset-2'
+                            'relative p-6 rounded-xl border transition-all duration-300',
+                            `bg-gradient-to-r ${colors.bg}`,
+                            colors.border,
+                            showCorrectAnswers && isCorrect &&
+                              'ring-2 ring-green-500 ring-offset-2 dark:ring-offset-background'
                           )}
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-medium">{answer.text}</span>
+                          <div className="flex items-center gap-4">
+                            <div className="text-2xl font-semibold text-muted-foreground">
+                              {indexToLetter(aIndex)}
+                            </div>
+                            <div className="flex-1 text-base font-normal">
+                              {answer.text}
+                            </div>
                             {showCorrectAnswers && isCorrect && (
-                              <CheckCircle className="h-5 w-5 flex-shrink-0" />
+                              <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
                             )}
                           </div>
-                          {showCorrectAnswers && isCorrect && (
-                            <Badge className="absolute -top-2 -right-2 bg-green-500 text-white">
-                              Correct
-                            </Badge>
-                          )}
                         </div>
                       );
                     })}
@@ -112,48 +126,44 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
               {/* Multiple Choice Question */}
               {question.type === 'multiple-choice' && (
                 <div className="space-y-4">
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {question.correctAnswerIndices.length} correct answers
-                    </Badge>
-                    <Badge variant="default" className="text-xs">
-                      Proportional scoring
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="rounded-full text-xs">
+                      {question.correctAnswerIndices.length} correct {question.correctAnswerIndices.length === 1 ? 'answer' : 'answers'}
                     </Badge>
                     {question.showAnswerCount !== false && (
-                      <Badge variant="secondary" className="text-xs">
-                        Shows answer count
+                      <Badge variant="outline" className="rounded-full text-xs">
+                        Shows count
                       </Badge>
                     )}
                   </div>
 
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {showCorrectAnswers ? 'Correct Answers:' : 'Answers:'}
-                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {question.answers.map((answer, aIndex) => {
                       const isCorrect = question.correctAnswerIndices.includes(aIndex);
-                      const colorClass = ANSWER_COLORS[aIndex % ANSWER_COLORS.length];
+                      const colors = colorGradients[aIndex % colorGradients.length];
 
                       return (
                         <div
                           key={aIndex}
                           className={cn(
-                            'p-4 rounded-lg text-white relative',
-                            colorClass,
-                            showCorrectAnswers && isCorrect && 'ring-4 ring-green-400 ring-offset-2'
+                            'relative p-6 rounded-xl border transition-all duration-300',
+                            `bg-gradient-to-r ${colors.bg}`,
+                            colors.border,
+                            showCorrectAnswers && isCorrect &&
+                              'ring-2 ring-green-500 ring-offset-2 dark:ring-offset-background'
                           )}
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-medium">{answer.text}</span>
+                          <div className="flex items-center gap-4">
+                            <div className="text-2xl font-semibold text-muted-foreground">
+                              {indexToLetter(aIndex)}
+                            </div>
+                            <div className="flex-1 text-base font-normal">
+                              {answer.text}
+                            </div>
                             {showCorrectAnswers && isCorrect && (
-                              <CheckCircle className="h-5 w-5 flex-shrink-0" />
+                              <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
                             )}
                           </div>
-                          {showCorrectAnswers && isCorrect && (
-                            <Badge className="absolute -top-2 -right-2 bg-green-500 text-white">
-                              Correct
-                            </Badge>
-                          )}
                         </div>
                       );
                     })}
@@ -166,34 +176,32 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Gauge className="h-5 w-5" />
-                    <p className="text-sm font-medium">
-                      Numeric Range Question
-                    </p>
+                    <p className="text-sm font-medium">Numeric Range</p>
                   </div>
 
-                  <div className="bg-muted p-6 rounded-lg space-y-4">
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Minimum</p>
-                        <p className="text-2xl font-bold">{question.minValue}{question.unit}</p>
+                  <div className="bg-muted/50 p-6 rounded-xl space-y-6">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground font-medium">Min</p>
+                        <p className="text-2xl font-semibold">{question.minValue}{question.unit}</p>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Maximum</p>
-                        <p className="text-2xl font-bold">{question.maxValue}{question.unit}</p>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground font-medium">Max</p>
+                        <p className="text-2xl font-semibold">{question.maxValue}{question.unit}</p>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Step</p>
-                        <p className="text-2xl font-bold">{question.step || 1}</p>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground font-medium">Step</p>
+                        <p className="text-2xl font-semibold">{question.step || 1}</p>
                       </div>
                     </div>
 
                     {showCorrectAnswers && (
                       <div className="pt-4 border-t border-border">
-                        <div className="flex items-center justify-center gap-2">
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Correct Answer</p>
-                            <p className="text-3xl font-bold text-green-600">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground font-medium">Correct Answer</p>
+                            <p className="text-3xl font-semibold text-green-600 dark:text-green-500">
                               {question.correctValue}{question.unit}
                             </p>
                           </div>
@@ -202,8 +210,8 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
                     )}
                   </div>
 
-                  <p className="text-xs text-muted-foreground italic">
-                    Players will use a slider to select a value. Scoring is based on proximity to the correct answer.
+                  <p className="text-sm text-muted-foreground">
+                    Scoring based on proximity to correct answer
                   </p>
                 </div>
               )}
@@ -212,31 +220,22 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
               {question.type === 'slide' && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-xs">
-                      Informational Only
+                    <Badge variant="secondary" className="rounded-full text-xs">
+                      Informational
                     </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      No Scoring
+                    <Badge variant="outline" className="rounded-full text-xs">
+                      No scoring
                     </Badge>
                   </div>
 
-                  <div className="bg-muted p-6 rounded-lg space-y-4">
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Slide Text</p>
-                        <p className="text-2xl font-bold">{question.text}</p>
-                      </div>
-                      {question.description && (
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Description</p>
-                          <p className="text-sm whitespace-pre-wrap">{question.description}</p>
-                        </div>
-                      )}
+                  {question.description && (
+                    <div className="bg-muted/50 p-6 rounded-xl">
+                      <p className="text-base whitespace-pre-wrap">{question.description}</p>
                     </div>
-                  </div>
+                  )}
 
-                  <p className="text-xs text-muted-foreground italic">
-                    Players will view this slide and click Continue. No answer required and no points awarded.
+                  <p className="text-sm text-muted-foreground">
+                    Players view and click Continue • No points awarded
                   </p>
                 </div>
               )}
@@ -245,37 +244,42 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
               {question.type === 'poll-single' && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-xs">
-                      Survey/Poll Question
+                    <Badge variant="secondary" className="rounded-full text-xs">
+                      Poll
                     </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      No Scoring
+                    <Badge variant="outline" className="rounded-full text-xs">
+                      No scoring
                     </Badge>
                   </div>
 
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Answer Options:
-                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {question.answers.map((answer, aIndex) => {
-                      const colorClass = ANSWER_COLORS[aIndex % ANSWER_COLORS.length];
+                      const colors = colorGradients[aIndex % colorGradients.length];
 
                       return (
                         <div
                           key={aIndex}
                           className={cn(
-                            'p-4 rounded-lg text-white',
-                            colorClass
+                            'p-6 rounded-xl border',
+                            `bg-gradient-to-r ${colors.bg}`,
+                            colors.border
                           )}
                         >
-                          <span className="font-medium">{answer.text}</span>
+                          <div className="flex items-center gap-4">
+                            <div className="text-2xl font-semibold text-muted-foreground">
+                              {indexToLetter(aIndex)}
+                            </div>
+                            <div className="text-base font-normal">
+                              {answer.text}
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
 
-                  <p className="text-xs text-muted-foreground italic">
-                    Players select one option. Results shown as distribution only. No points awarded.
+                  <p className="text-sm text-muted-foreground">
+                    Results shown as distribution • No points awarded
                   </p>
                 </div>
               )}
@@ -284,40 +288,42 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
               {question.type === 'poll-multiple' && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-xs">
-                      Survey/Poll Question
+                    <Badge variant="secondary" className="rounded-full text-xs">
+                      Poll (Multiple)
                     </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      No Scoring
-                    </Badge>
-                    <Badge variant="default" className="text-xs">
-                      Multiple Selections
+                    <Badge variant="outline" className="rounded-full text-xs">
+                      No scoring
                     </Badge>
                   </div>
 
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Answer Options:
-                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {question.answers.map((answer, aIndex) => {
-                      const colorClass = ANSWER_COLORS[aIndex % ANSWER_COLORS.length];
+                      const colors = colorGradients[aIndex % colorGradients.length];
 
                       return (
                         <div
                           key={aIndex}
                           className={cn(
-                            'p-4 rounded-lg text-white',
-                            colorClass
+                            'p-6 rounded-xl border',
+                            `bg-gradient-to-r ${colors.bg}`,
+                            colors.border
                           )}
                         >
-                          <span className="font-medium">{answer.text}</span>
+                          <div className="flex items-center gap-4">
+                            <div className="text-2xl font-semibold text-muted-foreground">
+                              {indexToLetter(aIndex)}
+                            </div>
+                            <div className="text-base font-normal">
+                              {answer.text}
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
 
-                  <p className="text-xs text-muted-foreground italic">
-                    Players can select multiple options. Results shown as distribution only. No points awarded.
+                  <p className="text-sm text-muted-foreground">
+                    Multiple selections allowed • Results shown as distribution • No points awarded
                   </p>
                 </div>
               )}
