@@ -100,7 +100,7 @@ interface Game {
 
 interface PlayerAnswer {
   questionIndex: number;
-  questionType: 'single-choice' | 'multiple-choice' | 'slider';
+  questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'poll-single' | 'poll-multiple';
   timestamp: admin.firestore.FieldValue;
   answerIndex?: number;
   answerIndices?: number[];
