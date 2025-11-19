@@ -34,7 +34,7 @@ export function QuizShareManager({ quizId, quizTitle }: QuizShareManagerProps) {
   const [sharing, setSharing] = useState(false);
 
   const sharesRef = useMemoFirebase(
-    () => collection(firestore, 'quizzes', quizId, 'shares'),
+    () => collection(firestore, 'quizzes', quizId, 'shares') as any,
     [firestore, quizId]
   );
   const { data: shares, loading } = useCollection<QuizShare>(sharesRef);

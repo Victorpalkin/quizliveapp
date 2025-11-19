@@ -6,7 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Trash2 } from 'lucide-react';
+import { Trash2, GripVertical } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { cn } from '@/lib/utils';
 import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import type { QuizFormData } from '../quiz-form';
 import { ImageUpload } from './shared/image-upload';
@@ -20,6 +23,7 @@ import { PollMultipleEditor } from './question-editors/poll-multiple-editor';
 type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion;
 
 interface QuestionCardProps {
+  id: string;
   question: Question;
   questionIndex: number;
   totalQuestions: number;
@@ -34,6 +38,7 @@ interface QuestionCardProps {
 }
 
 export function QuestionCard({
+  id,
   question,
   questionIndex,
   totalQuestions,
@@ -46,8 +51,39 @@ export function QuestionCard({
   onImageUpload,
   onImageRemove,
 }: QuestionCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
   return (
-    <Card className="bg-background/50">
+    <div ref={setNodeRef} style={style} className="relative">
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className={cn(
+          "absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center cursor-grab active:cursor-grabbing z-10",
+          "text-muted-foreground hover:text-foreground transition-colors",
+          isDragging && "cursor-grabbing"
+        )}
+      >
+        <GripVertical className="h-5 w-5" />
+      </div>
+
+      <Card className={cn(
+        "bg-background/50 ml-8",
+        isDragging && "opacity-50 shadow-lg"
+      )}>
       <CardHeader className="flex-row items-start justify-between">
         <CardTitle className="text-lg">Question {questionIndex + 1}</CardTitle>
         {totalQuestions > 1 && (
@@ -217,5 +253,6 @@ export function QuestionCard({
         )}
       </CardContent>
     </Card>
+    </div>
   );
 }

@@ -196,7 +196,9 @@ export default function HostGamePage() {
               {question.answers.map((ans, i) => {
                 const isCorrect = question.type === 'single-choice'
                   ? question.correctAnswerIndex === i
-                  : question.correctAnswerIndices.includes(i);
+                  : question.type === 'multiple-choice'
+                  ? question.correctAnswerIndices.includes(i)
+                  : false; // Poll questions don't have correct answers
                 const Icon = answerIcons[i % answerIcons.length];
                 return (
                   <div key={i} className={`flex items-center gap-4 p-4 rounded-lg text-white relative ${ANSWER_COLORS[i % ANSWER_COLORS.length]}`}>

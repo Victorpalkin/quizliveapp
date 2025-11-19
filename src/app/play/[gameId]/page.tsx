@@ -220,9 +220,17 @@ export default function PlayerGamePage() {
       }
 
       // Set local state immediately for question types that need answers
+      const correctAnswers = question.type === 'single-choice'
+        ? [question.correctAnswerIndex]
+        : question.type === 'multiple-choice'
+        ? question.correctAnswerIndices
+        : question.type === 'slider'
+        ? [1]
+        : []; // Poll types have no correct answers
+
       setLastAnswer({
         selected: -1,
-        correct: question.type === 'single-choice' ? [question.correctAnswerIndex] : (question.type === 'multiple-choice' ? question.correctAnswerIndices : [1]),
+        correct: correctAnswers,
         points: 0,
         wasTimeout: true
       });
@@ -256,9 +264,17 @@ export default function PlayerGamePage() {
       setTimedOut(true);
 
       // Set "No answer" result
+      const correctAnswers = question.type === 'single-choice'
+        ? [question.correctAnswerIndex]
+        : question.type === 'multiple-choice'
+        ? question.correctAnswerIndices
+        : question.type === 'slider'
+        ? [1]
+        : []; // Poll types have no correct answers
+
       setLastAnswer({
         selected: -1,
-        correct: question.type === 'single-choice' ? [question.correctAnswerIndex] : (question.type === 'multiple-choice' ? question.correctAnswerIndices : []),
+        correct: correctAnswers,
         points: 0,
         wasTimeout: true
       });

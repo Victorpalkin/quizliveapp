@@ -6,10 +6,12 @@ import type {
   SingleChoiceQuestion,
   MultipleChoiceQuestion,
   SliderQuestion,
-  SlideQuestion
+  SlideQuestion,
+  PollSingleQuestion,
+  PollMultipleQuestion
 } from '@/lib/types';
 
-type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion;
+type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion;
 
 export function useImageUpload() {
   const { toast } = useToast();

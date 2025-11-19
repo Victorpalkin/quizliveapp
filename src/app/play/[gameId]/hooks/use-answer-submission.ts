@@ -288,7 +288,7 @@ export function useAnswerSubmission(
 
   // Handle timeout
   const submitTimeout = useCallback(async (
-    question: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion
+    question: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion
   ) => {
     if (!gameDocId) return;
 
@@ -319,6 +319,10 @@ export function useAnswerSubmission(
       submitData.correctValue = question.correctValue;
       submitData.minValue = question.minValue;
       submitData.maxValue = question.maxValue;
+    } else if (question.type === 'poll-single') {
+      submitData.answerIndex = -1; // -1 represents no answer/timeout
+    } else if (question.type === 'poll-multiple') {
+      submitData.answerIndices = []; // Empty array represents no answer/timeout
     }
 
     try {

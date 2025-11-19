@@ -22,7 +22,7 @@ export function useSharedQuizzes() {
 
         // Query all shares subcollections where sharedWith matches user email
         const sharesRef = collectionGroup(firestore, 'shares');
-        const q = query(sharesRef, where('sharedWith', '==', user.email.toLowerCase()));
+        const q = query(sharesRef, where('sharedWith', '==', user.email!.toLowerCase()));
         const querySnapshot = await getDocs(q);
 
         const fetchedShares: (QuizShare & { quiz?: Quiz })[] = [];

@@ -15,7 +15,8 @@ type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion |
 
 export function useQuestionOperations(
   setValue: UseFormSetValue<QuizFormData>,
-  imagesToDelete: React.MutableRefObject<string[]>
+  imagesToDelete: React.MutableRefObject<string[]>,
+  imageFiles?: React.MutableRefObject<Record<number, File>>
 ) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -250,6 +251,45 @@ export function useQuestionOperations(
     updateQuestion(qIndex, convertedQuestion);
   }, [questions, updateQuestion]);
 
+  const reorderQuestion = useCallback((fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+
+    const newQuestions = [...questions];
+    const [movedQuestion] = newQuestions.splice(fromIndex, 1);
+    newQuestions.splice(toIndex, 0, movedQuestion);
+
+    // Remap imageFiles to match new indices if imageFiles ref is provided
+    if (imageFiles) {
+      const newImageFiles: Record<number, File> = {};
+      Object.keys(imageFiles.current).forEach(key => {
+        const index = parseInt(key, 10);
+        let newIndex = index;
+
+        if (index === fromIndex) {
+          newIndex = toIndex;
+        } else if (fromIndex < toIndex) {
+          // Moving down: shift questions between fromIndex and toIndex up
+          if (index > fromIndex && index <= toIndex) {
+            newIndex = index - 1;
+          }
+        } else {
+          // Moving up: shift questions between toIndex and fromIndex down
+          if (index >= toIndex && index < fromIndex) {
+            newIndex = index + 1;
+          }
+        }
+
+        newImageFiles[newIndex] = imageFiles.current[index];
+      });
+
+      // Replace imageFiles ref with remapped files
+      imageFiles.current = newImageFiles;
+    }
+
+    setQuestions(newQuestions);
+    setValue('questions', newQuestions, { shouldValidate: true });
+  }, [questions, setValue, imageFiles]);
+
   return {
     questions,
     setQuestions,
@@ -259,5 +299,6 @@ export function useQuestionOperations(
     addAnswer,
     removeAnswer,
     convertQuestionType,
+    reorderQuestion,
   };
 }
