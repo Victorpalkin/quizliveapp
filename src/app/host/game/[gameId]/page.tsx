@@ -148,7 +148,7 @@ export default function HostGamePage() {
               <CardContent className="p-8">
                 <div className="flex flex-col items-center gap-3">
                   <p className="text-3xl font-bold">{question.text}</p>
-                  {question.type === 'multiple-choice' && <QuestionTypeBadges question={question} />}
+                  <QuestionTypeBadges question={question} />
                 </div>
               </CardContent>
             </Card>
