@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,7 +27,21 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Check if email is verified
+      if (!user.emailVerified) {
+        toast({
+          variant: 'destructive',
+          title: 'Email Not Verified',
+          description: 'Please verify your email before signing in.',
+        });
+        // Redirect to verify-email page
+        router.push('/verify-email');
+        return;
+      }
+
       toast({
         title: 'Signed In',
         description: "You've successfully signed in.",
@@ -87,6 +102,14 @@ export default function LoginPage() {
               <Button type="submit" size="lg" className="w-full" disabled={loading}>
                 {loading ? <Loader2 className="animate-spin" /> : 'Sign In'}
               </Button>
+
+              {/* Registration Link */}
+              <div className="text-center text-sm text-muted-foreground">
+                Don&apos;t have an account?{' '}
+                <Link href="/register" className="font-medium text-primary hover:underline">
+                  Create Account
+                </Link>
+              </div>
             </form>
           </CardContent>
         </Card>

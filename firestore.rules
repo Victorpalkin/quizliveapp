@@ -5,7 +5,21 @@ service cloud.firestore {
 
     // Protect user profiles - only the user can access their profile
     match /users/{userId} {
-      allow read, update, create: if request.auth.uid == userId;
+      // Users can read their own profile
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Users can update their profile, but cannot modify protected fields
+      allow update: if request.auth != null &&
+                      request.auth.uid == userId &&
+                      // Prevent modification of critical fields
+                      !request.resource.data.diff(resource.data).affectedKeys().hasAny(['email', 'emailVerified', 'id', 'createdAt']);
+
+      // User creation is handled by Cloud Functions only
+      // Cloud Functions use Admin SDK which bypasses these rules
+      allow create: if false;
+
+      // Users cannot delete their own profile
+      allow delete: if false;
     }
 
     // Helper function to check if user has quiz access via share

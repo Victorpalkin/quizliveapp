@@ -93,6 +93,9 @@ export default function HostDashboardPage() {
   useEffect(() => {
     if (!userLoading && !user) {
       router.push('/login');
+    } else if (user && !user.emailVerified) {
+      // Redirect to verify-email page if email is not verified
+      router.push('/verify-email');
     }
   }, [user, userLoading, router]);
 

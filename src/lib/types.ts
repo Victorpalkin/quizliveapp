@@ -79,6 +79,17 @@ export interface QuizShare {
   createdAt: Date;
 }
 
+export interface HostProfile {
+  id: string;              // Firebase Auth UID
+  email: string;           // @google.com email
+  name: string;            // Display name
+  jobRole: string;         // Job role/title
+  team: string;            // Team name
+  emailVerified: boolean;  // Email verification status
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface PlayerAnswer {
     questionIndex: number;
     questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'poll-single' | 'poll-multiple';
