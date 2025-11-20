@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { BrainCircuit, LogOut } from 'lucide-react';
 import { useAuth, useUser } from '@/firebase';
 import { Button } from '../ui/button';
+import { ThemeToggle } from './theme-toggle';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
@@ -23,12 +24,15 @@ export function Header() {
           <BrainCircuit className="h-6 w-6 text-primary" />
           <span className="text-foreground">gQuiz</span>
         </Link>
-        {!loading && user && !user.isAnonymous && (
-          <Button variant="ghost" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          {!loading && user && !user.isAnonymous && (
+            <Button variant="ghost" onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
+          )}
+        </div>
       </div>
     </header>
   );

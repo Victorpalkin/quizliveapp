@@ -23,11 +23,12 @@ export function useGameControls(
     );
   }, [gameRef]);
 
+  // Transition from question to leaderboard
+  // Note: Caller is responsible for checking state - no internal check needed
+  // This keeps the callback stable and avoids unnecessary re-renders
   const finishQuestion = useCallback(() => {
-    if (game?.state === 'question') {
-      updateGame({ state: 'leaderboard' });
-    }
-  }, [game?.state, updateGame]);
+    updateGame({ state: 'leaderboard' });
+  }, [updateGame]);
 
   const handleNext = useCallback(async () => {
     if (!game || !quiz || !gameRef) return;
@@ -50,14 +51,14 @@ export function useGameControls(
   }, [game, quiz, gameRef, updateGame]);
 
   // Transition from preparing to question
+  // Note: Caller is responsible for checking state - no internal check needed
+  // This keeps the callback stable and avoids circular dependencies
   const startQuestion = useCallback(() => {
-    if (game?.state === 'preparing') {
-      updateGame({
-        state: 'question',
-        questionStartTime: serverTimestamp() as unknown as Timestamp
-      });
-    }
-  }, [game?.state, updateGame]);
+    updateGame({
+      state: 'question',
+      questionStartTime: serverTimestamp() as unknown as Timestamp
+    });
+  }, [updateGame]);
 
   const isLastQuestion = checkIsLastQuestion(game, quiz);
 

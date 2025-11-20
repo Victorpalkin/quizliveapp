@@ -9,12 +9,16 @@ import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
 import type { Quiz, Player, Game, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import { handleFirestoreError } from '@/lib/utils/error-utils';
+import { calculateClockOffset, isOffsetReasonable } from '@/lib/utils/clock-sync';
 
 // Hooks
 import { useSessionManager } from './hooks/use-session-manager';
 import { usePlayerStateMachine, type PlayerState } from './hooks/use-player-state-machine';
 import { useQuestionTimer } from './hooks/use-question-timer';
 import { useAnswerSubmission } from './hooks/use-answer-submission';
+
+// Components
+import { ThemeToggle } from '@/components/app/theme-toggle';
 
 // Screens
 import { JoiningScreen } from './components/screens/joining-screen';
@@ -52,6 +56,8 @@ export default function PlayerGamePage() {
   const [gameDocId, setGameDocId] = useState<string | null>(storedSession?.gameDocId || null);
   const [playerId] = useState(storedSession?.playerId || nanoid());
   const [player, setPlayer] = useState<Player | null>(null);
+  const [clockOffset, setClockOffset] = useState(0);
+  const [offsetReady, setOffsetReady] = useState(false);
 
   // Answer state
   const [lastAnswer, setLastAnswer] = useState<AnswerResult | null>(null);
@@ -77,16 +83,16 @@ export default function PlayerGamePage() {
     sessionManager.hasValidSession(),
     game,
     quiz,
-    gameLoading,
-    timedOut
+    gameLoading
   );
 
-  // Timer
+  // Timer (with pre-calculated clock offset from lobby)
   const { time, resetTimer } = useQuestionTimer(
     state,
     timeLimit,
     game?.questionStartTime,
-    game?.currentQuestionIndex || 0
+    game?.currentQuestionIndex || 0,
+    clockOffset
   );
 
   // Answer submission
@@ -103,6 +109,28 @@ export default function PlayerGamePage() {
   // Wake lock
   const shouldKeepAwake = ['lobby', 'preparing', 'question', 'waiting', 'result'].includes(state);
   useWakeLock(shouldKeepAwake);
+
+  // Pre-calculate clock offset when entering lobby (optimizes timer start on first question)
+  useEffect(() => {
+    if (state === 'lobby' && clockOffset === 0) {
+      console.log('[Lobby] Starting clock synchronization...');
+      calculateClockOffset(firestore, 1)
+        .then(offset => {
+          if (isOffsetReasonable(offset)) {
+            setClockOffset(offset);
+            setOffsetReady(true);
+            console.log(`[Lobby] Clock synced: ${offset.toFixed(0)}ms offset`);
+          } else {
+            console.warn(`[Lobby] Clock offset unreasonable: ${offset}ms, using 0`);
+            setOffsetReady(true); // Mark ready even if offset is 0 (fallback)
+          }
+        })
+        .catch(error => {
+          console.error('[Lobby] Clock sync failed:', error);
+          setOffsetReady(true); // Mark ready to prevent blocking (use 0 offset as fallback)
+        });
+    }
+  }, [state, firestore, clockOffset]);
 
   // Handle reconnection
   useEffect(() => {
@@ -404,6 +432,11 @@ export default function PlayerGamePage() {
         return <PreparingScreen />;
 
       case 'question':
+        // Wait for offset calculation to complete before showing question
+        // This prevents timer from starting with wrong initial value (0 offset)
+        if (!offsetReady) {
+          return <PreparingScreen />;
+        }
         return (
           <QuestionScreen
             question={question!}
@@ -460,7 +493,12 @@ export default function PlayerGamePage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="flex items-center justify-center min-h-screen bg-background relative">
+      {/* Theme Toggle - Top Right */}
+      <div className="absolute top-6 right-6 z-20">
+        <ThemeToggle />
+      </div>
+
       <main className="w-full h-screen max-w-5xl mx-auto flex flex-col items-center justify-center">
         {renderContent()}
       </main>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -8,22 +8,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Home, CheckCircle, Users, XCircle } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  DiamondIcon,
-  TriangleIcon,
-  CircleIcon,
-  SquareIcon,
-  StarIcon,
-  PentagonIcon,
-  HexagonIcon,
-  HeartIcon,
-} from '@/components/app/quiz-icons';
-import { ANSWER_COLORS } from '@/lib/constants';
+import { CircularTimer } from '@/components/app/circular-timer';
+import { AnswerButton } from '@/components/app/answer-button';
+import { ThemeToggle } from '@/components/app/theme-toggle';
 import { QuestionCounter } from '@/components/app/question-counter';
 import { QuestionTypeBadges } from '@/components/app/question-type-badges';
 import { isSingleChoice, isMultipleChoice, isPoll } from '@/lib/type-guards';
+import { calculateClockOffset, isOffsetReasonable } from '@/lib/utils/clock-sync';
+import { useFirestore } from '@/firebase';
 
 // Hooks
 import { useGameState } from './hooks/use-game-state';
@@ -38,23 +31,19 @@ import { LeaderboardView } from './components/visualizations/leaderboard-view';
 import { AnswerDistributionChart } from './components/visualizations/answer-distribution-chart';
 import { SliderResultsView } from './components/visualizations/slider-results-view';
 
-const answerIcons = [
-  TriangleIcon,
-  DiamondIcon,
-  SquareIcon,
-  CircleIcon,
-  StarIcon,
-  PentagonIcon,
-  HexagonIcon,
-  HeartIcon,
-];
+// Helper to convert index to letter (0 = A, 1 = B, etc.)
+const indexToLetter = (index: number): string => String.fromCharCode(65 + index);
 
 export default function HostGamePage() {
   const params = useParams();
   const gameId = params.gameId as string;
+  const firestore = useFirestore();
 
   // Game state
   const { game, gameRef, quiz, players, gameLoading, quizLoading } = useGameState(gameId);
+
+  // Clock offset for timer synchronization
+  const [clockOffset, setClockOffset] = useState(0);
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;
@@ -68,11 +57,30 @@ export default function HostGamePage() {
     players
   );
 
-  // Timer
-  const { time, answeredPlayers } = useQuestionTimer(game, players, timeLimit, finishQuestion);
+  // Timer with clock offset
+  const { time, answeredPlayers } = useQuestionTimer(game, players, timeLimit, finishQuestion, clockOffset);
 
   // Answer distribution
   const { answerDistribution, sliderResponses } = useAnswerDistribution(question, players, game);
+
+  // Pre-calculate clock offset when game starts (optimizes timer synchronization with players)
+  useEffect(() => {
+    if ((game?.state === 'lobby' || game?.state === 'question') && clockOffset === 0) {
+      console.log('[Host] Starting clock synchronization...');
+      calculateClockOffset(firestore, 1)
+        .then(offset => {
+          if (isOffsetReasonable(offset)) {
+            setClockOffset(offset);
+            console.log(`[Host] Clock synced: ${offset.toFixed(0)}ms offset`);
+          } else {
+            console.warn(`[Host] Clock offset unreasonable: ${offset}ms, using 0`);
+          }
+        })
+        .catch(error => {
+          console.error('[Host] Clock sync failed:', error);
+        });
+    }
+  }, [game?.state, firestore, clockOffset]);
 
   // Auto-transition from preparing to question
   useEffect(() => {
@@ -132,7 +140,10 @@ export default function HostGamePage() {
           <h1 className="text-xl font-bold">gQuiz</h1>
           <div className="text-2xl font-mono bg-muted text-muted-foreground px-4 py-1 rounded-md">{game?.gamePin}</div>
         </div>
-        <CancelGameButton gameRef={gameRef} />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <CancelGameButton gameRef={gameRef} />
+        </div>
       </header>
 
       {/* Preparing State */}
@@ -144,8 +155,10 @@ export default function HostGamePage() {
 
       {/* Question State */}
       {game?.state === 'question' && question && (
-        <main className="flex-1 flex flex-col items-center justify-center text-center">
-          <Progress value={(time / timeLimit) * 100} className="w-full max-w-4xl h-4 mb-4" />
+        <main className="flex-1 flex flex-col items-center justify-center text-center relative">
+          <div className="absolute top-4 right-4">
+            <CircularTimer time={time} timeLimit={timeLimit} size={80} />
+          </div>
 
           <div className="w-full max-w-4xl">
             <Card className="bg-card text-card-foreground mb-4">
@@ -197,21 +210,16 @@ export default function HostGamePage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-2 gap-4 mt-auto w-full max-w-4xl">
-              {question.answers.map((ans, i) => {
-                const isCorrect = isSingleChoice(question)
-                  ? question.correctAnswerIndex === i
-                  : isMultipleChoice(question)
-                  ? question.correctAnswerIndices.includes(i)
-                  : false; // Poll questions don't have correct answers
-                const Icon = answerIcons[i % answerIcons.length];
-                return (
-                  <div key={i} className={`flex items-center gap-4 p-4 rounded-lg text-white relative ${ANSWER_COLORS[i % ANSWER_COLORS.length]}`}>
-                    <Icon className="w-8 h-8 flex-shrink-0" />
-                    <span className="text-2xl font-medium">{ans.text}</span>
-                  </div>
-                );
-              })}
+            <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 w-full max-w-4xl">
+              {question.answers.map((ans, i) => (
+                <AnswerButton
+                  key={i}
+                  letter={indexToLetter(i)}
+                  text={ans.text}
+                  disabled={true}
+                  colorIndex={i}
+                />
+              ))}
             </div>
           )}
         </main>
