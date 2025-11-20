@@ -118,7 +118,7 @@ export default function HostGamePage() {
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-8">
         <h1 className="text-4xl font-bold mb-4">Quiz Over!</h1>
         <p className="text-muted-foreground mb-8">Here are the final results.</p>
-        <LeaderboardView players={players} />
+        <LeaderboardView players={players} currentQuestionIndex={game?.currentQuestionIndex} />
         <div className="mt-8 flex gap-4">
           <Button asChild>
             <Link href="/host">
@@ -228,7 +228,7 @@ export default function HostGamePage() {
       {/* Leaderboard State */}
       {game?.state === 'leaderboard' && (
         <main className="flex-1 flex flex-col items-center justify-center gap-8 md:flex-row md:items-start">
-          <LeaderboardView players={players} />
+          <LeaderboardView players={players} currentQuestionIndex={game?.currentQuestionIndex} />
           {question?.type === 'slide' ? (
             <Card className="w-full max-w-2xl flex-1">
               <CardContent className="p-8 text-center space-y-4">
