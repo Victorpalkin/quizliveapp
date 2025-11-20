@@ -87,7 +87,7 @@ export function useAnswerSubmission(
     try {
       const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
       const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore } = result.data;
+      const { points: actualPoints, newScore, currentStreak } = result.data;
 
       // Update with actual values if different
       if (actualPoints !== estimatedPoints) {
@@ -98,10 +98,10 @@ export function useAnswerSubmission(
           const updatedAnswers = p.answers.map(a =>
             a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints } : a
           );
-          return { ...p, score: newScore, answers: updatedAnswers };
+          return { ...p, score: newScore, currentStreak: currentStreak ?? 0, answers: updatedAnswers };
         });
       } else {
-        setPlayer(p => p ? { ...p, score: newScore } : null);
+        setPlayer(p => p ? { ...p, score: newScore, currentStreak: currentStreak ?? 0 } : null);
       }
     } catch (error: any) {
       console.error('Error submitting answer:', error);
@@ -203,7 +203,7 @@ export function useAnswerSubmission(
     try {
       const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
       const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore, isPartiallyCorrect } = result.data;
+      const { points: actualPoints, newScore, isPartiallyCorrect, currentStreak } = result.data;
 
       // Update with actual values if different
       if (actualPoints !== estimatedPoints || isPartiallyCorrect !== isPartiallyCorrectAnswer) {
@@ -213,10 +213,10 @@ export function useAnswerSubmission(
           const updatedAnswers = p.answers.map(a =>
             a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints } : a
           );
-          return { ...p, score: newScore, answers: updatedAnswers };
+          return { ...p, score: newScore, currentStreak: currentStreak ?? 0, answers: updatedAnswers };
         });
       } else {
-        setPlayer(p => p ? { ...p, score: newScore } : null);
+        setPlayer(p => p ? { ...p, score: newScore, currentStreak: currentStreak ?? 0 } : null);
       }
     } catch (error: any) {
       console.error('Error submitting answer:', error);
@@ -313,7 +313,7 @@ export function useAnswerSubmission(
     try {
       const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
       const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore } = result.data;
+      const { points: actualPoints, newScore, currentStreak } = result.data;
 
       // Update with actual values if different
       if (actualPoints !== estimatedPoints) {
@@ -323,10 +323,10 @@ export function useAnswerSubmission(
           const updatedAnswers = p.answers.map(a =>
             a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints } : a
           );
-          return { ...p, score: newScore, answers: updatedAnswers };
+          return { ...p, score: newScore, currentStreak: currentStreak ?? 0, answers: updatedAnswers };
         });
       } else {
-        setPlayer(p => p ? { ...p, score: newScore } : null);
+        setPlayer(p => p ? { ...p, score: newScore, currentStreak: currentStreak ?? 0 } : null);
       }
     } catch (error: any) {
       console.error('Error submitting answer:', error);

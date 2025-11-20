@@ -64,6 +64,7 @@ export const playerConverter: FirestoreDataConverter<Player> = {
       name: data.name,
       score: data.score,
       answers: data.answers || [],
+      currentStreak: data.currentStreak ?? 0,
     };
   }
 };

@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy } from 'lucide-react';
+import { Trophy, Flame } from 'lucide-react';
 import type { Player } from '@/lib/types';
 
 interface LeaderboardViewProps {
@@ -42,6 +42,12 @@ export function LeaderboardView({ players, currentQuestionIndex }: LeaderboardVi
                     <span className="text-sm font-semibold text-green-500">
                       +{lastPoints}
                     </span>
+                  )}
+                  {player.currentStreak >= 2 && (
+                    <div className="flex items-center gap-1">
+                      <Flame className="w-5 h-5 text-red-500" />
+                      <span className="text-sm font-bold text-red-500">{player.currentStreak}</span>
+                    </div>
                   )}
                   <span className="font-bold text-lg text-primary">{player.score}</span>
                 </div>
