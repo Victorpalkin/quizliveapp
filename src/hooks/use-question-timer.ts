@@ -71,36 +71,16 @@ export function useQuestionTimer({
     }
   }, [players, answeredPlayers, isActive, onAutoFinish]);
 
-  // Simplified timer - starts at full time limit
+  // Simplified timer - always starts at full time limit
   useEffect(() => {
     if (isActive) {
       // Reset finished flag for new question
       finishedRef.current = false;
 
-      // Calculate initial time (sync with server timestamp)
-      let initialTime = timeLimit;
-
-      if (questionStartTime) {
-        const questionStartMillis = questionStartTime.toMillis();
-        const nowMillis = Date.now(); // Use local clock only
-        const elapsedMillis = nowMillis - questionStartMillis;
-        // Use Math.round instead of Math.floor for fairer distribution around typical latency
-        // This centers the variance: 0-499ms→0s, 500-1499ms→1s, 1500-2499ms→2s
-        const elapsedSeconds = Math.round(elapsedMillis / 1000);
-
-        if (elapsedSeconds >= 0 && elapsedSeconds < timeLimit) {
-          initialTime = Math.max(0, timeLimit - elapsedSeconds);
-          console.log(`[Timer] Initial time: ${initialTime}s (elapsed: ${elapsedSeconds}s)`);
-        } else if (elapsedSeconds < 0) {
-          console.warn(`[Timer] Question not started yet, using full time`);
-          initialTime = timeLimit;
-        } else {
-          console.warn(`[Timer] Time already expired (elapsed: ${elapsedSeconds}s), starting at 0`);
-          initialTime = 0;
-        }
-      }
-
-      setTime(initialTime);
+      // Start at full time limit for all players/host
+      // questionStartTime is used for synchronization, but grace period in Cloud Function handles timing
+      console.log(`[Timer] Starting at full time: ${timeLimit}s`);
+      setTime(timeLimit);
 
       // Start countdown immediately
       countdownIntervalRef.current = setInterval(() => {
