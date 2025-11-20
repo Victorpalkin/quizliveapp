@@ -114,7 +114,9 @@ export function useQuestionTimer({
         const questionStartMillis = questionStartTime.toMillis();
         const nowMillis = Date.now() + clockOffsetRef.current; // Use cached offset
         const elapsedMillis = nowMillis - questionStartMillis;
-        const elapsedSeconds = Math.floor(elapsedMillis / 1000);
+        // Use Math.round instead of Math.floor for fairer distribution around typical latency
+        // This centers the variance: 0-499ms→0s, 500-1499ms→1s, 1500-2499ms→2s
+        const elapsedSeconds = Math.round(elapsedMillis / 1000);
 
         if (elapsedSeconds >= 0 && elapsedSeconds < timeLimit) {
           initialTime = Math.max(0, timeLimit - elapsedSeconds);

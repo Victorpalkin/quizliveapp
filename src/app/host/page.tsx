@@ -229,49 +229,52 @@ export default function HostDashboardPage() {
   const completedGames = games?.filter(g => g.state === 'ended');
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
-      <main className="flex-1 container mx-auto p-4 md:p-8">
-        
+      <main className="flex-1 container mx-auto p-4 md:p-8 max-w-7xl">
+
         {/* Active Games Section */}
         {activeGames && activeGames.length > 0 && (
             <div className="mb-12">
-                <h2 className="text-2xl font-bold mb-6">Active Games</h2>
+                <h2 className="text-3xl font-semibold mb-6">Active Games</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {gamesLoading ? (
-                        <Card><CardContent><Loader2 className="m-4 animate-spin"/></CardContent></Card>
+                        <Card className="shadow-md"><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
                     ) : (
                         activeGames.map(game => (
-                            <Card key={game.id} className="flex flex-col">
-                                <CardHeader>
-                                    <div className="flex justify-between items-center">
-                                        <CardTitle className="font-mono tracking-widest">{game.gamePin}</CardTitle>
+                            <Card key={game.id} className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
+                                <CardHeader className="p-6">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <CardTitle className="text-2xl font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
                                         <GameStateBadge state={game.state} />
                                     </div>
-                                    <CardDescription>
+                                    <CardDescription className="text-base">
                                         {quizzes?.find(q => q.id === game.quizId)?.title || '...'}
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="flex-grow flex flex-col justify-end gap-2">
-                                    <Button className="w-full" onClick={() => handleOpenGame(game)}>
+                                <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
+                                    <Button
+                                        className="w-full px-6 py-4 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold"
+                                        onClick={() => handleOpenGame(game)}
+                                    >
                                         <LogIn className="mr-2 h-4 w-4" /> Open Game
                                     </Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button className="w-full" variant="destructive">
+                                            <Button className="w-full px-6 py-4 rounded-xl" variant="outline">
                                                 <XCircle className="mr-2 h-4 w-4" /> Cancel Game
                                             </Button>
                                         </AlertDialogTrigger>
-                                        <AlertDialogContent>
+                                        <AlertDialogContent className="rounded-2xl shadow-xl">
                                             <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>
+                                                <AlertDialogTitle className="text-2xl font-semibold">Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription className="text-base">
                                                     This will cancel the game for all players and cannot be undone.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogCancel>Back</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                <AlertDialogCancel className="rounded-xl">Back</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
                                                     Yes, Cancel Game
                                                 </AlertDialogAction>
                                             </AlertDialogFooter>
@@ -288,10 +291,10 @@ export default function HostDashboardPage() {
         {/* My Quizzes Section */}
         <div className="mb-12">
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold">My Quizzes</h1>
-                <Button asChild>
+                <h1 className="text-5xl font-semibold">My Quizzes</h1>
+                <Button asChild className="px-6 py-4 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
                     <Link href="/host/create">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Create New Quiz
+                        <PlusCircle className="mr-2 h-5 w-5" /> Create New Quiz
                     </Link>
                 </Button>
             </div>
@@ -299,13 +302,13 @@ export default function HostDashboardPage() {
             {quizzesLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[...Array(3)].map((_, i) => (
-                        <Card key={i}>
-                            <CardHeader>
-                                <div className="h-6 bg-muted rounded w-3/4"></div>
-                                <div className="h-4 bg-muted rounded w-1/2 mt-2"></div>
+                        <Card key={i} className="shadow-md rounded-2xl border border-card-border">
+                            <CardHeader className="p-6">
+                                <div className="h-6 bg-muted rounded-lg w-3/4"></div>
+                                <div className="h-4 bg-muted rounded-lg w-1/2 mt-2"></div>
                             </CardHeader>
-                            <CardContent>
-                                <div className="h-10 bg-muted rounded w-full"></div>
+                            <CardContent className="p-6 pt-0">
+                                <div className="h-10 bg-muted rounded-lg w-full"></div>
                             </CardContent>
                         </Card>
                     ))}
@@ -313,11 +316,11 @@ export default function HostDashboardPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {quizzes && quizzes.map(quiz => (
-                        <Card key={quiz.id} className="flex flex-col">
-                            <CardHeader className="flex flex-row items-start justify-between">
+                        <Card key={quiz.id} className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
+                            <CardHeader className="flex flex-row items-start justify-between p-6">
                                 <div className='flex-grow'>
-                                    <CardTitle>{quiz.title}</CardTitle>
-                                    <CardDescription>{quiz.questions.length} questions</CardDescription>
+                                    <CardTitle className="text-2xl font-semibold mb-2">{quiz.title}</CardTitle>
+                                    <CardDescription className="text-base">{quiz.questions.length} questions</CardDescription>
                                 </div>
                                 <div className='flex items-center gap-1'>
                                     <Button
@@ -325,30 +328,31 @@ export default function HostDashboardPage() {
                                       size="icon"
                                       onClick={() => setShareDialogQuiz({ id: quiz.id, title: quiz.title })}
                                       title="Share quiz"
+                                      className="hover:bg-muted rounded-lg"
                                     >
-                                      <Share2 className="h-4 w-4 text-muted-foreground" />
+                                      <Share2 className="h-5 w-5 text-muted-foreground" />
                                     </Button>
-                                    <Button asChild variant="ghost" size="icon" title="Edit quiz">
+                                    <Button asChild variant="ghost" size="icon" title="Edit quiz" className="hover:bg-muted rounded-lg">
                                         <Link href={`/host/edit/${quiz.id}`}>
-                                            <Edit className="h-4 w-4 text-muted-foreground" />
+                                            <Edit className="h-5 w-5 text-muted-foreground" />
                                         </Link>
                                     </Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" title="Delete quiz">
-                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            <Button variant="ghost" size="icon" title="Delete quiz" className="hover:bg-muted rounded-lg">
+                                                <Trash2 className="h-5 w-5 text-destructive" />
                                             </Button>
                                         </AlertDialogTrigger>
-                                        <AlertDialogContent>
+                                        <AlertDialogContent className="rounded-2xl shadow-xl">
                                             <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure you want to delete this quiz?</AlertDialogTitle>
-                                                <AlertDialogDescription>
+                                                <AlertDialogTitle className="text-2xl font-semibold">Are you sure you want to delete this quiz?</AlertDialogTitle>
+                                                <AlertDialogDescription className="text-base">
                                                     This action cannot be undone. This will permanently delete the quiz '{quiz.title}' and all its images.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteQuiz(quiz.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteQuiz(quiz.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
                                                     Delete
                                                 </AlertDialogAction>
                                             </AlertDialogFooter>
@@ -356,11 +360,14 @@ export default function HostDashboardPage() {
                                     </AlertDialog>
                                 </div>
                             </CardHeader>
-                            <CardContent className="flex-grow flex flex-col justify-end gap-2">
-                                <Button className="w-full" onClick={() => handleHostGame(quiz.id)}>
+                            <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
+                                <Button
+                                    className="w-full px-6 py-4 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold"
+                                    onClick={() => handleHostGame(quiz.id)}
+                                >
                                   <Gamepad2 className="mr-2 h-4 w-4" /> Host Game
                                 </Button>
-                                <Button className="w-full" variant="outline" onClick={() => setPreviewQuiz(quiz)}>
+                                <Button className="w-full px-6 py-4 rounded-xl" variant="outline" onClick={() => setPreviewQuiz(quiz)}>
                                   <Eye className="mr-2 h-4 w-4" /> Preview Quiz
                                 </Button>
                             </CardContent>
@@ -369,8 +376,8 @@ export default function HostDashboardPage() {
 
                     {quizzes?.length === 0 && (
                         <div className="col-span-full text-center text-muted-foreground py-16">
-                            <p className="mb-4">You haven't created any quizzes yet.</p>
-                            <Button asChild variant="outline">
+                            <p className="mb-6 text-lg">You haven't created any quizzes yet.</p>
+                            <Button asChild variant="outline" className="px-6 py-4 rounded-xl">
                                 <Link href="/host/create">
                                     Create Your First Quiz
                                 </Link>
@@ -387,42 +394,42 @@ export default function HostDashboardPage() {
         {/* Completed Games Section */}
         {completedGames && completedGames.length > 0 && (
             <div className="mb-12">
-                <h2 className="text-2xl font-bold mb-6">Completed Games</h2>
+                <h2 className="text-3xl font-semibold mb-6">Completed Games</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {gamesLoading ? (
-                        <Card><CardContent><Loader2 className="m-4 animate-spin"/></CardContent></Card>
+                        <Card className="shadow-md"><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
                     ) : (
                         completedGames.map(game => (
-                            <Card key={game.id} className="flex flex-col">
-                                <CardHeader>
-                                    <div className="flex justify-between items-center">
-                                        <CardTitle className="font-mono tracking-widest">{game.gamePin}</CardTitle>
+                            <Card key={game.id} className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
+                                <CardHeader className="p-6">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <CardTitle className="text-2xl font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
                                         <GameStateBadge state={game.state} />
                                     </div>
-                                    <CardDescription>
+                                    <CardDescription className="text-base">
                                         {quizzes?.find(q => q.id === game.quizId)?.title || '...'}
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="flex-grow flex flex-col justify-end gap-2">
-                                    <Button className="w-full" variant="secondary" onClick={() => handleOpenGame(game)}>
+                                <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
+                                    <Button className="w-full px-6 py-4 rounded-xl" variant="outline" onClick={() => handleOpenGame(game)}>
                                         <Eye className="mr-2 h-4 w-4" /> View Results
                                     </Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button className="w-full" variant="ghost">
+                                            <Button className="w-full px-6 py-4 rounded-xl" variant="ghost">
                                                 <Trash2 className="mr-2 h-4 w-4" /> Delete Record
                                             </Button>
                                         </AlertDialogTrigger>
-                                        <AlertDialogContent>
+                                        <AlertDialogContent className="rounded-2xl shadow-xl">
                                             <AlertDialogHeader>
-                                                <AlertDialogTitle>Delete this game record?</AlertDialogTitle>
-                                                <AlertDialogDescription>
+                                                <AlertDialogTitle className="text-2xl font-semibold">Delete this game record?</AlertDialogTitle>
+                                                <AlertDialogDescription className="text-base">
                                                     This will permanently delete the record for game '{game.gamePin}'.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogCancel>Back</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                <AlertDialogCancel className="rounded-xl">Back</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
                                                     Yes, Delete
                                                 </AlertDialogAction>
                                             </AlertDialogFooter>
@@ -438,10 +445,10 @@ export default function HostDashboardPage() {
 
         {/* Share Quiz Dialog */}
         <Dialog open={!!shareDialogQuiz} onOpenChange={(open) => !open && setShareDialogQuiz(null)}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl shadow-xl">
             <DialogHeader>
-              <DialogTitle>Share Quiz</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-2xl font-semibold">Share Quiz</DialogTitle>
+              <DialogDescription className="text-base">
                 Share "{shareDialogQuiz?.title}" with other hosts by entering their email address
               </DialogDescription>
             </DialogHeader>
@@ -456,9 +463,9 @@ export default function HostDashboardPage() {
 
         {/* Preview Quiz Dialog */}
         <Dialog open={!!previewQuiz} onOpenChange={(open) => !open && setPreviewQuiz(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl">
             <DialogHeader>
-              <DialogTitle>Quiz Preview</DialogTitle>
+              <DialogTitle className="text-2xl font-semibold">Quiz Preview</DialogTitle>
             </DialogHeader>
             {previewQuiz && <QuizPreview quiz={previewQuiz} showCorrectAnswers={true} />}
           </DialogContent>
