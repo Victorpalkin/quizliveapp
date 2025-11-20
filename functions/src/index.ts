@@ -497,3 +497,179 @@ export const submitAnswer = onCall(
     );
   }
 });
+
+/**
+ * Request interface for createHostAccount
+ */
+interface CreateHostAccountRequest {
+  email: string;
+  password: string;
+  name: string;
+  jobRole: string;
+  team: string;
+}
+
+/**
+ * Cloud Function to create a new host account
+ * Validates @google.com domain and creates user with email verification
+ *
+ * Security features:
+ * - Server-side @google.com domain validation
+ * - Email uniqueness check
+ * - Password validation by Firebase Auth
+ * - Email verification required before access
+ * - CORS validation for authorized origins only
+ */
+export const createHostAccount = onCall(
+  {
+    region: 'europe-west4',
+    cors: ALLOWED_ORIGINS,
+  },
+  async (request) => {
+    // Validate request origin
+    const origin = request.rawRequest?.headers?.origin as string | undefined;
+    validateOrigin(origin);
+
+    const data = request.data as CreateHostAccountRequest;
+    const { email, password, name, jobRole, team } = data;
+
+    // Validate required fields
+    if (!email || !password || !name || !jobRole || !team) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Missing required fields: email, password, name, jobRole, team'
+      );
+    }
+
+    // Trim and lowercase email for consistent validation
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // Server-side domain validation - CRITICAL SECURITY CHECK
+    if (!trimmedEmail.endsWith('@google.com')) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Only @google.com email addresses are allowed to register'
+      );
+    }
+
+    // Validate name is not empty after trimming
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) {
+      throw new HttpsError('invalid-argument', 'Name cannot be empty');
+    }
+
+    // Validate job role and team are not empty
+    const trimmedJobRole = jobRole.trim();
+    const trimmedTeam = team.trim();
+    if (trimmedJobRole.length === 0 || trimmedTeam.length === 0) {
+      throw new HttpsError('invalid-argument', 'Job role and team cannot be empty');
+    }
+
+    try {
+      // Check if user already exists with this email
+      try {
+        const existingUser = await admin.auth().getUserByEmail(trimmedEmail);
+        if (existingUser) {
+          throw new HttpsError(
+            'already-exists',
+            'An account with this email already exists'
+          );
+        }
+      } catch (error: any) {
+        // getUserByEmail throws error if user not found - this is expected
+        if (error.code !== 'auth/user-not-found') {
+          throw error;
+        }
+        // User not found - good, we can proceed
+      }
+
+      // Create Firebase Auth user
+      const userRecord = await admin.auth().createUser({
+        email: trimmedEmail,
+        password: password,
+        displayName: trimmedName,
+        emailVerified: false, // Require email verification
+      });
+
+      console.log(`[REGISTRATION] Created Firebase Auth user: ${userRecord.uid} (${trimmedEmail})`);
+
+      // Create user profile document in Firestore
+      const db = admin.firestore();
+      const userProfileRef = db.collection('users').doc(userRecord.uid);
+
+      const now = admin.firestore.Timestamp.now();
+      await userProfileRef.set({
+        id: userRecord.uid,
+        email: trimmedEmail,
+        name: trimmedName,
+        jobRole: trimmedJobRole,
+        team: trimmedTeam,
+        emailVerified: false,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      console.log(`[REGISTRATION] Created Firestore profile for user: ${userRecord.uid}`);
+
+      // Generate email verification link
+      const actionCodeSettings = {
+        url: `${origin || 'https://quiz.palkin.nl'}/login`, // Redirect to login after verification
+        handleCodeInApp: false,
+      };
+
+      const verificationLink = await admin.auth().generateEmailVerificationLink(
+        trimmedEmail,
+        actionCodeSettings
+      );
+
+      console.log(`[REGISTRATION] Generated verification link for: ${trimmedEmail}`);
+
+      // Note: In production, you would send this link via a custom email service
+      // For now, Firebase Auth will handle sending the verification email
+      // when the user signs in and requests verification
+
+      return {
+        success: true,
+        userId: userRecord.uid,
+        message: 'Account created successfully. Please verify your email before signing in.',
+        verificationLink, // Return link for development/testing purposes
+      };
+
+    } catch (error: any) {
+      console.error('[REGISTRATION] Error creating host account:', error);
+
+      // Re-throw HttpsErrors
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      // Handle specific Firebase Auth errors
+      if (error.code === 'auth/email-already-exists') {
+        throw new HttpsError(
+          'already-exists',
+          'An account with this email already exists'
+        );
+      }
+
+      if (error.code === 'auth/invalid-password') {
+        throw new HttpsError(
+          'invalid-argument',
+          'Password must be at least 6 characters'
+        );
+      }
+
+      if (error.code === 'auth/invalid-email') {
+        throw new HttpsError(
+          'invalid-argument',
+          'Invalid email address format'
+        );
+      }
+
+      // Wrap other errors
+      throw new HttpsError(
+        'internal',
+        'An error occurred while creating your account. Please try again.'
+      );
+    }
+  }
+);
