@@ -1,4 +1,4 @@
-import { PartyPopper, Frown, Clock, Award } from 'lucide-react';
+import { PartyPopper, Frown, Clock, Award, Flame } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
@@ -12,9 +12,10 @@ interface ResultScreenProps {
   } | null;
   playerScore: number;
   isLastQuestion: boolean;
+  currentStreak?: number;
 }
 
-export function ResultScreen({ lastAnswer, playerScore, isLastQuestion }: ResultScreenProps) {
+export function ResultScreen({ lastAnswer, playerScore, isLastQuestion, currentStreak }: ResultScreenProps) {
   const isCorrect = lastAnswer ? lastAnswer.correct.includes(lastAnswer.selected) : false;
   const wasTimeout = lastAnswer?.wasTimeout || false;
   const isPartiallyCorrect = lastAnswer?.isPartiallyCorrect || false;
@@ -68,6 +69,20 @@ export function ResultScreen({ lastAnswer, playerScore, isLastQuestion }: Result
               +{lastAnswer?.points || 0}
             </p>
           </div>
+
+          {/* Streak Display - only show when player has 2+ correct answers in a row */}
+          {currentStreak !== undefined && currentStreak >= 2 && isCorrect && (
+            <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-xl p-6 border border-red-500/20">
+              <div className="flex items-center justify-center gap-3">
+                <Flame className="w-8 h-8 text-red-500" />
+                <div>
+                  <p className="text-2xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
+                    On Fire! {currentStreak} in a row
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Total Score */}
           <div className="flex items-center justify-center gap-3 text-2xl">

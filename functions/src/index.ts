@@ -118,6 +118,7 @@ interface Player {
   name: string;
   score: number;
   answers: PlayerAnswer[];
+  currentStreak?: number;
 }
 
 /**
@@ -405,6 +406,22 @@ export const submitAnswer = onCall(
 
     const newScore = player.score + points;
 
+    // Calculate current streak
+    // Streak only applies to scored questions (single-choice, multiple-choice, slider)
+    // Polls and slides don't affect the streak
+    let newStreak: number;
+
+    if (questionType === 'poll-single' || questionType === 'poll-multiple') {
+      // Polls don't affect streak - keep current value
+      newStreak = player.currentStreak || 0;
+    } else if (isCorrect) {
+      // Increment streak on correct answer (for single-choice, multiple-choice, slider)
+      newStreak = (player.currentStreak || 0) + 1;
+    } else {
+      // Reset streak on wrong answer or timeout
+      newStreak = 0;
+    }
+
     // Update player document with transaction to prevent race conditions
     await db.runTransaction(async (transaction) => {
       const freshPlayerDoc = await transaction.get(playerRef);
@@ -448,9 +465,10 @@ export const submitAnswer = onCall(
         answer.answerIndices = answerIndices!;
       }
 
-      // Update player document: append to answers array and increment score
+      // Update player document: append to answers array, increment score, and update streak
       transaction.update(playerRef, {
         score: newScore,
+        currentStreak: newStreak,
         answers: admin.firestore.FieldValue.arrayUnion(answer)
       });
     });
@@ -462,6 +480,7 @@ export const submitAnswer = onCall(
       isPartiallyCorrect,
       points,
       newScore,
+      currentStreak: newStreak,
     };
   } catch (error) {
     console.error('Error in submitAnswer:', error);

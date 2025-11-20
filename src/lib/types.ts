@@ -100,6 +100,7 @@ export interface Player {
     name: string;
     score: number;
     answers: PlayerAnswer[];
+    currentStreak: number;
 }
 
 export interface Game {
@@ -119,4 +120,5 @@ export interface SubmitAnswerResponse {
   isPartiallyCorrect?: boolean; // Only for multiple-choice questions
   points: number;
   newScore: number;
+  currentStreak?: number;
 }

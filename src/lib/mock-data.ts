@@ -72,7 +72,7 @@ export const mockQuiz: Quiz = {
 };
 
 export const mockPlayers: Player[] = [
-    { id: 'p1', name: 'PlayerOne', score: 0, answers: [] },
-    { id: 'p2', name: 'QuizMaster', score: 0, answers: [] },
-    { id: 'p3', name: 'TriviaFan', score: 0, answers: [] },
+    { id: 'p1', name: 'PlayerOne', score: 0, answers: [], currentStreak: 0 },
+    { id: 'p2', name: 'QuizMaster', score: 0, answers: [], currentStreak: 0 },
+    { id: 'p3', name: 'TriviaFan', score: 0, answers: [], currentStreak: 0 },
 ];

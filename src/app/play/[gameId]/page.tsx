@@ -172,7 +172,7 @@ export default function PlayerGamePage() {
           if (playerDoc.empty) {
             // Recreate player document
             console.log('[Reconnect] Player document missing, attempting to recreate');
-            const newPlayer = { id: playerId, name: nickname, score: 0, answers: [] };
+            const newPlayer = { id: playerId, name: nickname, score: 0, answers: [], currentStreak: 0 };
             await setDoc(playerRef, newPlayer);
             setPlayer(newPlayer);
             toast({
@@ -347,7 +347,7 @@ export default function PlayerGamePage() {
       setGameDocId(gameDoc.id);
 
       const playerRef = doc(firestore, 'games', gameDoc.id, 'players', playerId);
-      const newPlayer = { id: playerId, name: trimmedNickname, score: 0, answers: [] };
+      const newPlayer = { id: playerId, name: trimmedNickname, score: 0, answers: [], currentStreak: 0 };
 
       setDoc(playerRef, newPlayer)
         .then(() => {
@@ -462,7 +462,7 @@ export default function PlayerGamePage() {
         if (question?.type === 'slide' || question?.type === 'poll-single' || question?.type === 'poll-multiple') {
           return <WaitingScreen isLastQuestion={isLastQuestion} />;
         }
-        return <ResultScreen lastAnswer={lastAnswer} playerScore={player?.score || 0} isLastQuestion={isLastQuestion} />;
+        return <ResultScreen lastAnswer={lastAnswer} playerScore={player?.score || 0} isLastQuestion={isLastQuestion} currentStreak={player?.currentStreak} />;
 
       case 'ended':
         sessionManager.clearSession();
