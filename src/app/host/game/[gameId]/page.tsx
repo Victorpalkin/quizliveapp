@@ -15,8 +15,6 @@ import { ThemeToggle } from '@/components/app/theme-toggle';
 import { QuestionCounter } from '@/components/app/question-counter';
 import { QuestionTypeBadges } from '@/components/app/question-type-badges';
 import { isSingleChoice, isMultipleChoice, isPoll } from '@/lib/type-guards';
-import { calculateClockOffset, isOffsetReasonable } from '@/lib/utils/clock-sync';
-import { useFirestore } from '@/firebase';
 
 // Hooks
 import { useGameState } from './hooks/use-game-state';
@@ -37,13 +35,9 @@ const indexToLetter = (index: number): string => String.fromCharCode(65 + index)
 export default function HostGamePage() {
   const params = useParams();
   const gameId = params.gameId as string;
-  const firestore = useFirestore();
 
   // Game state
   const { game, gameRef, quiz, players, gameLoading, quizLoading } = useGameState(gameId);
-
-  // Clock offset for timer synchronization
-  const [clockOffset, setClockOffset] = useState(0);
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;
@@ -57,30 +51,11 @@ export default function HostGamePage() {
     players
   );
 
-  // Timer with clock offset
-  const { time, answeredPlayers } = useQuestionTimer(game, players, timeLimit, finishQuestion, clockOffset);
+  // Timer
+  const { time, answeredPlayers } = useQuestionTimer(game, players, timeLimit, finishQuestion);
 
   // Answer distribution
   const { answerDistribution, sliderResponses } = useAnswerDistribution(question, players, game);
-
-  // Pre-calculate clock offset when game starts (optimizes timer synchronization with players)
-  useEffect(() => {
-    if ((game?.state === 'lobby' || game?.state === 'question') && clockOffset === 0) {
-      console.log('[Host] Starting clock synchronization...');
-      calculateClockOffset(firestore, 1)
-        .then(offset => {
-          if (isOffsetReasonable(offset)) {
-            setClockOffset(offset);
-            console.log(`[Host] Clock synced: ${offset.toFixed(0)}ms offset`);
-          } else {
-            console.warn(`[Host] Clock offset unreasonable: ${offset}ms, using 0`);
-          }
-        })
-        .catch(error => {
-          console.error('[Host] Clock sync failed:', error);
-        });
-    }
-  }, [game?.state, firestore, clockOffset]);
 
   // Auto-transition from preparing to question
   useEffect(() => {
