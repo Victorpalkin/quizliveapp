@@ -26,6 +26,7 @@ import { useGameControls } from './hooks/use-game-controls';
 import { CancelGameButton } from './components/controls/cancel-game-button';
 import { DeleteGameButton } from './components/controls/delete-game-button';
 import { LeaderboardView } from './components/visualizations/leaderboard-view';
+import { FinalLeaderboardView } from './components/visualizations/final-leaderboard-view';
 import { AnswerDistributionChart } from './components/visualizations/answer-distribution-chart';
 import { SliderResultsView } from './components/visualizations/slider-results-view';
 
@@ -93,7 +94,7 @@ export default function HostGamePage() {
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-8">
         <h1 className="text-4xl font-bold mb-4">Quiz Over!</h1>
         <p className="text-muted-foreground mb-8">Here are the final results.</p>
-        <LeaderboardView players={players} currentQuestionIndex={game?.currentQuestionIndex} />
+        <FinalLeaderboardView players={players} currentQuestionIndex={game?.currentQuestionIndex} />
         <div className="mt-8 flex gap-4">
           <Button asChild>
             <Link href="/host">
