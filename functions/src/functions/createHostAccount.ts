@@ -22,7 +22,7 @@ export const createHostAccount = onCall(
     cors: ALLOWED_ORIGINS,
     timeoutSeconds: 30,
     memory: '512MiB',
-    maxInstances: 50,
+    maxInstances: 5,
     concurrency: 40,
   },
   async (request): Promise<CreateHostAccountResult> => {

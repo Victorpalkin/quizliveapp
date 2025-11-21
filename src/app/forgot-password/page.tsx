@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
       setEmailSent(true);
       toast({
         title: 'Email Sent',
-        description: 'If an account exists with this email, a password reset link has been sent.',
+        description: 'If an account exists with this email, a password reset link has been sent. If you don\'t see the e-mail - please check you spam folder',
       });
     } else {
       toast({

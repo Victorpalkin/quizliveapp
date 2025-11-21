@@ -28,7 +28,7 @@ export const submitAnswer = onCall(
     cors: ALLOWED_ORIGINS,
     timeoutSeconds: 10,
     memory: '256MiB',
-    maxInstances: 100,
+    maxInstances: 10,
     concurrency: 80,
   },
   async (request): Promise<SubmitAnswerResult> => {
