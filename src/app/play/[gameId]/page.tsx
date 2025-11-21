@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, getDocs, setDoc, DocumentReference } from 'firebase/firestore';
+import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where, getDocs, setDoc, DocumentReference, Query, DocumentData } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
@@ -70,6 +70,23 @@ export default function PlayerGamePage() {
   const quizRef = useMemoFirebase(() => game ? doc(firestore, 'quizzes', game.quizId) : null, [firestore, game]);
   const { data: quizData, loading: quizLoading } = useDoc(quizRef);
   const quiz = quizData as Quiz | null;
+
+  // Subscribe to all players for rank calculation
+  const playersQuery = useMemoFirebase(
+    () => gameDocId ? collection(firestore, 'games', gameDocId, 'players') as Query<Player, DocumentData> : null,
+    [firestore, gameDocId]
+  );
+  const { data: allPlayers } = useCollection<Player>(playersQuery);
+
+  // Calculate player rank
+  const calculateRank = (currentPlayerId: string, players: Player[]): number => {
+    const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+    const rankIndex = sortedPlayers.findIndex(p => p.id === currentPlayerId);
+    return rankIndex >= 0 ? rankIndex + 1 : 0;
+  };
+
+  const playerRank = allPlayers && allPlayers.length > 0 ? calculateRank(playerId, allPlayers) : undefined;
+  const totalPlayers = allPlayers?.length;
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;
@@ -431,13 +448,24 @@ export default function PlayerGamePage() {
         if (question?.type === 'slide' || question?.type === 'poll-single' || question?.type === 'poll-multiple') {
           return <WaitingScreen isLastQuestion={isLastQuestion} />;
         }
-        return <ResultScreen lastAnswer={lastAnswer} playerScore={player?.score || 0} isLastQuestion={isLastQuestion} currentStreak={player?.currentStreak} />;
+        return (
+          <ResultScreen
+            lastAnswer={lastAnswer}
+            playerScore={player?.score || 0}
+            isLastQuestion={isLastQuestion}
+            currentStreak={player?.currentStreak}
+            playerRank={playerRank}
+            totalPlayers={totalPlayers}
+          />
+        );
 
       case 'ended':
         sessionManager.clearSession();
         return (
           <EndedScreen
             playerScore={player?.score || 0}
+            playerRank={playerRank}
+            totalPlayers={totalPlayers}
             onPlayAgain={() => {
               sessionManager.clearSession();
               router.push('/');

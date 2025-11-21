@@ -13,9 +13,18 @@ interface ResultScreenProps {
   playerScore: number;
   isLastQuestion: boolean;
   currentStreak?: number;
+  playerRank?: number;
+  totalPlayers?: number;
 }
 
-export function ResultScreen({ lastAnswer, playerScore, isLastQuestion, currentStreak }: ResultScreenProps) {
+// Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
+function getOrdinalSuffix(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+export function ResultScreen({ lastAnswer, playerScore, isLastQuestion, currentStreak, playerRank, totalPlayers }: ResultScreenProps) {
   const isCorrect = lastAnswer ? lastAnswer.correct.includes(lastAnswer.selected) : false;
   const wasTimeout = lastAnswer?.wasTimeout || false;
   const isPartiallyCorrect = lastAnswer?.isPartiallyCorrect || false;
@@ -90,6 +99,21 @@ export function ResultScreen({ lastAnswer, playerScore, isLastQuestion, currentS
             <span className="text-muted-foreground">Total Score:</span>
             <span className="font-semibold">{playerScore}</span>
           </div>
+
+          {/* Player Rank Badge */}
+          {playerRank && totalPlayers && (
+            <div className="bg-gradient-to-r from-primary/5 to-accent/5 rounded-xl p-4 border border-card-border">
+              <p className="text-sm text-muted-foreground mb-2">Current Rank</p>
+              <div className="flex items-center justify-center gap-2">
+                <div className="bg-gradient-to-r from-primary to-accent px-4 py-2 rounded-xl">
+                  <span className="text-lg font-semibold text-white">
+                    #{getOrdinalSuffix(playerRank)}
+                  </span>
+                </div>
+                <span className="text-lg text-muted-foreground">of {totalPlayers} players</span>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 
