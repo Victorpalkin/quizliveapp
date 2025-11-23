@@ -27,6 +27,29 @@
 | Player state refactoring | ✅ Implemented | Critical | Fixed sync issues, proper state machine implementation |
 | Multiple correct answers | ✅ Implemented | High | Questions can have multiple correct answers |
 | Material You design | ✅ Implemented | Medium | Modern Google Material Design 3 styling |
+| Streak tracking | ✅ Implemented | Medium | Server-side streak calculation with UI display on results and leaderboards |
+| Question timer visibility | ✅ Implemented | High | Timer bar shown on host screen during questions |
+| Copy quiz (own) | ✅ Implemented | Medium | Duplicate your own quizzes to modify |
+
+### UX/UI Enhancements ✅
+
+| Feature | Status | Impact | Description |
+|---------|--------|--------|-------------|
+| Toast notifications | ✅ Implemented | Medium | Consistent notification system with 20+ usages across app |
+| Confirmation dialogs | ✅ Implemented | Medium | All destructive actions require confirmation (delete quiz/game, cancel game, delete share) |
+
+### Infrastructure & DevOps ✅
+
+| Feature | Status | Impact | Description |
+|---------|--------|--------|-------------|
+| CI/CD pipeline | ✅ Implemented | High | Cloud Build automated deployment with dev/prod environments |
+
+### Documentation ✅
+
+| Feature | Status | Impact | Description |
+|---------|--------|--------|-------------|
+| Architecture diagram | ✅ Implemented | High | Comprehensive architecture diagrams in docs/architecture/blueprint.md |
+| Deployment checklist | ✅ Implemented | High | Complete deployment guide in docs/deployment/DEPLOYMENT.md |
 
 
 ---
@@ -88,8 +111,6 @@
 | Sound effects | Low | Medium | Medium | Add audio feedback for correct/incorrect answers |
 | Custom themes | Medium | Medium | High | Allow hosts to customize quiz colors/branding |
 | Scheduled games | High | Medium | High | Schedule games to start at specific times |
-| Question timer visibility | Low | High | High | Show timer bar on host screen during questions |
-| Streak tracking | Medium | Medium | Medium | Track consecutive correct answers |
 
 ### Priority 3: High Impact, High Effort
 
@@ -128,12 +149,11 @@
 
 | Feature | Effort | Impact | Description |
 |---------|--------|--------|-------------|
-| Loading skeletons | Low | Medium | Better loading states for all data fetches |
+| Loading skeletons | Low | Medium | Expand loading skeletons to all pages (currently only lobby and some pages) |
 | Error boundaries | Low | High | Graceful error handling with user-friendly messages |
-| Toast notifications | Low | Medium | Consistent notification system for actions |
 | Responsive design audit | Medium | High | Ensure perfect mobile experience |
 | Dark mode | Medium | Medium | Toggle between light/dark themes |
-| Animations | Low | Medium | Smooth transitions between screens |
+| Animations | Low | Medium | Add comprehensive screen transition animations (basic CSS transitions exist) |
 
 ### Priority 2: Important
 
@@ -141,10 +161,9 @@
 |---------|--------|--------|-------------|
 | Onboarding tutorial | Medium | High | First-time user walkthrough |
 | Help documentation | Medium | High | In-app help section with FAQs |
-| Keyboard shortcuts | Low | Low | Power user keyboard navigation |
+| Keyboard shortcuts | Low | Low | Power user keyboard navigation (basic form handling exists, need app-wide shortcuts) |
 | Undo/redo | Medium | Medium | Undo quiz edits |
 | Auto-save drafts | Medium | High | Save quiz progress automatically |
-| Confirmation dialogs | Low | Medium | Confirm destructive actions (delete quiz, end game) |
 
 ---
 
@@ -156,7 +175,6 @@
 |---------|--------|--------|-------------|
 | Monitoring & alerts | Medium | High | Set up error tracking (Sentry), uptime monitoring |
 | Automated testing | High | Very High | Unit tests, integration tests, E2E tests |
-| CI/CD pipeline | Medium | High | Automated deployment on merge to main |
 | Database backups | Low | Critical | Automated daily Firestore backups |
 | Performance monitoring | Medium | High | Track page load times, function execution times |
 
@@ -166,7 +184,7 @@
 |---------|--------|--------|-------------|
 | CDN for images | Low | Medium | Use Cloud CDN for faster image loading |
 | Code splitting | Medium | Medium | Reduce bundle size with lazy loading |
-| Database indexes | Low | High | Optimize Firestore queries with indexes |
+| Database indexes | Low | High | Optimize Firestore queries with comprehensive indexes (basic sharing indexes exist) |
 | Caching strategy | Medium | Medium | Cache static assets, implement stale-while-revalidate |
 | Load testing | Medium | High | Test app with 1000+ concurrent players |
 
@@ -178,10 +196,8 @@
 
 | Document | Effort | Impact | Description |
 |----------|--------|--------|-------------|
-| API documentation | Medium | High | Document all Cloud Functions APIs |
-| Architecture diagram | Low | High | Visual overview of system architecture |
+| API documentation | Medium | High | Create dedicated API reference (inline JSDoc exists but no comprehensive docs) |
 | Contributing guide | Low | Medium | Guidelines for contributors |
-| Deployment checklist | Low | High | Pre-deployment verification steps |
 
 ### Priority 2: Nice to Have
 
@@ -250,32 +266,33 @@
 
 Based on impact/effort analysis, implement in this order:
 
-1. **Security hardening** (Priority 1 security items)
-   - Rate limiting
-   - Game PIN expiry
-   - Audit logging
+1. **Critical infrastructure** (Must-do for production stability)
+   - Database backups (automated daily Firestore backups)
+   - Error boundaries (React error boundaries for graceful error handling)
+   - Monitoring & alerts (Sentry, uptime monitoring)
 
 2. **Quick wins** (High impact, low effort features)
-   - Quiz categories/tags
-   - Question/answer randomization
-   - Quiz search
-   - Practice mode
+   - Answer randomization (randomize answer order to prevent memorization)
+   - Question randomization (randomize question order for fairness)
+   - Quiz categories/tags (organize quizzes by category)
+   - Quiz search (search quizzes by title)
 
-3. **Analytics & monitoring** (Infrastructure priority 1)
-   - Error tracking
-   - Automated testing
-   - CI/CD pipeline
+3. **Security hardening** (Priority 1 security items)
+   - Rate limiting (prevent spam submissions)
+   - Game PIN expiry (expire PINs after X hours)
+   - Audit logging (log critical actions)
 
 4. **High-value features** (Priority 2 features)
-   - Player statistics
-   - Team mode
-   - Scheduled games
-   - Analytics dashboard
+   - Practice mode (solo quiz practice)
+   - Player statistics (track performance over time)
+   - Team mode (collaborative gameplay)
+   - Auto-save drafts (save quiz progress)
 
-5. **UX polish** (UX Priority 1)
-   - Loading states
-   - Error handling
+5. **UX polish** (Expand existing partial implementations)
+   - Expand loading skeletons to all pages
+   - Comprehensive screen transition animations
    - Responsive design audit
+   - Dark mode
 
 ---
 
@@ -283,6 +300,7 @@ Based on impact/effort analysis, implement in this order:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2 | 2025-11-21 | Comprehensive audit: Removed 9 fully implemented features, updated 4 partial implementations with clarifications |
 | 1.1 | 2025-11-17 | Added Phase 1 refactoring completion notes and Phase 2 opportunities |
 | 1.0 | 2025-11-10 | Initial backlog based on implemented features and security review |
 
