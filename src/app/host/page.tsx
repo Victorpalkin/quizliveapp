@@ -9,7 +9,7 @@ import { Header } from '@/components/app/header';
 import { SharedQuizzes } from '@/components/app/shared-quizzes';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
-import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye, Edit, Share2 } from 'lucide-react';
+import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye, Edit, Share2, Sparkles } from 'lucide-react';
 import { useCollection, useFirestore, useUser, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getDoc, CollectionReference, Query } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
@@ -295,11 +295,18 @@ export default function HostDashboardPage() {
         <div className="mb-12">
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-5xl font-semibold">My Quizzes</h1>
-                <Button asChild className="px-6 py-4 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
-                    <Link href="/host/create">
-                        <PlusCircle className="mr-2 h-5 w-5" /> Create New Quiz
-                    </Link>
-                </Button>
+                <div className="flex gap-3">
+                    <Button asChild variant="outline" className="px-6 py-4 hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
+                        <Link href="/host/create-ai">
+                            <Sparkles className="mr-2 h-5 w-5" /> Create with AI
+                        </Link>
+                    </Button>
+                    <Button asChild className="px-6 py-4 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
+                        <Link href="/host/create">
+                            <PlusCircle className="mr-2 h-5 w-5" /> Create New Quiz
+                        </Link>
+                    </Button>
+                </div>
             </div>
 
             {quizzesLoading ? (
