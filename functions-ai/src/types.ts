@@ -79,3 +79,16 @@ export interface GenerateQuizResponse {
   quiz: GeneratedQuiz;
   message: string;
 }
+
+// Request to generate question image
+export interface GenerateImageRequest {
+  prompt: string;
+  quizId?: string;     // For existing quizzes
+  tempId?: string;     // For new quizzes (temp storage)
+  questionIndex: number;
+}
+
+// Response from generate image
+export interface GenerateImageResponse {
+  imageUrl: string;
+}

@@ -110,9 +110,12 @@ interface QuizFormProps {
   isSubmitting: boolean;
   userId: string;
   additionalContent?: React.ReactNode; // For QuizShareManager in edit mode
+  // Quiz identification (for AI image generation)
+  quizId?: string;   // For existing quizzes (edit mode)
+  tempId?: string;   // For new quizzes (create mode)
 }
 
-export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, additionalContent }: QuizFormProps) {
+export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, additionalContent, quizId, tempId }: QuizFormProps) {
   const form = useForm<QuizFormData>({
     resolver: zodResolver(quizSchema),
     defaultValues: initialData || {
@@ -203,7 +206,9 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     uploadImage: handleImageUpload,
     removeImage,
     totalQuestions: questions.length,
-  }), [form.control, updateQuestion, removeQuestion, convertQuestionType, addAnswer, removeAnswer, questions.length]);
+    quizId,
+    tempId,
+  }), [form.control, updateQuestion, removeQuestion, convertQuestionType, addAnswer, removeAnswer, questions.length, quizId, tempId]);
 
   const handleSubmit = async (data: QuizFormData) => {
     await onSubmit(data, imageFiles.current, imagesToDelete.current);

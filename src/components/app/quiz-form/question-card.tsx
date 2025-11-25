@@ -43,6 +43,8 @@ export function QuestionCard({
     uploadImage: onImageUpload,
     removeImage: onImageRemove,
     totalQuestions,
+    quizId,
+    tempId,
   } = useQuizFormContext();
   const {
     attributes,
@@ -153,6 +155,10 @@ export function QuestionCard({
             onUpload={(file) => onImageUpload(questionIndex, file)}
             onRemove={() => onImageRemove(questionIndex)}
             questionNumber={questionIndex + 1}
+            questionText={question.text}
+            quizId={quizId}
+            tempId={tempId}
+            onAIImageGenerated={(url) => onUpdateQuestion(questionIndex, { ...question, imageUrl: url })}
           />
           <FormField
             control={control}

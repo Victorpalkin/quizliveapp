@@ -571,7 +571,11 @@ gcloud projects get-iam-policy $PROD_PROJECT_ID \
 
 ### 3.4 Create Custom Service Account for AI Functions
 
-The AI quiz generation feature uses Gemini 3 Pro via Vertex AI. We create a dedicated service account with minimal permissions (principle of least privilege) for the AI Cloud Functions.
+The AI features use Gemini 3 Pro via Vertex AI for:
+- **Quiz generation** (`generateQuizWithAI`) - generates quiz questions from prompts
+- **Image generation** (`generateQuestionImage`) - generates images for quiz questions
+
+We create a dedicated service account with minimal permissions (principle of least privilege) for the AI Cloud Functions.
 
 **For Development Project:**
 
@@ -582,7 +586,7 @@ gcloud config set project $DEV_PROJECT_ID
 # Create custom service account for AI functions
 gcloud iam service-accounts create gquiz-ai-functions \
   --display-name="gQuiz AI Functions Service Account" \
-  --description="Custom service account for AI quiz generation Cloud Functions (Vertex AI access)"
+  --description="Custom service account for AI Cloud Functions (Vertex AI + Storage access)"
 
 # Get the service account email
 AI_SA_EMAIL="gquiz-ai-functions@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
@@ -591,6 +595,11 @@ AI_SA_EMAIL="gquiz-ai-functions@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
 gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${AI_SA_EMAIL}" \
   --role="roles/aiplatform.user"
+
+# Grant Storage Object Admin role (required for saving AI-generated images)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/storage.objectAdmin"
 
 # Verify the service account was created and has correct permissions
 echo "AI Functions service account created: ${AI_SA_EMAIL}"
@@ -609,7 +618,7 @@ gcloud config set project $PROD_PROJECT_ID
 # Create custom service account for AI functions
 gcloud iam service-accounts create gquiz-ai-functions \
   --display-name="gQuiz AI Functions Service Account" \
-  --description="Custom service account for AI quiz generation Cloud Functions (Vertex AI access)"
+  --description="Custom service account for AI Cloud Functions (Vertex AI + Storage access)"
 
 # Get the service account email
 AI_SA_EMAIL="gquiz-ai-functions@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
@@ -618,6 +627,11 @@ AI_SA_EMAIL="gquiz-ai-functions@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
 gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
   --member="serviceAccount:${AI_SA_EMAIL}" \
   --role="roles/aiplatform.user"
+
+# Grant Storage Object Admin role (required for saving AI-generated images)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/storage.objectAdmin"
 
 # Verify the service account was created and has correct permissions
 echo "AI Functions service account created: ${AI_SA_EMAIL}"
@@ -630,9 +644,16 @@ gcloud projects get-iam-policy $PROD_PROJECT_ID \
 **Why a custom service account?**
 
 - **Security isolation**: AI functions have separate credentials from other functions
-- **Least privilege**: Only grants `roles/aiplatform.user`, nothing more
+- **Least privilege**: Only grants required roles (`roles/aiplatform.user` + `roles/storage.objectAdmin`)
 - **Auditability**: Easy to track AI API usage per service account
 - **Revocation**: Can disable AI access without affecting other functions
+
+**Required Roles Summary:**
+
+| Role | Purpose |
+|------|---------|
+| `roles/aiplatform.user` | Call Gemini API via Vertex AI |
+| `roles/storage.objectAdmin` | Upload AI-generated images to Firebase Storage |
 
 **Grant Cloud Build permission to deploy with AI service account:**
 
@@ -1258,7 +1279,7 @@ Reconnect GitHub repository:
 
 **Solution:**
 
-The AI functions use a custom service account (`gquiz-ai-functions`) that needs the Vertex AI User role:
+The AI functions use a custom service account (`gquiz-ai-functions`) that needs specific roles:
 
 ```bash
 # For dev (or use $PROD_PROJECT_ID for production)
@@ -1272,10 +1293,15 @@ gcloud iam service-accounts create gquiz-ai-functions \
   --display-name="gQuiz AI Functions Service Account" \
   --project=$DEV_PROJECT_ID
 
-# Grant Vertex AI User role
+# Grant Vertex AI User role (for Gemini API)
 gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${AI_SA_EMAIL}" \
   --role="roles/aiplatform.user"
+
+# Grant Storage Object Admin role (for AI-generated images)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/storage.objectAdmin"
 
 # Verify the Vertex AI API is enabled
 gcloud services list --enabled --project=$DEV_PROJECT_ID | grep aiplatform
@@ -1318,14 +1344,23 @@ Firebase Functions v2 require unauthenticated access at the IAM level for CORS p
 
 ```bash
 # For dev (or use $PROD_PROJECT_ID for production)
+
+# Quiz generation function
 gcloud functions add-invoker-policy-binding generateQuizWithAI \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$DEV_PROJECT_ID \
+  --gen2
+
+# Image generation function
+gcloud functions add-invoker-policy-binding generateQuestionImage \
   --region=europe-west4 \
   --member="allUsers" \
   --project=$DEV_PROJECT_ID \
   --gen2
 ```
 
-This is safe because the function still requires Firebase Auth at the application level. This step is automated in Cloud Build, so you only need to run it manually for initial setup or troubleshooting.
+This is safe because the functions still require Firebase Auth at the application level. This step is automated in Cloud Build, so you only need to run it manually for initial setup or troubleshooting.
 
 ---
 
@@ -1398,12 +1433,15 @@ Monitor costs in [Google Cloud Console](https://console.cloud.google.com/billing
   - [ ] reCAPTCHA site key added to environment files (`NEXT_PUBLIC_RECAPTCHA_SITE_KEY`)
   - [ ] App Check enabled in Firebase Console
   - [ ] App Check enforcement enabled for production (after testing)
-- [ ] **Vertex AI (AI Quiz Generation) configured**
+- [ ] **Vertex AI (AI Functions) configured**
   - [ ] Vertex AI API enabled in project
   - [ ] Custom service account `gquiz-ai-functions` created
-  - [ ] AI service account has only `roles/aiplatform.user` role (least privilege)
+  - [ ] AI service account has required roles (least privilege):
+    - [ ] `roles/aiplatform.user` - for Gemini API access
+    - [ ] `roles/storage.objectAdmin` - for AI-generated image storage
   - [ ] Cloud Build service account can act as AI service account (`roles/iam.serviceAccountUser`)
   - [ ] AI functions deployed from `functions-ai` codebase with custom service account
+  - [ ] AI functions allow unauthenticated invocations for CORS (automated in Cloud Build)
 
 ---
 
