@@ -1,6 +1,6 @@
 # gQuiz - Bug Fixes and Technical Solutions
 
-**Last Updated:** 2025-11-19
+**Last Updated:** 2025-11-25
 
 Compact reference of all bug fixes, technical solutions, and architectural decisions.
 
@@ -14,6 +14,7 @@ Compact reference of all bug fixes, technical solutions, and architectural decis
 4. [Quiz Sharing & Permissions](#quiz-sharing--permissions)
 5. [React & UI Issues](#react--ui-issues)
 6. [Security](#security)
+7. [AI Image Generation](#ai-image-generation)
 
 ---
 
@@ -329,6 +330,76 @@ export const submitAnswer = onCall({ cors: ALLOWED_ORIGINS }, async (request) =>
 
 **Files Modified:**
 - `functions/src/index.ts` - CORS validation
+
+---
+
+## AI Image Generation
+
+### Problem: Uniform Bucket-Level Access Error
+**Error:** `ApiError: Cannot update access control for an object when uniform bucket-level access is enabled`
+
+**Root Cause:**
+Firebase Storage bucket has uniform bucket-level access enabled, which disables per-object ACLs. The `file.makePublic()` method tries to set per-object ACLs and fails.
+
+### Solution: Firebase Download URL Pattern
+Instead of using `makePublic()`, generate a download token and construct a Firebase-style download URL:
+
+```typescript
+import { randomUUID } from 'crypto';
+
+// Generate a download token (same approach as Firebase SDK's getDownloadURL)
+const downloadToken = randomUUID();
+
+// Add TTL metadata for temp images (24 hours from now)
+const isTemp = !quizId;
+const ttlMetadata = isTemp
+  ? { tempImageExpires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }
+  : {};
+
+await file.save(Buffer.from(imageData, 'base64'), {
+  metadata: {
+    contentType: mimeType,
+    metadata: {
+      firebaseStorageDownloadTokens: downloadToken,
+      ...ttlMetadata,
+    },
+  },
+});
+
+// Construct Firebase download URL (same format as getDownloadURL())
+const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${downloadToken}`;
+```
+
+**Key Points:**
+- `firebaseStorageDownloadTokens` metadata enables token-based access
+- URLs are permanent (no expiration) unless token is revoked
+- Works with uniform bucket-level access enabled
+- TTL metadata enables scheduled cleanup of temp images
+
+### Image Generation UI: Preview & Regeneration Flow
+
+**Features:**
+1. **Preview before confirming** - Generated image shows in modal before applying
+2. **Regeneration** - Edit prompt and regenerate (deletes previous temp image)
+3. **Cleanup** - Temp image deleted on cancel or regenerate
+4. **Neutral prompt** - Default prompt doesn't prescribe a specific style
+
+```typescript
+// Delete previous preview image if regenerating
+if (previewUrl && storage) {
+  try {
+    const imageRef = ref(storage, previewUrl);
+    await deleteObject(imageRef);
+  } catch (error) {
+    console.error('Failed to delete previous preview:', error);
+  }
+}
+```
+
+**Files Modified:**
+- `functions-ai/src/functions/generateQuestionImage.ts` - Firebase download URL, TTL metadata
+- `src/components/app/quiz-form/shared/ai-image-generator.tsx` - Preview/regeneration UI
+- `storage.rules` - Temp image paths and permissions
 
 ---
 

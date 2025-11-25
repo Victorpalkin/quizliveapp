@@ -32,8 +32,8 @@ interface AIImageGeneratorProps {
  * (neutral style, no cartoon reference)
  */
 function generateDefaultPrompt(questionText: string): string {
-  return `Create a fun, engaging illustration for this quiz question: "${questionText}".
-Make it visually interesting and suitable for a quiz game.
+  return `Create an engaging illustration for this quiz question: "${questionText}".
+Style photorealistic. Try to add something humorous.
 Do not include any text in the image.`;
 }
 
