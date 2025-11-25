@@ -171,6 +171,29 @@ source ~/.bashrc
 4. Add authorized domain: `your-project.firebaseapp.com`
 5. Click "Save"
 
+#### Enable App Check (Recommended for Security)
+
+Firebase App Check helps protect your backend from abuse by verifying requests come from your genuine app.
+
+1. Go to Firebase Console → Your project → Build → App Check
+2. Click "Get started"
+3. Register your web app:
+   - Click on your web app
+   - Select "reCAPTCHA v3" or "reCAPTCHA Enterprise" provider
+   - Click "Register"
+4. Get reCAPTCHA Site Key:
+   - Go to [Google Cloud Console → Security → reCAPTCHA](https://console.cloud.google.com/security/recaptcha)
+   - Create a new site key for your domain (or use the one created by Firebase)
+   - Copy the **Site Key** (not the Secret Key)
+5. Add the Site Key to your environment files:
+   ```bash
+   NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-site-key-here
+   ```
+6. **Important**: App Check runs in monitoring mode by default. To enforce it:
+   - Go to Firebase Console → App Check
+   - Click "Enforce" for each service (Cloud Functions, Firestore, etc.)
+   - Only do this after verifying your app works correctly with App Check
+
 #### Enable Firestore
 
 1. Go to Build → Firestore Database
@@ -249,6 +272,9 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-dev-measurement-id
 NEXT_PUBLIC_ENVIRONMENT=development
 GCP_REGION=${DEPLOY_REGION}
 CLOUD_RUN_SERVICE_NAME=${DEV_PROJECT_ID}
+
+# Firebase App Check (optional but recommended for security)
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-recaptcha-site-key
 ```
 
 **Or create it automatically using the variables:**
@@ -266,6 +292,9 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-dev-measurement-id
 NEXT_PUBLIC_ENVIRONMENT=development
 GCP_REGION=${DEPLOY_REGION}
 CLOUD_RUN_SERVICE_NAME=${DEV_PROJECT_ID}
+
+# Firebase App Check (optional but recommended for security)
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-recaptcha-site-key
 EOF
 ```
 
@@ -293,6 +322,9 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-prod-measurement-id
 NEXT_PUBLIC_ENVIRONMENT=production
 GCP_REGION=${DEPLOY_REGION}
 CLOUD_RUN_SERVICE_NAME=${PROD_PROJECT_ID}
+
+# Firebase App Check (required for production security)
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-recaptcha-site-key
 ```
 
 **Or create it automatically using the variables:**
@@ -310,6 +342,9 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-prod-measurement-id
 NEXT_PUBLIC_ENVIRONMENT=production
 GCP_REGION=${DEPLOY_REGION}
 CLOUD_RUN_SERVICE_NAME=${PROD_PROJECT_ID}
+
+# Firebase App Check (required for production security)
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-recaptcha-site-key
 EOF
 ```
 
@@ -1148,6 +1183,10 @@ Monitor costs in [Google Cloud Console](https://console.cloud.google.com/billing
 - [ ] Branch protection enabled on `main` branch
 - [ ] Only authorized users can trigger production builds
 - [ ] Regular security audits of IAM roles and service account permissions
+- [ ] **Firebase App Check configured and tested**
+  - [ ] reCAPTCHA site key added to environment files (`NEXT_PUBLIC_RECAPTCHA_SITE_KEY`)
+  - [ ] App Check enabled in Firebase Console
+  - [ ] App Check enforcement enabled for production (after testing)
 
 ---
 
