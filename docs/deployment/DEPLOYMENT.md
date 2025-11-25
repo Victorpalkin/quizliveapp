@@ -171,6 +171,29 @@ source ~/.bashrc
 4. Add authorized domain: `your-project.firebaseapp.com`
 5. Click "Save"
 
+#### Enable App Check (Recommended for Security)
+
+Firebase App Check helps protect your backend from abuse by verifying requests come from your genuine app.
+
+1. Go to Firebase Console → Your project → Build → App Check
+2. Click "Get started"
+3. Register your web app:
+   - Click on your web app
+   - Select "reCAPTCHA v3" or "reCAPTCHA Enterprise" provider
+   - Click "Register"
+4. Get reCAPTCHA Site Key:
+   - Go to [Google Cloud Console → Security → reCAPTCHA](https://console.cloud.google.com/security/recaptcha)
+   - Create a new site key for your domain (or use the one created by Firebase)
+   - Copy the **Site Key** (not the Secret Key)
+5. Add the Site Key to your environment files:
+   ```bash
+   NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-site-key-here
+   ```
+6. **Important**: App Check runs in monitoring mode by default. To enforce it:
+   - Go to Firebase Console → App Check
+   - Click "Enforce" for each service (Cloud Functions, Firestore, etc.)
+   - Only do this after verifying your app works correctly with App Check
+
 #### Enable Firestore
 
 1. Go to Build → Firestore Database
@@ -249,6 +272,9 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-dev-measurement-id
 NEXT_PUBLIC_ENVIRONMENT=development
 GCP_REGION=${DEPLOY_REGION}
 CLOUD_RUN_SERVICE_NAME=${DEV_PROJECT_ID}
+
+# Firebase App Check (optional but recommended for security)
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-recaptcha-site-key
 ```
 
 **Or create it automatically using the variables:**
@@ -266,6 +292,9 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-dev-measurement-id
 NEXT_PUBLIC_ENVIRONMENT=development
 GCP_REGION=${DEPLOY_REGION}
 CLOUD_RUN_SERVICE_NAME=${DEV_PROJECT_ID}
+
+# Firebase App Check (optional but recommended for security)
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-recaptcha-site-key
 EOF
 ```
 
@@ -293,6 +322,9 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-prod-measurement-id
 NEXT_PUBLIC_ENVIRONMENT=production
 GCP_REGION=${DEPLOY_REGION}
 CLOUD_RUN_SERVICE_NAME=${PROD_PROJECT_ID}
+
+# Firebase App Check (required for production security)
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-recaptcha-site-key
 ```
 
 **Or create it automatically using the variables:**
@@ -310,6 +342,9 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-prod-measurement-id
 NEXT_PUBLIC_ENVIRONMENT=production
 GCP_REGION=${DEPLOY_REGION}
 CLOUD_RUN_SERVICE_NAME=${PROD_PROJECT_ID}
+
+# Firebase App Check (required for production security)
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your-recaptcha-site-key
 EOF
 ```
 
@@ -352,6 +387,7 @@ gcloud services enable cloudbilling.googleapis.com
 gcloud services enable cloudfunctions.googleapis.com
 gcloud services enable firebaseextensions.googleapis.com
 gcloud services enable eventarc.googleapis.com
+gcloud services enable aiplatform.googleapis.com  # For AI quiz generation (Gemini 3 Pro)
 ```
 
 **For Production Project:**
@@ -370,6 +406,7 @@ gcloud services enable cloudbilling.googleapis.com
 gcloud services enable cloudfunctions.googleapis.com
 gcloud services enable firebaseextensions.googleapis.com
 gcloud services enable eventarc.googleapis.com
+gcloud services enable aiplatform.googleapis.com  # For AI quiz generation (Gemini 3 Pro)
 ```
 
 ### 3.2 Create Custom Service Accounts for Cloud Build
@@ -532,7 +569,163 @@ gcloud projects get-iam-policy $PROD_PROJECT_ID \
   --format="table(bindings.role)"
 ```
 
-### 3.4 Store Environment Variables in Secret Manager
+### 3.4 Create Custom Service Account for AI Functions
+
+The AI features use Gemini 3 Pro via Vertex AI for:
+- **Quiz generation** (`generateQuizWithAI`) - generates quiz questions from prompts
+- **Image generation** (`generateQuestionImage`) - generates images for quiz questions
+
+We create a dedicated service account with minimal permissions (principle of least privilege) for the AI Cloud Functions.
+
+**For Development Project:**
+
+```bash
+# Set current project
+gcloud config set project $DEV_PROJECT_ID
+
+# Create custom service account for AI functions
+gcloud iam service-accounts create gquiz-ai-functions \
+  --display-name="gQuiz AI Functions Service Account" \
+  --description="Custom service account for AI Cloud Functions (Vertex AI + Storage access)"
+
+# Get the service account email
+AI_SA_EMAIL="gquiz-ai-functions@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Grant Vertex AI User role (required for calling Gemini API)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/aiplatform.user"
+
+# Grant Storage Object Admin role (required for saving AI-generated images)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/storage.objectAdmin"
+
+# Verify the service account was created and has correct permissions
+echo "AI Functions service account created: ${AI_SA_EMAIL}"
+gcloud projects get-iam-policy $DEV_PROJECT_ID \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:serviceAccount:${AI_SA_EMAIL}" \
+  --format="table(bindings.role)"
+```
+
+**For Production Project:**
+
+```bash
+# Set current project
+gcloud config set project $PROD_PROJECT_ID
+
+# Create custom service account for AI functions
+gcloud iam service-accounts create gquiz-ai-functions \
+  --display-name="gQuiz AI Functions Service Account" \
+  --description="Custom service account for AI Cloud Functions (Vertex AI + Storage access)"
+
+# Get the service account email
+AI_SA_EMAIL="gquiz-ai-functions@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Grant Vertex AI User role (required for calling Gemini API)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/aiplatform.user"
+
+# Grant Storage Object Admin role (required for saving AI-generated images)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/storage.objectAdmin"
+
+# Verify the service account was created and has correct permissions
+echo "AI Functions service account created: ${AI_SA_EMAIL}"
+gcloud projects get-iam-policy $PROD_PROJECT_ID \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:serviceAccount:${AI_SA_EMAIL}" \
+  --format="table(bindings.role)"
+```
+
+**Why a custom service account?**
+
+- **Security isolation**: AI functions have separate credentials from other functions
+- **Least privilege**: Only grants required roles (`roles/aiplatform.user` + `roles/storage.objectAdmin`)
+- **Auditability**: Easy to track AI API usage per service account
+- **Revocation**: Can disable AI access without affecting other functions
+
+**Required Roles Summary:**
+
+| Role | Purpose |
+|------|---------|
+| `roles/aiplatform.user` | Call Gemini API via Vertex AI |
+| `roles/storage.objectAdmin` | Upload AI-generated images to Firebase Storage |
+
+**Grant Cloud Build permission to deploy with AI service account:**
+
+The Cloud Build service account needs permission to deploy Cloud Functions that use the AI service account.
+
+**For Development Project:**
+
+```bash
+# Set variables
+AI_SA_EMAIL="gquiz-ai-functions@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
+CLOUDBUILD_SA_EMAIL="cloudbuild-sa-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Grant Cloud Build permission to act as the AI service account
+gcloud iam service-accounts add-iam-policy-binding $AI_SA_EMAIL \
+  --member="serviceAccount:${CLOUDBUILD_SA_EMAIL}" \
+  --role="roles/iam.serviceAccountUser" \
+  --project=$DEV_PROJECT_ID
+
+echo "Cloud Build can now deploy functions with AI service account"
+```
+
+**For Production Project:**
+
+```bash
+# Set variables
+AI_SA_EMAIL="gquiz-ai-functions@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
+CLOUDBUILD_SA_EMAIL="cloudbuild-sa-prod@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Grant Cloud Build permission to act as the AI service account
+gcloud iam service-accounts add-iam-policy-binding $AI_SA_EMAIL \
+  --member="serviceAccount:${CLOUDBUILD_SA_EMAIL}" \
+  --role="roles/iam.serviceAccountUser" \
+  --project=$PROD_PROJECT_ID
+
+echo "Cloud Build can now deploy functions with AI service account"
+```
+
+**Note**: The `generateQuizWithAI` function is configured in code to use this service account (`functions-ai/src/config.ts`). No API keys are needed - the function uses Application Default Credentials (ADC) automatically.
+
+### 3.5 Configure Unauthenticated Access for AI Functions
+
+Firebase Cloud Functions v2 (deployed on Cloud Run) require IAM authentication by default. However, browser CORS preflight requests (OPTIONS) are unauthenticated. To allow CORS to work, we must permit unauthenticated invocations at the IAM level.
+
+**This is safe because:**
+- The function code validates `request.auth` and rejects unauthenticated Firebase requests
+- App Check provides additional verification
+- The callable protocol validates request format
+- Only the OPTIONS preflight is truly unauthenticated
+
+**For Development Project:**
+
+```bash
+gcloud functions add-invoker-policy-binding generateQuizWithAI \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$DEV_PROJECT_ID \
+  --gen2
+```
+
+**For Production Project:**
+
+```bash
+gcloud functions add-invoker-policy-binding generateQuizWithAI \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$PROD_PROJECT_ID \
+  --gen2
+```
+
+**Note**: This step is automated in Cloud Build (`cloudbuild.yaml`), so you only need to run it manually for initial setup or troubleshooting.
+
+### 3.6 Store Environment Variables in Secret Manager
 
 **For Development:**
 
@@ -1082,6 +1275,93 @@ Reconnect GitHub repository:
 3. Re-authenticate with GitHub
 4. Select repository again
 
+### Issue: AI quiz generation fails with "Permission denied" or "Vertex AI error"
+
+**Solution:**
+
+The AI functions use a custom service account (`gquiz-ai-functions`) that needs specific roles:
+
+```bash
+# For dev (or use $PROD_PROJECT_ID for production)
+AI_SA_EMAIL="gquiz-ai-functions@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Check if the service account exists
+gcloud iam service-accounts describe $AI_SA_EMAIL --project=$DEV_PROJECT_ID
+
+# If it doesn't exist, create it
+gcloud iam service-accounts create gquiz-ai-functions \
+  --display-name="gQuiz AI Functions Service Account" \
+  --project=$DEV_PROJECT_ID
+
+# Grant Vertex AI User role (for Gemini API)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/aiplatform.user"
+
+# Grant Storage Object Admin role (for AI-generated images)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/storage.objectAdmin"
+
+# Verify the Vertex AI API is enabled
+gcloud services list --enabled --project=$DEV_PROJECT_ID | grep aiplatform
+
+# If not enabled, enable it
+gcloud services enable aiplatform.googleapis.com --project=$DEV_PROJECT_ID
+```
+
+### Issue: AI quiz generation returns "Model not found"
+
+**Solution:**
+
+1. Verify you're using the correct model name in `functions-ai/src/config.ts`
+2. Ensure the Vertex AI API is enabled in your project
+3. Check that your region supports the Gemini 3 Pro model (europe-west4 is recommended)
+
+### Issue: Cloud Build fails to deploy AI functions with "Permission denied on service account"
+
+**Solution:**
+
+The Cloud Build service account needs permission to deploy functions with the AI service account:
+
+```bash
+# For dev (or use $PROD_PROJECT_ID for production)
+AI_SA_EMAIL="gquiz-ai-functions@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
+CLOUDBUILD_SA_EMAIL="cloudbuild-sa-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Grant permission
+gcloud iam service-accounts add-iam-policy-binding $AI_SA_EMAIL \
+  --member="serviceAccount:${CLOUDBUILD_SA_EMAIL}" \
+  --role="roles/iam.serviceAccountUser" \
+  --project=$DEV_PROJECT_ID
+```
+
+### Issue: CORS error when calling AI function
+
+**Solution:**
+
+Firebase Functions v2 require unauthenticated access at the IAM level for CORS preflight requests to succeed:
+
+```bash
+# For dev (or use $PROD_PROJECT_ID for production)
+
+# Quiz generation function
+gcloud functions add-invoker-policy-binding generateQuizWithAI \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$DEV_PROJECT_ID \
+  --gen2
+
+# Image generation function
+gcloud functions add-invoker-policy-binding generateQuestionImage \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$DEV_PROJECT_ID \
+  --gen2
+```
+
+This is safe because the functions still require Firebase Auth at the application level. This step is automated in Cloud Build, so you only need to run it manually for initial setup or troubleshooting.
+
 ---
 
 ## Monitoring and Maintenance
@@ -1131,6 +1411,7 @@ Monitor costs in [Google Cloud Console](https://console.cloud.google.com/billing
 - Cloud Build: 120 free minutes/day, then $0.003/minute
 - Firestore: Free tier: 50K reads, 20K writes/day
 - Cloud Storage: Free tier: 5GB
+- Vertex AI (Gemini 3 Pro): Pay per token (input/output)
 
 ---
 
@@ -1148,6 +1429,19 @@ Monitor costs in [Google Cloud Console](https://console.cloud.google.com/billing
 - [ ] Branch protection enabled on `main` branch
 - [ ] Only authorized users can trigger production builds
 - [ ] Regular security audits of IAM roles and service account permissions
+- [ ] **Firebase App Check configured and tested**
+  - [ ] reCAPTCHA site key added to environment files (`NEXT_PUBLIC_RECAPTCHA_SITE_KEY`)
+  - [ ] App Check enabled in Firebase Console
+  - [ ] App Check enforcement enabled for production (after testing)
+- [ ] **Vertex AI (AI Functions) configured**
+  - [ ] Vertex AI API enabled in project
+  - [ ] Custom service account `gquiz-ai-functions` created
+  - [ ] AI service account has required roles (least privilege):
+    - [ ] `roles/aiplatform.user` - for Gemini API access
+    - [ ] `roles/storage.objectAdmin` - for AI-generated image storage
+  - [ ] Cloud Build service account can act as AI service account (`roles/iam.serviceAccountUser`)
+  - [ ] AI functions deployed from `functions-ai` codebase with custom service account
+  - [ ] AI functions allow unauthenticated invocations for CORS (automated in Cloud Build)
 
 ---
 
@@ -1157,6 +1451,7 @@ Monitor costs in [Google Cloud Console](https://console.cloud.google.com/billing
 - [Cloud Build Documentation](https://cloud.google.com/build/docs)
 - [Cloud Run Documentation](https://cloud.google.com/run/docs)
 - [Next.js Deployment](https://nextjs.org/docs/deployment)
+- [Vertex AI Gemini Documentation](https://cloud.google.com/vertex-ai/docs/generative-ai/model-reference/gemini)
 
 ---
 

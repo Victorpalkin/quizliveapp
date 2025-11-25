@@ -220,6 +220,7 @@ export default function EditQuizPage() {
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
           userId={user.uid}
+          quizId={quizId}
           additionalContent={
             quizData && <QuizShareManager quizId={quizId} quizTitle={quizData.title} />
           }

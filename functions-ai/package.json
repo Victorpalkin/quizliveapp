@@ -1,0 +1,25 @@
+{
+  "name": "functions-ai",
+  "version": "1.0.0",
+  "description": "AI-powered Cloud Functions for gQuiz (Gemini 3 Pro)",
+  "scripts": {
+    "build": "tsc",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions:ai",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "@google/genai": "^1.30.0",
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^6.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "private": true
+}

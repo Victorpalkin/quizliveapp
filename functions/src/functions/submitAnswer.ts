@@ -3,6 +3,7 @@ import * as admin from 'firebase-admin';
 import { SubmitAnswerRequest, Game, Player, PlayerAnswer, SubmitAnswerResult } from '../types';
 import { ALLOWED_ORIGINS, REGION, DEFAULT_QUESTION_TIME_LIMIT } from '../config';
 import { validateOrigin } from '../utils/cors';
+import { verifyAppCheck } from '../utils/appCheck';
 import {
   validateBasicFields,
   validateQuestionTiming,
@@ -17,10 +18,14 @@ import { calculateScore, calculateStreak } from '../utils/scoring';
  * Deployed to europe-west4 region
  *
  * Security features:
+ * - App Check: Verifies requests come from genuine app instances
  * - CORS validation: Only accepts requests from authorized origins
- * - Authentication: Requires valid Firebase authentication (auth context)
  * - Server-side validation: Validates all game state server-side
+ * - "Already answered" check: Prevents duplicate submissions
  * - Transaction safety: Uses Firestore transactions to prevent race conditions
+ *
+ * Note: Rate limiting removed - App Check + validation provides sufficient protection
+ * for quiz gameplay where players submit ~1 answer per 10-60 seconds.
  */
 export const submitAnswer = onCall(
   {
@@ -30,8 +35,13 @@ export const submitAnswer = onCall(
     memory: '256MiB',
     maxInstances: 10,
     concurrency: 80,
+    // Enable App Check enforcement when ready
+    enforceAppCheck: false, // Set to true after client-side App Check is configured
   },
   async (request): Promise<SubmitAnswerResult> => {
+    // Verify App Check token (currently in monitoring mode)
+    verifyAppCheck(request);
+
     // Validate request origin
     const origin = request.rawRequest?.headers?.origin as string | undefined;
     validateOrigin(origin);

@@ -92,10 +92,10 @@ export interface SubmitAnswerResult {
 
 /**
  * Result returned from createHostAccount function
+ * Note: verificationLink is intentionally NOT returned for security reasons
  */
 export interface CreateHostAccountResult {
   success: boolean;
   userId: string;
   message: string;
-  verificationLink: string;
 }

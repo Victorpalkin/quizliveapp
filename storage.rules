@@ -3,12 +3,16 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Legacy path - Allow public read access to all images
-    match /quiz-images/{allPaths=**} {
+    // Legacy path - user-scoped image storage
+    // Path structure: quiz-images/{userId}/{imageId}
+    // Users can only write to their own directory
+    match /quiz-images/{userId}/{allPaths=**} {
+      // Anyone can read quiz images (for display during games)
       allow read;
 
-      // Allow writes (uploads, updates, deletes) only for authenticated users
-      allow write: if request.auth != null;
+      // Only the owner can write/delete their own images
+      // Security: Prevents users from modifying other users' images
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
     // New quiz-specific storage structure
@@ -21,6 +25,20 @@ service firebase.storage {
       // This is checked via Firestore lookup
       allow write: if request.auth != null &&
                      request.auth.uid == firestore.get(/databases/(default)/documents/quizzes/$(quizId)).data.hostId;
+    }
+
+    // Temporary AI-generated images (before quiz is saved)
+    // Path: temp/{tempId}/questions/{questionIndex}/image.png
+    // These are created by Cloud Function and read/deleted by authenticated users
+    match /temp/{tempId}/questions/{questionIndex}/{imageName} {
+      // Anyone can read temp images (needed for preview in form)
+      // Temp images have TTL metadata and can be cleaned up by scheduled function
+      allow read;
+
+      // Authenticated users can delete temp images (during save or cleanup)
+      // The tempId is client-generated, so we allow any authenticated user to clean up
+      // Cloud Function handles writes, so no write rule needed from client
+      allow delete: if request.auth != null;
     }
   }
 }

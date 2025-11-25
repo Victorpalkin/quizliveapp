@@ -3,6 +3,8 @@ import * as admin from 'firebase-admin';
 import { CreateHostAccountRequest, CreateHostAccountResult } from '../types';
 import { ALLOWED_ORIGINS, REGION } from '../config';
 import { validateOrigin } from '../utils/cors';
+import { verifyAppCheck } from '../utils/appCheck';
+import { enforceRateLimitInMemory, getClientIp } from '../utils/rateLimit';
 import { validateHostAccountRequest } from '../utils/validation';
 
 /**
@@ -10,6 +12,8 @@ import { validateHostAccountRequest } from '../utils/validation';
  * Validates @google.com domain and creates user with email verification
  *
  * Security features:
+ * - App Check: Verifies requests come from genuine app instances
+ * - Rate limiting: In-memory, 5 requests/hour per IP (zero latency overhead)
  * - Server-side @google.com domain validation
  * - Email uniqueness check
  * - Password validation by Firebase Auth
@@ -24,11 +28,21 @@ export const createHostAccount = onCall(
     memory: '512MiB',
     maxInstances: 5,
     concurrency: 40,
+    // Enable App Check enforcement when ready
+    enforceAppCheck: false, // Set to true after client-side App Check is configured
   },
   async (request): Promise<CreateHostAccountResult> => {
+    // Verify App Check token (currently in monitoring mode)
+    verifyAppCheck(request);
+
     // Validate request origin
     const origin = request.rawRequest?.headers?.origin as string | undefined;
     validateOrigin(origin);
+
+    // Rate limiting: 5 requests per hour per IP (prevent account creation abuse)
+    // Uses in-memory rate limiting for zero latency overhead
+    const clientIp = getClientIp(request);
+    enforceRateLimitInMemory(clientIp, 5, 3600); // 5 requests per hour
 
     const data = request.data as CreateHostAccountRequest;
     const { email, password, name, jobRole, team } = data;
@@ -65,7 +79,7 @@ export const createHostAccount = onCall(
 
       console.log(`[REGISTRATION] Created Firebase Auth user: ${userRecord.uid} (${trimmedEmail})`);
 
-      // Parallel operations: Create Firestore profile and generate verification link simultaneously
+      // Create Firestore profile and send verification email
       const db = admin.firestore();
       const userProfileRef = db.collection('users').doc(userRecord.uid);
 
@@ -75,7 +89,10 @@ export const createHostAccount = onCall(
         handleCodeInApp: false,
       };
 
-      const [, verificationLink] = await Promise.all([
+      // Create user profile and generate verification link in parallel
+      // Note: generateEmailVerificationLink triggers Firebase to send the verification email
+      // The link is intentionally not captured or returned for security reasons
+      await Promise.all([
         userProfileRef.set({
           id: userRecord.uid,
           email: trimmedEmail,
@@ -89,7 +106,7 @@ export const createHostAccount = onCall(
         admin.auth().generateEmailVerificationLink(trimmedEmail, actionCodeSettings)
       ]);
 
-      console.log(`[REGISTRATION] Created Firestore profile and verification link for: ${userRecord.uid}`);
+      console.log(`[REGISTRATION] Created Firestore profile and sent verification email for: ${userRecord.uid}`);
 
       // Note: In production, you would send this link via a custom email service
       // For now, Firebase Auth will handle sending the verification email
@@ -98,8 +115,7 @@ export const createHostAccount = onCall(
       return {
         success: true,
         userId: userRecord.uid,
-        message: 'Account created successfully. Please verify your email before signing in.',
-        verificationLink, // Return link for development/testing purposes
+        message: 'Account created successfully. Please check your email for a verification link.',
       };
 
     } catch (error: any) {

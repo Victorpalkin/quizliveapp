@@ -30,6 +30,8 @@
 | Streak tracking | ✅ Implemented | Medium | Server-side streak calculation with UI display on results and leaderboards |
 | Question timer visibility | ✅ Implemented | High | Timer bar shown on host screen during questions |
 | Copy quiz (own) | ✅ Implemented | Medium | Duplicate your own quizzes to modify |
+| AI quiz generation | ✅ Implemented | Very High | Generate quiz questions from topics using Gemini 3 Pro |
+| AI image generation | ✅ Implemented | High | Generate question images with AI, preview & regenerate flow |
 
 ### UX/UI Enhancements ✅
 
@@ -137,7 +139,7 @@
 | Hints system | Medium | Medium | Medium | Provide optional hints for difficult questions |
 | Custom game modes | Very High | Medium | Medium | Rapid fire, sudden death, etc. |
 | LMS integration | Very High | High | High | Integrate with Google Classroom, Canvas, Moodle |
-| AI quiz generation | Very High | High | Very High | Use AI to generate quiz questions from topics |
+| ~~AI quiz generation~~ | ~~Very High~~ | ~~High~~ | ~~Very High~~ | ~~Use AI to generate quiz questions from topics~~ ✅ Implemented |
 | Collaborative editing | High | Medium | Medium | Multiple hosts can edit same quiz simultaneously |
 | Quiz versioning | Medium | Low | Low | Track quiz changes over time, revert to previous versions |
 
@@ -300,6 +302,7 @@ Based on impact/effort analysis, implement in this order:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.3 | 2025-11-25 | Added AI quiz generation and AI image generation to implemented features |
 | 1.2 | 2025-11-21 | Comprehensive audit: Removed 9 fully implemented features, updated 4 partial implementations with clarifications |
 | 1.1 | 2025-11-17 | Added Phase 1 refactoring completion notes and Phase 2 opportunities |
 | 1.0 | 2025-11-10 | Initial backlog based on implemented features and security review |

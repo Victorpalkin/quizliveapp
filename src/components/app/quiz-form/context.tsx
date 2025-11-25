@@ -24,6 +24,10 @@ export interface QuizFormContextValue {
 
   // State
   totalQuestions: number;
+
+  // Quiz identification (for AI image generation)
+  quizId?: string;   // For existing quizzes (edit page)
+  tempId?: string;   // For new quizzes (create page)
 }
 
 const QuizFormContext = createContext<QuizFormContextValue | null>(null);

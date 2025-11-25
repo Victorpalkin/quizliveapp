@@ -24,7 +24,7 @@ steps:
     waitFor: ['-']
 
   # ============================================================================
-  # Step 2: Install Cloud Functions dependencies
+  # Step 2: Install Cloud Functions dependencies (main + AI in parallel)
   # ============================================================================
   - name: 'node:20'
     entrypoint: 'npm'
@@ -33,8 +33,15 @@ steps:
     id: 'install-functions-deps'
     waitFor: ['-']
 
+  - name: 'node:20'
+    entrypoint: 'npm'
+    args: ['ci']
+    dir: 'functions-ai'
+    id: 'install-functions-ai-deps'
+    waitFor: ['-']
+
   # ============================================================================
-  # Step 3: Build Cloud Functions
+  # Step 3: Build Cloud Functions (main + AI in parallel)
   # ============================================================================
   - name: 'node:20'
     entrypoint: 'npm'
@@ -42,6 +49,13 @@ steps:
     dir: 'functions'
     id: 'build-functions'
     waitFor: ['install-functions-deps']
+
+  - name: 'node:20'
+    entrypoint: 'npm'
+    args: ['run', 'build']
+    dir: 'functions-ai'
+    id: 'build-functions-ai'
+    waitFor: ['install-functions-ai-deps']
 
   # ============================================================================
   # Step 4: Run tests (if available)
@@ -66,7 +80,7 @@ steps:
         firebase deploy --only firestore --config ${_FIREBASE_CONFIG} --project ${PROJECT_ID} --non-interactive --force
         echo "✅ Firestore deployed successfully"
     id: 'deploy-firestore'
-    waitFor: ['build-functions']
+    waitFor: ['build-functions', 'build-functions-ai']
 
   # ============================================================================
   # Step 6: Deploy Storage rules
@@ -84,7 +98,7 @@ steps:
     waitFor: ['deploy-firestore']
 
   # ============================================================================
-  # Step 7: Deploy Cloud Functions
+  # Step 7: Deploy Cloud Functions (all codebases: default + ai)
   # ============================================================================
   - name: 'node:20'
     entrypoint: 'bash'
@@ -93,10 +107,42 @@ steps:
       - |
         npm install -g firebase-tools
         echo "Deploying Cloud Functions to ${PROJECT_ID}..."
+        echo "  - Codebase 'default': submitAnswer, createHostAccount"
+        echo "  - Codebase 'ai': generateQuizWithAI (Gemini 3 Pro), generateQuestionImage (Gemini 3 Pro Image)"
         firebase deploy --only functions --config ${_FIREBASE_CONFIG} --project ${PROJECT_ID} --non-interactive --force
-        echo "✅ Cloud Functions deployed successfully"
+        echo "✅ Cloud Functions deployed successfully (all codebases)"
     id: 'deploy-functions'
     waitFor: ['deploy-storage']
+
+  # ============================================================================
+  # Step 7b: Allow unauthenticated access for AI functions (required for CORS)
+  # ============================================================================
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Allowing unauthenticated access for AI functions..."
+        echo "This is required for CORS preflight requests."
+        echo "Security is enforced at the application level (Firebase Auth + App Check)"
+
+        # generateQuizWithAI - AI quiz generation using Gemini 3 Pro
+        gcloud functions add-invoker-policy-binding generateQuizWithAI \
+          --region=${_REGION} \
+          --member="allUsers" \
+          --project=${PROJECT_ID} \
+          --gen2
+
+        # generateQuestionImage - AI image generation using Gemini 3 Pro Image
+        gcloud functions add-invoker-policy-binding generateQuestionImage \
+          --region=${_REGION} \
+          --member="allUsers" \
+          --project=${PROJECT_ID} \
+          --gen2
+
+        echo "✅ AI function invoker policies configured"
+    id: 'configure-ai-functions-access'
+    waitFor: ['deploy-functions']
 
   # ============================================================================
   # Step 8: Load environment variables from Secret Manager
@@ -116,7 +162,7 @@ steps:
         cat .env.${_ENVIRONMENT} > /workspace/env_vars.txt
         echo "✅ Environment variables loaded"
     id: 'load-env-vars'
-    waitFor: ['deploy-functions']
+    waitFor: ['configure-ai-functions-access']
 
   # ============================================================================
   # Step 9: Build and deploy to Cloud Run
@@ -153,6 +199,7 @@ steps:
           --set-env-vars="NEXT_PUBLIC_FIREBASE_APP_ID=$${NEXT_PUBLIC_FIREBASE_APP_ID}" \
           --set-env-vars="NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=$${NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID}" \
           --set-env-vars="NEXT_PUBLIC_ENVIRONMENT=${_ENVIRONMENT}" \
+          --set-env-vars="NEXT_PUBLIC_RECAPTCHA_SITE_KEY=$${NEXT_PUBLIC_RECAPTCHA_SITE_KEY}" \
           --update-build-env-vars="NEXT_PUBLIC_FIREBASE_API_KEY=$${NEXT_PUBLIC_FIREBASE_API_KEY}" \
           --update-build-env-vars="NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}" \
           --update-build-env-vars="NEXT_PUBLIC_FIREBASE_PROJECT_ID=$${NEXT_PUBLIC_FIREBASE_PROJECT_ID}" \
@@ -160,7 +207,8 @@ steps:
           --update-build-env-vars="NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}" \
           --update-build-env-vars="NEXT_PUBLIC_FIREBASE_APP_ID=$${NEXT_PUBLIC_FIREBASE_APP_ID}" \
           --update-build-env-vars="NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=$${NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID}" \
-          --update-build-env-vars="NEXT_PUBLIC_ENVIRONMENT=${_ENVIRONMENT}"
+          --update-build-env-vars="NEXT_PUBLIC_ENVIRONMENT=${_ENVIRONMENT}" \
+          --update-build-env-vars="NEXT_PUBLIC_RECAPTCHA_SITE_KEY=$${NEXT_PUBLIC_RECAPTCHA_SITE_KEY}"
 
         echo "✅ Cloud Run deployment successful"
     id: 'deploy-cloud-run'

@@ -5,6 +5,7 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { firebaseConfig } from './config';
+import { initializeAppCheckClient } from './app-check';
 
 import {
   useFirebase,
@@ -32,6 +33,11 @@ function initializeFirebase() {
   }
 
   const app = initializeApp(firebaseConfig);
+
+  // Initialize App Check for security
+  // This verifies requests come from your genuine app
+  initializeAppCheckClient(app);
+
   const auth = getAuth(app);
   const firestore = getFirestore(app);
   const storage = getStorage(app);
