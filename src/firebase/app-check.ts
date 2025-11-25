@@ -2,23 +2,23 @@
 // App Check helps protect your backend resources from abuse
 // https://firebase.google.com/docs/app-check
 
-import { initializeAppCheck, ReCaptchaEnterpriseProvider, ReCaptchaV3Provider } from 'firebase/app-check';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import type { FirebaseApp } from 'firebase/app';
 
 /**
- * Initialize Firebase App Check with reCAPTCHA provider
+ * Initialize Firebase App Check with reCAPTCHA Enterprise provider
  *
  * Setup requirements:
  * 1. Enable App Check in Firebase Console
- * 2. Register your app with reCAPTCHA Enterprise or reCAPTCHA v3
+ * 2. Register your app with reCAPTCHA Enterprise
  * 3. Add the site key to environment variables
  * 4. Enable App Check enforcement in Cloud Functions when ready
  *
  * Environment variables:
- * - NEXT_PUBLIC_RECAPTCHA_SITE_KEY: Your reCAPTCHA site key
+ * - NEXT_PUBLIC_RECAPTCHA_SITE_KEY: Your reCAPTCHA Enterprise site key
  * - NEXT_PUBLIC_APP_CHECK_DEBUG_TOKEN: Debug token for local development (optional)
  *
- * @see https://firebase.google.com/docs/app-check/web/recaptcha-provider
+ * @see https://firebase.google.com/docs/app-check/web/recaptcha-enterprise-provider
  */
 export function initializeAppCheckClient(app: FirebaseApp): void {
   // Skip App Check in SSR context
@@ -50,12 +50,8 @@ export function initializeAppCheckClient(app: FirebaseApp): void {
       }
     }
 
-    // Initialize App Check with reCAPTCHA v3 provider
-    // Use ReCaptchaEnterpriseProvider for production (more features, better security)
-    // Use ReCaptchaV3Provider for simpler setup
-    const provider = process.env.NEXT_PUBLIC_USE_RECAPTCHA_ENTERPRISE === 'true'
-      ? new ReCaptchaEnterpriseProvider(siteKey)
-      : new ReCaptchaV3Provider(siteKey);
+    // Initialize App Check with reCAPTCHA Enterprise provider
+    const provider = new ReCaptchaEnterpriseProvider(siteKey);
 
     initializeAppCheck(app, {
       provider,
