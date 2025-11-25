@@ -259,7 +259,7 @@ export const generateQuizWithAI = onCall(
       const client = new GoogleGenAI({
         vertexai: true,
         project: process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT,
-        location: REGION,
+        location: 'global',
       });
 
       // Build the conversation contents
