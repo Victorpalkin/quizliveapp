@@ -293,7 +293,7 @@ export default function HostDashboardPage() {
 
         {/* My Quizzes Section */}
         <div className="mb-12">
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
                 <h1 className="text-5xl font-semibold">My Quizzes</h1>
                 <div className="flex gap-3">
                     <Button asChild variant="outline" className="px-6 py-4 hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
