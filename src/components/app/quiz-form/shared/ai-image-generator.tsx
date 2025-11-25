@@ -34,7 +34,7 @@ interface AIImageGeneratorProps {
 function generateDefaultPrompt(questionText: string): string {
   return `Create an engaging illustration for this quiz question: "${questionText}".
 
-  Style photorealistic. Try to add something humorous.
+Style photorealistic. Try to add something humorous.
 Do not include any text in the image.`;
 }
 
