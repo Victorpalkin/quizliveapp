@@ -1,7 +1,8 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { GoogleGenAI } from '@google/genai';
 import { getStorage } from 'firebase-admin/storage';
-import { AI_SERVICE_ACCOUNT, REGION } from '../config';
+import { randomUUID } from 'crypto';
+import { AI_SERVICE_ACCOUNT, REGION, ALLOWED_ORIGINS } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
 import type { GenerateImageRequest, GenerateImageResponse } from '../types';
 
@@ -21,13 +22,13 @@ const IMAGE_LOCATION = 'global';
 export const generateQuestionImage = onCall(
   {
     region: REGION, // Function region (API uses global location)
-    cors: true,
+    cors: ALLOWED_ORIGINS, // Match other AI functions
     timeoutSeconds: 120, // Image generation takes longer
     memory: '1GiB',
     maxInstances: 5,
     concurrency: 5,
     serviceAccount: AI_SERVICE_ACCOUNT,
-    enforceAppCheck: false,
+    enforceAppCheck: false, // Monitoring mode - App Check not enforced yet
   },
   async (request): Promise<GenerateImageResponse> => {
     // Verify App Check token (monitoring mode)
@@ -125,14 +126,32 @@ export const generateQuestionImage = onCall(
       const bucket = getStorage().bucket();
       const file = bucket.file(filePath);
 
+      // Generate a download token (same approach as Firebase SDK's getDownloadURL)
+      const downloadToken = randomUUID();
+
+      // Add TTL metadata for temp images (24 hours from now)
+      const isTemp = !quizId;
+      const ttlMetadata = isTemp
+        ? {
+            tempImageExpires: new Date(
+              Date.now() + 24 * 60 * 60 * 1000
+            ).toISOString(),
+          }
+        : {};
+
       await file.save(Buffer.from(imageData, 'base64'), {
         metadata: {
           contentType: mimeType,
+          metadata: {
+            firebaseStorageDownloadTokens: downloadToken,
+            ...ttlMetadata,
+          },
         },
       });
 
-      await file.makePublic();
-      const imageUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+      // Construct Firebase download URL (same format as getDownloadURL())
+      // This works with uniform bucket-level access enabled
+      const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${downloadToken}`;
 
       console.log(
         `Image generated for user ${request.auth.uid}: ${filePath}`
@@ -147,8 +166,9 @@ export const generateQuestionImage = onCall(
         throw error;
       }
 
-      // Handle specific Gemini errors
+      // Handle specific errors
       if (error instanceof Error) {
+        // Gemini content safety
         if (
           error.message.includes('safety') ||
           error.message.includes('blocked')
@@ -158,10 +178,22 @@ export const generateQuestionImage = onCall(
             'Image generation was blocked by content safety filters. Try a different prompt.'
           );
         }
+        // Quota exceeded
         if (error.message.includes('quota')) {
           throw new HttpsError(
             'resource-exhausted',
             'AI quota exceeded. Please try again later.'
+          );
+        }
+        // Storage errors
+        if (
+          error.message.includes('storage') ||
+          error.message.includes('bucket') ||
+          error.message.includes('access control')
+        ) {
+          throw new HttpsError(
+            'internal',
+            'Failed to save generated image. Please try again.'
           );
         }
       }

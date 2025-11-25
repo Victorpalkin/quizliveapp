@@ -32,7 +32,7 @@ service firebase.storage {
     // These are created by Cloud Function and read/deleted by authenticated users
     match /temp/{tempId}/questions/{questionIndex}/{imageName} {
       // Anyone can read temp images (needed for preview in form)
-      // Note: Cloud Function also calls makePublic() for these files
+      // Temp images have TTL metadata and can be cleaned up by scheduled function
       allow read;
 
       // Authenticated users can delete temp images (during save or cleanup)
