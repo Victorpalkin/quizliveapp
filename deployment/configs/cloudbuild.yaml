@@ -115,6 +115,28 @@ steps:
     waitFor: ['deploy-storage']
 
   # ============================================================================
+  # Step 7b: Allow unauthenticated access for AI functions (required for CORS)
+  # ============================================================================
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Allowing unauthenticated access for AI functions..."
+        echo "This is required for CORS preflight requests."
+        echo "Security is enforced at the application level (Firebase Auth + App Check)"
+
+        gcloud functions add-invoker-policy-binding generateQuizWithAI \
+          --region=${_REGION} \
+          --member="allUsers" \
+          --project=${PROJECT_ID} \
+          --gen2
+
+        echo "✅ AI function invoker policy configured"
+    id: 'configure-ai-functions-access'
+    waitFor: ['deploy-functions']
+
+  # ============================================================================
   # Step 8: Load environment variables from Secret Manager
   # ============================================================================
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -132,7 +154,7 @@ steps:
         cat .env.${_ENVIRONMENT} > /workspace/env_vars.txt
         echo "✅ Environment variables loaded"
     id: 'load-env-vars'
-    waitFor: ['deploy-functions']
+    waitFor: ['configure-ai-functions-access']
 
   # ============================================================================
   # Step 9: Build and deploy to Cloud Run

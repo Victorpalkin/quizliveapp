@@ -672,7 +672,39 @@ echo "Cloud Build can now deploy functions with AI service account"
 
 **Note**: The `generateQuizWithAI` function is configured in code to use this service account (`functions-ai/src/config.ts`). No API keys are needed - the function uses Application Default Credentials (ADC) automatically.
 
-### 3.5 Store Environment Variables in Secret Manager
+### 3.5 Configure Unauthenticated Access for AI Functions
+
+Firebase Cloud Functions v2 (deployed on Cloud Run) require IAM authentication by default. However, browser CORS preflight requests (OPTIONS) are unauthenticated. To allow CORS to work, we must permit unauthenticated invocations at the IAM level.
+
+**This is safe because:**
+- The function code validates `request.auth` and rejects unauthenticated Firebase requests
+- App Check provides additional verification
+- The callable protocol validates request format
+- Only the OPTIONS preflight is truly unauthenticated
+
+**For Development Project:**
+
+```bash
+gcloud functions add-invoker-policy-binding generateQuizWithAI \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$DEV_PROJECT_ID \
+  --gen2
+```
+
+**For Production Project:**
+
+```bash
+gcloud functions add-invoker-policy-binding generateQuizWithAI \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$PROD_PROJECT_ID \
+  --gen2
+```
+
+**Note**: This step is automated in Cloud Build (`cloudbuild.yaml`), so you only need to run it manually for initial setup or troubleshooting.
+
+### 3.6 Store Environment Variables in Secret Manager
 
 **For Development:**
 
@@ -1277,6 +1309,23 @@ gcloud iam service-accounts add-iam-policy-binding $AI_SA_EMAIL \
   --role="roles/iam.serviceAccountUser" \
   --project=$DEV_PROJECT_ID
 ```
+
+### Issue: CORS error when calling AI function
+
+**Solution:**
+
+Firebase Functions v2 require unauthenticated access at the IAM level for CORS preflight requests to succeed:
+
+```bash
+# For dev (or use $PROD_PROJECT_ID for production)
+gcloud functions add-invoker-policy-binding generateQuizWithAI \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$DEV_PROJECT_ID \
+  --gen2
+```
+
+This is safe because the function still requires Firebase Auth at the application level. This step is automated in Cloud Build, so you only need to run it manually for initial setup or troubleshooting.
 
 ---
 
