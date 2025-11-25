@@ -82,7 +82,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob: https://placehold.co https://images.unsplash.com https://picsum.photos https://firebasestorage.googleapis.com https://www.gstatic.com https://www.google.com",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' https://*.googleapis.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com wss://*.firebaseio.com",
+              "connect-src 'self' https://*.googleapis.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com wss://*.firebaseio.com https://www.google.com",
               "frame-src 'self' https://*.firebaseapp.com https://*.google.com https://www.google.com https://recaptcha.google.com",
               "object-src 'none'",
               "base-uri 'self'",
