@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { AnswerButton } from '@/components/app/answer-button';
-import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
+import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, FreeResponseQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 
 // Helper to convert index to letter (0 = A, 1 = B, etc.)
 const indexToLetter = (index: number): string => String.fromCharCode(65 + index);
@@ -273,3 +274,65 @@ export const PollMultipleQuestionComponent = React.memo(
 }
 );
 PollMultipleQuestionComponent.displayName = 'PollMultipleQuestionComponent';
+
+interface FreeResponseQuestionProps {
+  question: FreeResponseQuestion;
+  onSubmit: (textAnswer: string) => void;
+  disabled: boolean;
+}
+
+export const FreeResponseQuestionComponent = React.memo(
+  function FreeResponseQuestionComponent({ question, onSubmit, disabled }: FreeResponseQuestionProps) {
+  const [textAnswer, setTextAnswer] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = () => {
+    if (disabled || submitted || !textAnswer.trim()) return;
+    setSubmitted(true);
+    onSubmit(textAnswer.trim());
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  return (
+    <div className="w-full max-w-2xl px-8 space-y-8">
+      <div className="bg-card border border-card-border rounded-2xl p-8 shadow-lg">
+        <div className="text-center space-y-6">
+          <p className="text-lg text-muted-foreground">Type your answer below</p>
+          <Input
+            type="text"
+            placeholder="Enter your answer..."
+            value={textAnswer}
+            onChange={(e) => setTextAnswer(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={disabled || submitted}
+            className="text-2xl text-center h-16 font-medium"
+            autoFocus
+            maxLength={200}
+          />
+          {!question.caseSensitive && (
+            <p className="text-sm text-muted-foreground">
+              Case-insensitive • Minor typos allowed
+            </p>
+          )}
+        </div>
+      </div>
+
+      <Button
+        onClick={handleSubmit}
+        disabled={disabled || submitted || !textAnswer.trim()}
+        size="lg"
+        className="w-full text-xl py-8 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
+      >
+        {submitted ? 'Answer Submitted' : 'Submit Answer'}
+      </Button>
+    </div>
+  );
+}
+);
+FreeResponseQuestionComponent.displayName = 'FreeResponseQuestionComponent';

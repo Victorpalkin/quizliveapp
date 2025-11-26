@@ -20,10 +20,11 @@ export function validateBasicFields(data: SubmitAnswerRequest): void {
   }
 
   // At least one answer type must be provided
-  if (answerIndex === undefined && !answerIndices && sliderValue === undefined) {
+  const textAnswer = (data as any).textAnswer;
+  if (answerIndex === undefined && !answerIndices && sliderValue === undefined && textAnswer === undefined) {
     throw new HttpsError(
       'invalid-argument',
-      'Missing answer: must provide answerIndex, answerIndices, or sliderValue'
+      'Missing answer: must provide answerIndex, answerIndices, sliderValue, or textAnswer'
     );
   }
 
@@ -226,6 +227,33 @@ export function validatePollMultiple(data: SubmitAnswerRequest): void {
 }
 
 /**
+ * Validate free-response question data
+ *
+ * @param data - The submit answer request data
+ * @throws HttpsError if validation fails
+ */
+export function validateFreeResponse(data: SubmitAnswerRequest): void {
+  const { textAnswer, correctAnswer } = data;
+
+  if (textAnswer === undefined) {
+    throw new HttpsError('invalid-argument', 'Free-response question requires textAnswer');
+  }
+
+  if (correctAnswer === undefined || correctAnswer.length === 0) {
+    throw new HttpsError('invalid-argument', 'correctAnswer is required for free-response');
+  }
+
+  // Validate textAnswer is a string and not too long
+  if (typeof textAnswer !== 'string') {
+    throw new HttpsError('invalid-argument', 'textAnswer must be a string');
+  }
+
+  if (textAnswer.length > 200) {
+    throw new HttpsError('invalid-argument', 'textAnswer exceeds maximum length of 200 characters');
+  }
+}
+
+/**
  * Validate question-specific data based on question type
  *
  * @param data - The submit answer request data
@@ -247,6 +275,9 @@ export function validateQuestionData(data: SubmitAnswerRequest): void {
       break;
     case 'slider':
       validateSlider(data);
+      break;
+    case 'free-response':
+      validateFreeResponse(data);
       break;
     case 'poll-single':
       validatePollSingle(data);

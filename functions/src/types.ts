@@ -13,9 +13,10 @@ export interface SubmitAnswerRequest {
   answerIndex?: number;        // For single-choice, poll-single
   answerIndices?: number[];    // For multi-choice questions, poll-multiple
   sliderValue?: number;        // For slider questions
+  textAnswer?: string;         // For free-response questions
 
   // Question metadata (passed from client to avoid quiz fetch)
-  questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'poll-single' | 'poll-multiple';
+  questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'free-response' | 'poll-single' | 'poll-multiple';
   questionTimeLimit?: number;
 
   // Type-specific metadata
@@ -25,6 +26,10 @@ export interface SubmitAnswerRequest {
   minValue?: number;                 // For slider
   maxValue?: number;                 // For slider
   acceptableError?: number;          // For slider - absolute error threshold
+  correctAnswer?: string;            // For free-response
+  alternativeAnswers?: string[];     // For free-response - alternative accepted answers
+  caseSensitive?: boolean;           // For free-response - default false
+  allowTypos?: boolean;              // For free-response - default true
 }
 
 /**
@@ -46,11 +51,12 @@ export interface Game {
  */
 export interface PlayerAnswer {
   questionIndex: number;
-  questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'poll-single' | 'poll-multiple';
+  questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'free-response' | 'poll-single' | 'poll-multiple';
   timestamp: admin.firestore.FieldValue;
   answerIndex?: number;
   answerIndices?: number[];
   sliderValue?: number;
+  textAnswer?: string;
   points: number;
   isCorrect: boolean;
   wasTimeout: boolean;

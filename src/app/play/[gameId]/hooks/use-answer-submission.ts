@@ -3,7 +3,7 @@ import { useFirestore, useFunctions } from '@/firebase';
 import { Timestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
-import type { Player, PlayerAnswer, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion, SubmitAnswerResponse } from '@/lib/types';
+import type { Player, PlayerAnswer, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, FreeResponseQuestion, PollSingleQuestion, PollMultipleQuestion, SubmitAnswerResponse } from '@/lib/types';
 import { calculateTimeBasedScore, calculateProportionalScore, calculateSliderScore } from '@/lib/scoring';
 
 type AnswerResult = {
@@ -354,9 +354,116 @@ export function useAnswerSubmission(
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
+  // Submit free-response answer
+  const submitFreeResponse = useCallback(async (
+    textAnswer: string,
+    question: FreeResponseQuestion,
+    timeRemaining: number,
+    timeLimit: number
+  ) => {
+    if (!gameDocId) return;
+
+    // Prevent duplicate submissions
+    if (answerSubmittedRef.current) {
+      console.log('[Answer] Submission already in progress, ignoring duplicate');
+      return;
+    }
+
+    answerSubmittedRef.current = true;
+
+    // For free-response, we don't know if the answer is correct until the server validates
+    // Use optimistic estimate: assume correct if answer is non-empty
+    const estimatedPoints = textAnswer.trim() ? calculateTimeBasedScore(true, timeRemaining, timeLimit) : 0;
+
+    // Show result immediately (optimistic - will be corrected by server)
+    setLastAnswer({
+      selected: textAnswer.trim() ? 1 : 0,
+      correct: [1],
+      points: estimatedPoints,
+      wasTimeout: false
+    });
+
+    // Optimistic update: add answer to array
+    const optimisticAnswer: PlayerAnswer = {
+      questionIndex: currentQuestionIndex,
+      questionType: 'free-response',
+      timestamp: Timestamp.now(),
+      textAnswer,
+      points: estimatedPoints,
+      isCorrect: true, // Optimistic - server will correct
+      wasTimeout: false
+    };
+    setPlayer(p => p ? {
+      ...p,
+      score: p.score + estimatedPoints,
+      answers: [...(p.answers || []), optimisticAnswer]
+    } : null);
+
+    // Submit to server for fuzzy matching
+    const submitData = {
+      gameId: gameDocId,
+      playerId: playerId,
+      questionIndex: currentQuestionIndex,
+      textAnswer,
+      timeRemaining,
+      questionType: 'free-response' as const,
+      questionTimeLimit: question.timeLimit,
+      correctAnswer: question.correctAnswer,
+      alternativeAnswers: question.alternativeAnswers,
+      caseSensitive: question.caseSensitive,
+      allowTypos: question.allowTypos,
+    };
+
+    try {
+      const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
+      const result = await submitAnswerFn(submitData);
+      const { points: actualPoints, newScore, isCorrect, currentStreak } = result.data;
+
+      // Update with actual values from server (after fuzzy matching)
+      setLastAnswer(prev => prev ? {
+        ...prev,
+        points: actualPoints,
+        selected: isCorrect ? 1 : 0
+      } : null);
+
+      setPlayer(p => {
+        if (!p) return null;
+        const updatedAnswers = p.answers.map(a =>
+          a.questionIndex === currentQuestionIndex
+            ? { ...a, points: actualPoints, isCorrect }
+            : a
+        );
+        return { ...p, score: newScore, currentStreak: currentStreak ?? 0, answers: updatedAnswers };
+      });
+    } catch (error: any) {
+      console.error('Error submitting answer:', error);
+
+      // Provide specific error messages based on error code
+      if (error.code === 'functions/deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Too Late',
+          description: 'Your answer was submitted after the time limit and was not counted.'
+        });
+      } else if (error.code === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Not Accepted',
+          description: error.message || 'The game state changed before your answer could be processed.'
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit answer. Your score may not be saved.'
+        });
+      }
+    }
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+
   // Handle timeout
   const submitTimeout = useCallback(async (
-    question: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion
+    question: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion
   ) => {
     if (!gameDocId) return;
 
@@ -396,6 +503,12 @@ export function useAnswerSubmission(
       submitData.correctValue = question.correctValue;
       submitData.minValue = question.minValue;
       submitData.maxValue = question.maxValue;
+    } else if (question.type === 'free-response') {
+      submitData.textAnswer = '';
+      submitData.correctAnswer = question.correctAnswer;
+      submitData.alternativeAnswers = question.alternativeAnswers;
+      submitData.caseSensitive = question.caseSensitive;
+      submitData.allowTypos = question.allowTypos;
     } else if (question.type === 'poll-single') {
       submitData.answerIndex = -1; // -1 represents no answer/timeout
     } else if (question.type === 'poll-multiple') {
@@ -576,6 +689,7 @@ export function useAnswerSubmission(
     submitSingleChoice,
     submitMultipleChoice,
     submitSlider,
+    submitFreeResponse,
     submitPollSingle,
     submitPollMultiple,
     submitTimeout

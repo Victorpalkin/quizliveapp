@@ -143,6 +143,8 @@ export const submitAnswer = onCall(
           answer.answerIndices = data.answerIndices!;
         } else if (questionType === 'slider') {
           answer.sliderValue = data.sliderValue!;
+        } else if (questionType === 'free-response') {
+          answer.textAnswer = data.textAnswer || '';
         } else if (questionType === 'poll-single') {
           answer.answerIndex = data.answerIndex!;
         } else if (questionType === 'poll-multiple') {

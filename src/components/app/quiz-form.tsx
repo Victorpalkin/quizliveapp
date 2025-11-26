@@ -11,7 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { PlusCircle, Loader2, Save } from 'lucide-react';
 import { nanoid } from 'nanoid';
-import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
+import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, FreeResponseQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import { useQuestionOperations } from './quiz-form/hooks/use-question-operations';
 import { useImageUpload } from './quiz-form/hooks/use-image-upload';
 import { QuestionCard } from './quiz-form/question-card';
@@ -67,6 +67,18 @@ const slideQuestionSchema = z.object({
   timeLimit: z.number().optional(),
 });
 
+// Free response question schema - player types their answer
+const freeResponseQuestionSchema = z.object({
+  type: z.literal('free-response'),
+  text: z.string().min(1, 'Question text cannot be empty.'),
+  imageUrl: z.string().url().optional(),
+  correctAnswer: z.string().min(1, 'Correct answer cannot be empty.'),
+  alternativeAnswers: z.array(z.string()).optional(),
+  caseSensitive: z.boolean().optional(),
+  allowTypos: z.boolean().optional(),
+  timeLimit: z.number().optional(),
+});
+
 // Poll single choice question schema - no correct answer, no scoring
 const pollSingleQuestionSchema = z.object({
   type: z.literal('poll-single'),
@@ -91,6 +103,7 @@ const questionSchema = z.discriminatedUnion('type', [
   multipleChoiceQuestionSchema,
   sliderQuestionSchema,
   slideQuestionSchema,
+  freeResponseQuestionSchema,
   pollSingleQuestionSchema,
   pollMultipleQuestionSchema,
 ]);
@@ -161,7 +174,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     initialized.current = true;
 
     if (initialData) {
-      setQuestions(initialData.questions as (SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion)[]);
+      setQuestions(initialData.questions as (SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion)[]);
       // Generate stable IDs for initial questions
       setQuestionIds(initialData.questions.map(() => nanoid()));
     } else {

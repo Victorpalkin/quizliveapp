@@ -6,6 +6,7 @@ import {
   MultipleChoiceQuestionComponent,
   SliderQuestionComponent,
   SlideQuestionComponent,
+  FreeResponseQuestionComponent,
   PollSingleQuestionComponent,
   PollMultipleQuestionComponent
 } from '@/components/app/player-question';
@@ -22,6 +23,7 @@ interface QuestionScreenProps {
   onSubmitSingleChoice: (answerIndex: number) => void;
   onSubmitMultipleChoice: (answerIndices: number[]) => void;
   onSubmitSlider: (value: number) => void;
+  onSubmitFreeResponse: (textAnswer: string) => void;
   onSubmitPollSingle: (answerIndex: number) => void;
   onSubmitPollMultiple: (answerIndices: number[]) => void;
   quizLoading: boolean;
@@ -37,6 +39,7 @@ export function QuestionScreen({
   onSubmitSingleChoice,
   onSubmitMultipleChoice,
   onSubmitSlider,
+  onSubmitFreeResponse,
   onSubmitPollSingle,
   onSubmitPollMultiple,
   quizLoading
@@ -88,6 +91,14 @@ export function QuestionScreen({
         {question.type === 'slide' && (
           <SlideQuestionComponent
             question={question}
+          />
+        )}
+
+        {question.type === 'free-response' && (
+          <FreeResponseQuestionComponent
+            question={question}
+            onSubmit={onSubmitFreeResponse}
+            disabled={answerSelected}
           />
         )}
 

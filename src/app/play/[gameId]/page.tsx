@@ -7,7 +7,7 @@ import { doc, collection, query, where, getDocs, setDoc, DocumentReference, Quer
 import { useToast } from '@/hooks/use-toast';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
-import type { Quiz, Player, Game, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
+import type { Quiz, Player, Game, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, FreeResponseQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import { handleFirestoreError } from '@/lib/utils/error-utils';
 
 // Hooks
@@ -396,6 +396,13 @@ export default function PlayerGamePage() {
     answerSubmission.submitPollMultiple(answerIndices, question, time, timeLimit);
   };
 
+  const handleFreeResponseAnswer = (textAnswer: string) => {
+    if (answerSelected || !question || question.type !== 'free-response') return;
+    setAnswerSelected(true);
+    setState('waiting');
+    answerSubmission.submitFreeResponse(textAnswer, question, time, timeLimit);
+  };
+
   // Render appropriate screen based on state
   const renderContent = () => {
     switch (state) {
@@ -434,6 +441,7 @@ export default function PlayerGamePage() {
             onSubmitSingleChoice={handleSingleChoiceAnswer}
             onSubmitMultipleChoice={handleMultipleChoiceAnswer}
             onSubmitSlider={handleSliderAnswer}
+            onSubmitFreeResponse={handleFreeResponseAnswer}
             onSubmitPollSingle={handlePollSingleAnswer}
             onSubmitPollMultiple={handlePollMultipleAnswer}
             quizLoading={quizLoading}

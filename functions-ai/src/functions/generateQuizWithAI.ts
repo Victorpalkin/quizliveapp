@@ -74,7 +74,18 @@ You must respond with a JSON object containing:
   "step": 1
 }
 
-### 4. Slide (informational, no answer required)
+### 4. Free Response (player types their answer)
+{
+  "type": "free-response",
+  "text": "What is the chemical symbol for gold?",
+  "timeLimit": 30,
+  "correctAnswer": "Au",
+  "alternativeAnswers": ["au", "AU"],
+  "caseSensitive": false,
+  "allowTypos": true
+}
+
+### 5. Slide (informational, no answer required)
 {
   "type": "slide",
   "text": "Fun Fact!",
@@ -85,13 +96,14 @@ You must respond with a JSON object containing:
 ## Guidelines
 
 1. Default to 10 questions unless the user specifies otherwise
-2. Use variety in question types (mostly single-choice, with some multiple-choice and sliders)
-3. Time limits: 20 seconds for easy, 30 for medium, 60 for hard questions
-4. Provide 4 answer options for choice questions
-5. Make wrong answers plausible but clearly incorrect
-6. Ensure factual accuracy
-7. If the user asks to modify the quiz, only change what they request
-8. Always respond with valid JSON - no markdown code blocks, no extra text
+2. Use variety in question types (mostly single-choice, with some multiple-choice, sliders, and free-response)
+3. Free-response is great for short answers (1-3 words) like names, dates, terms, symbols
+4. Time limits: 20 seconds for easy, 30 for medium, 60 for hard questions
+5. Provide 4 answer options for choice questions
+6. Make wrong answers plausible but clearly incorrect
+7. Ensure factual accuracy
+8. If the user asks to modify the quiz, only change what they request
+9. Always respond with valid JSON - no markdown code blocks, no extra text
 
 ## Handling Refinement Requests
 
@@ -192,6 +204,20 @@ function parseQuizResponse(responseText: string): GenerateQuizResponse {
         }
         if (typeof question.correctValue !== 'number') {
           throw new Error('Slider question must have correctValue');
+        }
+      } else if (question.type === 'free-response') {
+        if (!question.correctAnswer || typeof question.correctAnswer !== 'string') {
+          throw new Error('Free-response question must have correctAnswer');
+        }
+        // Set defaults for optional fields
+        if (question.caseSensitive === undefined) {
+          question.caseSensitive = false;
+        }
+        if (question.allowTypos === undefined) {
+          question.allowTypos = true;
+        }
+        if (!Array.isArray(question.alternativeAnswers)) {
+          question.alternativeAnswers = [];
         }
       }
     }

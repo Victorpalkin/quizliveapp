@@ -1,13 +1,21 @@
 import { useMemo } from 'react';
 import type { Question, Player, Game } from '@/lib/types';
 
+interface FreeResponseResult {
+  playerName: string;
+  textAnswer: string;
+  isCorrect: boolean;
+  points: number;
+  wasTimeout: boolean;
+}
+
 export function useAnswerDistribution(question: Question | undefined, players: Player[], game: Game | null) {
   // Answer distribution for single-choice, multiple-choice, and poll questions
   const answerDistribution = useMemo(() => {
     if (!question || !players) return [];
 
-    // For slider and slide questions, return empty array
-    if (question.type === 'slider' || question.type === 'slide') {
+    // For slider, slide, and free-response questions, return empty array
+    if (question.type === 'slider' || question.type === 'slide' || question.type === 'free-response') {
       return [];
     }
 
@@ -66,8 +74,28 @@ export function useAnswerDistribution(question: Question | undefined, players: P
       .sort((a, b) => a.value - b.value);
   }, [question, players, game]);
 
+  // Free-response question responses
+  const freeResponseResults = useMemo((): FreeResponseResult[] => {
+    if (!question || question.type !== 'free-response' || !players || !game) return [];
+
+    return players
+      .map(p => {
+        const playerAnswer = p.answers?.find(a => a.questionIndex === game.currentQuestionIndex);
+        if (!playerAnswer) return null;
+        return {
+          playerName: p.name,
+          textAnswer: playerAnswer.textAnswer || '',
+          isCorrect: playerAnswer.isCorrect,
+          points: playerAnswer.points,
+          wasTimeout: playerAnswer.wasTimeout,
+        };
+      })
+      .filter((r): r is FreeResponseResult => r !== null);
+  }, [question, players, game]);
+
   return {
     answerDistribution,
-    sliderResponses
+    sliderResponses,
+    freeResponseResults
   };
 }

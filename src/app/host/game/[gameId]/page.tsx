@@ -29,6 +29,7 @@ import { LeaderboardView } from './components/visualizations/leaderboard-view';
 import { FinalLeaderboardView } from './components/visualizations/final-leaderboard-view';
 import { AnswerDistributionChart } from './components/visualizations/answer-distribution-chart';
 import { SliderResultsView } from './components/visualizations/slider-results-view';
+import { FreeResponseResultsView } from './components/visualizations/free-response-results-view';
 
 // Helper to convert index to letter (0 = A, 1 = B, etc.)
 const indexToLetter = (index: number): string => String.fromCharCode(65 + index);
@@ -56,7 +57,7 @@ export default function HostGamePage() {
   const { time, answeredPlayers } = useQuestionTimer(game, players, timeLimit, finishQuestion);
 
   // Answer distribution
-  const { answerDistribution, sliderResponses } = useAnswerDistribution(question, players, game);
+  const { answerDistribution, sliderResponses, freeResponseResults } = useAnswerDistribution(question, players, game);
 
   // Auto-transition from preparing to question
   useEffect(() => {
@@ -185,6 +186,18 @@ export default function HostGamePage() {
                 </div>
               </CardContent>
             </Card>
+          ) : question.type === 'free-response' ? (
+            <Card className="w-full max-w-2xl mx-auto mt-8">
+              <CardContent className="p-8 text-center">
+                <p className="text-lg text-muted-foreground mb-4">Players are typing their answers...</p>
+                <div className="space-y-4">
+                  <Badge variant="secondary" className="text-sm">Free Response Question</Badge>
+                  <p className="text-sm text-muted-foreground">
+                    {question.allowTypos !== false ? 'Typo tolerance enabled' : 'Exact match required'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
             <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 w-full max-w-4xl">
               {question.answers.map((ans, i) => (
@@ -228,6 +241,12 @@ export default function HostGamePage() {
               maxValue={question.maxValue}
               unit={question.unit}
               acceptableError={question.acceptableError}
+            />
+          ) : question?.type === 'free-response' ? (
+            <FreeResponseResultsView
+              responses={freeResponseResults}
+              correctAnswer={question.correctAnswer}
+              alternativeAnswers={question.alternativeAnswers}
             />
           ) : (
             <AnswerDistributionChart data={answerDistribution} />
