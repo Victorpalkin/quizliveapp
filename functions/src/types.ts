@@ -94,6 +94,9 @@ export interface SubmitAnswerResult {
   points: number;
   newScore: number;
   currentStreak: number;
+  // Rank info for O(1) client access (avoids O(n²) subscription problem)
+  rank: number;
+  totalPlayers: number;
 }
 
 /**
@@ -104,4 +107,27 @@ export interface CreateHostAccountResult {
   success: boolean;
   userId: string;
   message: string;
+}
+
+/**
+ * Leaderboard entry for top players aggregate
+ */
+export interface LeaderboardEntry {
+  id: string;
+  name: string;
+  score: number;
+  currentStreak: number;
+  lastQuestionPoints: number;
+}
+
+/**
+ * Game leaderboard aggregate document
+ * Stored at: games/{gameId}/aggregates/leaderboard
+ */
+export interface GameLeaderboard {
+  topPlayers: LeaderboardEntry[];
+  totalPlayers: number;
+  totalAnswered: number;
+  answerCounts: number[];  // Per-answer distribution for current question
+  lastUpdated: admin.firestore.FieldValue | null;
 }

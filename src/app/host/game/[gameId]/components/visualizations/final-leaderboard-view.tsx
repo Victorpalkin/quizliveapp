@@ -1,29 +1,20 @@
 import { Card } from '@/components/ui/card';
 import { Flame } from 'lucide-react';
-import type { Player } from '@/lib/types';
+import type { LeaderboardEntry } from '@/lib/types';
 
 interface FinalLeaderboardViewProps {
-  players: Player[];
-  currentQuestionIndex?: number;
+  topPlayers: LeaderboardEntry[];
+  totalPlayers: number;
 }
 
-export function FinalLeaderboardView({ players, currentQuestionIndex }: FinalLeaderboardViewProps) {
-  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
-
-  // Get points gained on the last question for each player
-  const getLastQuestionPoints = (player: Player): number => {
-    if (!player.answers || player.answers.length === 0 || currentQuestionIndex === undefined) {
-      return 0;
-    }
-
-    // Find the answer for the current question index (since we show leaderboard after question)
-    const lastAnswer = player.answers.find(a => a.questionIndex === currentQuestionIndex);
-    return lastAnswer?.points || 0;
-  };
-
+/**
+ * Displays the top 20 players at the end of the game.
+ * Uses pre-sorted data from the server-side aggregate document.
+ */
+export function FinalLeaderboardView({ topPlayers, totalPlayers }: FinalLeaderboardViewProps) {
   // Component for top 3 players with special styling
-  const PodiumCard = ({ player, rank }: { player: Player; rank: number }) => {
-    const lastPoints = getLastQuestionPoints(player);
+  const PodiumCard = ({ player, rank }: { player: LeaderboardEntry; rank: number }) => {
+    const lastPoints = player.lastQuestionPoints;
 
     // Progressive sizing and styling based on rank
     const rankStyles = {
@@ -82,8 +73,8 @@ export function FinalLeaderboardView({ players, currentQuestionIndex }: FinalLea
   };
 
   // Component for remaining players with standard styling
-  const StandardCard = ({ player, rank }: { player: Player; rank: number }) => {
-    const lastPoints = getLastQuestionPoints(player);
+  const StandardCard = ({ player, rank }: { player: LeaderboardEntry; rank: number }) => {
+    const lastPoints = player.lastQuestionPoints;
 
     return (
       <Card className="w-full mb-3 p-4 bg-card border-border shadow-md transition-all duration-300 hover:scale-[1.02]">
@@ -111,11 +102,19 @@ export function FinalLeaderboardView({ players, currentQuestionIndex }: FinalLea
     );
   };
 
-  const top3Players = sortedPlayers.slice(0, 3);
-  const remainingPlayers = sortedPlayers.slice(3);
+  // Data is already sorted from server
+  const top3Players = topPlayers.slice(0, 3);
+  const remainingPlayers = topPlayers.slice(3); // Up to 17 more (total 20)
 
   return (
     <div className="w-full max-w-3xl">
+      {/* Total players indicator */}
+      {totalPlayers > 20 && (
+        <p className="text-muted-foreground text-center mb-4">
+          Showing top 20 of {totalPlayers} players
+        </p>
+      )}
+
       {/* Top 3 Players */}
       <div className="mb-8">
         {top3Players.map((player, index) => (
@@ -123,7 +122,7 @@ export function FinalLeaderboardView({ players, currentQuestionIndex }: FinalLea
         ))}
       </div>
 
-      {/* Remaining Players */}
+      {/* Remaining Players (4-20) */}
       {remainingPlayers.length > 0 && (
         <div>
           {remainingPlayers.map((player, index) => (
@@ -132,7 +131,7 @@ export function FinalLeaderboardView({ players, currentQuestionIndex }: FinalLea
         </div>
       )}
 
-      {players.length === 0 && (
+      {topPlayers.length === 0 && (
         <p className="text-muted-foreground text-center p-4">No players participated in this game.</p>
       )}
     </div>

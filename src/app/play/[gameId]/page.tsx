@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, getDocs, setDoc, DocumentReference, Query, DocumentData } from 'firebase/firestore';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where, getDocs, setDoc, DocumentReference } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
@@ -39,6 +39,11 @@ type AnswerResult = {
   isPartiallyCorrect?: boolean;
 };
 
+type RankInfo = {
+  rank: number;
+  totalPlayers: number;
+};
+
 export default function PlayerGamePage() {
   const params = useParams();
   const gamePin = params.gameId as string;
@@ -63,30 +68,35 @@ export default function PlayerGamePage() {
   const answerSubmittedRef = useRef<boolean>(false);
   const lastQuestionIndexShownRef = useRef<number>(-1);
 
+  // Rank info from server (replaces O(n²) player subscription)
+  const [rankInfo, setRankInfo] = useState<RankInfo | null>(null);
+
   // Firebase data
   const gameRef = useMemoFirebase(() => gameDocId ? doc(firestore, 'games', gameDocId) as DocumentReference<Game> : null, [firestore, gameDocId]);
   const { data: game, loading: gameLoading } = useDoc(gameRef);
 
-  const quizRef = useMemoFirebase(() => game ? doc(firestore, 'quizzes', game.quizId) : null, [firestore, game]);
-  const { data: quizData, loading: quizLoading } = useDoc(quizRef);
-  const quiz = quizData as Quiz | null;
-
-  // Subscribe to all players for rank calculation
-  const playersQuery = useMemoFirebase(
-    () => gameDocId ? collection(firestore, 'games', gameDocId, 'players') as Query<Player, DocumentData> : null,
-    [firestore, gameDocId]
+  // Cache quiz data after first load (quiz is immutable during game)
+  const [cachedQuiz, setCachedQuiz] = useState<Quiz | null>(null);
+  const quizRef = useMemoFirebase(
+    // Only create ref if we don't have cached quiz yet
+    () => (!cachedQuiz && game) ? doc(firestore, 'quizzes', game.quizId) : null,
+    [firestore, game, cachedQuiz]
   );
-  const { data: allPlayers } = useCollection<Player>(playersQuery);
+  const { data: quizData, loading: quizLoading } = useDoc(quizRef);
 
-  // Calculate player rank
-  const calculateRank = (currentPlayerId: string, players: Player[]): number => {
-    const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
-    const rankIndex = sortedPlayers.findIndex(p => p.id === currentPlayerId);
-    return rankIndex >= 0 ? rankIndex + 1 : 0;
-  };
+  // Cache quiz when first loaded
+  useEffect(() => {
+    if (quizData && !cachedQuiz) {
+      setCachedQuiz(quizData as Quiz);
+    }
+  }, [quizData, cachedQuiz]);
 
-  const playerRank = allPlayers && allPlayers.length > 0 ? calculateRank(playerId, allPlayers) : undefined;
-  const totalPlayers = allPlayers?.length;
+  // Use cached quiz or fresh data
+  const quiz = cachedQuiz || (quizData as Quiz | null);
+
+  // Player rank is now calculated server-side (O(1) instead of O(n²) subscription)
+  const playerRank = rankInfo?.rank;
+  const totalPlayers = rankInfo?.totalPlayers;
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;
@@ -116,7 +126,8 @@ export default function PlayerGamePage() {
     player,
     setLastAnswer,
     setPlayer,
-    answerSubmittedRef
+    answerSubmittedRef,
+    setRankInfo
   );
 
   // Wake lock

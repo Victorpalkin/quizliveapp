@@ -14,6 +14,11 @@ type AnswerResult = {
   isPartiallyCorrect?: boolean;
 };
 
+type RankInfo = {
+  rank: number;
+  totalPlayers: number;
+};
+
 export function useAnswerSubmission(
   gameDocId: string | null,
   playerId: string,
@@ -21,7 +26,8 @@ export function useAnswerSubmission(
   player: Player | null,
   setLastAnswer: Dispatch<SetStateAction<AnswerResult | null>>,
   setPlayer: Dispatch<SetStateAction<Player | null>>,
-  answerSubmittedRef: React.MutableRefObject<boolean>
+  answerSubmittedRef: React.MutableRefObject<boolean>,
+  setRankInfo?: Dispatch<SetStateAction<RankInfo | null>>
 ) {
   const firestore = useFirestore();
   const functions = useFunctions();
@@ -87,7 +93,10 @@ export function useAnswerSubmission(
     try {
       const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
       const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore, currentStreak } = result.data;
+      const { points: actualPoints, newScore, currentStreak, rank, totalPlayers } = result.data;
+
+      // Update rank info from server
+      setRankInfo?.({ rank, totalPlayers });
 
       // Update with actual values if different
       if (actualPoints !== estimatedPoints) {
@@ -127,7 +136,7 @@ export function useAnswerSubmission(
         });
       }
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer, setRankInfo]);
 
   // Submit multiple choice answer
   const submitMultipleChoice = useCallback(async (
@@ -203,7 +212,10 @@ export function useAnswerSubmission(
     try {
       const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
       const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore, isPartiallyCorrect, currentStreak } = result.data;
+      const { points: actualPoints, newScore, isPartiallyCorrect, currentStreak, rank, totalPlayers } = result.data;
+
+      // Update rank info from server
+      setRankInfo?.({ rank, totalPlayers });
 
       // Update with actual values if different
       if (actualPoints !== estimatedPoints || isPartiallyCorrect !== isPartiallyCorrectAnswer) {
@@ -242,7 +254,7 @@ export function useAnswerSubmission(
         });
       }
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer, setRankInfo]);
 
   // Submit slider answer
   const submitSlider = useCallback(async (
@@ -313,7 +325,10 @@ export function useAnswerSubmission(
     try {
       const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
       const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore, currentStreak } = result.data;
+      const { points: actualPoints, newScore, currentStreak, rank, totalPlayers } = result.data;
+
+      // Update rank info from server
+      setRankInfo?.({ rank, totalPlayers });
 
       // Update with actual values if different
       if (actualPoints !== estimatedPoints) {
@@ -352,7 +367,7 @@ export function useAnswerSubmission(
         });
       }
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer, setRankInfo]);
 
   // Submit free-response answer
   const submitFreeResponse = useCallback(async (
@@ -417,7 +432,10 @@ export function useAnswerSubmission(
     try {
       const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
       const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore, isCorrect, currentStreak } = result.data;
+      const { points: actualPoints, newScore, isCorrect, currentStreak, rank, totalPlayers } = result.data;
+
+      // Update rank info from server
+      setRankInfo?.({ rank, totalPlayers });
 
       // Update with actual values from server (after fuzzy matching)
       setLastAnswer(prev => prev ? {
@@ -459,7 +477,7 @@ export function useAnswerSubmission(
         });
       }
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer, setRankInfo]);
 
   // Handle timeout
   const submitTimeout = useCallback(async (
@@ -516,12 +534,15 @@ export function useAnswerSubmission(
     }
 
     try {
-      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
-      await submitAnswerFn(submitData);
+      const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
+      const result = await submitAnswerFn(submitData);
+      const { rank, totalPlayers } = result.data;
+      // Update rank info from server even on timeout
+      setRankInfo?.({ rank, totalPlayers });
     } catch (error: any) {
       console.error('Error submitting timeout:', error);
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, setRankInfo]);
 
   // Submit poll single choice answer (no scoring)
   const submitPollSingle = useCallback(async (

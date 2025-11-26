@@ -142,4 +142,25 @@ export interface SubmitAnswerResponse {
   points: number;
   newScore: number;
   currentStreak?: number;
+  // Rank info for O(1) client access (avoids O(n²) subscription problem)
+  rank: number;
+  totalPlayers: number;
+}
+
+// Leaderboard types for host-side performance optimization
+// Host subscribes to single aggregate doc instead of N player documents
+export interface LeaderboardEntry {
+  id: string;
+  name: string;
+  score: number;
+  currentStreak: number;
+  lastQuestionPoints: number;
+}
+
+export interface GameLeaderboard {
+  topPlayers: LeaderboardEntry[];
+  totalPlayers: number;
+  totalAnswered: number;
+  answerCounts: number[];  // Per-answer distribution for current question
+  lastUpdated: Timestamp | null;
 }

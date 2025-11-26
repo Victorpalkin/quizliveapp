@@ -10,7 +10,7 @@ import { Users, Copy, Check, XCircle, QrCode } from 'lucide-react';
 import { Header } from '@/components/app/header';
 import { QRCodeSVG } from 'qrcode.react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, DocumentReference, deleteDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, DocumentReference, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -64,22 +64,34 @@ export default function HostLobbyPage() {
     }
   }, [game?.gamePin]);
   
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
     if (!gameRef) return;
-    const updateData = { state: 'preparing' as const };
-    updateDoc(gameRef, updateData)
-      .then(() => {
-        router.push(`/host/game/${gameId}`);
-      })
-      .catch((error) => {
-        console.error("Error starting game: ", error);
-        const permissionError = new FirestorePermissionError({
-          path: gameRef.path,
-          operation: 'update',
-          requestResourceData: updateData
-        });
-        errorEmitter.emit('permission-error', permissionError);
+
+    try {
+      // Initialize leaderboard aggregate with player count before starting game
+      // This ensures "X / Y Answered" shows correct values from question 1
+      const leaderboardRef = doc(firestore, 'games', gameId, 'aggregates', 'leaderboard');
+      await setDoc(leaderboardRef, {
+        topPlayers: [],
+        totalPlayers: players?.length || 0,
+        totalAnswered: 0,
+        answerCounts: [],
+        lastUpdated: serverTimestamp(),
       });
+
+      // Now start the game
+      const updateData = { state: 'preparing' as const };
+      await updateDoc(gameRef, updateData);
+      router.push(`/host/game/${gameId}`);
+    } catch (error) {
+      console.error("Error starting game: ", error);
+      const permissionError = new FirestorePermissionError({
+        path: gameRef.path,
+        operation: 'update',
+        requestResourceData: { state: 'preparing' }
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    }
   };
 
   const handleCancelGame = () => {
