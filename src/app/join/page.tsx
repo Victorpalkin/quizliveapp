@@ -8,35 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Header } from '@/components/app/header';
 import { Play } from 'lucide-react';
-import { useFirestore } from '@/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { useToast } from '@/hooks/use-toast';
 
 export default function JoinGamePage() {
   const [gamePin, setGamePin] = useState('');
   const router = useRouter();
-  const firestore = useFirestore();
-  const { toast } = useToast();
 
-  const handleJoin = async (e: React.FormEvent) => {
+  // Navigate directly to play page - validation happens there
+  // This eliminates the duplicate Firestore query
+  const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
     const pin = gamePin.trim().toUpperCase();
     if (!pin) return;
-
-    const gamesRef = collection(firestore, 'games');
-    const q = query(gamesRef, where('gamePin', '==', pin), where('state', '==', 'lobby'));
-    
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-        toast({
-            variant: "destructive",
-            title: "Game not found",
-            description: "No active game with that PIN was found. Check the PIN and try again."
-        })
-    } else {
-      router.push(`/play/${pin}`);
-    }
+    router.push(`/play/${pin}`);
   };
 
   return (

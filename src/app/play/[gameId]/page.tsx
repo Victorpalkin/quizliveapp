@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, getDocs, setDoc, DocumentReference } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, setDoc, DocumentReference, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
@@ -70,6 +70,9 @@ export default function PlayerGamePage() {
 
   // Rank info from server (replaces O(n²) player subscription)
   const [rankInfo, setRankInfo] = useState<RankInfo | null>(null);
+
+  // Join loading state
+  const [isJoining, setIsJoining] = useState(false);
 
   // Firebase data
   const gameRef = useMemoFirebase(() => gameDocId ? doc(firestore, 'games', gameDocId) as DocumentReference<Game> : null, [firestore, gameDocId]);
@@ -334,40 +337,41 @@ export default function PlayerGamePage() {
       return;
     }
 
+    setIsJoining(true);
+
     try {
       const pin = gamePin.toUpperCase();
       const gamesRef = collection(firestore, 'games');
-      const q = query(gamesRef, where('gamePin', '==', pin), where('state', '==', 'lobby'));
+      // Add limit(1) to stop after finding first match - faster query
+      const q = query(gamesRef, where('gamePin', '==', pin), where('state', '==', 'lobby'), limit(1));
 
       const querySnapshot = await getDocs(q);
       if (querySnapshot.empty) {
         toast({ variant: 'destructive', title: 'Game not found', description: "Couldn't find a game with that PIN." });
+        setIsJoining(false);
         return;
       }
 
       const gameDoc = querySnapshot.docs[0];
-      setGameDocId(gameDoc.id);
-
       const playerRef = doc(firestore, 'games', gameDoc.id, 'players', playerId);
       const newPlayer = { id: playerId, name: trimmedNickname, score: 0, answers: [], currentStreak: 0 };
 
-      setDoc(playerRef, newPlayer)
-        .then(() => {
-          setPlayer({ ...newPlayer, id: playerId });
-          sessionManager.saveSession(playerId, gameDoc.id, trimmedNickname);
-          setState('lobby');
-        })
-        .catch(error => {
-          handleFirestoreError(error, {
-            path: playerRef.path,
-            operation: 'create',
-            requestResourceData: newPlayer
-          }, "Error joining game: ");
-          toast({ variant: 'destructive', title: 'Error', description: "Could not join the game. Please try again." });
-        });
+      await setDoc(playerRef, newPlayer);
+
+      // Update state after successful write
+      setGameDocId(gameDoc.id);
+      setPlayer({ ...newPlayer, id: playerId });
+      sessionManager.saveSession(playerId, gameDoc.id, trimmedNickname);
+      setState('lobby');
     } catch (error) {
-      console.error("Error querying game: ", error);
-      toast({ variant: 'destructive', title: 'Error', description: "Could not find the game. Please check the PIN." });
+      console.error("Error joining game: ", error);
+      handleFirestoreError(error, {
+        path: `games/${gamePin}/players/${playerId}`,
+        operation: 'create',
+      }, "Error joining game: ");
+      toast({ variant: 'destructive', title: 'Error', description: "Could not join the game. Please try again." });
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -432,7 +436,7 @@ export default function PlayerGamePage() {
         );
 
       case 'joining':
-        return <JoiningScreen nickname={nickname} setNickname={setNickname} onJoinGame={handleJoinGame} />;
+        return <JoiningScreen nickname={nickname} setNickname={setNickname} onJoinGame={handleJoinGame} isLoading={isJoining} />;
 
       case 'lobby':
         return <LobbyScreen playerName={player?.name || ''} gamePin={game?.gamePin || ''} />;
