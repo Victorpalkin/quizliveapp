@@ -46,6 +46,15 @@ export interface SlideQuestion extends BaseQuestion {
   description?: string;
 }
 
+// Free response question - player types in their answer
+export interface FreeResponseQuestion extends BaseQuestion {
+  type: 'free-response';
+  correctAnswer: string;            // The expected correct answer
+  alternativeAnswers?: string[];    // Optional alternative accepted answers
+  caseSensitive?: boolean;          // Default: false (case-insensitive)
+  allowTypos?: boolean;             // Default: true (fuzzy matching enabled)
+}
+
 // Poll question - single choice, no scoring
 export interface PollSingleQuestion extends BaseQuestion {
   type: 'poll-single';
@@ -59,7 +68,7 @@ export interface PollMultipleQuestion extends BaseQuestion {
 }
 
 // Discriminated union of all question types
-export type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion;
+export type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion;
 
 export interface Quiz {
   id: string;
@@ -92,13 +101,14 @@ export interface HostProfile {
 
 export interface PlayerAnswer {
     questionIndex: number;
-    questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'poll-single' | 'poll-multiple';
+    questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'free-response' | 'poll-single' | 'poll-multiple';
     timestamp: Timestamp;
 
     // Answer data (type-specific, one will be populated)
     answerIndex?: number;           // For single-choice, poll-single
     answerIndices?: number[];       // For multiple-choice, poll-multiple
     sliderValue?: number;           // For slider
+    textAnswer?: string;            // For free-response
 
     // Scoring data
     points: number;
@@ -132,4 +142,25 @@ export interface SubmitAnswerResponse {
   points: number;
   newScore: number;
   currentStreak?: number;
+  // Rank info for O(1) client access (avoids O(n²) subscription problem)
+  rank: number;
+  totalPlayers: number;
+}
+
+// Leaderboard types for host-side performance optimization
+// Host subscribes to single aggregate doc instead of N player documents
+export interface LeaderboardEntry {
+  id: string;
+  name: string;
+  score: number;
+  currentStreak: number;
+  lastQuestionPoints: number;
+}
+
+export interface GameLeaderboard {
+  topPlayers: LeaderboardEntry[];
+  totalPlayers: number;
+  totalAnswered: number;
+  answerCounts: number[];  // Per-answer distribution for current question
+  lastUpdated: Timestamp | null;
 }

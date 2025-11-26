@@ -6,12 +6,13 @@ import type {
   MultipleChoiceQuestion,
   SliderQuestion,
   SlideQuestion,
+  FreeResponseQuestion,
   PollSingleQuestion,
   PollMultipleQuestion
 } from '@/lib/types';
 import type { QuizFormData } from '../../quiz-form';
 
-type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion;
+type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion;
 
 export function useQuestionOperations(
   setValue: UseFormSetValue<QuizFormData>,
@@ -23,7 +24,7 @@ export function useQuestionOperations(
 
   const addQuestion = useCallback((
     text: string = '',
-    type: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'poll-single' | 'poll-multiple' = 'single-choice'
+    type: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'free-response' | 'poll-single' | 'poll-multiple' = 'single-choice'
   ) => {
     let newQuestion: Question;
 
@@ -44,6 +45,16 @@ export function useQuestionOperations(
         step: 1,
         unit: '',
         timeLimit: 20,
+      };
+    } else if (type === 'free-response') {
+      newQuestion = {
+        type: 'free-response',
+        text: text,
+        correctAnswer: '',
+        alternativeAnswers: [],
+        caseSensitive: false,
+        allowTypos: true,
+        timeLimit: 30,
       };
     } else if (type === 'multiple-choice') {
       newQuestion = {
@@ -161,12 +172,15 @@ export function useQuestionOperations(
 
   const convertQuestionType = useCallback((
     qIndex: number,
-    targetType: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'poll-single' | 'poll-multiple'
+    targetType: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'free-response' | 'poll-single' | 'poll-multiple'
   ) => {
     const q = questions[qIndex];
     if (targetType === q.type) return;
 
     let convertedQuestion: Question;
+
+    // Helper to check if question type has answers array
+    const hasAnswers = (type: string) => !['slider', 'slide', 'free-response'].includes(type);
 
     // Convert to slide
     if (targetType === 'slide') {
@@ -192,11 +206,24 @@ export function useQuestionOperations(
         imageUrl: q.imageUrl,
       };
     }
+    // Convert to free-response
+    else if (targetType === 'free-response') {
+      convertedQuestion = {
+        type: 'free-response',
+        text: q.text,
+        correctAnswer: '',
+        alternativeAnswers: [],
+        caseSensitive: false,
+        allowTypos: true,
+        timeLimit: q.timeLimit || 30,
+        imageUrl: q.imageUrl,
+      };
+    }
     // Convert to single-choice
     else if (targetType === 'single-choice') {
-      const answers = (q.type === 'slider' || q.type === 'slide')
-        ? [{ text: '' }, { text: '' }]
-        : (q as SingleChoiceQuestion | MultipleChoiceQuestion | PollSingleQuestion | PollMultipleQuestion).answers;
+      const answers = hasAnswers(q.type)
+        ? (q as SingleChoiceQuestion | MultipleChoiceQuestion | PollSingleQuestion | PollMultipleQuestion).answers
+        : [{ text: '' }, { text: '' }];
       convertedQuestion = {
         type: 'single-choice',
         text: q.text,
@@ -208,9 +235,9 @@ export function useQuestionOperations(
     }
     // Convert to multiple-choice
     else if (targetType === 'multiple-choice') {
-      const answers = (q.type === 'slider' || q.type === 'slide')
-        ? [{ text: '' }, { text: '' }]
-        : (q as SingleChoiceQuestion | MultipleChoiceQuestion | PollSingleQuestion | PollMultipleQuestion).answers;
+      const answers = hasAnswers(q.type)
+        ? (q as SingleChoiceQuestion | MultipleChoiceQuestion | PollSingleQuestion | PollMultipleQuestion).answers
+        : [{ text: '' }, { text: '' }];
       convertedQuestion = {
         type: 'multiple-choice',
         text: q.text,
@@ -223,9 +250,9 @@ export function useQuestionOperations(
     }
     // Convert to poll-single
     else if (targetType === 'poll-single') {
-      const answers = (q.type === 'slider' || q.type === 'slide')
-        ? [{ text: '' }, { text: '' }]
-        : (q as SingleChoiceQuestion | MultipleChoiceQuestion | PollSingleQuestion | PollMultipleQuestion).answers;
+      const answers = hasAnswers(q.type)
+        ? (q as SingleChoiceQuestion | MultipleChoiceQuestion | PollSingleQuestion | PollMultipleQuestion).answers
+        : [{ text: '' }, { text: '' }];
       convertedQuestion = {
         type: 'poll-single',
         text: q.text,
@@ -236,9 +263,9 @@ export function useQuestionOperations(
     }
     // Convert to poll-multiple
     else {
-      const answers = (q.type === 'slider' || q.type === 'slide')
-        ? [{ text: '' }, { text: '' }]
-        : (q as SingleChoiceQuestion | MultipleChoiceQuestion | PollSingleQuestion | PollMultipleQuestion).answers;
+      const answers = hasAnswers(q.type)
+        ? (q as SingleChoiceQuestion | MultipleChoiceQuestion | PollSingleQuestion | PollMultipleQuestion).answers
+        : [{ text: '' }, { text: '' }];
       convertedQuestion = {
         type: 'poll-multiple',
         text: q.text,

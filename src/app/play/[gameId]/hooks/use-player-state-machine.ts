@@ -27,7 +27,9 @@ export function usePlayerStateMachine(
 
   // Main state synchronization effect
   useEffect(() => {
-    if (!game && !gameLoading && state !== 'joining' && state !== 'cancelled') {
+    // Don't mark as cancelled if we're still in joining/lobby states
+    // In lobby state, the game document might still be loading after setGameDocId was called
+    if (!game && !gameLoading && state !== 'joining' && state !== 'lobby' && state !== 'cancelled') {
       setState('cancelled');
       return;
     }

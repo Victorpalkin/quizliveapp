@@ -4,6 +4,7 @@ import { SingleChoiceHandler } from './single-choice';
 import { MultipleChoiceHandler } from './multiple-choice';
 import { SliderHandler } from './slider';
 import { SlideHandler } from './slide';
+import { FreeResponseHandler } from './free-response';
 import { PollSingleHandler } from './poll-single';
 import { PollMultipleHandler } from './poll-multiple';
 
@@ -13,6 +14,7 @@ const handlers = {
   'multiple-choice': new MultipleChoiceHandler(),
   'slider': new SliderHandler(),
   'slide': new SlideHandler(),
+  'free-response': new FreeResponseHandler(),
   'poll-single': new PollSingleHandler(),
   'poll-multiple': new PollMultipleHandler(),
 } as const;

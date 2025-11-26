@@ -12,7 +12,7 @@ export interface QuizFormContextValue {
   // Question operations
   updateQuestion: (index: number, question: Question) => void;
   removeQuestion: (index: number) => void;
-  convertType: (index: number, type: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'poll-single' | 'poll-multiple') => void;
+  convertType: (index: number, type: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'free-response' | 'poll-single' | 'poll-multiple') => void;
 
   // Answer operations
   addAnswer: (questionIndex: number) => void;

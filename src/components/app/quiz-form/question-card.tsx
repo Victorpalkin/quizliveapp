@@ -3,23 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { Trash2, GripVertical } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
-import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
+import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, FreeResponseQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import { ImageUpload } from './shared/image-upload';
 import { SingleChoiceEditor } from './question-editors/single-choice-editor';
 import { MultipleChoiceEditor } from './question-editors/multiple-choice-editor';
 import { SliderEditor } from './question-editors/slider-editor';
 import { SlideEditor } from './question-editors/slide-editor';
+import { FreeResponseEditor } from './question-editors/free-response-editor';
 import { PollSingleEditor } from './question-editors/poll-single-editor';
 import { PollMultipleEditor } from './question-editors/poll-multiple-editor';
 import { useQuizFormContext } from './context';
 
-type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion;
+type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion;
 
 interface QuestionCardProps {
   id: string;
@@ -91,38 +90,27 @@ export function QuestionCard({
         {/* Question Type Selector */}
         <FormItem>
           <FormLabel>Question Type</FormLabel>
-          <RadioGroup
+          <Select
             value={question.type}
-            onValueChange={(value: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'poll-single' | 'poll-multiple') => {
+            onValueChange={(value: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'free-response' | 'poll-single' | 'poll-multiple') => {
               onConvertType(questionIndex, value);
             }}
-            className="flex flex-wrap gap-4"
           >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="single-choice" id={`type-sc-${questionIndex}`} />
-              <Label htmlFor={`type-sc-${questionIndex}`}>Single Choice</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="multiple-choice" id={`type-mc-${questionIndex}`} />
-              <Label htmlFor={`type-mc-${questionIndex}`}>Multiple Choice</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="slider" id={`type-slider-${questionIndex}`} />
-              <Label htmlFor={`type-slider-${questionIndex}`}>Slider (Numeric)</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="slide" id={`type-slide-${questionIndex}`} />
-              <Label htmlFor={`type-slide-${questionIndex}`}>Slide (Info)</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="poll-single" id={`type-poll-single-${questionIndex}`} />
-              <Label htmlFor={`type-poll-single-${questionIndex}`}>Poll (Single)</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="poll-multiple" id={`type-poll-multiple-${questionIndex}`} />
-              <Label htmlFor={`type-poll-multiple-${questionIndex}`}>Poll (Multiple)</Label>
-            </div>
-          </RadioGroup>
+            <FormControl>
+              <SelectTrigger>
+                <SelectValue placeholder="Select question type" />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              <SelectItem value="single-choice">Single Choice</SelectItem>
+              <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
+              <SelectItem value="free-response">Free Response</SelectItem>
+              <SelectItem value="slider">Slider (Numeric)</SelectItem>
+              <SelectItem value="slide">Slide (Info)</SelectItem>
+              <SelectItem value="poll-single">Poll (Single)</SelectItem>
+              <SelectItem value="poll-multiple">Poll (Multiple)</SelectItem>
+            </SelectContent>
+          </Select>
         </FormItem>
 
         {/* Question Text */}
@@ -224,6 +212,13 @@ export function QuestionCard({
 
         {question.type === 'slide' && (
           <SlideEditor
+            question={question}
+            onUpdateQuestion={(updatedQ) => onUpdateQuestion(questionIndex, updatedQ)}
+          />
+        )}
+
+        {question.type === 'free-response' && (
+          <FreeResponseEditor
             question={question}
             onUpdateQuestion={(updatedQ) => onUpdateQuestion(questionIndex, updatedQ)}
           />

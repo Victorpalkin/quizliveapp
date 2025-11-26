@@ -60,6 +60,18 @@ export function QuestionTypeBadges({ question }: QuestionTypeBadgesProps) {
         </div>
       );
 
+    case 'free-response':
+      return (
+        <div className="flex gap-2">
+          <Badge variant="secondary" className="text-sm">
+            Free Response
+          </Badge>
+          <Badge variant="default" className="text-sm">
+            {question.allowTypos !== false ? 'Typo Tolerant' : 'Exact Match'}
+          </Badge>
+        </div>
+      );
+
     case 'poll-single':
       return (
         <div className="flex gap-2">

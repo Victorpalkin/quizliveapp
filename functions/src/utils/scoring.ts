@@ -1,4 +1,5 @@
 import { SubmitAnswerRequest } from '../types';
+import { checkFreeResponseAnswer } from './fuzzyMatch';
 
 /**
  * Result of score calculation
@@ -132,6 +133,59 @@ export function scorePoll(): ScoringResult {
 }
 
 /**
+ * Calculate score for a free-response question
+ * Uses fuzzy matching to allow typos and alternative answers
+ * Base 100 points + up to 900 time bonus for correct answers
+ *
+ * @param textAnswer - The player's text answer
+ * @param correctAnswer - The primary correct answer
+ * @param alternativeAnswers - Optional alternative accepted answers
+ * @param caseSensitive - Whether to require exact case matching
+ * @param allowTypos - Whether to allow fuzzy matching for typos
+ * @param timeRemaining - Time remaining when answer was submitted
+ * @param timeLimit - Total time limit for the question
+ * @returns Scoring result with points and correctness
+ */
+export function scoreFreeResponse(
+  textAnswer: string,
+  correctAnswer: string,
+  alternativeAnswers: string[] = [],
+  caseSensitive: boolean = false,
+  allowTypos: boolean = true,
+  timeRemaining: number,
+  timeLimit: number
+): ScoringResult {
+  // Empty answer is always wrong
+  if (!textAnswer.trim()) {
+    return { points: 0, isCorrect: false, isPartiallyCorrect: false };
+  }
+
+  const { isCorrect, similarity } = checkFreeResponseAnswer(
+    textAnswer,
+    correctAnswer,
+    alternativeAnswers,
+    caseSensitive,
+    allowTypos
+  );
+
+  if (isCorrect) {
+    // Base 100 points + up to 900 time bonus (same as single-choice)
+    const points = 100 + Math.round((timeRemaining / timeLimit) * 900);
+    return { points: Math.min(1000, points), isCorrect: true, isPartiallyCorrect: false };
+  }
+
+  // Partial credit for close answers (similarity >= 0.5 but below acceptance threshold)
+  // This gives players some feedback that they were close
+  if (similarity >= 0.5 && !allowTypos) {
+    // Only give partial credit if typos weren't allowed but answer was close
+    const partialPoints = Math.round(similarity * 300);
+    return { points: partialPoints, isCorrect: false, isPartiallyCorrect: true };
+  }
+
+  return { points: 0, isCorrect: false, isPartiallyCorrect: false };
+}
+
+/**
  * Calculate score based on question type
  *
  * @param request - The submit answer request data
@@ -172,6 +226,17 @@ export function calculateScore(
         request.acceptableError
       );
 
+    case 'free-response':
+      return scoreFreeResponse(
+        request.textAnswer || '',
+        request.correctAnswer!,
+        request.alternativeAnswers || [],
+        request.caseSensitive ?? false,
+        request.allowTypos ?? true,
+        timeRemaining,
+        timeLimit
+      );
+
     case 'poll-single':
     case 'poll-multiple':
       return scorePoll();
@@ -184,7 +249,7 @@ export function calculateScore(
 
 /**
  * Calculate player's new streak
- * Streak only applies to scored questions (single-choice, multiple-choice, slider)
+ * Streak only applies to scored questions (single-choice, multiple-choice, slider, free-response)
  * Polls don't affect the streak
  *
  * @param questionType - The type of question

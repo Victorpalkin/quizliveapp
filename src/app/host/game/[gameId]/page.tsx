@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -14,7 +14,6 @@ import { AnswerButton } from '@/components/app/answer-button';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { QuestionCounter } from '@/components/app/question-counter';
 import { QuestionTypeBadges } from '@/components/app/question-type-badges';
-import { isSingleChoice, isMultipleChoice, isPoll } from '@/lib/type-guards';
 
 // Hooks
 import { useGameState } from './hooks/use-game-state';
@@ -29,6 +28,7 @@ import { LeaderboardView } from './components/visualizations/leaderboard-view';
 import { FinalLeaderboardView } from './components/visualizations/final-leaderboard-view';
 import { AnswerDistributionChart } from './components/visualizations/answer-distribution-chart';
 import { SliderResultsView } from './components/visualizations/slider-results-view';
+import { FreeResponseResultsView } from './components/visualizations/free-response-results-view';
 
 // Helper to convert index to letter (0 = A, 1 = B, etc.)
 const indexToLetter = (index: number): string => String.fromCharCode(65 + index);
@@ -37,8 +37,12 @@ export default function HostGamePage() {
   const params = useParams();
   const gameId = params.gameId as string;
 
-  // Game state
-  const { game, gameRef, quiz, players, gameLoading, quizLoading } = useGameState(gameId);
+  // Game state (now uses aggregate document for leaderboard data)
+  const {
+    game, gameRef, quiz,
+    topPlayers, totalPlayers, totalAnswered, answerCounts,
+    gameLoading, quizLoading
+  } = useGameState(gameId);
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;
@@ -48,15 +52,27 @@ export default function HostGamePage() {
     gameId,
     gameRef,
     game,
-    quiz,
-    players
+    quiz
   );
 
-  // Timer
-  const { time, answeredPlayers } = useQuestionTimer(game, players, timeLimit, finishQuestion);
+  // Timer (now uses totalAnswered from aggregate)
+  const { time } = useQuestionTimer(game, totalPlayers, timeLimit, finishQuestion, totalAnswered);
 
-  // Answer distribution
-  const { answerDistribution, sliderResponses } = useAnswerDistribution(question, players, game);
+  // Answer distribution (now uses answerCounts from aggregate for choice questions)
+  const { sliderResponses, freeResponseResults } = useAnswerDistribution(question, topPlayers, game);
+
+  // Build answer distribution from pre-computed answerCounts
+  const answerDistribution = question && 'answers' in question
+    ? question.answers.map((ans, index) => ({
+        name: ans.text,
+        total: answerCounts[index] || 0,
+        isCorrect: question.type === 'single-choice'
+          ? question.correctAnswerIndex === index
+          : question.type === 'multiple-choice'
+          ? question.correctAnswerIndices.includes(index)
+          : false, // Polls don't have correct answers
+      }))
+    : [];
 
   // Auto-transition from preparing to question
   useEffect(() => {
@@ -94,7 +110,7 @@ export default function HostGamePage() {
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-8">
         <h1 className="text-4xl font-bold mb-4">Quiz Over!</h1>
         <p className="text-muted-foreground mb-8">Here are the final results.</p>
-        <FinalLeaderboardView players={players} currentQuestionIndex={game?.currentQuestionIndex} />
+        <FinalLeaderboardView topPlayers={topPlayers} totalPlayers={totalPlayers} />
         <div className="mt-8 flex gap-4">
           <Button asChild>
             <Link href="/host">
@@ -185,6 +201,18 @@ export default function HostGamePage() {
                 </div>
               </CardContent>
             </Card>
+          ) : question.type === 'free-response' ? (
+            <Card className="w-full max-w-2xl mx-auto mt-8">
+              <CardContent className="p-8 text-center">
+                <p className="text-lg text-muted-foreground mb-4">Players are typing their answers...</p>
+                <div className="space-y-4">
+                  <Badge variant="secondary" className="text-sm">Free Response Question</Badge>
+                  <p className="text-sm text-muted-foreground">
+                    {question.allowTypos !== false ? 'Typo tolerance enabled' : 'Exact match required'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
             <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 w-full max-w-4xl">
               {question.answers.map((ans, i) => (
@@ -204,7 +232,7 @@ export default function HostGamePage() {
       {/* Leaderboard State */}
       {game?.state === 'leaderboard' && (
         <main className="flex-1 flex flex-col items-center justify-center gap-8 md:flex-row md:items-start">
-          <LeaderboardView players={players} currentQuestionIndex={game?.currentQuestionIndex} />
+          <LeaderboardView topPlayers={topPlayers} totalPlayers={totalPlayers} />
           {question?.type === 'slide' ? (
             <Card className="w-full max-w-2xl flex-1">
               <CardContent className="p-8 text-center space-y-4">
@@ -229,6 +257,12 @@ export default function HostGamePage() {
               unit={question.unit}
               acceptableError={question.acceptableError}
             />
+          ) : question?.type === 'free-response' ? (
+            <FreeResponseResultsView
+              responses={freeResponseResults}
+              correctAnswer={question.correctAnswer}
+              alternativeAnswers={question.alternativeAnswers}
+            />
           ) : (
             <AnswerDistributionChart data={answerDistribution} />
           )}
@@ -239,7 +273,7 @@ export default function HostGamePage() {
       <footer className="mt-8 flex justify-between items-center gap-4">
         <div className="flex items-center gap-2 text-lg font-medium">
           <Users className="h-5 w-5"/>
-          <span>{answeredPlayers} / {players.length || 0} Answered</span>
+          <span>{totalAnswered} / {totalPlayers} Answered</span>
         </div>
         <div>
           <QuestionCounter

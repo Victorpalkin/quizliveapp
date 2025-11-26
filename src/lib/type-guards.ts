@@ -4,6 +4,7 @@ import type {
   MultipleChoiceQuestion,
   SliderQuestion,
   SlideQuestion,
+  FreeResponseQuestion,
   PollSingleQuestion,
   PollMultipleQuestion,
 } from './types';
@@ -25,6 +26,10 @@ export function isSlide(q: Question): q is SlideQuestion {
   return q.type === 'slide';
 }
 
+export function isFreeResponse(q: Question): q is FreeResponseQuestion {
+  return q.type === 'free-response';
+}
+
 export function isPollSingle(q: Question): q is PollSingleQuestion {
   return q.type === 'poll-single';
 }
@@ -42,17 +47,18 @@ export function hasAnswers(
 
 export function hasCorrectAnswer(
   q: Question
-): q is SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion {
+): q is SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | FreeResponseQuestion {
   return (
     q.type === 'single-choice' ||
     q.type === 'multiple-choice' ||
-    q.type === 'slider'
+    q.type === 'slider' ||
+    q.type === 'free-response'
   );
 }
 
 export function isInteractive(
   q: Question
-): q is SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | PollSingleQuestion | PollMultipleQuestion {
+): q is SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion {
   return q.type !== 'slide';
 }
 
@@ -64,6 +70,6 @@ export function isPoll(
 
 export function hasPoints(
   q: Question
-): q is SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion {
+): q is SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | FreeResponseQuestion {
   return hasCorrectAnswer(q);
 }

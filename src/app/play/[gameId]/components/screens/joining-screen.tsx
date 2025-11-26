@@ -1,13 +1,15 @@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 
 interface JoiningScreenProps {
   nickname: string;
   setNickname: (nickname: string) => void;
   onJoinGame: (e: React.FormEvent) => void;
+  isLoading?: boolean;
 }
 
-export function JoiningScreen({ nickname, setNickname, onJoinGame }: JoiningScreenProps) {
+export function JoiningScreen({ nickname, setNickname, onJoinGame, isLoading }: JoiningScreenProps) {
   return (
     <div className="text-center w-full max-w-sm">
       <h1 className="text-4xl font-bold">Join Game</h1>
@@ -20,8 +22,18 @@ export function JoiningScreen({ nickname, setNickname, onJoinGame }: JoiningScre
           maxLength={20}
           minLength={2}
           required
+          disabled={isLoading}
         />
-        <Button type="submit" size="lg" className="w-full">Join</Button>
+        <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Joining...
+            </>
+          ) : (
+            'Join'
+          )}
+        </Button>
       </form>
     </div>
   );

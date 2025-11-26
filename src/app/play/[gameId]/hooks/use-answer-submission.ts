@@ -1,29 +1,95 @@
-import { useCallback, useRef, Dispatch, SetStateAction } from 'react';
-import { useFirestore, useFunctions } from '@/firebase';
+import { useCallback, Dispatch, SetStateAction } from 'react';
+import { useFunctions } from '@/firebase';
 import { Timestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
-import type { Player, PlayerAnswer, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, PollSingleQuestion, PollMultipleQuestion, SubmitAnswerResponse } from '@/lib/types';
+import type {
+  Player,
+  PlayerAnswer,
+  SingleChoiceQuestion,
+  MultipleChoiceQuestion,
+  SliderQuestion,
+  SlideQuestion,
+  FreeResponseQuestion,
+  PollSingleQuestion,
+  PollMultipleQuestion,
+  SubmitAnswerResponse,
+  Question,
+} from '@/lib/types';
 import { calculateTimeBasedScore, calculateProportionalScore, calculateSliderScore } from '@/lib/scoring';
+import type { AnswerResult, RankInfo } from '../types';
 
-type AnswerResult = {
-  selected: number;
-  correct: number[];
-  points: number;
-  wasTimeout: boolean;
-  isPartiallyCorrect?: boolean;
-};
+type QuestionType = Question['type'];
 
+/**
+ * Common error handler for answer submissions
+ */
+function handleSubmissionError(error: any, toast: ReturnType<typeof useToast>['toast'], isPoll = false) {
+  console.error('Error submitting answer:', error);
+
+  const entityName = isPoll ? 'poll response' : 'answer';
+
+  if (error.code === 'functions/deadline-exceeded') {
+    toast({
+      variant: 'destructive',
+      title: isPoll ? 'Response Too Late' : 'Answer Too Late',
+      description: `Your ${entityName} was submitted after the time limit${isPoll ? '.' : ' and was not counted.'}`
+    });
+  } else if (error.code === 'functions/failed-precondition') {
+    toast({
+      variant: 'destructive',
+      title: isPoll ? 'Response Not Accepted' : 'Answer Not Accepted',
+      description: error.message || 'The game state changed before your response could be processed.'
+    });
+  } else {
+    toast({
+      variant: 'destructive',
+      title: 'Submission Error',
+      description: `Failed to submit ${entityName}.${isPoll ? '' : ' Your score may not be saved.'}`
+    });
+  }
+}
+
+/**
+ * Creates an optimistic answer record for local state
+ */
+function createOptimisticAnswer(
+  questionIndex: number,
+  questionType: QuestionType,
+  points: number,
+  isCorrect: boolean,
+  answerData: Partial<PlayerAnswer>
+): PlayerAnswer {
+  return {
+    questionIndex,
+    questionType,
+    timestamp: Timestamp.now(),
+    points,
+    isCorrect,
+    wasTimeout: false,
+    ...answerData,
+  } as PlayerAnswer;
+}
+
+/**
+ * Unified answer submission hook with reduced duplication.
+ *
+ * Features:
+ * - Optimistic UI updates for all question types
+ * - Server-side validation and scoring
+ * - Common error handling
+ * - Rank tracking from server response
+ */
 export function useAnswerSubmission(
   gameDocId: string | null,
   playerId: string,
   currentQuestionIndex: number,
-  player: Player | null,
+  _player: Player | null, // Kept for API compatibility, may be used for future optimizations
   setLastAnswer: Dispatch<SetStateAction<AnswerResult | null>>,
   setPlayer: Dispatch<SetStateAction<Player | null>>,
-  answerSubmittedRef: React.MutableRefObject<boolean>
+  answerSubmittedRef: React.MutableRefObject<boolean>,
+  setRankInfo?: Dispatch<SetStateAction<RankInfo | null>>
 ) {
-  const firestore = useFirestore();
   const functions = useFunctions();
   const { toast } = useToast();
 
@@ -34,21 +100,13 @@ export function useAnswerSubmission(
     timeRemaining: number,
     timeLimit: number
   ) => {
-    if (!gameDocId) return;
-
-    // Prevent duplicate submissions
-    if (answerSubmittedRef.current) {
-      console.log('[Answer] Submission already in progress, ignoring duplicate');
-      return;
-    }
-
+    if (!gameDocId || answerSubmittedRef.current) return;
     answerSubmittedRef.current = true;
 
-    // Optimistic UI: Calculate estimated points using scoring utility
-    const isCorrectAnswer = answerIndex === question.correctAnswerIndex;
-    const estimatedPoints = calculateTimeBasedScore(isCorrectAnswer, timeRemaining, timeLimit);
+    const isCorrect = answerIndex === question.correctAnswerIndex;
+    const estimatedPoints = calculateTimeBasedScore(isCorrect, timeRemaining, timeLimit);
 
-    // Show result immediately (optimistic)
+    // Optimistic UI
     setLastAnswer({
       selected: answerIndex,
       correct: [question.correctAnswerIndex],
@@ -56,43 +114,39 @@ export function useAnswerSubmission(
       wasTimeout: false
     });
 
-    // Optimistic update: add answer to array
-    const optimisticAnswer: PlayerAnswer = {
-      questionIndex: currentQuestionIndex,
-      questionType: 'single-choice',
-      timestamp: Timestamp.now(),
-      answerIndex,
-      points: estimatedPoints,
-      isCorrect: isCorrectAnswer,
-      wasTimeout: false
-    };
+    const optimisticAnswer = createOptimisticAnswer(
+      currentQuestionIndex,
+      'single-choice',
+      estimatedPoints,
+      isCorrect,
+      { answerIndex }
+    );
+
     setPlayer(p => p ? {
       ...p,
       score: p.score + estimatedPoints,
       answers: [...(p.answers || []), optimisticAnswer]
     } : null);
 
-    // Submit to server in background
-    const submitData = {
-      gameId: gameDocId,
-      playerId: playerId,
-      questionIndex: currentQuestionIndex,
-      answerIndex,
-      timeRemaining,
-      questionType: 'single-choice' as const,
-      questionTimeLimit: question.timeLimit,
-      correctAnswerIndex: question.correctAnswerIndex,
-    };
-
+    // Server submission
     try {
-      const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
-      const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore, currentStreak } = result.data;
+      const submitAnswerFn = httpsCallable<any, SubmitAnswerResponse>(functions, 'submitAnswer');
+      const result = await submitAnswerFn({
+        gameId: gameDocId,
+        playerId,
+        questionIndex: currentQuestionIndex,
+        answerIndex,
+        timeRemaining,
+        questionType: 'single-choice',
+        questionTimeLimit: question.timeLimit,
+        correctAnswerIndex: question.correctAnswerIndex,
+      });
 
-      // Update with actual values if different
+      const { points: actualPoints, newScore, currentStreak, rank, totalPlayers } = result.data;
+      setRankInfo?.({ rank, totalPlayers });
+
       if (actualPoints !== estimatedPoints) {
         setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
-        // Update answer in array with actual points
         setPlayer(p => {
           if (!p) return null;
           const updatedAnswers = p.answers.map(a =>
@@ -104,30 +158,9 @@ export function useAnswerSubmission(
         setPlayer(p => p ? { ...p, score: newScore, currentStreak: currentStreak ?? 0 } : null);
       }
     } catch (error: any) {
-      console.error('Error submitting answer:', error);
-
-      // Provide specific error messages based on error code
-      if (error.code === 'functions/deadline-exceeded') {
-        toast({
-          variant: 'destructive',
-          title: 'Answer Too Late',
-          description: 'Your answer was submitted after the time limit and was not counted.'
-        });
-      } else if (error.code === 'functions/failed-precondition') {
-        toast({
-          variant: 'destructive',
-          title: 'Answer Not Accepted',
-          description: error.message || 'The game state changed before your answer could be processed.'
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Submission Error',
-          description: 'Failed to submit answer. Your score may not be saved.'
-        });
-      }
+      handleSubmissionError(error, toast);
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer, setRankInfo]);
 
   // Submit multiple choice answer
   const submitMultipleChoice = useCallback(async (
@@ -136,78 +169,62 @@ export function useAnswerSubmission(
     timeRemaining: number,
     timeLimit: number
   ) => {
-    if (!gameDocId) return;
-
-    // Prevent duplicate submissions
-    if (answerSubmittedRef.current) {
-      console.log('[Answer] Submission already in progress, ignoring duplicate');
-      return;
-    }
-
+    if (!gameDocId || answerSubmittedRef.current) return;
     answerSubmittedRef.current = true;
 
-    // Optimistic UI: Calculate estimated points using scoring utility
     const correctAnswerIndices = question.correctAnswerIndices;
     const correctSelected = answerIndices.filter(i => correctAnswerIndices.includes(i)).length;
     const wrongSelected = answerIndices.filter(i => !correctAnswerIndices.includes(i)).length;
     const totalCorrect = correctAnswerIndices.length;
 
     const estimatedPoints = calculateProportionalScore(
-      correctSelected,
-      wrongSelected,
-      totalCorrect,
-      timeRemaining,
-      timeLimit
+      correctSelected, wrongSelected, totalCorrect, timeRemaining, timeLimit
     );
+    const isCorrect = correctSelected === totalCorrect && wrongSelected === 0;
+    const isPartiallyCorrect = !isCorrect && estimatedPoints > 0;
 
-    const isCorrectAnswer = correctSelected === totalCorrect && wrongSelected === 0;
-    const isPartiallyCorrectAnswer = !isCorrectAnswer && estimatedPoints > 0;
-
-    // Show result immediately (optimistic)
+    // Optimistic UI
     setLastAnswer({
-      selected: isCorrectAnswer ? 1 : 0,
+      selected: isCorrect ? 1 : 0,
       correct: [1],
       points: estimatedPoints,
       wasTimeout: false,
-      isPartiallyCorrect: isPartiallyCorrectAnswer
+      isPartiallyCorrect
     });
 
-    // Optimistic update: add answer to array
-    const optimisticAnswer: PlayerAnswer = {
-      questionIndex: currentQuestionIndex,
-      questionType: 'multiple-choice',
-      timestamp: Timestamp.now(),
-      answerIndices,
-      points: estimatedPoints,
-      isCorrect: isCorrectAnswer,
-      wasTimeout: false
-    };
+    const optimisticAnswer = createOptimisticAnswer(
+      currentQuestionIndex,
+      'multiple-choice',
+      estimatedPoints,
+      isCorrect,
+      { answerIndices }
+    );
+
     setPlayer(p => p ? {
       ...p,
       score: p.score + estimatedPoints,
       answers: [...(p.answers || []), optimisticAnswer]
     } : null);
 
-    // Submit to server in background
-    const submitData = {
-      gameId: gameDocId,
-      playerId: playerId,
-      questionIndex: currentQuestionIndex,
-      answerIndices,
-      timeRemaining,
-      questionType: 'multiple-choice' as const,
-      questionTimeLimit: question.timeLimit,
-      correctAnswerIndices: question.correctAnswerIndices,
-    };
-
+    // Server submission
     try {
-      const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
-      const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore, isPartiallyCorrect, currentStreak } = result.data;
+      const submitAnswerFn = httpsCallable<any, SubmitAnswerResponse>(functions, 'submitAnswer');
+      const result = await submitAnswerFn({
+        gameId: gameDocId,
+        playerId,
+        questionIndex: currentQuestionIndex,
+        answerIndices,
+        timeRemaining,
+        questionType: 'multiple-choice',
+        questionTimeLimit: question.timeLimit,
+        correctAnswerIndices: question.correctAnswerIndices,
+      });
 
-      // Update with actual values if different
-      if (actualPoints !== estimatedPoints || isPartiallyCorrect !== isPartiallyCorrectAnswer) {
-        setLastAnswer(prev => prev ? { ...prev, points: actualPoints, isPartiallyCorrect } : null);
+      const { points: actualPoints, newScore, isPartiallyCorrect: serverPartiallyCorrect, currentStreak, rank, totalPlayers } = result.data;
+      setRankInfo?.({ rank, totalPlayers });
+
+      if (actualPoints !== estimatedPoints || serverPartiallyCorrect !== isPartiallyCorrect) {
+        setLastAnswer(prev => prev ? { ...prev, points: actualPoints, isPartiallyCorrect: serverPartiallyCorrect } : null);
         setPlayer(p => {
           if (!p) return null;
           const updatedAnswers = p.answers.map(a =>
@@ -219,30 +236,9 @@ export function useAnswerSubmission(
         setPlayer(p => p ? { ...p, score: newScore, currentStreak: currentStreak ?? 0 } : null);
       }
     } catch (error: any) {
-      console.error('Error submitting answer:', error);
-
-      // Provide specific error messages based on error code
-      if (error.code === 'functions/deadline-exceeded') {
-        toast({
-          variant: 'destructive',
-          title: 'Answer Too Late',
-          description: 'Your answer was submitted after the time limit and was not counted.'
-        });
-      } else if (error.code === 'functions/failed-precondition') {
-        toast({
-          variant: 'destructive',
-          title: 'Answer Not Accepted',
-          description: error.message || 'The game state changed before your answer could be processed.'
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Submission Error',
-          description: 'Failed to submit answer. Your score may not be saved.'
-        });
-      }
+      handleSubmissionError(error, toast);
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer, setRankInfo]);
 
   // Submit slider answer
   const submitSlider = useCallback(async (
@@ -250,18 +246,10 @@ export function useAnswerSubmission(
     question: SliderQuestion,
     timeRemaining: number
   ) => {
-    if (!gameDocId) return;
-
-    // Prevent duplicate submissions
-    if (answerSubmittedRef.current) {
-      console.log('[Answer] Submission already in progress, ignoring duplicate');
-      return;
-    }
-
+    if (!gameDocId || answerSubmittedRef.current) return;
     answerSubmittedRef.current = true;
 
-    // Optimistic UI: Calculate estimated points using scoring utility
-    const { points: estimatedPoints, isCorrect: isCorrectAnswer } = calculateSliderScore(
+    const { points: estimatedPoints, isCorrect } = calculateSliderScore(
       sliderValue,
       question.correctValue,
       question.minValue,
@@ -271,51 +259,48 @@ export function useAnswerSubmission(
       question.acceptableError
     );
 
-    // Show result immediately (optimistic) - no "partially correct" for sliders
+    // Optimistic UI
     setLastAnswer({
-      selected: isCorrectAnswer ? 1 : 0,
+      selected: isCorrect ? 1 : 0,
       correct: [1],
       points: estimatedPoints,
       wasTimeout: false
     });
 
-    // Optimistic update: add answer to array
-    const optimisticAnswer: PlayerAnswer = {
-      questionIndex: currentQuestionIndex,
-      questionType: 'slider',
-      timestamp: Timestamp.now(),
-      sliderValue,
-      points: estimatedPoints,
-      isCorrect: isCorrectAnswer,
-      wasTimeout: false
-    };
+    const optimisticAnswer = createOptimisticAnswer(
+      currentQuestionIndex,
+      'slider',
+      estimatedPoints,
+      isCorrect,
+      { sliderValue }
+    );
+
     setPlayer(p => p ? {
       ...p,
       score: p.score + estimatedPoints,
       answers: [...(p.answers || []), optimisticAnswer]
     } : null);
 
-    // Submit to server in background
-    const submitData = {
-      gameId: gameDocId,
-      playerId: playerId,
-      questionIndex: currentQuestionIndex,
-      sliderValue,
-      timeRemaining,
-      questionType: 'slider' as const,
-      questionTimeLimit: question.timeLimit,
-      correctValue: question.correctValue,
-      minValue: question.minValue,
-      maxValue: question.maxValue,
-      acceptableError: question.acceptableError,
-    };
-
+    // Server submission
     try {
-      const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
-      const result = await submitAnswerFn(submitData);
-      const { points: actualPoints, newScore, currentStreak } = result.data;
+      const submitAnswerFn = httpsCallable<any, SubmitAnswerResponse>(functions, 'submitAnswer');
+      const result = await submitAnswerFn({
+        gameId: gameDocId,
+        playerId,
+        questionIndex: currentQuestionIndex,
+        sliderValue,
+        timeRemaining,
+        questionType: 'slider',
+        questionTimeLimit: question.timeLimit,
+        correctValue: question.correctValue,
+        minValue: question.minValue,
+        maxValue: question.maxValue,
+        acceptableError: question.acceptableError,
+      });
 
-      // Update with actual values if different
+      const { points: actualPoints, newScore, currentStreak, rank, totalPlayers } = result.data;
+      setRankInfo?.({ rank, totalPlayers });
+
       if (actualPoints !== estimatedPoints) {
         setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
         setPlayer(p => {
@@ -329,165 +314,130 @@ export function useAnswerSubmission(
         setPlayer(p => p ? { ...p, score: newScore, currentStreak: currentStreak ?? 0 } : null);
       }
     } catch (error: any) {
-      console.error('Error submitting answer:', error);
-
-      // Provide specific error messages based on error code
-      if (error.code === 'functions/deadline-exceeded') {
-        toast({
-          variant: 'destructive',
-          title: 'Answer Too Late',
-          description: 'Your answer was submitted after the time limit and was not counted.'
-        });
-      } else if (error.code === 'functions/failed-precondition') {
-        toast({
-          variant: 'destructive',
-          title: 'Answer Not Accepted',
-          description: error.message || 'The game state changed before your answer could be processed.'
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Submission Error',
-          description: 'Failed to submit answer. Your score may not be saved.'
-        });
-      }
+      handleSubmissionError(error, toast);
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer, setRankInfo]);
 
-  // Handle timeout
-  const submitTimeout = useCallback(async (
-    question: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | PollSingleQuestion | PollMultipleQuestion
+  // Submit free-response answer
+  const submitFreeResponse = useCallback(async (
+    textAnswer: string,
+    question: FreeResponseQuestion,
+    timeRemaining: number,
+    timeLimit: number
   ) => {
-    if (!gameDocId) return;
-
-    // Prevent duplicate timeout submissions
-    if (answerSubmittedRef.current) {
-      console.log('[Timeout] Submission already in progress, ignoring duplicate timeout');
-      return;
-    }
-
-    // Slides don't timeout - players just view them
-    if (question.type === 'slide') {
-      console.log('[Timeout] Skipping timeout for slide question');
-      return;
-    }
-
-    // Set flag immediately to prevent race conditions
+    if (!gameDocId || answerSubmittedRef.current) return;
     answerSubmittedRef.current = true;
 
-    const submitData: any = {
-      gameId: gameDocId,
-      playerId: playerId,
-      questionIndex: currentQuestionIndex,
-      timeRemaining: 0,
-      questionType: question.type,
-      questionTimeLimit: question.timeLimit,
-    };
+    // Optimistic estimate: assume correct if non-empty (server validates)
+    const estimatedPoints = textAnswer.trim() ? calculateTimeBasedScore(true, timeRemaining, timeLimit) : 0;
 
-    // Add appropriate field based on question type
-    if (question.type === 'single-choice') {
-      submitData.answerIndex = -1;
-      submitData.correctAnswerIndex = question.correctAnswerIndex;
-    } else if (question.type === 'multiple-choice') {
-      submitData.answerIndices = [];
-      submitData.correctAnswerIndices = question.correctAnswerIndices;
-    } else if (question.type === 'slider') {
-      submitData.sliderValue = question.minValue;
-      submitData.correctValue = question.correctValue;
-      submitData.minValue = question.minValue;
-      submitData.maxValue = question.maxValue;
-    } else if (question.type === 'poll-single') {
-      submitData.answerIndex = -1; // -1 represents no answer/timeout
-    } else if (question.type === 'poll-multiple') {
-      submitData.answerIndices = []; // Empty array represents no answer/timeout
-    }
+    // Optimistic UI
+    setLastAnswer({
+      selected: textAnswer.trim() ? 1 : 0,
+      correct: [1],
+      points: estimatedPoints,
+      wasTimeout: false
+    });
 
+    const optimisticAnswer = createOptimisticAnswer(
+      currentQuestionIndex,
+      'free-response',
+      estimatedPoints,
+      true, // Optimistic - server will correct
+      { textAnswer }
+    );
+
+    setPlayer(p => p ? {
+      ...p,
+      score: p.score + estimatedPoints,
+      answers: [...(p.answers || []), optimisticAnswer]
+    } : null);
+
+    // Server submission for fuzzy matching
     try {
-      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
-      await submitAnswerFn(submitData);
+      const submitAnswerFn = httpsCallable<any, SubmitAnswerResponse>(functions, 'submitAnswer');
+      const result = await submitAnswerFn({
+        gameId: gameDocId,
+        playerId,
+        questionIndex: currentQuestionIndex,
+        textAnswer,
+        timeRemaining,
+        questionType: 'free-response',
+        questionTimeLimit: question.timeLimit,
+        correctAnswer: question.correctAnswer,
+        alternativeAnswers: question.alternativeAnswers,
+        caseSensitive: question.caseSensitive,
+        allowTypos: question.allowTypos,
+      });
+
+      const { points: actualPoints, newScore, isCorrect, currentStreak, rank, totalPlayers } = result.data;
+      setRankInfo?.({ rank, totalPlayers });
+
+      // Always update with server values for free-response (fuzzy matching)
+      setLastAnswer(prev => prev ? {
+        ...prev,
+        points: actualPoints,
+        selected: isCorrect ? 1 : 0
+      } : null);
+
+      setPlayer(p => {
+        if (!p) return null;
+        const updatedAnswers = p.answers.map(a =>
+          a.questionIndex === currentQuestionIndex
+            ? { ...a, points: actualPoints, isCorrect }
+            : a
+        );
+        return { ...p, score: newScore, currentStreak: currentStreak ?? 0, answers: updatedAnswers };
+      });
     } catch (error: any) {
-      console.error('Error submitting timeout:', error);
+      handleSubmissionError(error, toast);
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer, setRankInfo]);
 
   // Submit poll single choice answer (no scoring)
   const submitPollSingle = useCallback(async (
     answerIndex: number,
     question: PollSingleQuestion,
     timeRemaining: number,
-    timeLimit: number
+    _timeLimit: number
   ) => {
-    if (!gameDocId) return;
-
-    // Prevent duplicate submissions
-    if (answerSubmittedRef.current) {
-      console.log('[Answer] Submission already in progress, ignoring duplicate');
-      return;
-    }
-
+    if (!gameDocId || answerSubmittedRef.current) return;
     answerSubmittedRef.current = true;
 
-    // Poll questions don't have correct answers - always 0 points
+    // Polls don't have correct answers - always 0 points
     setLastAnswer({
       selected: answerIndex,
-      correct: [], // No correct answer for polls
+      correct: [],
       points: 0,
       wasTimeout: false
     });
 
-    // Optimistic update: add answer to array
-    const optimisticAnswer: PlayerAnswer = {
-      questionIndex: currentQuestionIndex,
-      questionType: 'poll-single',
-      timestamp: Timestamp.now(),
-      answerIndex,
-      points: 0,
-      isCorrect: false, // Polls don't have correct answers
-      wasTimeout: false
-    };
+    const optimisticAnswer = createOptimisticAnswer(
+      currentQuestionIndex,
+      'poll-single',
+      0,
+      false,
+      { answerIndex }
+    );
+
     setPlayer(p => p ? {
       ...p,
-      score: p.score, // No score change for polls
       answers: [...(p.answers || []), optimisticAnswer]
     } : null);
 
-    // Submit to server in background
-    const submitData = {
-      gameId: gameDocId,
-      playerId: playerId,
-      questionIndex: currentQuestionIndex,
-      answerIndex,
-      timeRemaining,
-      questionType: 'poll-single' as const,
-      questionTimeLimit: question.timeLimit,
-    };
-
     try {
       const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
-      await submitAnswerFn(submitData);
+      await submitAnswerFn({
+        gameId: gameDocId,
+        playerId,
+        questionIndex: currentQuestionIndex,
+        answerIndex,
+        timeRemaining,
+        questionType: 'poll-single',
+        questionTimeLimit: question.timeLimit,
+      });
     } catch (error: any) {
-      console.error('Error submitting poll answer:', error);
-
-      // Provide specific error messages based on error code
-      if (error.code === 'functions/deadline-exceeded') {
-        toast({
-          variant: 'destructive',
-          title: 'Response Too Late',
-          description: 'Your poll response was submitted after the time limit.'
-        });
-      } else if (error.code === 'functions/failed-precondition') {
-        toast({
-          variant: 'destructive',
-          title: 'Response Not Accepted',
-          description: error.message || 'The game state changed before your response could be processed.'
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Submission Error',
-          description: 'Failed to submit poll response.'
-        });
-      }
+      handleSubmissionError(error, toast, true);
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
@@ -496,86 +446,117 @@ export function useAnswerSubmission(
     answerIndices: number[],
     question: PollMultipleQuestion,
     timeRemaining: number,
-    timeLimit: number
+    _timeLimit: number
   ) => {
-    if (!gameDocId) return;
+    if (!gameDocId || answerSubmittedRef.current) return;
+    answerSubmittedRef.current = true;
 
-    // Prevent duplicate submissions
-    if (answerSubmittedRef.current) {
-      console.log('[Answer] Submission already in progress, ignoring duplicate');
+    // Polls don't have correct answers - always 0 points
+    setLastAnswer({
+      selected: 0,
+      correct: [],
+      points: 0,
+      wasTimeout: false
+    });
+
+    const optimisticAnswer = createOptimisticAnswer(
+      currentQuestionIndex,
+      'poll-multiple',
+      0,
+      false,
+      { answerIndices }
+    );
+
+    setPlayer(p => p ? {
+      ...p,
+      answers: [...(p.answers || []), optimisticAnswer]
+    } : null);
+
+    try {
+      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
+      await submitAnswerFn({
+        gameId: gameDocId,
+        playerId,
+        questionIndex: currentQuestionIndex,
+        answerIndices,
+        timeRemaining,
+        questionType: 'poll-multiple',
+        questionTimeLimit: question.timeLimit,
+      });
+    } catch (error: any) {
+      handleSubmissionError(error, toast, true);
+    }
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+
+  // Handle timeout
+  const submitTimeout = useCallback(async (
+    question: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion
+  ) => {
+    if (!gameDocId || answerSubmittedRef.current) return;
+
+    // Slides don't timeout - players just view them
+    if (question.type === 'slide') {
+      console.log('[Timeout] Skipping timeout for slide question');
       return;
     }
 
     answerSubmittedRef.current = true;
 
-    // Poll questions don't have correct answers - always 0 points
-    setLastAnswer({
-      selected: 0, // For polls, selected doesn't matter
-      correct: [], // No correct answer for polls
-      points: 0,
-      wasTimeout: false
-    });
-
-    // Optimistic update: add answer to array
-    const optimisticAnswer: PlayerAnswer = {
-      questionIndex: currentQuestionIndex,
-      questionType: 'poll-multiple',
-      timestamp: Timestamp.now(),
-      answerIndices,
-      points: 0,
-      isCorrect: false, // Polls don't have correct answers
-      wasTimeout: false
-    };
-    setPlayer(p => p ? {
-      ...p,
-      score: p.score, // No score change for polls
-      answers: [...(p.answers || []), optimisticAnswer]
-    } : null);
-
-    // Submit to server in background
-    const submitData = {
+    const submitData: any = {
       gameId: gameDocId,
-      playerId: playerId,
+      playerId,
       questionIndex: currentQuestionIndex,
-      answerIndices,
-      timeRemaining,
-      questionType: 'poll-multiple' as const,
+      timeRemaining: 0,
+      questionType: question.type,
       questionTimeLimit: question.timeLimit,
     };
 
-    try {
-      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
-      await submitAnswerFn(submitData);
-    } catch (error: any) {
-      console.error('Error submitting poll answer:', error);
-
-      // Provide specific error messages based on error code
-      if (error.code === 'functions/deadline-exceeded') {
-        toast({
-          variant: 'destructive',
-          title: 'Response Too Late',
-          description: 'Your poll response was submitted after the time limit.'
-        });
-      } else if (error.code === 'functions/failed-precondition') {
-        toast({
-          variant: 'destructive',
-          title: 'Response Not Accepted',
-          description: error.message || 'The game state changed before your response could be processed.'
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Submission Error',
-          description: 'Failed to submit poll response.'
-        });
-      }
+    // Add appropriate field based on question type
+    switch (question.type) {
+      case 'single-choice':
+        submitData.answerIndex = -1;
+        submitData.correctAnswerIndex = question.correctAnswerIndex;
+        break;
+      case 'multiple-choice':
+        submitData.answerIndices = [];
+        submitData.correctAnswerIndices = question.correctAnswerIndices;
+        break;
+      case 'slider':
+        submitData.sliderValue = question.minValue;
+        submitData.correctValue = question.correctValue;
+        submitData.minValue = question.minValue;
+        submitData.maxValue = question.maxValue;
+        break;
+      case 'free-response':
+        submitData.textAnswer = '';
+        submitData.correctAnswer = question.correctAnswer;
+        submitData.alternativeAnswers = question.alternativeAnswers;
+        submitData.caseSensitive = question.caseSensitive;
+        submitData.allowTypos = question.allowTypos;
+        break;
+      case 'poll-single':
+        submitData.answerIndex = -1;
+        break;
+      case 'poll-multiple':
+        submitData.answerIndices = [];
+        break;
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+
+    try {
+      const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
+      const result = await submitAnswerFn(submitData);
+      const { rank, totalPlayers } = result.data;
+      setRankInfo?.({ rank, totalPlayers });
+    } catch (error: any) {
+      console.error('Error submitting timeout:', error);
+    }
+  }, [gameDocId, playerId, currentQuestionIndex, functions, setRankInfo, answerSubmittedRef]);
 
   return {
     submitSingleChoice,
     submitMultipleChoice,
     submitSlider,
+    submitFreeResponse,
     submitPollSingle,
     submitPollMultiple,
     submitTimeout
