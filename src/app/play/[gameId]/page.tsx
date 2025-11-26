@@ -154,11 +154,12 @@ export default function PlayerGamePage() {
   useWakeLock(shouldKeepAwake);
 
   // Handle timeout submission when answerState signals it
+  // Pass the question index that was shown when timeout was triggered to avoid stale closure issues
   useEffect(() => {
     if (answerState.shouldSubmitTimeout && question) {
-      answerSubmission.submitTimeout(question);
+      answerSubmission.submitTimeout(question, answerState.lastQuestionIndexShown);
     }
-  }, [answerState.shouldSubmitTimeout, question, answerSubmission]);
+  }, [answerState.shouldSubmitTimeout, question, answerSubmission, answerState.lastQuestionIndexShown]);
 
   // Answer handlers
   const handleSingleChoiceAnswer = (answerIndex: number) => {

@@ -23,6 +23,8 @@ interface UseAnswerStateReturn {
   answerSubmittedRef: React.MutableRefObject<boolean>;
   /** Whether timeout was triggered this question (page should call submitTimeout when true) */
   shouldSubmitTimeout: boolean;
+  /** The question index that was shown when timeout was triggered (use this for submitTimeout) */
+  lastQuestionIndexShown: number;
 }
 
 /**
@@ -178,5 +180,6 @@ export function useAnswerState({
     setLastAnswer,
     answerSubmittedRef,
     shouldSubmitTimeout,
+    lastQuestionIndexShown: lastQuestionIndexShownRef.current,
   };
 }

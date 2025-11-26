@@ -486,8 +486,11 @@ export function useAnswerSubmission(
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
   // Handle timeout
+  // Note: questionIndex is passed explicitly to avoid stale closure issues
+  // when the timeout submission is triggered after the game has moved to the next question
   const submitTimeout = useCallback(async (
-    question: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion
+    question: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion,
+    questionIndex: number
   ) => {
     if (!gameDocId || answerSubmittedRef.current) return;
 
@@ -502,7 +505,7 @@ export function useAnswerSubmission(
     const submitData: any = {
       gameId: gameDocId,
       playerId,
-      questionIndex: currentQuestionIndex,
+      questionIndex,
       timeRemaining: 0,
       questionType: question.type,
       questionTimeLimit: question.timeLimit,
@@ -546,7 +549,7 @@ export function useAnswerSubmission(
     } catch (error: any) {
       console.error('Error submitting timeout:', error);
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, answerSubmittedRef]);
+  }, [gameDocId, playerId, functions, answerSubmittedRef]);
 
   return {
     submitSingleChoice,
