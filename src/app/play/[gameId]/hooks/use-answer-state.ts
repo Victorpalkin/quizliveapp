@@ -21,10 +21,6 @@ interface UseAnswerStateReturn {
   lastAnswer: AnswerResult | null;
   setLastAnswer: Dispatch<SetStateAction<AnswerResult | null>>;
   answerSubmittedRef: React.MutableRefObject<boolean>;
-  /** Whether timeout was triggered this question (page should call submitTimeout when true) */
-  shouldSubmitTimeout: boolean;
-  /** The question index that was shown when timeout was triggered (use this for submitTimeout) */
-  lastQuestionIndexShown: number;
 }
 
 /**
@@ -64,7 +60,6 @@ export function useAnswerState({
   const [answerSelected, setAnswerSelected] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   const [lastAnswer, setLastAnswer] = useState<AnswerResult | null>(null);
-  const [shouldSubmitTimeout, setShouldSubmitTimeout] = useState(false);
 
   // Ref to prevent duplicate submissions
   const answerSubmittedRef = useRef<boolean>(false);
@@ -79,7 +74,6 @@ export function useAnswerState({
       setAnswerSelected(false);
       setTimedOut(false);
       setLastAnswer(null);
-      setShouldSubmitTimeout(false);
       answerSubmittedRef.current = false;
       resetTimer();
     }
@@ -94,6 +88,8 @@ export function useAnswerState({
   }, [state, game?.currentQuestionIndex]);
 
   // Handle timeout when time reaches 0
+  // Note: No server call needed - streak is computed in computeQuestionResults
+  // which handles players with no answer (timeout) correctly
   useEffect(() => {
     if (
       state === 'question' &&
@@ -113,6 +109,7 @@ export function useAnswerState({
       }
 
       // Set local state immediately for question types that need answers
+      // This shows "No answer" with 0 points on the result screen
       const correctAnswers = getCorrectAnswers(question);
 
       setLastAnswer({
@@ -123,11 +120,11 @@ export function useAnswerState({
       });
 
       setState('waiting');
-      setShouldSubmitTimeout(true);
     }
   }, [time, state, answerSelected, timedOut, question, setState]);
 
   // Handle forced result screen when host finishes question early (before player answered)
+  // Note: No server call needed - streak is computed in computeQuestionResults
   useEffect(() => {
     if (
       state === 'result' &&
@@ -156,7 +153,7 @@ export function useAnswerState({
       setAnswerSelected(true);
       setTimedOut(true);
 
-      // Set "No answer" result
+      // Set "No answer" result - this shows on the result screen
       const correctAnswers = getCorrectAnswers(question);
 
       setLastAnswer({
@@ -165,9 +162,6 @@ export function useAnswerState({
         points: 0,
         wasTimeout: true
       });
-
-      // Signal that timeout should be submitted - page will call submitTimeout
-      setShouldSubmitTimeout(true);
     }
   }, [state, answerSelected, question, game, player?.answers]);
 
@@ -179,7 +173,5 @@ export function useAnswerState({
     lastAnswer,
     setLastAnswer,
     answerSubmittedRef,
-    shouldSubmitTimeout,
-    lastQuestionIndexShown: lastQuestionIndexShownRef.current,
   };
 }

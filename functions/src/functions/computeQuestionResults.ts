@@ -116,7 +116,36 @@ export const computeQuestionResults = onCall(
         };
       });
 
-      // 4. Write the complete aggregate
+      // 4. Compute streaks for ALL players
+      // This handles timeouts correctly (no answer = streak reset)
+      const playerStreaks: Record<string, number> = {};
+
+      allPlayersSnapshot.forEach(doc => {
+        const playerData = doc.data() as Player;
+        const answers = playerData.answers || [];
+        const answer = answers.find(a => a.questionIndex === questionIndex);
+        const previousStreak = playerData.currentStreak || 0;
+
+        // Calculate new streak
+        let newStreak: number;
+        if (!answer) {
+          // No answer (timeout) = reset streak
+          newStreak = 0;
+        } else if (answer.questionType === 'poll-single' || answer.questionType === 'poll-multiple') {
+          // Polls don't affect streak
+          newStreak = previousStreak;
+        } else if (answer.isCorrect) {
+          // Correct answer = increment
+          newStreak = previousStreak + 1;
+        } else {
+          // Wrong answer = reset
+          newStreak = 0;
+        }
+
+        playerStreaks[doc.id] = newStreak;
+      });
+
+      // 5. Write the complete aggregate
       const leaderboardRef = db.collection('games').doc(gameId).collection('aggregates').doc('leaderboard');
       await leaderboardRef.set({
         topPlayers,
@@ -124,8 +153,17 @@ export const computeQuestionResults = onCall(
         totalAnswered,
         answerCounts,
         playerRanks,
+        playerStreaks,
         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
       });
+
+      // 6. Batch update player documents with new streaks
+      // This ensures player.currentStreak is accurate for the leaderboard display
+      const batch = db.batch();
+      allPlayersSnapshot.forEach(doc => {
+        batch.update(doc.ref, { currentStreak: playerStreaks[doc.id] });
+      });
+      await batch.commit();
 
       return { success: true };
     } catch (error) {

@@ -68,6 +68,12 @@ export default function PlayerGamePage() {
     return leaderboard.playerRanks[playerId] || null;
   }, [leaderboard, playerId]);
 
+  // Get player's streak from the leaderboard aggregate
+  const currentStreak = useMemo(() => {
+    if (!leaderboard?.playerStreaks || !playerId) return 0;
+    return leaderboard.playerStreaks[playerId] || 0;
+  }, [leaderboard, playerId]);
+
   // Quiz caching (quiz is immutable during game)
   const [cachedQuiz, setCachedQuiz] = useState<Quiz | null>(null);
   const quizRef = useMemoFirebase(
@@ -153,13 +159,8 @@ export default function PlayerGamePage() {
   const shouldKeepAwake = ['lobby', 'preparing', 'question', 'waiting', 'result'].includes(state);
   useWakeLock(shouldKeepAwake);
 
-  // Handle timeout submission when answerState signals it
-  // Pass the question index that was shown when timeout was triggered to avoid stale closure issues
-  useEffect(() => {
-    if (answerState.shouldSubmitTimeout && question) {
-      answerSubmission.submitTimeout(question, answerState.lastQuestionIndexShown);
-    }
-  }, [answerState.shouldSubmitTimeout, question, answerSubmission, answerState.lastQuestionIndexShown]);
+  // Note: Timeout submission removed - streak is now computed in computeQuestionResults
+  // which handles players with no answer correctly (streak resets to 0)
 
   // Answer handlers
   const handleSingleChoiceAnswer = (answerIndex: number) => {
@@ -269,7 +270,7 @@ export default function PlayerGamePage() {
             lastAnswer={answerState.lastAnswer}
             playerScore={player?.score || 0}
             isLastQuestion={isLastQuestion}
-            currentStreak={player?.currentStreak}
+            currentStreak={currentStreak}
             playerRank={rankInfo?.rank}
             totalPlayers={rankInfo?.totalPlayers}
           />

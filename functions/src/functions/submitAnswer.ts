@@ -9,7 +9,7 @@ import {
   validateTimeRemaining,
   validateQuestionData
 } from '../utils/validation';
-import { calculateScore, calculateStreak } from '../utils/scoring';
+import { calculateScore } from '../utils/scoring';
 
 /**
  * Cloud Function to validate and score player answers
@@ -89,12 +89,8 @@ export const submitAnswer = onCall(
 
       const newScore = player.score + points;
 
-      // Calculate current streak
-      const newStreak = calculateStreak(
-        questionType,
-        isCorrect,
-        player.currentStreak || 0
-      );
+      // Note: Streak calculation moved to computeQuestionResults
+      // This simplifies timeout handling and ensures accurate streaks for all players
 
       // Update player document with transaction to prevent race conditions
       await db.runTransaction(async (transaction) => {
@@ -141,10 +137,10 @@ export const submitAnswer = onCall(
           answer.answerIndices = data.answerIndices!;
         }
 
-        // Update player document: append to answers array, increment score, and update streak
+        // Update player document: append to answers array and increment score
+        // Note: currentStreak is now updated in computeQuestionResults
         transaction.update(playerRef, {
           score: newScore,
-          currentStreak: newStreak,
           answers: admin.firestore.FieldValue.arrayUnion(answer)
         });
       });
@@ -158,14 +154,13 @@ export const submitAnswer = onCall(
       }, { merge: true });
 
       // Return result to client
-      // Note: rank and totalPlayers removed - now computed in computeQuestionResults
+      // Note: rank, totalPlayers, and currentStreak removed - now computed in computeQuestionResults
       return {
         success: true,
         isCorrect,
         isPartiallyCorrect,
         points,
         newScore,
-        currentStreak: newStreak,
       };
     } catch (error) {
       console.error('Error in submitAnswer:', error);

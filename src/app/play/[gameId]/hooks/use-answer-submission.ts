@@ -143,7 +143,7 @@ export function useAnswerSubmission(
         correctAnswerIndex: question.correctAnswerIndex,
       });
 
-      const { points: actualPoints, newScore, currentStreak } = result.data;
+      const { points: actualPoints, newScore } = result.data;
 
       if (actualPoints !== estimatedPoints) {
         setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
@@ -152,11 +152,12 @@ export function useAnswerSubmission(
           const updatedAnswers = p.answers.map(a =>
             a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints } : a
           );
-          return { ...p, score: newScore, currentStreak: currentStreak ?? 0, answers: updatedAnswers };
+          return { ...p, score: newScore, answers: updatedAnswers };
         });
       } else {
-        setPlayer(p => p ? { ...p, score: newScore, currentStreak: currentStreak ?? 0 } : null);
+        setPlayer(p => p ? { ...p, score: newScore } : null);
       }
+      // Note: currentStreak is now computed in computeQuestionResults and read from aggregate
     } catch (error: any) {
       handleSubmissionError(error, toast);
     }
@@ -220,7 +221,7 @@ export function useAnswerSubmission(
         correctAnswerIndices: question.correctAnswerIndices,
       });
 
-      const { points: actualPoints, newScore, isPartiallyCorrect: serverPartiallyCorrect, currentStreak } = result.data;
+      const { points: actualPoints, newScore, isPartiallyCorrect: serverPartiallyCorrect } = result.data;
 
       if (actualPoints !== estimatedPoints || serverPartiallyCorrect !== isPartiallyCorrect) {
         setLastAnswer(prev => prev ? { ...prev, points: actualPoints, isPartiallyCorrect: serverPartiallyCorrect } : null);
@@ -229,11 +230,12 @@ export function useAnswerSubmission(
           const updatedAnswers = p.answers.map(a =>
             a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints } : a
           );
-          return { ...p, score: newScore, currentStreak: currentStreak ?? 0, answers: updatedAnswers };
+          return { ...p, score: newScore, answers: updatedAnswers };
         });
       } else {
-        setPlayer(p => p ? { ...p, score: newScore, currentStreak: currentStreak ?? 0 } : null);
+        setPlayer(p => p ? { ...p, score: newScore } : null);
       }
+      // Note: currentStreak is now computed in computeQuestionResults and read from aggregate
     } catch (error: any) {
       handleSubmissionError(error, toast);
     }
@@ -297,7 +299,7 @@ export function useAnswerSubmission(
         acceptableError: question.acceptableError,
       });
 
-      const { points: actualPoints, newScore, currentStreak } = result.data;
+      const { points: actualPoints, newScore } = result.data;
 
       if (actualPoints !== estimatedPoints) {
         setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
@@ -306,11 +308,12 @@ export function useAnswerSubmission(
           const updatedAnswers = p.answers.map(a =>
             a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints } : a
           );
-          return { ...p, score: newScore, currentStreak: currentStreak ?? 0, answers: updatedAnswers };
+          return { ...p, score: newScore, answers: updatedAnswers };
         });
       } else {
-        setPlayer(p => p ? { ...p, score: newScore, currentStreak: currentStreak ?? 0 } : null);
+        setPlayer(p => p ? { ...p, score: newScore } : null);
       }
+      // Note: currentStreak is now computed in computeQuestionResults and read from aggregate
     } catch (error: any) {
       handleSubmissionError(error, toast);
     }
@@ -368,7 +371,7 @@ export function useAnswerSubmission(
         allowTypos: question.allowTypos,
       });
 
-      const { points: actualPoints, newScore, isCorrect, currentStreak } = result.data;
+      const { points: actualPoints, newScore, isCorrect } = result.data;
 
       // Always update with server values for free-response (fuzzy matching)
       setLastAnswer(prev => prev ? {
@@ -384,8 +387,9 @@ export function useAnswerSubmission(
             ? { ...a, points: actualPoints, isCorrect }
             : a
         );
-        return { ...p, score: newScore, currentStreak: currentStreak ?? 0, answers: updatedAnswers };
+        return { ...p, score: newScore, answers: updatedAnswers };
       });
+      // Note: currentStreak is now computed in computeQuestionResults and read from aggregate
     } catch (error: any) {
       handleSubmissionError(error, toast);
     }
@@ -485,71 +489,14 @@ export function useAnswerSubmission(
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
-  // Handle timeout
-  // Note: questionIndex is passed explicitly to avoid stale closure issues
-  // when the timeout submission is triggered after the game has moved to the next question
-  const submitTimeout = useCallback(async (
-    question: SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion,
-    questionIndex: number
-  ) => {
-    if (!gameDocId || answerSubmittedRef.current) return;
-
-    // Slides don't timeout - players just view them
-    if (question.type === 'slide') {
-      console.log('[Timeout] Skipping timeout for slide question');
-      return;
-    }
-
-    answerSubmittedRef.current = true;
-
-    const submitData: any = {
-      gameId: gameDocId,
-      playerId,
-      questionIndex,
-      timeRemaining: 0,
-      questionType: question.type,
-      questionTimeLimit: question.timeLimit,
-    };
-
-    // Add appropriate field based on question type
-    switch (question.type) {
-      case 'single-choice':
-        submitData.answerIndex = -1;
-        submitData.correctAnswerIndex = question.correctAnswerIndex;
-        break;
-      case 'multiple-choice':
-        submitData.answerIndices = [];
-        submitData.correctAnswerIndices = question.correctAnswerIndices;
-        break;
-      case 'slider':
-        submitData.sliderValue = question.minValue;
-        submitData.correctValue = question.correctValue;
-        submitData.minValue = question.minValue;
-        submitData.maxValue = question.maxValue;
-        break;
-      case 'free-response':
-        submitData.textAnswer = '';
-        submitData.correctAnswer = question.correctAnswer;
-        submitData.alternativeAnswers = question.alternativeAnswers;
-        submitData.caseSensitive = question.caseSensitive;
-        submitData.allowTypos = question.allowTypos;
-        break;
-      case 'poll-single':
-        submitData.answerIndex = -1;
-        break;
-      case 'poll-multiple':
-        submitData.answerIndices = [];
-        break;
-    }
-
-    try {
-      const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
-      await submitAnswerFn(submitData);
-      // Note: rank is now computed in computeQuestionResults and read from aggregate
-    } catch (error: any) {
-      console.error('Error submitting timeout:', error);
-    }
-  }, [gameDocId, playerId, functions, answerSubmittedRef]);
+  // Note: submitTimeout removed - timeout handling is now purely client-side
+  // When a player times out:
+  // - UI shows "No answer" with 0 points (handled in use-answer-state.ts)
+  // - Streak is reset locally (handled in use-answer-state.ts)
+  // - No server call needed since:
+  //   - Score doesn't change (0 points)
+  //   - Streak is display-only and resets on next wrong answer anyway
+  //   - totalAnswered counter is only for display, timer handles question end
 
   return {
     submitSingleChoice,
@@ -558,6 +505,5 @@ export function useAnswerSubmission(
     submitFreeResponse,
     submitPollSingle,
     submitPollMultiple,
-    submitTimeout
   };
 }

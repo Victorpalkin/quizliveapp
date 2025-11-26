@@ -135,7 +135,7 @@ export interface Game {
 }
 
 // Cloud Function response interface for submitAnswer
-// Note: rank and totalPlayers removed - now computed in computeQuestionResults
+// Note: rank, totalPlayers, and currentStreak removed - now computed in computeQuestionResults
 // and read from the leaderboard aggregate by the client
 export interface SubmitAnswerResponse {
   success: boolean;
@@ -143,7 +143,6 @@ export interface SubmitAnswerResponse {
   isPartiallyCorrect?: boolean; // Only for multiple-choice questions
   points: number;
   newScore: number;
-  currentStreak?: number;
 }
 
 // Leaderboard types for host-side performance optimization
@@ -168,5 +167,6 @@ export interface GameLeaderboard {
   totalAnswered: number;
   answerCounts: number[];  // Per-answer distribution for current question
   playerRanks: Record<string, PlayerRankInfo>;  // Map of playerId -> rank info
+  playerStreaks: Record<string, number>;  // Map of playerId -> streak count
   lastUpdated: Timestamp | null;
 }
