@@ -1,20 +1,22 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, getDocs, setDoc, DocumentReference, limit } from 'firebase/firestore';
-import { useToast } from '@/hooks/use-toast';
+import { doc, DocumentReference } from 'firebase/firestore';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
-import type { Quiz, Player, Game, SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, FreeResponseQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
-import { handleFirestoreError } from '@/lib/utils/error-utils';
+import type { Quiz, Player, Game } from '@/lib/types';
+import type { RankInfo } from './types';
 
 // Hooks
 import { useSessionManager } from './hooks/use-session-manager';
-import { usePlayerStateMachine, type PlayerState } from './hooks/use-player-state-machine';
+import { usePlayerStateMachine } from './hooks/use-player-state-machine';
 import { useQuestionTimer } from './hooks/use-question-timer';
 import { useAnswerSubmission } from './hooks/use-answer-submission';
+import { useReconnection } from './hooks/use-reconnection';
+import { useJoinGame } from './hooks/use-join-game';
+import { useAnswerState } from './hooks/use-answer-state';
 
 // Components
 import { ThemeToggle } from '@/components/app/theme-toggle';
@@ -31,76 +33,44 @@ import { CancelledScreen } from './components/screens/cancelled-screen';
 import { ReconnectingScreen } from './components/screens/reconnecting-screen';
 import { SessionInvalidScreen } from './components/screens/session-invalid-screen';
 
-type AnswerResult = {
-  selected: number;
-  correct: number[];
-  points: number;
-  wasTimeout: boolean;
-  isPartiallyCorrect?: boolean;
-};
-
-type RankInfo = {
-  rank: number;
-  totalPlayers: number;
-};
-
 export default function PlayerGamePage() {
   const params = useParams();
   const gamePin = params.gameId as string;
   const firestore = useFirestore();
-  const { toast } = useToast();
   const router = useRouter();
 
   // Session management
   const sessionManager = useSessionManager(gamePin);
   const storedSession = sessionManager.getSession();
 
-  // Player state
-  const [nickname, setNickname] = useState(storedSession?.nickname || '');
+  // Core player state
   const [gameDocId, setGameDocId] = useState<string | null>(storedSession?.gameDocId || null);
   const [playerId] = useState(storedSession?.playerId || nanoid());
   const [player, setPlayer] = useState<Player | null>(null);
-
-  // Answer state
-  const [lastAnswer, setLastAnswer] = useState<AnswerResult | null>(null);
-  const [answerSelected, setAnswerSelected] = useState<boolean>(false);
-  const [timedOut, setTimedOut] = useState(false);
-  const answerSubmittedRef = useRef<boolean>(false);
-  const lastQuestionIndexShownRef = useRef<number>(-1);
-
-  // Rank info from server (replaces O(n²) player subscription)
   const [rankInfo, setRankInfo] = useState<RankInfo | null>(null);
 
-  // Join loading state
-  const [isJoining, setIsJoining] = useState(false);
-
   // Firebase data
-  const gameRef = useMemoFirebase(() => gameDocId ? doc(firestore, 'games', gameDocId) as DocumentReference<Game> : null, [firestore, gameDocId]);
+  const gameRef = useMemoFirebase(
+    () => gameDocId ? doc(firestore, 'games', gameDocId) as DocumentReference<Game> : null,
+    [firestore, gameDocId]
+  );
   const { data: game, loading: gameLoading } = useDoc(gameRef);
 
-  // Cache quiz data after first load (quiz is immutable during game)
+  // Quiz caching (quiz is immutable during game)
   const [cachedQuiz, setCachedQuiz] = useState<Quiz | null>(null);
   const quizRef = useMemoFirebase(
-    // Only create ref if we don't have cached quiz yet
     () => (!cachedQuiz && game) ? doc(firestore, 'quizzes', game.quizId) : null,
     [firestore, game, cachedQuiz]
   );
   const { data: quizData, loading: quizLoading } = useDoc(quizRef);
 
-  // Cache quiz when first loaded
   useEffect(() => {
     if (quizData && !cachedQuiz) {
       setCachedQuiz(quizData as Quiz);
     }
   }, [quizData, cachedQuiz]);
 
-  // Use cached quiz or fresh data
   const quiz = cachedQuiz || (quizData as Quiz | null);
-
-  // Player rank is now calculated server-side (O(1) instead of O(n²) subscription)
-  const playerRank = rankInfo?.rank;
-  const totalPlayers = rankInfo?.totalPlayers;
-
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;
 
@@ -121,299 +91,102 @@ export default function PlayerGamePage() {
     game?.currentQuestionIndex || 0
   );
 
-  // Answer submission
+  // Join game hook
+  const joinGame = useJoinGame({
+    gamePin,
+    playerId,
+    setState,
+    setGameDocId,
+    setPlayer,
+    sessionManager,
+  });
+
+  // Answer state management - provides refs and state for answer handling
+  const answerState = useAnswerState({
+    state,
+    setState,
+    game,
+    player,
+    question,
+    time,
+    resetTimer,
+  });
+
+  // Answer submission - uses refs from answerState
   const answerSubmission = useAnswerSubmission(
     gameDocId,
     playerId,
     game?.currentQuestionIndex || 0,
     player,
-    setLastAnswer,
+    answerState.setLastAnswer,
     setPlayer,
-    answerSubmittedRef,
+    answerState.answerSubmittedRef,
     setRankInfo
   );
+
+  // Reconnection handling
+  useReconnection({
+    state,
+    setState,
+    game,
+    gameLoading,
+    gameDocId,
+    playerId,
+    nickname: joinGame.nickname || storedSession?.nickname || '',
+    setPlayer,
+    sessionManager,
+  });
 
   // Wake lock
   const shouldKeepAwake = ['lobby', 'preparing', 'question', 'waiting', 'result'].includes(state);
   useWakeLock(shouldKeepAwake);
 
-  // Handle reconnection
+  // Handle timeout submission when answerState signals it
   useEffect(() => {
-    if (state === 'reconnecting') {
-      const attemptReconnect = async () => {
-        try {
-          if (!gameRef) {
-            console.log('[Reconnect] No game reference, clearing session');
-            sessionManager.clearSession();
-            setState('session-invalid');
-            return;
-          }
-
-          if (gameLoading) return;
-
-          if (!game) {
-            console.log('[Reconnect] Game not found, clearing session');
-            sessionManager.clearSession();
-            setState('session-invalid');
-            toast({
-              variant: 'destructive',
-              title: 'Session Expired',
-              description: 'The game has ended or was cancelled.'
-            });
-            return;
-          }
-
-          if (game.state === 'ended') {
-            console.log('[Reconnect] Game has ended');
-            sessionManager.clearSession();
-            setState('ended');
-            return;
-          }
-
-          // Verify player document exists
-          const playerRef = doc(firestore, 'games', gameDocId!, 'players', playerId) as DocumentReference<Player>;
-          const playerDoc = await getDocs(query(collection(firestore, 'games', gameDocId!, 'players'), where('__name__', '==', playerId)));
-
-          if (playerDoc.empty) {
-            // Recreate player document
-            console.log('[Reconnect] Player document missing, attempting to recreate');
-            const newPlayer = { id: playerId, name: nickname, score: 0, answers: [], currentStreak: 0 };
-            await setDoc(playerRef, newPlayer);
-            setPlayer(newPlayer);
-            toast({
-              title: 'Reconnected!',
-              description: 'Successfully rejoined the game.'
-            });
-          } else {
-            const playerData = playerDoc.docs[0].data() as Player;
-            setPlayer(playerData);
-            toast({
-              title: 'Reconnected!',
-              description: 'Successfully resumed your session.'
-            });
-          }
-
-          // Transition to appropriate state
-          if (game.state === 'lobby') {
-            setState('lobby');
-          } else if (game.state === 'preparing') {
-            setState('preparing');
-          } else if (game.state === 'question') {
-            setState('question');
-          } else if (game.state === 'leaderboard') {
-            setState('result');
-          }
-        } catch (error) {
-          console.error('[Reconnect] Error during reconnection:', error);
-          sessionManager.clearSession();
-          setState('session-invalid');
-          toast({
-            variant: 'destructive',
-            title: 'Reconnection Failed',
-            description: 'Could not restore your session. Please rejoin the game.'
-          });
-        }
-      };
-
-      attemptReconnect();
-    }
-  }, [state, game, gameLoading, gameRef, sessionManager, playerId, nickname, firestore, gameDocId, toast, setState]);
-
-  // Reset answer state when preparing for new question
-  useEffect(() => {
-    if (state === 'preparing') {
-      console.log('[Player State] Resetting for new question');
-      setAnswerSelected(false);
-      setTimedOut(false);
-      setLastAnswer(null);
-      answerSubmittedRef.current = false;
-      resetTimer();
-      // No Firestore reset needed - answers persist in array
-    }
-  }, [state, game?.currentQuestionIndex, resetTimer]);
-
-  // Track which question index the player actually sees in question state
-  useEffect(() => {
-    if (state === 'question' && game?.currentQuestionIndex !== undefined) {
-      lastQuestionIndexShownRef.current = game.currentQuestionIndex;
-      console.log('[Player State] Now showing question index:', game.currentQuestionIndex);
-    }
-  }, [state, game?.currentQuestionIndex]);
-
-  // Handle timeout when time reaches 0
-  useEffect(() => {
-    if (state === 'question' && time === 0 && !answerSelected && !timedOut && !answerSubmittedRef.current && question) {
-      setTimedOut(true);
-      setAnswerSelected(true);
-
-      // For slides, just transition to waiting without setting answer result
-      if (question.type === 'slide') {
-        setState('waiting');
-        return;
-      }
-
-      // Set local state immediately for question types that need answers
-      const correctAnswers = question.type === 'single-choice'
-        ? [question.correctAnswerIndex]
-        : question.type === 'multiple-choice'
-        ? question.correctAnswerIndices
-        : question.type === 'slider'
-        ? [1]
-        : []; // Poll types have no correct answers
-
-      setLastAnswer({
-        selected: -1,
-        correct: correctAnswers,
-        points: 0,
-        wasTimeout: true
-      });
-
-      setState('waiting');
+    if (answerState.shouldSubmitTimeout && question) {
       answerSubmission.submitTimeout(question);
     }
-  }, [time, state, answerSelected, timedOut, question, answerSubmission, setState]);
-
-  // Handle forced result screen when host finishes question early (before player answered)
-  useEffect(() => {
-    if (state === 'result' && !answerSelected && !answerSubmittedRef.current && question && game) {
-      // Skip for slides
-      if (question.type === 'slide') return;
-
-      // Only apply forced result if player actually saw this question in 'question' state
-      // This prevents false positives when transitioning through states quickly (e.g., after slides)
-      if (lastQuestionIndexShownRef.current !== game.currentQuestionIndex) {
-        console.log('[Player State] Skipping forced result - player never saw question', game.currentQuestionIndex);
-        return;
-      }
-
-      // Check if already answered this question in answers array
-      const hasAnswered = player?.answers?.some(a => a.questionIndex === game.currentQuestionIndex);
-      if (hasAnswered) return;
-
-      console.log('[Player State] Forced to result without answering - showing "No answer"');
-
-      // Mark as answered to prevent re-triggering
-      setAnswerSelected(true);
-      setTimedOut(true);
-
-      // Set "No answer" result
-      const correctAnswers = question.type === 'single-choice'
-        ? [question.correctAnswerIndex]
-        : question.type === 'multiple-choice'
-        ? question.correctAnswerIndices
-        : question.type === 'slider'
-        ? [1]
-        : []; // Poll types have no correct answers
-
-      setLastAnswer({
-        selected: -1,
-        correct: correctAnswers,
-        points: 0,
-        wasTimeout: true
-      });
-
-      // Submit timeout to record non-answer
-      answerSubmission.submitTimeout(question);
-    }
-  }, [state, answerSelected, question, answerSubmission, game, player?.answers]);
-
-  // Join game handler
-  const handleJoinGame = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmedNickname = nickname.trim();
-
-    if (!trimmedNickname) {
-      toast({ variant: 'destructive', title: 'Nickname is required' });
-      return;
-    }
-
-    if (trimmedNickname.length < 2) {
-      toast({ variant: 'destructive', title: 'Nickname too short', description: 'Nickname must be at least 2 characters long.' });
-      return;
-    }
-
-    if (trimmedNickname.length > 20) {
-      toast({ variant: 'destructive', title: 'Nickname too long', description: 'Nickname must be 20 characters or less.' });
-      return;
-    }
-
-    setIsJoining(true);
-
-    try {
-      const pin = gamePin.toUpperCase();
-      const gamesRef = collection(firestore, 'games');
-      // Add limit(1) to stop after finding first match - faster query
-      const q = query(gamesRef, where('gamePin', '==', pin), where('state', '==', 'lobby'), limit(1));
-
-      const querySnapshot = await getDocs(q);
-      if (querySnapshot.empty) {
-        toast({ variant: 'destructive', title: 'Game not found', description: "Couldn't find a game with that PIN." });
-        setIsJoining(false);
-        return;
-      }
-
-      const gameDoc = querySnapshot.docs[0];
-      const playerRef = doc(firestore, 'games', gameDoc.id, 'players', playerId);
-      const newPlayer = { id: playerId, name: trimmedNickname, score: 0, answers: [], currentStreak: 0 };
-
-      await setDoc(playerRef, newPlayer);
-
-      // Update state after successful write
-      setGameDocId(gameDoc.id);
-      setPlayer({ ...newPlayer, id: playerId });
-      sessionManager.saveSession(playerId, gameDoc.id, trimmedNickname);
-      setState('lobby');
-    } catch (error) {
-      console.error("Error joining game: ", error);
-      handleFirestoreError(error, {
-        path: `games/${gamePin}/players/${playerId}`,
-        operation: 'create',
-      }, "Error joining game: ");
-      toast({ variant: 'destructive', title: 'Error', description: "Could not join the game. Please try again." });
-    } finally {
-      setIsJoining(false);
-    }
-  };
+  }, [answerState.shouldSubmitTimeout, question, answerSubmission]);
 
   // Answer handlers
   const handleSingleChoiceAnswer = (answerIndex: number) => {
-    if (answerSelected || !question || question.type !== 'single-choice') return;
-    setAnswerSelected(true);
+    if (answerState.answerSelected || !question || question.type !== 'single-choice') return;
+    answerState.setAnswerSelected(true);
     setState('waiting');
     answerSubmission.submitSingleChoice(answerIndex, question, time, timeLimit);
   };
 
   const handleMultipleChoiceAnswer = (answerIndices: number[]) => {
-    if (answerSelected || !question || question.type !== 'multiple-choice') return;
-    setAnswerSelected(true);
+    if (answerState.answerSelected || !question || question.type !== 'multiple-choice') return;
+    answerState.setAnswerSelected(true);
     setState('waiting');
     answerSubmission.submitMultipleChoice(answerIndices, question, time, timeLimit);
   };
 
   const handleSliderAnswer = (sliderValue: number) => {
-    if (answerSelected || !question || question.type !== 'slider') return;
-    setAnswerSelected(true);
+    if (answerState.answerSelected || !question || question.type !== 'slider') return;
+    answerState.setAnswerSelected(true);
     setState('waiting');
     answerSubmission.submitSlider(sliderValue, question, time);
   };
 
   const handlePollSingleAnswer = (answerIndex: number) => {
-    if (answerSelected || !question || question.type !== 'poll-single') return;
-    setAnswerSelected(true);
+    if (answerState.answerSelected || !question || question.type !== 'poll-single') return;
+    answerState.setAnswerSelected(true);
     setState('waiting');
     answerSubmission.submitPollSingle(answerIndex, question, time, timeLimit);
   };
 
   const handlePollMultipleAnswer = (answerIndices: number[]) => {
-    if (answerSelected || !question || question.type !== 'poll-multiple') return;
-    setAnswerSelected(true);
+    if (answerState.answerSelected || !question || question.type !== 'poll-multiple') return;
+    answerState.setAnswerSelected(true);
     setState('waiting');
     answerSubmission.submitPollMultiple(answerIndices, question, time, timeLimit);
   };
 
   const handleFreeResponseAnswer = (textAnswer: string) => {
-    if (answerSelected || !question || question.type !== 'free-response') return;
-    setAnswerSelected(true);
+    if (answerState.answerSelected || !question || question.type !== 'free-response') return;
+    answerState.setAnswerSelected(true);
     setState('waiting');
     answerSubmission.submitFreeResponse(textAnswer, question, time, timeLimit);
   };
@@ -430,13 +203,20 @@ export default function PlayerGamePage() {
             onRejoin={() => {
               sessionManager.clearSession();
               setState('joining');
-              setNickname('');
+              joinGame.setNickname('');
             }}
           />
         );
 
       case 'joining':
-        return <JoiningScreen nickname={nickname} setNickname={setNickname} onJoinGame={handleJoinGame} isLoading={isJoining} />;
+        return (
+          <JoiningScreen
+            nickname={joinGame.nickname}
+            setNickname={joinGame.setNickname}
+            onJoinGame={joinGame.handleJoinGame}
+            isLoading={joinGame.isJoining}
+          />
+        );
 
       case 'lobby':
         return <LobbyScreen playerName={player?.name || ''} gamePin={game?.gamePin || ''} />;
@@ -452,7 +232,7 @@ export default function PlayerGamePage() {
             game={game!}
             time={time}
             timeLimit={timeLimit}
-            answerSelected={answerSelected}
+            answerSelected={answerState.answerSelected}
             onSubmitSingleChoice={handleSingleChoiceAnswer}
             onSubmitMultipleChoice={handleMultipleChoiceAnswer}
             onSubmitSlider={handleSliderAnswer}
@@ -473,12 +253,12 @@ export default function PlayerGamePage() {
         }
         return (
           <ResultScreen
-            lastAnswer={lastAnswer}
+            lastAnswer={answerState.lastAnswer}
             playerScore={player?.score || 0}
             isLastQuestion={isLastQuestion}
             currentStreak={player?.currentStreak}
-            playerRank={playerRank}
-            totalPlayers={totalPlayers}
+            playerRank={rankInfo?.rank}
+            totalPlayers={rankInfo?.totalPlayers}
           />
         );
 
@@ -487,8 +267,8 @@ export default function PlayerGamePage() {
         return (
           <EndedScreen
             playerScore={player?.score || 0}
-            playerRank={playerRank}
-            totalPlayers={totalPlayers}
+            playerRank={rankInfo?.rank}
+            totalPlayers={rankInfo?.totalPlayers}
             onPlayAgain={() => {
               sessionManager.clearSession();
               router.push('/');
