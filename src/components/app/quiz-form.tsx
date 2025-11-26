@@ -141,6 +141,9 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
   // Stable IDs for questions (for React key and DND)
   const [questionIds, setQuestionIds] = useState<string[]>([]);
 
+  // Collapsed state for questions - in edit mode, start all collapsed
+  const [collapsedQuestions, setCollapsedQuestions] = useState<Set<number>>(new Set());
+
   // Custom hooks for question and image management
   const imageUploadHook = useImageUpload();
   const { imageFiles, imagesToDelete, handleImageUpload: handleImageUploadBase, removeImage: removeImageBase } = imageUploadHook;
@@ -167,6 +170,19 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     })
   );
 
+  // Toggle collapse state for a question
+  const toggleCollapse = (index: number) => {
+    setCollapsedQuestions(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
   // Initialize questions on mount (run once)
   const initialized = useRef(false);
   useEffect(() => {
@@ -177,6 +193,10 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
       setQuestions(initialData.questions as (SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion)[]);
       // Generate stable IDs for initial questions
       setQuestionIds(initialData.questions.map(() => nanoid()));
+      // In edit mode, collapse all questions initially
+      if (mode === 'edit') {
+        setCollapsedQuestions(new Set(initialData.questions.map((_, i) => i)));
+      }
     } else {
       addQuestion();
     }
@@ -219,9 +239,11 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     uploadImage: handleImageUpload,
     removeImage,
     totalQuestions: questions.length,
+    collapsedQuestions,
+    toggleCollapse,
     quizId,
     tempId,
-  }), [form.control, updateQuestion, removeQuestion, convertQuestionType, addAnswer, removeAnswer, questions.length, quizId, tempId]);
+  }), [form.control, updateQuestion, removeQuestion, convertQuestionType, addAnswer, removeAnswer, questions.length, collapsedQuestions, quizId, tempId]);
 
   const handleSubmit = async (data: QuizFormData) => {
     await onSubmit(data, imageFiles.current, imagesToDelete.current);

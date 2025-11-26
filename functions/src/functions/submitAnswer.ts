@@ -182,6 +182,7 @@ export const submitAnswer = onCall(
 
       // Update answer counts for current question (for answer distribution chart)
       const answerCounts = [...(currentLeaderboard.answerCounts || [])];
+
       if ((questionType === 'single-choice' || questionType === 'poll-single') && data.answerIndex !== undefined && data.answerIndex >= 0) {
         while (answerCounts.length <= data.answerIndex) answerCounts.push(0);
         answerCounts[data.answerIndex]++;
@@ -191,6 +192,8 @@ export const submitAnswer = onCall(
           answerCounts[idx]++;
         }
       }
+      // Note: Slider and free-response don't need answer distribution tracking
+      // Host only sees correct answer + total answered count
 
       // Create entry for this player
       const playerEntry: LeaderboardEntry = {

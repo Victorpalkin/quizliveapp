@@ -25,6 +25,10 @@ export interface QuizFormContextValue {
   // State
   totalQuestions: number;
 
+  // Collapse state
+  collapsedQuestions: Set<number>;
+  toggleCollapse: (index: number) => void;
+
   // Quiz identification (for AI image generation)
   quizId?: string;   // For existing quizzes (edit page)
   tempId?: string;   // For new quizzes (create page)
