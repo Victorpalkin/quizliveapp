@@ -1,6 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
-import { LeaderboardEntry, Player } from '../types';
+import { LeaderboardEntry, Player, PlayerRankInfo } from '../types';
 import { ALLOWED_ORIGINS, REGION } from '../config';
 
 /**
@@ -68,14 +68,19 @@ export const computeQuestionResults = onCall(
         };
       });
 
-      // 2. Count answers for this question (for bar chart)
-      // We need to fetch all players to count answer distribution
+      // 2. Count answers for this question (for bar chart) and compute player ranks
+      // We need to fetch all players to count answer distribution and calculate ranks
       const allPlayersSnapshot = await playersRef.get();
       const answerCounts: number[] = [];
       let totalAnswered = 0;
 
+      // Collect all players with their scores for ranking
+      const allPlayers: { id: string; score: number }[] = [];
+
       allPlayersSnapshot.forEach(doc => {
         const playerData = doc.data() as Player;
+        allPlayers.push({ id: doc.id, score: playerData.score });
+
         const answers = playerData.answers || [];
         const answer = answers.find(a => a.questionIndex === questionIndex);
 
@@ -98,13 +103,27 @@ export const computeQuestionResults = onCall(
         }
       });
 
-      // 3. Write the complete aggregate
+      // 3. Compute ranks for ALL players
+      // Sort by score descending to determine ranks
+      allPlayers.sort((a, b) => b.score - a.score);
+      const playerRanks: Record<string, PlayerRankInfo> = {};
+      const totalPlayerCount = allPlayers.length;
+
+      allPlayers.forEach((player, index) => {
+        playerRanks[player.id] = {
+          rank: index + 1,
+          totalPlayers: totalPlayerCount,
+        };
+      });
+
+      // 4. Write the complete aggregate
       const leaderboardRef = db.collection('games').doc(gameId).collection('aggregates').doc('leaderboard');
       await leaderboardRef.set({
         topPlayers,
         totalPlayers: totalCountSnapshot.data().count,
         totalAnswered,
         answerCounts,
+        playerRanks,
         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
       });
 

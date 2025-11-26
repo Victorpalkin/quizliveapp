@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, DocumentReference } from 'firebase/firestore';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
-import type { Quiz, Player, Game } from '@/lib/types';
-import type { RankInfo } from './types';
+import type { Quiz, Player, Game, GameLeaderboard } from '@/lib/types';
 
 // Hooks
 import { useSessionManager } from './hooks/use-session-manager';
@@ -47,7 +46,6 @@ export default function PlayerGamePage() {
   const [gameDocId, setGameDocId] = useState<string | null>(storedSession?.gameDocId || null);
   const [playerId] = useState(storedSession?.playerId || nanoid());
   const [player, setPlayer] = useState<Player | null>(null);
-  const [rankInfo, setRankInfo] = useState<RankInfo | null>(null);
 
   // Firebase data
   const gameRef = useMemoFirebase(
@@ -55,6 +53,20 @@ export default function PlayerGamePage() {
     [firestore, gameDocId]
   );
   const { data: game, loading: gameLoading } = useDoc(gameRef);
+
+  // Subscribe to leaderboard aggregate for rank info
+  // Rank is now computed in computeQuestionResults and stored in the aggregate
+  const leaderboardRef = useMemoFirebase(
+    () => gameDocId ? doc(firestore, 'games', gameDocId, 'aggregates', 'leaderboard') as DocumentReference<GameLeaderboard> : null,
+    [firestore, gameDocId]
+  );
+  const { data: leaderboard } = useDoc(leaderboardRef);
+
+  // Get player's rank from the leaderboard aggregate
+  const rankInfo = useMemo(() => {
+    if (!leaderboard?.playerRanks || !playerId) return null;
+    return leaderboard.playerRanks[playerId] || null;
+  }, [leaderboard, playerId]);
 
   // Quiz caching (quiz is immutable during game)
   const [cachedQuiz, setCachedQuiz] = useState<Quiz | null>(null);
@@ -113,6 +125,7 @@ export default function PlayerGamePage() {
   });
 
   // Answer submission - uses refs from answerState
+  // Note: Rank is now read from leaderboard aggregate, not from submitAnswer response
   const answerSubmission = useAnswerSubmission(
     gameDocId,
     playerId,
@@ -120,8 +133,7 @@ export default function PlayerGamePage() {
     player,
     answerState.setLastAnswer,
     setPlayer,
-    answerState.answerSubmittedRef,
-    setRankInfo
+    answerState.answerSubmittedRef
   );
 
   // Reconnection handling

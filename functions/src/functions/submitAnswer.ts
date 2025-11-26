@@ -1,12 +1,11 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
-import { SubmitAnswerRequest, Game, Player, PlayerAnswer, SubmitAnswerResult } from '../types';
+import { SubmitAnswerRequest, Player, PlayerAnswer, SubmitAnswerResult } from '../types';
 import { ALLOWED_ORIGINS, REGION, DEFAULT_QUESTION_TIME_LIMIT } from '../config';
 import { validateOrigin } from '../utils/cors';
 import { verifyAppCheck } from '../utils/appCheck';
 import {
   validateBasicFields,
-  validateQuestionTiming,
   validateTimeRemaining,
   validateQuestionData
 } from '../utils/validation';
@@ -57,26 +56,16 @@ export const submitAnswer = onCall(
     const db = admin.firestore();
 
     try {
-      // Parallel fetch: Get game and player documents simultaneously
+      // Fetch player document only - game fetch removed for performance
+      // Security: Transaction handles duplicate answer prevention
       const playerRef = db.collection('games').doc(gameId).collection('players').doc(playerId);
-      const [gameDoc, playerDoc] = await Promise.all([
-        db.collection('games').doc(gameId).get(),
-        playerRef.get()
-      ]);
-
-      if (!gameDoc.exists) {
-        throw new HttpsError('not-found', 'Game not found');
-      }
+      const playerDoc = await playerRef.get();
 
       if (!playerDoc.exists) {
         throw new HttpsError('not-found', 'Player not found');
       }
 
-      const game = gameDoc.data() as Game;
       const player = playerDoc.data() as Player;
-
-      // Validate question timing and index
-      validateQuestionTiming(game, questionIndex, questionTimeLimit);
 
       // Check if player already answered this question (early validation)
       const answers = player.answers || [];
@@ -160,27 +149,16 @@ export const submitAnswer = onCall(
         });
       });
 
-      // Calculate rank efficiently by counting players with higher scores
-      // This avoids the O(n²) problem of each client subscribing to all players
-      const playersRef = db.collection('games').doc(gameId).collection('players');
-      const [higherScoreSnapshot, totalPlayersSnapshot] = await Promise.all([
-        playersRef.where('score', '>', newScore).count().get(),
-        playersRef.count().get()
-      ]);
-
-      const playersWithHigherScore = higherScoreSnapshot.data().count;
-      const totalPlayers = totalPlayersSnapshot.data().count;
-      const rank = playersWithHigherScore + 1; // Rank is 1-indexed
-
       // Atomic increment for totalAnswered counter (enables live counter + auto-finish)
       // This is much faster than read-modify-write and has no race conditions
+      // Note: Rank is now computed in computeQuestionResults and read from aggregate
       const leaderboardRef = db.collection('games').doc(gameId).collection('aggregates').doc('leaderboard');
       await leaderboardRef.set({
         totalAnswered: admin.firestore.FieldValue.increment(1),
-        totalPlayers,  // Keep this updated for accuracy
       }, { merge: true });
 
       // Return result to client
+      // Note: rank and totalPlayers removed - now computed in computeQuestionResults
       return {
         success: true,
         isCorrect,
@@ -188,8 +166,6 @@ export const submitAnswer = onCall(
         points,
         newScore,
         currentStreak: newStreak,
-        rank,
-        totalPlayers,
       };
     } catch (error) {
       console.error('Error in submitAnswer:', error);

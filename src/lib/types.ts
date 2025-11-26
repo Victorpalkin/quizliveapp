@@ -135,6 +135,8 @@ export interface Game {
 }
 
 // Cloud Function response interface for submitAnswer
+// Note: rank and totalPlayers removed - now computed in computeQuestionResults
+// and read from the leaderboard aggregate by the client
 export interface SubmitAnswerResponse {
   success: boolean;
   isCorrect: boolean;
@@ -142,9 +144,6 @@ export interface SubmitAnswerResponse {
   points: number;
   newScore: number;
   currentStreak?: number;
-  // Rank info for O(1) client access (avoids O(n²) subscription problem)
-  rank: number;
-  totalPlayers: number;
 }
 
 // Leaderboard types for host-side performance optimization
@@ -157,10 +156,17 @@ export interface LeaderboardEntry {
   lastQuestionPoints: number;
 }
 
+// Player rank info stored in leaderboard aggregate
+export interface PlayerRankInfo {
+  rank: number;
+  totalPlayers: number;
+}
+
 export interface GameLeaderboard {
   topPlayers: LeaderboardEntry[];
   totalPlayers: number;
   totalAnswered: number;
   answerCounts: number[];  // Per-answer distribution for current question
+  playerRanks: Record<string, PlayerRankInfo>;  // Map of playerId -> rank info
   lastUpdated: Timestamp | null;
 }

@@ -86,6 +86,10 @@ export interface CreateHostAccountRequest {
 
 /**
  * Result returned from submitAnswer function
+ *
+ * Note: rank and totalPlayers are now computed in computeQuestionResults
+ * and read from the leaderboard aggregate by the client.
+ * This reduces submitAnswer latency from ~400-700ms to ~100-150ms.
  */
 export interface SubmitAnswerResult {
   success: boolean;
@@ -94,9 +98,6 @@ export interface SubmitAnswerResult {
   points: number;
   newScore: number;
   currentStreak: number;
-  // Rank info for O(1) client access (avoids O(n²) subscription problem)
-  rank: number;
-  totalPlayers: number;
 }
 
 /**
@@ -121,6 +122,14 @@ export interface LeaderboardEntry {
 }
 
 /**
+ * Player rank info stored in leaderboard aggregate
+ */
+export interface PlayerRankInfo {
+  rank: number;
+  totalPlayers: number;
+}
+
+/**
  * Game leaderboard aggregate document
  * Stored at: games/{gameId}/aggregates/leaderboard
  */
@@ -129,5 +138,6 @@ export interface GameLeaderboard {
   totalPlayers: number;
   totalAnswered: number;
   answerCounts: number[];  // Per-answer distribution for current question
+  playerRanks: Record<string, PlayerRankInfo>;  // Map of playerId -> rank info
   lastUpdated: admin.firestore.FieldValue | null;
 }

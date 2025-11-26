@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Home, CheckCircle, Users, XCircle, Loader2 } from 'lucide-react';
+import { Home, CheckCircle, Users, XCircle, Loader2, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CircularTimer } from '@/components/app/circular-timer';
 import { AnswerButton } from '@/components/app/answer-button';
@@ -47,7 +47,7 @@ export default function HostGamePage() {
   const timeLimit = question?.timeLimit || 20;
 
   // Game controls
-  const { finishQuestion, handleNext, startQuestion, isLastQuestion, isComputingResults } = useGameControls(
+  const { finishQuestion, handleNext, startQuestion, isLastQuestion, isComputingResults, computeError } = useGameControls(
     gameId,
     gameRef,
     game,
@@ -232,6 +232,15 @@ export default function HostGamePage() {
             <div className="flex flex-col items-center justify-center gap-4 w-full">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
               <p className="text-lg text-muted-foreground">Calculating results...</p>
+            </div>
+          ) : computeError ? (
+            <div className="flex flex-col items-center justify-center gap-4 w-full">
+              <AlertCircle className="h-12 w-12 text-destructive" />
+              <p className="text-lg text-destructive font-medium">Error computing results</p>
+              <p className="text-sm text-muted-foreground max-w-md text-center">{computeError}</p>
+              <Button onClick={finishQuestion} variant="outline">
+                Retry
+              </Button>
             </div>
           ) : (
             <>

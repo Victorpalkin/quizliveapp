@@ -17,7 +17,7 @@ import type {
   Question,
 } from '@/lib/types';
 import { calculateTimeBasedScore, calculateProportionalScore, calculateSliderScore } from '@/lib/scoring';
-import type { AnswerResult, RankInfo } from '../types';
+import type { AnswerResult } from '../types';
 
 type QuestionType = Question['type'];
 
@@ -78,7 +78,9 @@ function createOptimisticAnswer(
  * - Optimistic UI updates for all question types
  * - Server-side validation and scoring
  * - Common error handling
- * - Rank tracking from server response
+ *
+ * Note: Rank is now computed in computeQuestionResults and read from the
+ * leaderboard aggregate by the player page, not from submitAnswer response.
  */
 export function useAnswerSubmission(
   gameDocId: string | null,
@@ -87,8 +89,7 @@ export function useAnswerSubmission(
   _player: Player | null, // Kept for API compatibility, may be used for future optimizations
   setLastAnswer: Dispatch<SetStateAction<AnswerResult | null>>,
   setPlayer: Dispatch<SetStateAction<Player | null>>,
-  answerSubmittedRef: React.MutableRefObject<boolean>,
-  setRankInfo?: Dispatch<SetStateAction<RankInfo | null>>
+  answerSubmittedRef: React.MutableRefObject<boolean>
 ) {
   const functions = useFunctions();
   const { toast } = useToast();
@@ -142,8 +143,7 @@ export function useAnswerSubmission(
         correctAnswerIndex: question.correctAnswerIndex,
       });
 
-      const { points: actualPoints, newScore, currentStreak, rank, totalPlayers } = result.data;
-      setRankInfo?.({ rank, totalPlayers });
+      const { points: actualPoints, newScore, currentStreak } = result.data;
 
       if (actualPoints !== estimatedPoints) {
         setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
@@ -160,7 +160,7 @@ export function useAnswerSubmission(
     } catch (error: any) {
       handleSubmissionError(error, toast);
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer, setRankInfo]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
   // Submit multiple choice answer
   const submitMultipleChoice = useCallback(async (
@@ -220,8 +220,7 @@ export function useAnswerSubmission(
         correctAnswerIndices: question.correctAnswerIndices,
       });
 
-      const { points: actualPoints, newScore, isPartiallyCorrect: serverPartiallyCorrect, currentStreak, rank, totalPlayers } = result.data;
-      setRankInfo?.({ rank, totalPlayers });
+      const { points: actualPoints, newScore, isPartiallyCorrect: serverPartiallyCorrect, currentStreak } = result.data;
 
       if (actualPoints !== estimatedPoints || serverPartiallyCorrect !== isPartiallyCorrect) {
         setLastAnswer(prev => prev ? { ...prev, points: actualPoints, isPartiallyCorrect: serverPartiallyCorrect } : null);
@@ -238,7 +237,7 @@ export function useAnswerSubmission(
     } catch (error: any) {
       handleSubmissionError(error, toast);
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer, setRankInfo]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
   // Submit slider answer
   const submitSlider = useCallback(async (
@@ -298,8 +297,7 @@ export function useAnswerSubmission(
         acceptableError: question.acceptableError,
       });
 
-      const { points: actualPoints, newScore, currentStreak, rank, totalPlayers } = result.data;
-      setRankInfo?.({ rank, totalPlayers });
+      const { points: actualPoints, newScore, currentStreak } = result.data;
 
       if (actualPoints !== estimatedPoints) {
         setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
@@ -316,7 +314,7 @@ export function useAnswerSubmission(
     } catch (error: any) {
       handleSubmissionError(error, toast);
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer, setRankInfo]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
   // Submit free-response answer
   const submitFreeResponse = useCallback(async (
@@ -370,8 +368,7 @@ export function useAnswerSubmission(
         allowTypos: question.allowTypos,
       });
 
-      const { points: actualPoints, newScore, isCorrect, currentStreak, rank, totalPlayers } = result.data;
-      setRankInfo?.({ rank, totalPlayers });
+      const { points: actualPoints, newScore, isCorrect, currentStreak } = result.data;
 
       // Always update with server values for free-response (fuzzy matching)
       setLastAnswer(prev => prev ? {
@@ -392,7 +389,7 @@ export function useAnswerSubmission(
     } catch (error: any) {
       handleSubmissionError(error, toast);
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer, setRankInfo]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
   // Submit poll single choice answer (no scoring)
   const submitPollSingle = useCallback(async (
@@ -544,13 +541,12 @@ export function useAnswerSubmission(
 
     try {
       const submitAnswerFn = httpsCallable<typeof submitData, SubmitAnswerResponse>(functions, 'submitAnswer');
-      const result = await submitAnswerFn(submitData);
-      const { rank, totalPlayers } = result.data;
-      setRankInfo?.({ rank, totalPlayers });
+      await submitAnswerFn(submitData);
+      // Note: rank is now computed in computeQuestionResults and read from aggregate
     } catch (error: any) {
       console.error('Error submitting timeout:', error);
     }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, setRankInfo, answerSubmittedRef]);
+  }, [gameDocId, playerId, currentQuestionIndex, functions, answerSubmittedRef]);
 
   return {
     submitSingleChoice,

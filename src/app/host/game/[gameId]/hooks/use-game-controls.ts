@@ -14,6 +14,7 @@ export function useGameControls(
 ) {
   const functions = useFunctions();
   const [isComputingResults, setIsComputingResults] = useState(false);
+  const [computeError, setComputeError] = useState<string | null>(null);
 
   const updateGame = useCallback((data: Partial<Game>) => {
     if (!gameRef) return;
@@ -53,15 +54,17 @@ export function useGameControls(
 
     // Then compute results in the background
     setIsComputingResults(true);
+    setComputeError(null);
     try {
       const computeResults = httpsCallable(functions, 'computeQuestionResults');
       await computeResults({
         gameId,
         questionIndex: game.currentQuestionIndex,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Game Controls] Error computing results:', error);
-      // Results will be incomplete but game can continue
+      const errorMessage = error?.message || error?.code || 'Unknown error computing results';
+      setComputeError(errorMessage);
     } finally {
       setIsComputingResults(false);
     }
@@ -83,10 +86,26 @@ export function useGameControls(
           currentQuestionIndex: game.currentQuestionIndex + 1
         });
       } else {
+        // Re-compute final results to ensure accuracy
+        // This catches any last-second answers that may have been submitted
+        setIsComputingResults(true);
+        setComputeError(null);
+        try {
+          const computeResults = httpsCallable(functions, 'computeQuestionResults');
+          await computeResults({
+            gameId,
+            questionIndex: game.currentQuestionIndex,
+          });
+        } catch (error: any) {
+          console.error('[Game Controls] Error computing final results:', error);
+          // Don't block game end on error - just log it
+        } finally {
+          setIsComputingResults(false);
+        }
         updateGame({ state: 'ended' });
       }
     }
-  }, [game, quiz, gameRef, updateGame, resetLeaderboardForNewQuestion]);
+  }, [game, quiz, gameRef, gameId, functions, updateGame, resetLeaderboardForNewQuestion]);
 
   // Transition from preparing to question
   // Note: Caller is responsible for checking state - no internal check needed
@@ -106,5 +125,6 @@ export function useGameControls(
     startQuestion,
     isLastQuestion,
     isComputingResults,
+    computeError,
   };
 }
