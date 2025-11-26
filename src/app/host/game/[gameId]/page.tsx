@@ -18,7 +18,6 @@ import { QuestionTypeBadges } from '@/components/app/question-type-badges';
 // Hooks
 import { useGameState } from './hooks/use-game-state';
 import { useQuestionTimer } from './hooks/use-question-timer';
-import { useAnswerDistribution } from './hooks/use-answer-distribution';
 import { useGameControls } from './hooks/use-game-controls';
 
 // Components
@@ -57,9 +56,6 @@ export default function HostGamePage() {
 
   // Timer (now uses totalAnswered from aggregate)
   const { time } = useQuestionTimer(game, totalPlayers, timeLimit, finishQuestion, totalAnswered);
-
-  // Answer distribution (now uses answerCounts from aggregate for choice questions)
-  const { sliderResponses, freeResponseResults } = useAnswerDistribution(question, topPlayers, game);
 
   // Build answer distribution from pre-computed answerCounts
   const answerDistribution = question && 'answers' in question
@@ -250,18 +246,17 @@ export default function HostGamePage() {
             </Card>
           ) : question?.type === 'slider' ? (
             <SliderResultsView
-              responses={sliderResponses}
               correctValue={question.correctValue}
               minValue={question.minValue}
               maxValue={question.maxValue}
               unit={question.unit}
-              acceptableError={question.acceptableError}
+              totalAnswered={totalAnswered}
             />
           ) : question?.type === 'free-response' ? (
             <FreeResponseResultsView
-              responses={freeResponseResults}
               correctAnswer={question.correctAnswer}
               alternativeAnswers={question.alternativeAnswers}
+              totalAnswered={totalAnswered}
             />
           ) : (
             <AnswerDistributionChart data={answerDistribution} />

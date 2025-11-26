@@ -1,9 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, GripVertical } from 'lucide-react';
+import { Trash2, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
@@ -17,6 +19,16 @@ import { FreeResponseEditor } from './question-editors/free-response-editor';
 import { PollSingleEditor } from './question-editors/poll-single-editor';
 import { PollMultipleEditor } from './question-editors/poll-multiple-editor';
 import { useQuizFormContext } from './context';
+
+const TYPE_LABELS: Record<string, string> = {
+  'single-choice': 'Single Choice',
+  'multiple-choice': 'Multiple Choice',
+  'slider': 'Slider',
+  'slide': 'Slide',
+  'free-response': 'Free Response',
+  'poll-single': 'Poll (Single)',
+  'poll-multiple': 'Poll (Multiple)',
+};
 
 type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion;
 
@@ -42,9 +54,13 @@ export function QuestionCard({
     uploadImage: onImageUpload,
     removeImage: onImageRemove,
     totalQuestions,
+    collapsedQuestions,
+    toggleCollapse,
     quizId,
     tempId,
   } = useQuizFormContext();
+
+  const isCollapsed = collapsedQuestions.has(questionIndex);
   const {
     attributes,
     listeners,
@@ -74,19 +90,34 @@ export function QuestionCard({
         <GripVertical className="h-5 w-5" />
       </div>
 
-      <Card className={cn(
-        "bg-background/50 ml-8",
-        isDragging && "opacity-50 shadow-lg"
-      )}>
-      <CardHeader className="flex-row items-start justify-between">
-        <CardTitle className="text-lg">Question {questionIndex + 1}</CardTitle>
-        {totalQuestions > 1 && (
-          <Button variant="ghost" size="icon" onClick={() => onRemoveQuestion(questionIndex)} type="button">
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
+      <Collapsible open={!isCollapsed} onOpenChange={() => toggleCollapse(questionIndex)}>
+        <Card className={cn(
+          "bg-background/50 ml-8",
+          isDragging && "opacity-50 shadow-lg"
+        )}>
+        <CardHeader className="flex-row items-center justify-between py-3">
+          <div className="flex items-center gap-3">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" type="button">
+                {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CardTitle className="text-lg">Q{questionIndex + 1}</CardTitle>
+            <Badge variant="secondary">{TYPE_LABELS[question.type]}</Badge>
+            {isCollapsed && (
+              <span className="text-muted-foreground truncate max-w-[300px] text-sm">
+                {question.text || 'No question text'}
+              </span>
+            )}
+          </div>
+          {totalQuestions > 1 && (
+            <Button variant="ghost" size="icon" onClick={() => onRemoveQuestion(questionIndex)} type="button">
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          )}
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
         {/* Question Type Selector */}
         <FormItem>
           <FormLabel>Question Type</FormLabel>
@@ -245,8 +276,10 @@ export function QuestionCard({
             onRemoveAnswer={(aIndex) => onRemoveAnswer(questionIndex, aIndex)}
           />
         )}
-      </CardContent>
-    </Card>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+      </Collapsible>
     </div>
   );
 }

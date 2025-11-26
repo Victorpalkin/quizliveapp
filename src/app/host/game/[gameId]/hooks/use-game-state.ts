@@ -37,10 +37,10 @@ export function useGameState(gameId: string) {
     gameRef,
     quiz,
     // Leaderboard data from aggregate (O(1) instead of O(n))
-    topPlayers,       // Top 20 players (show 10 during game, 20 at end)
-    totalPlayers,     // Total player count
-    totalAnswered,    // How many answered current question
-    answerCounts,     // Answer distribution for current question
+    topPlayers,        // Top 20 players (show 10 during game, 20 at end)
+    totalPlayers,      // Total player count
+    totalAnswered,     // How many answered current question
+    answerCounts,      // Answer distribution for current question
     gameLoading,
     quizLoading,
     leaderboardLoading,
