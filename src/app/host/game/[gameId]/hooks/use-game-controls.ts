@@ -1,5 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { updateDoc, serverTimestamp, DocumentReference, Timestamp, doc, getFirestore } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { useFunctions } from '@/firebase';
 import type { Game, Quiz } from '@/lib/types';
 import { isLastQuestion as checkIsLastQuestion } from '@/lib/utils/game-utils';
 import { handleFirestoreError } from '@/lib/utils/error-utils';
@@ -10,6 +12,8 @@ export function useGameControls(
   game: Game | null,
   quiz: Quiz | null
 ) {
+  const functions = useFunctions();
+  const [isComputingResults, setIsComputingResults] = useState(false);
 
   const updateGame = useCallback((data: Partial<Game>) => {
     if (!gameRef) return;
@@ -38,12 +42,30 @@ export function useGameControls(
     }
   }, [gameRef, gameId]);
 
-  // Transition from question to leaderboard
-  // Note: Caller is responsible for checking state - no internal check needed
-  // This keeps the callback stable and avoids unnecessary re-renders
-  const finishQuestion = useCallback(() => {
+  // Transition from question to leaderboard and compute results
+  // Results (topPlayers, answerCounts) are computed once when question ends
+  // This is much faster than computing on every answer submission
+  const finishQuestion = useCallback(async () => {
+    if (!game) return;
+
+    // First transition to leaderboard state (immediate feedback)
     updateGame({ state: 'leaderboard' });
-  }, [updateGame]);
+
+    // Then compute results in the background
+    setIsComputingResults(true);
+    try {
+      const computeResults = httpsCallable(functions, 'computeQuestionResults');
+      await computeResults({
+        gameId,
+        questionIndex: game.currentQuestionIndex,
+      });
+    } catch (error) {
+      console.error('[Game Controls] Error computing results:', error);
+      // Results will be incomplete but game can continue
+    } finally {
+      setIsComputingResults(false);
+    }
+  }, [game, gameId, functions, updateGame]);
 
   const handleNext = useCallback(async () => {
     if (!game || !quiz || !gameRef) return;
@@ -82,6 +104,7 @@ export function useGameControls(
     finishQuestion,
     handleNext,
     startQuestion,
-    isLastQuestion
+    isLastQuestion,
+    isComputingResults,
   };
 }
