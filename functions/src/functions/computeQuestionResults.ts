@@ -48,38 +48,19 @@ export const computeQuestionResults = onCall(
     try {
       const playersRef = db.collection('games').doc(gameId).collection('players');
 
-      // 1. Get top 20 players by score and total player count
-      const [topPlayersSnapshot, totalCountSnapshot] = await Promise.all([
-        playersRef.orderBy('score', 'desc').limit(20).get(),
-        playersRef.count().get(),
-      ]);
-
-      const topPlayers: LeaderboardEntry[] = topPlayersSnapshot.docs.map(doc => {
-        const playerData = doc.data() as Player;
-        const answers = playerData.answers || [];
-        const currentAnswer = answers.find(a => a.questionIndex === questionIndex);
-
-        return {
-          id: doc.id,
-          name: playerData.name,
-          score: playerData.score,
-          currentStreak: playerData.currentStreak || 0,
-          lastQuestionPoints: currentAnswer?.points || 0,
-        };
-      });
-
-      // 2. Count answers for this question (for bar chart) and compute player ranks
-      // We need to fetch all players to count answer distribution and calculate ranks
+      // 1. Fetch all players in a single query
+      // This is more efficient than separate queries for top 20 + count + all players
       const allPlayersSnapshot = await playersRef.get();
+      const totalPlayerCount = allPlayersSnapshot.size;
+
+      // 2. Process all players: collect scores, count answers, prepare for ranking
       const answerCounts: number[] = [];
       let totalAnswered = 0;
-
-      // Collect all players with their scores for ranking
-      const allPlayers: { id: string; score: number }[] = [];
+      const allPlayersWithScores: { doc: FirebaseFirestore.QueryDocumentSnapshot; score: number }[] = [];
 
       allPlayersSnapshot.forEach(doc => {
         const playerData = doc.data() as Player;
-        allPlayers.push({ id: doc.id, score: playerData.score });
+        allPlayersWithScores.push({ doc, score: playerData.score });
 
         const answers = playerData.answers || [];
         const answer = answers.find(a => a.questionIndex === questionIndex);
@@ -103,20 +84,34 @@ export const computeQuestionResults = onCall(
         }
       });
 
-      // 3. Compute ranks for ALL players
-      // Sort by score descending to determine ranks
-      allPlayers.sort((a, b) => b.score - a.score);
-      const playerRanks: Record<string, PlayerRankInfo> = {};
-      const totalPlayerCount = allPlayers.length;
+      // 3. Sort by score descending for ranking and top players
+      allPlayersWithScores.sort((a, b) => b.score - a.score);
 
-      allPlayers.forEach((player, index) => {
-        playerRanks[player.id] = {
+      // 4. Compute ranks for ALL players
+      const playerRanks: Record<string, PlayerRankInfo> = {};
+      allPlayersWithScores.forEach(({ doc }, index) => {
+        playerRanks[doc.id] = {
           rank: index + 1,
           totalPlayers: totalPlayerCount,
         };
       });
 
-      // 4. Compute streaks for ALL players
+      // 5. Build top 20 players (already sorted)
+      const topPlayers: LeaderboardEntry[] = allPlayersWithScores.slice(0, 20).map(({ doc }) => {
+        const playerData = doc.data() as Player;
+        const answers = playerData.answers || [];
+        const currentAnswer = answers.find(a => a.questionIndex === questionIndex);
+
+        return {
+          id: doc.id,
+          name: playerData.name,
+          score: playerData.score,
+          currentStreak: playerData.currentStreak || 0,
+          lastQuestionPoints: currentAnswer?.points || 0,
+        };
+      });
+
+      // 6. Compute streaks for ALL players
       // This handles timeouts correctly (no answer = streak reset)
       const playerStreaks: Record<string, number> = {};
 
@@ -145,11 +140,18 @@ export const computeQuestionResults = onCall(
         playerStreaks[doc.id] = newStreak;
       });
 
-      // 5. Write the complete aggregate
+      // 7. Update topPlayers with the newly calculated streaks
+      // (topPlayers was built earlier with old streak values from player documents)
+      const topPlayersWithStreaks = topPlayers.map(player => ({
+        ...player,
+        currentStreak: playerStreaks[player.id] ?? player.currentStreak,
+      }));
+
+      // 8. Write the complete aggregate
       const leaderboardRef = db.collection('games').doc(gameId).collection('aggregates').doc('leaderboard');
       await leaderboardRef.set({
-        topPlayers,
-        totalPlayers: totalCountSnapshot.data().count,
+        topPlayers: topPlayersWithStreaks,
+        totalPlayers: totalPlayerCount,
         totalAnswered,
         answerCounts,
         playerRanks,
@@ -157,7 +159,7 @@ export const computeQuestionResults = onCall(
         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // 6. Batch update player documents with new streaks
+      // 9. Batch update player documents with new streaks
       // This ensures player.currentStreak is accurate for the leaderboard display
       const batch = db.batch();
       allPlayersSnapshot.forEach(doc => {
