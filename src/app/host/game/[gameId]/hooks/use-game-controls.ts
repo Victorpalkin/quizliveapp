@@ -44,27 +44,34 @@ export function useGameControls(
   }, [gameRef, gameId]);
 
   // Transition from question to leaderboard and compute results
-  // Results (topPlayers, answerCounts) are computed once when question ends
+  // Results (topPlayers, answerCounts, playerRanks, playerStreaks) are computed once when question ends
   // This is much faster than computing on every answer submission
+  //
+  // IMPORTANT: Compute results BEFORE changing state to 'leaderboard'
+  // This ensures players see correct rank/streak data when they transition to result screen
   const finishQuestion = useCallback(async () => {
     if (!game) return;
 
-    // First transition to leaderboard state (immediate feedback)
-    updateGame({ state: 'leaderboard' });
-
-    // Then compute results in the background
+    // Show loading indicator on host side (while still in 'question' state)
     setIsComputingResults(true);
     setComputeError(null);
+
     try {
+      // Compute results FIRST (players still see question/waiting screen)
       const computeResults = httpsCallable(functions, 'computeQuestionResults');
       await computeResults({
         gameId,
         questionIndex: game.currentQuestionIndex,
       });
+
+      // THEN transition to leaderboard (players now see correct data)
+      updateGame({ state: 'leaderboard' });
     } catch (error: any) {
       console.error('[Game Controls] Error computing results:', error);
       const errorMessage = error?.message || error?.code || 'Unknown error computing results';
       setComputeError(errorMessage);
+      // Still transition to leaderboard so host can see error and retry
+      updateGame({ state: 'leaderboard' });
     } finally {
       setIsComputingResults(false);
     }

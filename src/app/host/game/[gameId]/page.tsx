@@ -144,6 +144,14 @@ export default function HostGamePage() {
       {/* Question State */}
       {game?.state === 'question' && question && (
         <main className="flex-1 flex flex-col items-center justify-center text-center relative">
+          {/* Computing Results Overlay - shown when calculating results before transitioning to leaderboard */}
+          {isComputingResults && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-lg text-muted-foreground">Calculating results...</p>
+            </div>
+          )}
+
           <div className="absolute top-4 right-4">
             <CircularTimer time={time} timeLimit={timeLimit} size={80} />
           </div>
