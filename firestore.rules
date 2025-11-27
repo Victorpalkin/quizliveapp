@@ -98,15 +98,16 @@ service cloud.firestore {
         // Anyone can read player data for leaderboards
         allow read: if true;
 
-        // Only allow creating player with initial score of 0 and empty answers array
+        // Only allow creating player with initial score of 0, empty answers, and streak 0
         allow create: if request.resource.data.score == 0 &&
                         request.resource.data.id == playerId &&
                         request.resource.data.name is string &&
                         request.resource.data.name.size() >= 2 &&
                         request.resource.data.name.size() <= 20 &&
-                        request.resource.data.answers == [];
+                        request.resource.data.answers == [] &&
+                        request.resource.data.currentStreak == 0;
 
-        // All player updates (score, answers array) are handled by Cloud Functions only
+        // All player updates (score, answers, streak) are handled by Cloud Functions only
         // Cloud Functions use admin privileges and bypass these rules
         allow update: if false;
 

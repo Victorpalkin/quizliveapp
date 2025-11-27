@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Home, CheckCircle, Users, XCircle } from 'lucide-react';
+import { Home, CheckCircle, Users, XCircle, Loader2, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CircularTimer } from '@/components/app/circular-timer';
 import { AnswerButton } from '@/components/app/answer-button';
@@ -47,7 +47,7 @@ export default function HostGamePage() {
   const timeLimit = question?.timeLimit || 20;
 
   // Game controls
-  const { finishQuestion, handleNext, startQuestion, isLastQuestion } = useGameControls(
+  const { finishQuestion, handleNext, startQuestion, isLastQuestion, isComputingResults, computeError } = useGameControls(
     gameId,
     gameRef,
     game,
@@ -144,6 +144,14 @@ export default function HostGamePage() {
       {/* Question State */}
       {game?.state === 'question' && question && (
         <main className="flex-1 flex flex-col items-center justify-center text-center relative">
+          {/* Computing Results Overlay - shown when calculating results before transitioning to leaderboard */}
+          {isComputingResults && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-lg text-muted-foreground">Calculating results...</p>
+            </div>
+          )}
+
           <div className="absolute top-4 right-4">
             <CircularTimer time={time} timeLimit={timeLimit} size={80} />
           </div>
@@ -228,8 +236,24 @@ export default function HostGamePage() {
       {/* Leaderboard State */}
       {game?.state === 'leaderboard' && (
         <main className="flex-1 flex flex-col items-center justify-center gap-8 md:flex-row md:items-start">
-          <LeaderboardView topPlayers={topPlayers} totalPlayers={totalPlayers} />
-          {question?.type === 'slide' ? (
+          {isComputingResults ? (
+            <div className="flex flex-col items-center justify-center gap-4 w-full">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-lg text-muted-foreground">Calculating results...</p>
+            </div>
+          ) : computeError ? (
+            <div className="flex flex-col items-center justify-center gap-4 w-full">
+              <AlertCircle className="h-12 w-12 text-destructive" />
+              <p className="text-lg text-destructive font-medium">Error computing results</p>
+              <p className="text-sm text-muted-foreground max-w-md text-center">{computeError}</p>
+              <Button onClick={finishQuestion} variant="outline">
+                Retry
+              </Button>
+            </div>
+          ) : (
+            <>
+              <LeaderboardView topPlayers={topPlayers} totalPlayers={totalPlayers} />
+              {question?.type === 'slide' ? (
             <Card className="w-full max-w-2xl flex-1">
               <CardContent className="p-8 text-center space-y-4">
                 <Badge variant="secondary" className="text-lg">Informational Content</Badge>
@@ -260,6 +284,8 @@ export default function HostGamePage() {
             />
           ) : (
             <AnswerDistributionChart data={answerDistribution} />
+          )}
+            </>
           )}
         </main>
       )}

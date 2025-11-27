@@ -1,5 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { updateDoc, serverTimestamp, DocumentReference, Timestamp, doc, getFirestore } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { useFunctions } from '@/firebase';
 import type { Game, Quiz } from '@/lib/types';
 import { isLastQuestion as checkIsLastQuestion } from '@/lib/utils/game-utils';
 import { handleFirestoreError } from '@/lib/utils/error-utils';
@@ -10,6 +12,9 @@ export function useGameControls(
   game: Game | null,
   quiz: Quiz | null
 ) {
+  const functions = useFunctions();
+  const [isComputingResults, setIsComputingResults] = useState(false);
+  const [computeError, setComputeError] = useState<string | null>(null);
 
   const updateGame = useCallback((data: Partial<Game>) => {
     if (!gameRef) return;
@@ -38,12 +43,39 @@ export function useGameControls(
     }
   }, [gameRef, gameId]);
 
-  // Transition from question to leaderboard
-  // Note: Caller is responsible for checking state - no internal check needed
-  // This keeps the callback stable and avoids unnecessary re-renders
-  const finishQuestion = useCallback(() => {
-    updateGame({ state: 'leaderboard' });
-  }, [updateGame]);
+  // Transition from question to leaderboard and compute results
+  // Results (topPlayers, answerCounts, playerRanks, playerStreaks) are computed once when question ends
+  // This is much faster than computing on every answer submission
+  //
+  // IMPORTANT: Compute results BEFORE changing state to 'leaderboard'
+  // This ensures players see correct rank/streak data when they transition to result screen
+  const finishQuestion = useCallback(async () => {
+    if (!game) return;
+
+    // Show loading indicator on host side (while still in 'question' state)
+    setIsComputingResults(true);
+    setComputeError(null);
+
+    try {
+      // Compute results FIRST (players still see question/waiting screen)
+      const computeResults = httpsCallable(functions, 'computeQuestionResults');
+      await computeResults({
+        gameId,
+        questionIndex: game.currentQuestionIndex,
+      });
+
+      // THEN transition to leaderboard (players now see correct data)
+      updateGame({ state: 'leaderboard' });
+    } catch (error: any) {
+      console.error('[Game Controls] Error computing results:', error);
+      const errorMessage = error?.message || error?.code || 'Unknown error computing results';
+      setComputeError(errorMessage);
+      // Still transition to leaderboard so host can see error and retry
+      updateGame({ state: 'leaderboard' });
+    } finally {
+      setIsComputingResults(false);
+    }
+  }, [game, gameId, functions, updateGame]);
 
   const handleNext = useCallback(async () => {
     if (!game || !quiz || !gameRef) return;
@@ -61,10 +93,26 @@ export function useGameControls(
           currentQuestionIndex: game.currentQuestionIndex + 1
         });
       } else {
+        // Re-compute final results to ensure accuracy
+        // This catches any last-second answers that may have been submitted
+        setIsComputingResults(true);
+        setComputeError(null);
+        try {
+          const computeResults = httpsCallable(functions, 'computeQuestionResults');
+          await computeResults({
+            gameId,
+            questionIndex: game.currentQuestionIndex,
+          });
+        } catch (error: any) {
+          console.error('[Game Controls] Error computing final results:', error);
+          // Don't block game end on error - just log it
+        } finally {
+          setIsComputingResults(false);
+        }
         updateGame({ state: 'ended' });
       }
     }
-  }, [game, quiz, gameRef, updateGame, resetLeaderboardForNewQuestion]);
+  }, [game, quiz, gameRef, gameId, functions, updateGame, resetLeaderboardForNewQuestion]);
 
   // Transition from preparing to question
   // Note: Caller is responsible for checking state - no internal check needed
@@ -82,6 +130,8 @@ export function useGameControls(
     finishQuestion,
     handleNext,
     startQuestion,
-    isLastQuestion
+    isLastQuestion,
+    isComputingResults,
+    computeError,
   };
 }
