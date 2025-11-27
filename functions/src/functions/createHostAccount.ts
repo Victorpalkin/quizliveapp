@@ -79,38 +79,25 @@ export const createHostAccount = onCall(
 
       console.log(`[REGISTRATION] Created Firebase Auth user: ${userRecord.uid} (${trimmedEmail})`);
 
-      // Create Firestore profile and send verification email
+      // Create Firestore profile
+      // Note: Verification email is sent from the client after sign-in using sendEmailVerification()
       const db = admin.firestore();
       const userProfileRef = db.collection('users').doc(userRecord.uid);
 
       const now = admin.firestore.Timestamp.now();
-      const actionCodeSettings = {
-        url: `${origin || 'https://quiz.palkin.nl'}/login`, // Redirect to login after verification
-        handleCodeInApp: false,
-      };
 
-      // Create user profile and generate verification link in parallel
-      // Note: generateEmailVerificationLink triggers Firebase to send the verification email
-      // The link is intentionally not captured or returned for security reasons
-      await Promise.all([
-        userProfileRef.set({
-          id: userRecord.uid,
-          email: trimmedEmail,
-          name: trimmedName,
-          jobRole: trimmedJobRole,
-          team: trimmedTeam,
-          emailVerified: false,
-          createdAt: now,
-          updatedAt: now,
-        }),
-        admin.auth().generateEmailVerificationLink(trimmedEmail, actionCodeSettings)
-      ]);
+      await userProfileRef.set({
+        id: userRecord.uid,
+        email: trimmedEmail,
+        name: trimmedName,
+        jobRole: trimmedJobRole,
+        team: trimmedTeam,
+        emailVerified: false,
+        createdAt: now,
+        updatedAt: now,
+      });
 
-      console.log(`[REGISTRATION] Created Firestore profile and sent verification email for: ${userRecord.uid}`);
-
-      // Note: In production, you would send this link via a custom email service
-      // For now, Firebase Auth will handle sending the verification email
-      // when the user signs in and requests verification
+      console.log(`[REGISTRATION] Created Firestore profile for: ${userRecord.uid}`);
 
       return {
         success: true,

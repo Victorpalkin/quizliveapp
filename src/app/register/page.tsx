@@ -86,9 +86,9 @@ export default function RegisterPage() {
     if (result.success) {
       toast({
         title: 'Account Created',
-        description: 'Please check your email to verify your account.',
+        description: 'A verification email has been sent to your inbox.',
       });
-      // Redirect to verify-email page
+      // Redirect to verify-email page (user is now signed in)
       router.push('/verify-email');
     } else {
       toast({

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useFunctions } from '@/firebase';
+import { useFunctions, useAuth } from '@/firebase';
 import { httpsCallable } from 'firebase/functions';
+import { signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { validateEmailDomain } from '@/lib/validation';
 
 interface RegistrationData {
@@ -22,6 +23,7 @@ interface CreateHostAccountResponse {
 
 export function useRegistration() {
   const functions = useFunctions();
+  const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,14 +74,23 @@ export function useRegistration() {
       const result = await createHostAccountFn(data);
       const { success, userId, message } = result.data;
 
-      setIsLoading(false);
-
-      if (success) {
-        return { success: true, userId };
-      } else {
+      if (!success) {
+        setIsLoading(false);
         setError(message);
         return { success: false, error: message };
       }
+
+      // Sign in the user after successful account creation
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+
+      // Send verification email using client-side SDK (this actually sends the email)
+      await sendEmailVerification(userCredential.user, {
+        url: `${window.location.origin}/login`,
+        handleCodeInApp: false,
+      });
+
+      setIsLoading(false);
+      return { success: true, userId };
     } catch (err: any) {
       console.error('[Registration] Error:', err);
 
@@ -103,7 +114,7 @@ export function useRegistration() {
 
       return { success: false, error: errorMessage };
     }
-  }, [functions, validateEmail]);
+  }, [auth, functions, validateEmail]);
 
   return {
     register,
