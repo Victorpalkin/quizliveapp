@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useFirestore } from '@/firebase';
+import { useFirestore, trackEvent } from '@/firebase';
 import { doc, collection, query, where, getDocs, setDoc, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { handleFirestoreError } from '@/lib/utils/error-utils';
@@ -106,6 +106,9 @@ export function useJoinGame({
       };
 
       await setDoc(playerRef, newPlayer);
+
+      // Track player joined
+      trackEvent('player_joined');
 
       // Update state after successful write
       setGameDocId(gameDoc.id);

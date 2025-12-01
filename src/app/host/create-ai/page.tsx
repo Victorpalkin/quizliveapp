@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Header } from '@/components/app/header';
 import { QuizPreview } from '@/components/app/quiz-preview';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useFunctions, useUser, useStorage } from '@/firebase';
+import { useFirestore, useFunctions, useUser, useStorage, trackEvent } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { Loader2, Sparkles, Send, Save, RotateCcw, ArrowLeft } from 'lucide-react';
@@ -102,6 +102,12 @@ export default function CreateQuizWithAIPage() {
       setAiMessage(result.data.message);
       setPrompt('');
 
+      // Track AI quiz generation
+      trackEvent('ai_quiz_generated', {
+        question_count: result.data.quiz.questions.length,
+        is_refinement: conversationHistory.length > 0,
+      });
+
       toast({
         title: 'Quiz Generated!',
         description: result.data.message,
@@ -155,6 +161,11 @@ export default function CreateQuizWithAIPage() {
       const cleanedQuizData = removeUndefined(quizData);
 
       await addDoc(collection(firestore, 'quizzes'), cleanedQuizData);
+
+      // Track AI quiz saved
+      trackEvent('ai_quiz_saved', {
+        question_count: generatedQuiz.questions.length,
+      });
 
       toast({
         title: 'Quiz Saved!',

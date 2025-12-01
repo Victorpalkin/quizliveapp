@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Share2, Copy, Trash2, Loader2, Play, Eye } from 'lucide-react';
-import { useFirestore, useUser, useStorage } from '@/firebase';
+import { useFirestore, useUser, useStorage, trackEvent } from '@/firebase';
 import { useSharedQuizzes } from '@/firebase/firestore/use-shared-quizzes';
 import { collection, addDoc, deleteDoc, doc, serverTimestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { ref, getDownloadURL, uploadBytes } from 'firebase/storage';
@@ -171,6 +171,12 @@ export function SharedQuizzes() {
           description: 'The quiz has been added to your quizzes',
         });
       }
+
+      // Track quiz copy
+      trackEvent('quiz_copied', {
+        question_count: originalQuiz.questions.length,
+        has_images: copiedImageCount > 0,
+      });
 
       router.push(`/host/edit/${newQuizId}`);
     } catch (error) {

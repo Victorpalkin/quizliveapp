@@ -1,5 +1,5 @@
 import { useCallback, Dispatch, SetStateAction } from 'react';
-import { useFunctions } from '@/firebase';
+import { useFunctions, trackEvent } from '@/firebase';
 import { Timestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
@@ -104,6 +104,12 @@ export function useAnswerSubmission(
     if (!gameDocId || answerSubmittedRef.current) return;
     answerSubmittedRef.current = true;
 
+    // Track answer submission
+    trackEvent('answer_submitted', {
+      question_type: 'single-choice',
+      has_time_bonus: timeRemaining > 0,
+    });
+
     const isCorrect = answerIndex === question.correctAnswerIndex;
     const estimatedPoints = calculateTimeBasedScore(isCorrect, timeRemaining, timeLimit);
 
@@ -172,6 +178,12 @@ export function useAnswerSubmission(
   ) => {
     if (!gameDocId || answerSubmittedRef.current) return;
     answerSubmittedRef.current = true;
+
+    // Track answer submission
+    trackEvent('answer_submitted', {
+      question_type: 'multiple-choice',
+      has_time_bonus: timeRemaining > 0,
+    });
 
     const correctAnswerIndices = question.correctAnswerIndices;
     const correctSelected = answerIndices.filter(i => correctAnswerIndices.includes(i)).length;
@@ -249,6 +261,12 @@ export function useAnswerSubmission(
   ) => {
     if (!gameDocId || answerSubmittedRef.current) return;
     answerSubmittedRef.current = true;
+
+    // Track answer submission
+    trackEvent('answer_submitted', {
+      question_type: 'slider',
+      has_time_bonus: timeRemaining > 0,
+    });
 
     const { points: estimatedPoints, isCorrect } = calculateSliderScore(
       sliderValue,
@@ -329,6 +347,12 @@ export function useAnswerSubmission(
     if (!gameDocId || answerSubmittedRef.current) return;
     answerSubmittedRef.current = true;
 
+    // Track answer submission
+    trackEvent('answer_submitted', {
+      question_type: 'free-response',
+      has_time_bonus: timeRemaining > 0,
+    });
+
     // Optimistic estimate: assume correct if non-empty (server validates)
     const estimatedPoints = textAnswer.trim() ? calculateTimeBasedScore(true, timeRemaining, timeLimit) : 0;
 
@@ -405,6 +429,12 @@ export function useAnswerSubmission(
     if (!gameDocId || answerSubmittedRef.current) return;
     answerSubmittedRef.current = true;
 
+    // Track poll response
+    trackEvent('answer_submitted', {
+      question_type: 'poll-single',
+      has_time_bonus: false,
+    });
+
     // Polls don't have correct answers - always 0 points
     setLastAnswer({
       selected: answerIndex,
@@ -451,6 +481,12 @@ export function useAnswerSubmission(
   ) => {
     if (!gameDocId || answerSubmittedRef.current) return;
     answerSubmittedRef.current = true;
+
+    // Track poll response
+    trackEvent('answer_submitted', {
+      question_type: 'poll-multiple',
+      has_time_bonus: false,
+    });
 
     // Polls don't have correct answers - always 0 points
     setLastAnswer({

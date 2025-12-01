@@ -12,6 +12,9 @@ export interface PlayerSession {
 const SESSION_KEY = 'gquiz_player_session';
 const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+// Check if we're in a browser environment (not SSR)
+const isBrowser = typeof window !== 'undefined';
+
 /**
  * Save player session to localStorage
  */
@@ -21,6 +24,7 @@ export function savePlayerSession(
   gamePin: string,
   nickname: string
 ): void {
+  if (!isBrowser) return;
   try {
     const session: PlayerSession = {
       playerId,
@@ -40,6 +44,7 @@ export function savePlayerSession(
  * Returns null if no session exists or if session is expired
  */
 export function getPlayerSession(): PlayerSession | null {
+  if (!isBrowser) return null;
   try {
     const stored = localStorage.getItem(SESSION_KEY);
     if (!stored) return null;
@@ -65,6 +70,7 @@ export function getPlayerSession(): PlayerSession | null {
  * Clear player session from localStorage
  */
 export function clearPlayerSession(): void {
+  if (!isBrowser) return;
   try {
     localStorage.removeItem(SESSION_KEY);
   } catch (error) {

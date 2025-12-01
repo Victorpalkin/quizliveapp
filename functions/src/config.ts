@@ -60,5 +60,5 @@ export const REGION = 'europe-west4';
 /**
  * Time constants
  */
-export const GRACE_PERIOD_MS = 2000; // 2 second grace period for network latency
+export const GRACE_PERIOD_MS = 1500; // 2 second grace period for network latency
 export const DEFAULT_QUESTION_TIME_LIMIT = 20; // Default time limit in seconds

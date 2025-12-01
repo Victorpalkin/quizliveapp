@@ -6,6 +6,7 @@ import { getStorage } from 'firebase/storage';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { firebaseConfig } from './config';
 import { initializeAppCheckClient } from './app-check';
+import { initAnalytics, trackEvent, trackException } from './analytics';
 
 import {
   useFirebase,
@@ -38,6 +39,9 @@ function initializeFirebase() {
   // This verifies requests come from your genuine app
   initializeAppCheckClient(app);
 
+  // Initialize Analytics (lazy loaded after page is interactive)
+  initAnalytics(app);
+
   const auth = getAuth(app);
   const firestore = getFirestore(app);
   const storage = getStorage(app);
@@ -65,4 +69,7 @@ export {
   useDoc,
   useCollection,
   useMemoFirebase,
+  // Analytics
+  trackEvent,
+  trackException,
 };

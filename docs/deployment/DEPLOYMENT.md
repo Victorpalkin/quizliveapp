@@ -1366,6 +1366,92 @@ This is safe because the functions still require Firebase Auth at the applicatio
 
 ## Monitoring and Maintenance
 
+### Firebase Analytics
+
+The application includes built-in Firebase Analytics for tracking user behavior and errors. Analytics is automatically initialized when the app loads.
+
+#### Viewing Analytics Data
+
+1. Go to [Firebase Console](https://console.firebase.google.com) → Your Project → Analytics
+2. View real-time events in the **Realtime** dashboard
+3. Explore user behavior in the **Events** section
+4. Monitor errors in the **Errors** section (from exception events)
+
+#### Tracked Events
+
+| Event | Description | Parameters |
+|-------|-------------|------------|
+| `game_started` | Host starts a game | `question_count` |
+| `question_started` | New question begins | `question_index`, `question_type` |
+| `game_ended` | Game finishes | `question_count` |
+| `player_joined` | Player joins a game | - |
+| `answer_submitted` | Player submits answer | `question_type`, `has_time_bonus` |
+| `player_timeout` | Player times out | `question_type` |
+| `quiz_created` | Host creates a quiz manually | `question_count`, `has_images` |
+| `ai_quiz_generated` | AI generates quiz | `question_count`, `is_refinement` |
+| `ai_quiz_saved` | Host saves AI quiz | `question_count` |
+| `quiz_shared` | Host shares a quiz | - |
+| `quiz_copied` | Host copies a shared quiz | `question_count`, `has_images` |
+
+#### Error Tracking
+
+Client-side errors are automatically logged to Google Analytics as exception events. This includes:
+
+- Page-level errors caught by Next.js error boundaries
+- Global errors in the root layout
+- Runtime JavaScript errors
+
+**To view errors:**
+
+1. Go to Firebase Console → Analytics → Events
+2. Filter for `exception` events
+3. Click on an event to see error details in the parameters
+
+Error details include:
+- Error name and message
+- Page URL where error occurred
+- Context (which page/component)
+
+**Note:** Error tracking is anonymous - no user IDs are included in error reports.
+
+#### Analytics Performance
+
+Analytics uses lazy loading to minimize impact on page load:
+
+- SDK loads via `requestIdleCallback` (during browser idle time)
+- Events are queued until SDK is ready
+- Zero blocking of initial page render
+- Approximate bundle size: ~15-20KB (loaded after page is interactive)
+
+#### Custom Event Tracking
+
+To add new events in your code:
+
+```typescript
+import { trackEvent } from '@/firebase';
+
+// Simple event
+trackEvent('my_event');
+
+// Event with parameters
+trackEvent('my_event', {
+  param1: 'value1',
+  param2: 123,
+});
+```
+
+#### Debugging Analytics
+
+In development, you can verify events are being tracked:
+
+1. Open browser DevTools → Network tab
+2. Filter for `google-analytics` or `analytics`
+3. Look for requests to `www.google-analytics.com`
+
+For real-time debugging:
+1. Go to Firebase Console → Analytics → DebugView
+2. Enable debug mode in your browser by installing the [Google Analytics Debugger extension](https://chrome.google.com/webstore/detail/google-analytics-debugger/jnkmfdileelhofjcijamephohjechhna)
+
 ### View Cloud Build Logs
 
 ```bash
