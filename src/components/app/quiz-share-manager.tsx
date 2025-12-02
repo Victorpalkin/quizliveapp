@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Share2, Trash2, Loader2, UserPlus } from 'lucide-react';
-import { useCollection, useMemoFirebase, useFirestore, useUser } from '@/firebase';
+import { useCollection, useMemoFirebase, useFirestore, useUser, trackEvent } from '@/firebase';
 import { collection, addDoc, deleteDoc, doc, serverTimestamp, setDoc, CollectionReference } from 'firebase/firestore';
 import type { QuizShare } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -82,6 +82,9 @@ export function QuizShareManager({ quizId, quizTitle }: QuizShareManagerProps) {
         sharedByEmail: user?.email,
         createdAt: serverTimestamp(),
       });
+
+      // Track quiz share
+      trackEvent('quiz_shared');
 
       toast({
         title: 'Quiz shared successfully',

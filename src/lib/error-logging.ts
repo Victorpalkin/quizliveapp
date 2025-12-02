@@ -2,8 +2,10 @@
  * Centralized error logging utility
  *
  * Provides consistent error logging across the application.
- * Easy to extend with third-party services (Sentry, LogRocket, etc.)
+ * Logs to console and sends to Google Analytics as exception events.
  */
+
+import { trackException } from '@/firebase';
 
 export interface ErrorContext {
   context: string;
@@ -35,10 +37,10 @@ export function logError(error: Error, context: ErrorContext): void {
     },
   });
 
-  // Future: Send to error monitoring service
-  // if (typeof window !== 'undefined') {
-  //   // Sentry.captureException(error, { contexts: { custom: context } });
-  // }
+  // Send to Google Analytics as exception event (anonymous - no user IDs)
+  const url = typeof window !== 'undefined' ? window.location.pathname : '';
+  const description = `[${context.context}] ${error.name}: ${error.message} | ${url}`;
+  trackException(description, false);
 }
 
 /**

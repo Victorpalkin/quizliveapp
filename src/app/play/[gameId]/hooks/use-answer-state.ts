@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, Dispatch, SetStateAction } from 'react';
+import { trackEvent } from '@/firebase';
 import type { Game, Player, Question } from '@/lib/types';
 import type { AnswerResult } from '../types';
 import type { PlayerState } from './use-player-state-machine';
@@ -101,6 +102,11 @@ export function useAnswerState({
     ) {
       setTimedOut(true);
       setAnswerSelected(true);
+
+      // Track timeout event
+      trackEvent('player_timeout', {
+        question_type: question.type,
+      });
 
       // For slides, just transition to waiting without setting answer result
       if (question.type === 'slide') {

@@ -14,6 +14,8 @@ import { AnswerButton } from '@/components/app/answer-button';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { QuestionCounter } from '@/components/app/question-counter';
 import { QuestionTypeBadges } from '@/components/app/question-type-badges';
+import { saveHostSession, clearHostSession } from '@/lib/host-session';
+import { useUser } from '@/firebase';
 
 // Hooks
 import { useGameState } from './hooks/use-game-state';
@@ -35,6 +37,7 @@ const indexToLetter = (index: number): string => String.fromCharCode(65 + index)
 export default function HostGamePage() {
   const params = useParams();
   const gameId = params.gameId as string;
+  const { user } = useUser();
 
   // Game state (now uses aggregate document for leaderboard data)
   const {
@@ -42,6 +45,20 @@ export default function HostGamePage() {
     topPlayers, totalPlayers, totalAnswered, answerCounts,
     gameLoading, quizLoading
   } = useGameState(gameId);
+
+  // Save host session when game and quiz are loaded
+  useEffect(() => {
+    if (game && quiz && user && game.state !== 'ended') {
+      saveHostSession(gameId, game.gamePin, game.quizId, quiz.title, user.uid);
+    }
+  }, [gameId, game, quiz, user]);
+
+  // Clear host session when game ends
+  useEffect(() => {
+    if (game?.state === 'ended') {
+      clearHostSession();
+    }
+  }, [game?.state]);
 
   const question = quiz?.questions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;

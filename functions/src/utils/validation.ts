@@ -1,6 +1,6 @@
 import { HttpsError } from 'firebase-functions/v2/https';
-import { SubmitAnswerRequest, Game } from '../types';
-import { GRACE_PERIOD_MS, DEFAULT_QUESTION_TIME_LIMIT } from '../config';
+import { SubmitAnswerRequest } from '../types';
+import { DEFAULT_QUESTION_TIME_LIMIT } from '../config';
 
 /**
  * Validate basic required fields for answer submission
@@ -32,63 +32,6 @@ export function validateBasicFields(data: SubmitAnswerRequest): void {
     throw new HttpsError(
       'invalid-argument',
       'Invalid timeRemaining value'
-    );
-  }
-}
-
-/**
- * Validate question timing and index
- *
- * @param game - The game document
- * @param questionIndex - The question index from the request
- * @param questionTimeLimit - The time limit for this question
- * @throws HttpsError if validation fails
- */
-export function validateQuestionTiming(
-  game: Game,
-  questionIndex: number,
-  questionTimeLimit?: number
-): void {
-  // Check if game has questionStartTime
-  if (!game.questionStartTime) {
-    throw new HttpsError(
-      'failed-precondition',
-      'Question has not been started yet'
-    );
-  }
-
-  const timeLimit = questionTimeLimit || DEFAULT_QUESTION_TIME_LIMIT;
-  const timeLimitMs = timeLimit * 1000;
-
-  // Calculate elapsed time since question started (server-authoritative)
-  const questionStartMs = game.questionStartTime.toMillis();
-  const submissionTimeMs = Date.now();
-  const elapsedMs = submissionTimeMs - questionStartMs;
-
-  // Verify question index - accept current or previous question (with time check)
-  const isCurrentQuestion = game.currentQuestionIndex === questionIndex;
-  const isPreviousQuestion = game.currentQuestionIndex === questionIndex + 1;
-
-  if (!isCurrentQuestion && !isPreviousQuestion) {
-    throw new HttpsError(
-      'failed-precondition',
-      `Question index mismatch: expected ${game.currentQuestionIndex}, got ${questionIndex}`
-    );
-  }
-
-  // For previous question, only accept if within grace period
-  if (isPreviousQuestion && elapsedMs > GRACE_PERIOD_MS) {
-    throw new HttpsError(
-      'deadline-exceeded',
-      'Answer submitted too late - question has moved on'
-    );
-  }
-
-  // Verify submission is within time limit + grace period
-  if (elapsedMs > timeLimitMs + GRACE_PERIOD_MS) {
-    throw new HttpsError(
-      'deadline-exceeded',
-      `Answer submitted after time limit (${Math.round(elapsedMs / 1000)}s elapsed, limit was ${timeLimit}s)`
     );
   }
 }

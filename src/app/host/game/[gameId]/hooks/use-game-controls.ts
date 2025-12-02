@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { updateDoc, serverTimestamp, DocumentReference, Timestamp, doc, getFirestore } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { useFunctions } from '@/firebase';
+import { useFunctions, trackEvent } from '@/firebase';
 import type { Game, Quiz } from '@/lib/types';
 import { isLastQuestion as checkIsLastQuestion } from '@/lib/utils/game-utils';
 import { handleFirestoreError } from '@/lib/utils/error-utils';
@@ -109,6 +109,12 @@ export function useGameControls(
         } finally {
           setIsComputingResults(false);
         }
+
+        // Track game ended
+        trackEvent('game_ended', {
+          question_count: quiz.questions.length,
+        });
+
         updateGame({ state: 'ended' });
       }
     }
@@ -118,11 +124,29 @@ export function useGameControls(
   // Note: Caller is responsible for checking state - no internal check needed
   // This keeps the callback stable and avoids circular dependencies
   const startQuestion = useCallback(() => {
+    if (!game || !quiz) return;
+
+    const questionIndex = game.currentQuestionIndex;
+    const question = quiz.questions[questionIndex];
+
+    // Track question started
+    trackEvent('question_started', {
+      question_index: questionIndex,
+      question_type: question?.type,
+    });
+
+    // Track game started on first question
+    if (questionIndex === 0) {
+      trackEvent('game_started', {
+        question_count: quiz.questions.length,
+      });
+    }
+
     updateGame({
       state: 'question',
       questionStartTime: serverTimestamp() as unknown as Timestamp
     });
-  }, [updateGame]);
+  }, [updateGame, game, quiz]);
 
   const isLastQuestion = checkIsLastQuestion(game, quiz);
 

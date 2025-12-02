@@ -7,13 +7,14 @@
  * This is a special error boundary that only activates for layout-level errors.
  *
  * Note: This must manually render <html> and <body> tags since the layout
- * failed to render.
+ * failed to render. Cannot use PageErrorBoundary here.
  */
 
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { logError } from '@/lib/error-logging';
 
 export default function GlobalError({
   error,
@@ -23,15 +24,13 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log the error
-    console.error('Global error boundary (layout error):', {
-      error: {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
+    // Log the error (also sends to Google Analytics)
+    logError(error, {
+      context: 'Global Error Boundary (Layout)',
+      additionalInfo: {
         digest: error.digest,
+        url: typeof window !== 'undefined' ? window.location.href : undefined,
       },
-      url: typeof window !== 'undefined' ? window.location.href : undefined,
     });
   }, [error]);
 

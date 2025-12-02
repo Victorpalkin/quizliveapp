@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { Header } from '@/components/app/header';
 import { QuizForm, type QuizFormData } from '@/components/app/quiz-form';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, useStorage } from '@/firebase';
+import { useFirestore, useUser, useStorage, trackEvent } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
 import { nanoid } from 'nanoid';
@@ -85,6 +85,12 @@ export default function CreateQuizPage() {
 
       const docRef = await addDoc(collection(firestore, 'quizzes'), cleanedQuizData);
       const quizId = docRef.id;
+
+      // Track quiz creation
+      trackEvent('quiz_created', {
+        question_count: data.questions.length,
+        has_images: Object.keys(imageFiles).length > 0,
+      });
 
       // Move temp AI images to final quiz path
       try {

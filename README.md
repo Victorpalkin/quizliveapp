@@ -91,6 +91,41 @@ For complete deployment instructions including CI/CD setup, see **[Deployment Gu
 | `/join` | Player join page |
 | `/play/[gamePin]` | Player game interface |
 
+## Monitoring & Analytics
+
+The application includes built-in Firebase Analytics for tracking user behavior and errors.
+
+### Viewing Analytics
+
+1. Go to [Firebase Console](https://console.firebase.google.com) → Your Project → Analytics
+2. View real-time events in the **Realtime** dashboard
+3. Monitor errors via `exception` events
+
+### Tracked Events
+
+| Event | Description |
+|-------|-------------|
+| `game_started` | Host starts a game |
+| `question_started` | New question begins |
+| `game_ended` | Game finishes |
+| `player_joined` | Player joins a game |
+| `answer_submitted` | Player submits answer |
+| `player_timeout` | Player times out |
+| `quiz_created` | Host creates a quiz |
+| `ai_quiz_generated` | AI generates quiz |
+| `quiz_shared` | Host shares a quiz |
+| `quiz_copied` | Host copies a shared quiz |
+
+### Adding Custom Events
+
+```typescript
+import { trackEvent } from '@/firebase';
+
+trackEvent('my_event', { param: 'value' });
+```
+
+For detailed monitoring documentation, see the [Deployment Guide](docs/deployment/DEPLOYMENT.md#firebase-analytics).
+
 ## Documentation
 
 | Document | Description |

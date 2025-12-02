@@ -5,13 +5,9 @@
  *
  * Catches all unhandled errors in the application that aren't caught
  * by more specific error boundaries in child routes.
- *
- * This is the last line of defense before the app crashes completely.
  */
 
-import { useEffect } from 'react';
-import { ErrorFallback } from '@/components/app/error-fallback';
-import { logError } from '@/lib/error-logging';
+import { PageErrorBoundary } from '@/components/app/page-error-boundary';
 
 export default function Error({
   error,
@@ -20,23 +16,12 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    // Log the error
-    logError(error, {
-      context: 'Root Error Boundary',
-      additionalInfo: {
-        digest: error.digest,
-        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : undefined,
-        url: typeof window !== 'undefined' ? window.location.href : undefined,
-      },
-    });
-  }, [error]);
-
   return (
-    <ErrorFallback
+    <PageErrorBoundary
       error={error}
-      resetErrorBoundary={reset}
+      reset={reset}
       variant="generic"
+      context="Root Error Boundary"
       title="Something went wrong"
       message="An unexpected error occurred. Please try refreshing the page."
       footerMessage="If this problem persists, try clearing your browser cache or contact support."

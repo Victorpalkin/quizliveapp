@@ -1,13 +1,16 @@
-
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { BrainCircuit, Play, Sparkles } from 'lucide-react';
+import { HostReconnectOverlay } from '@/components/app/host-reconnect-banner';
 
 export default function Home() {
   return (
     <div className="relative min-h-screen w-full bg-background">
+      {/* Host Reconnection Overlay */}
+      <HostReconnectOverlay />
+
       {/* Theme Toggle - Top Right */}
       <div className="absolute top-6 right-6 z-20">
         <ThemeToggle />

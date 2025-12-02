@@ -91,6 +91,14 @@ export function usePlayerStateMachine(
       return;
     }
 
+    // 3.5 Safety net: if player is stuck on result but host moved on
+    // This handles edge cases where question-change detection might have missed
+    if ((hostState === 'preparing' || hostState === 'question') && state === 'result') {
+      console.log(`[Player State] Host moved on while in result → preparing`);
+      setState('preparing');
+      return;
+    }
+
     // 4. Question - transition from preparing to question
     if (hostState === 'question') {
       if (state === 'preparing') {

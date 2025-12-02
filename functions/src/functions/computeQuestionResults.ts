@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { LeaderboardEntry, Player, PlayerRankInfo } from '../types';
-import { ALLOWED_ORIGINS, REGION } from '../config';
+import { ALLOWED_ORIGINS, REGION, GRACE_PERIOD_MS } from '../config';
 
 /**
  * Request interface for computeQuestionResults
@@ -46,6 +46,10 @@ export const computeQuestionResults = onCall(
     const db = admin.firestore();
 
     try {
+      // Wait for grace period to allow last-second answers to be written to database
+      // This ensures answers submitted just before/after timer expires are included
+      await new Promise(resolve => setTimeout(resolve, GRACE_PERIOD_MS));
+
       const playersRef = db.collection('games').doc(gameId).collection('players');
 
       // 1. Fetch all players in a single query
