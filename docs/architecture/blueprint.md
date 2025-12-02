@@ -1,6 +1,6 @@
 # gQuiz - Architecture Blueprint
 
-**Last Updated:** 2025-11-19
+**Last Updated:** 2025-12-02
 
 Comprehensive architecture documentation covering system design, state management, security, and synchronization.
 
@@ -15,7 +15,8 @@ Comprehensive architecture documentation covering system design, state managemen
 5. [Security Architecture](#security-architecture)
 6. [Data Models](#data-models)
 7. [Real-Time Synchronization](#real-time-synchronization)
-8. [Performance & Reliability](#performance--reliability)
+8. [Question Crowdsourcing](#question-crowdsourcing)
+9. [Performance & Reliability](#performance--reliability)
 
 ---
 
@@ -31,6 +32,7 @@ gQuiz is a real-time multiplayer quiz application inspired by Kahoot. Hosts crea
 - **Real-time Leaderboard**: Live rankings based on accuracy and speed
 - **Quiz Sharing**: Share quizzes via email, copy shared quizzes with independent assets
 - **Synchronized Timers**: NTP-like clock synchronization for fair gameplay across devices
+- **Question Crowdsourcing**: Players submit questions during lobby, AI evaluates and selects best ones
 
 ### User Flows
 
@@ -658,8 +660,17 @@ interface Quiz {
   description?: string;
   hostId: string;               // Firebase Auth UID
   questions: Question[];
+  crowdsource?: CrowdsourceSettings;  // Optional crowdsource configuration
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+interface CrowdsourceSettings {
+  enabled: boolean;
+  topicPrompt: string;           // e.g., "European geography"
+  questionsNeeded: number;       // How many to select
+  maxSubmissionsPerPlayer: number; // Default: 3
+  integrationMode: 'append' | 'replace' | 'prepend';
 }
 ```
 
@@ -732,13 +743,21 @@ interface PollMultipleQuestion {
 ```typescript
 interface Game {
   id: string;
-  pin: string;                  // 6-digit game PIN
+  pin: string;                  // 8-character game PIN
   quizId: string;
   hostId: string;
   state: 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
   currentQuestionIndex: number;
   questionStartTime?: Timestamp; // Server timestamp when question shown
+  crowdsourceState?: CrowdsourceState;  // Runtime state for crowdsourced questions
+  questions?: Question[];        // Override questions (used when crowdsourced questions are integrated)
   createdAt: Timestamp;
+}
+
+interface CrowdsourceState {
+  submissionsLocked: boolean;    // True when AI evaluation starts
+  evaluationComplete: boolean;   // Has AI evaluated yet
+  selectedCount: number;         // How many questions selected
 }
 ```
 
@@ -871,6 +890,138 @@ updateDoc(gameRef, {
 
 ---
 
+## Question Crowdsourcing
+
+### Feature Overview
+
+Crowdsourcing enables player-contributed quiz questions. During the lobby phase, players submit questions which are evaluated by AI (Gemini) and selectively included in the game. This creates engaging, participant-driven content.
+
+### Flow Diagram
+
+```
+Host enables crowdsourcing in quiz → Game created with crowdsource settings
+                                              ↓
+        ┌─────────────── LOBBY PHASE ──────────────┐
+        │                                          │
+        │  Players submit questions (max N each)   │
+        │  Stored in games/{gameId}/submissions    │
+        │                                          │
+        └────────────────────┬─────────────────────┘
+                             │
+                Host clicks "Evaluate with AI"
+                             │
+                             ▼
+        ┌─────────────── EVALUATION ───────────────┐
+        │                                          │
+        │  1. Lock submissions (no new ones)       │
+        │  2. 2-second grace period                │
+        │  3. Call evaluateSubmissions function    │
+        │  4. AI scores each submission 0-100      │
+        │  5. Select top N questions               │
+        │                                          │
+        └────────────────────┬─────────────────────┘
+                             │
+                Host reviews & saves selection
+                             │
+                             ▼
+                Game starts with crowd questions
+```
+
+### Data Models
+
+```typescript
+// Quiz-level configuration (set during quiz creation/edit)
+interface CrowdsourceSettings {
+  enabled: boolean;
+  topicPrompt: string;           // e.g., "European geography"
+  questionsNeeded: number;       // How many to select (default: 10)
+  maxSubmissionsPerPlayer: number; // Default: 3
+  integrationMode: 'append' | 'replace' | 'prepend';  // How to combine with existing questions
+}
+
+// Runtime state during game (stored on Game document)
+interface CrowdsourceState {
+  submissionsLocked: boolean;    // True when AI evaluation starts
+  evaluationComplete: boolean;   // Has AI evaluated yet
+  selectedCount: number;         // How many questions were selected
+}
+
+// Individual player submission (stored in subcollection)
+interface QuestionSubmission {
+  id: string;
+  playerId: string;
+  playerName: string;
+  submittedAt: Timestamp;
+  expireAt: Timestamp;           // TTL: 24 hours for auto-cleanup
+
+  // Question content (single-choice only for MVP)
+  questionText: string;
+  answers: string[];             // 4 answer options
+  correctAnswerIndex: number;    // Stored but NOT shown to host during review
+
+  // AI evaluation results (populated after evaluation)
+  aiScore?: number;              // 0-100 quality score
+  aiReasoning?: string;          // Why this score
+  aiSelected?: boolean;          // Selected for inclusion in quiz
+}
+```
+
+### AI Evaluation Criteria
+
+The Gemini model scores submissions based on:
+
+| Criterion | Points | Description |
+|-----------|--------|-------------|
+| Topic relevance | 0-25 | How well the question matches the specified topic |
+| Clarity | 0-20 | Is the question clear and unambiguous? |
+| Difficulty balance | 0-15 | Challenging but fair (not too easy, not impossible) |
+| Answer correctness | 0-25 | Is the marked correct answer factually accurate? (Heavy penalty if wrong!) |
+| Distractor quality | 0-15 | Are wrong answers plausible but clearly incorrect? |
+
+**Critical**: The AI verifies that the player-marked correct answer is factually accurate. Questions with incorrect answers receive scores of 0-20 maximum.
+
+### Firestore Structure
+
+```
+games/{gameId}/
+├── ... (standard game fields)
+├── crowdsourceState: {
+│   submissionsLocked: boolean,
+│   evaluationComplete: boolean,
+│   selectedCount: number
+│ }
+└── submissions/                    # Subcollection
+    └── {submissionId}/
+        ├── playerId, playerName
+        ├── submittedAt, expireAt
+        ├── questionText
+        ├── answers: string[]
+        ├── correctAnswerIndex
+        └── aiScore?, aiReasoning?, aiSelected?
+```
+
+### Cleanup Strategy
+
+Submissions are automatically cleaned up:
+1. **On game end**: `onGameUpdated` trigger deletes all submissions when state → 'ended'
+2. **On game delete**: `onGameDeleted` trigger cleans up players, submissions, and aggregates
+3. **Scheduled cleanup**: `cleanupOldGames` runs daily at 3:00 AM UTC, deleting games older than 30 days
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/types.ts` | CrowdsourceSettings, CrowdsourceState, QuestionSubmission types |
+| `src/components/app/quiz-form.tsx` | Crowdsource settings in quiz editor |
+| `src/app/play/[gameId]/components/question-submission-form.tsx` | Player submission form |
+| `src/app/play/[gameId]/components/screens/lobby-screen.tsx` | Lobby with submission UI |
+| `src/app/host/lobby/[gameId]/components/submissions-panel.tsx` | Host review panel |
+| `functions-ai/src/functions/evaluateSubmissions.ts` | AI evaluation Cloud Function |
+| `functions/src/functions/cleanupSubmissions.ts` | Firestore triggers for cleanup |
+| `functions/src/functions/cleanupOldGames.ts` | Scheduled cleanup function |
+
+---
+
 ## Performance & Reliability
 
 ### Critical Performance Patterns
@@ -970,7 +1121,10 @@ src/
 │   │   ├── page.tsx                           # Host dashboard
 │   │   ├── create/page.tsx                    # Create quiz
 │   │   ├── edit/[quizId]/page.tsx            # Edit quiz
-│   │   ├── lobby/[gameId]/page.tsx           # Game lobby
+│   │   ├── lobby/[gameId]/
+│   │   │   ├── page.tsx                       # Game lobby
+│   │   │   └── components/
+│   │   │       └── submissions-panel.tsx      # Crowdsource review panel
 │   │   └── game/[gameId]/
 │   │       ├── page.tsx                       # Live game host view
 │   │       └── hooks/
@@ -978,6 +1132,10 @@ src/
 │   │           └── use-question-timer.ts      # Host timer wrapper
 │   └── play/[gameId]/
 │       ├── page.tsx                           # Player game view
+│       ├── components/
+│       │   ├── question-submission-form.tsx   # Player question submission
+│       │   └── screens/
+│       │       └── lobby-screen.tsx           # Lobby with crowdsource UI
 │       └── hooks/
 │           ├── use-player-state-machine.ts    # State synchronization
 │           ├── use-answer-submission.ts       # Answer handling
@@ -994,7 +1152,7 @@ src/
 │   └── use-question-timer.ts                 # Shared timer (5-phase sync)
 │
 ├── lib/
-│   ├── types.ts                              # TypeScript definitions
+│   ├── types.ts                              # TypeScript definitions (incl. Crowdsource types)
 │   ├── scoring.ts                            # Scoring algorithms
 │   ├── constants.ts                          # App constants
 │   └── utils/
@@ -1010,7 +1168,20 @@ src/
 │
 functions/
 └── src/
-    └── index.ts                              # Cloud Functions (submitAnswer)
+    ├── index.ts                              # Cloud Functions exports
+    └── functions/
+        ├── submitAnswer.ts                   # Answer validation & scoring
+        ├── computeQuestionResults.ts         # Leaderboard aggregation
+        ├── cleanupSubmissions.ts             # Firestore triggers for cleanup
+        └── cleanupOldGames.ts                # Scheduled cleanup (daily)
+│
+functions-ai/
+└── src/
+    ├── index.ts                              # AI Functions exports
+    └── functions/
+        ├── generateQuizWithAI.ts             # Quiz generation
+        ├── generateQuestionImage.ts          # Image generation
+        └── evaluateSubmissions.ts            # Crowdsource evaluation
 
 docs/
 ├── architecture/
