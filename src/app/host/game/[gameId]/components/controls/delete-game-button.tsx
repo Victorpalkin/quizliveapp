@@ -4,6 +4,7 @@ import { Trash2 } from 'lucide-react';
 import { deleteDoc, DocumentReference } from 'firebase/firestore';
 import type { Game } from '@/lib/types';
 import { handleFirestoreError } from '@/lib/utils/error-utils';
+import { clearHostSession } from '@/lib/host-session';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +26,7 @@ export function DeleteGameButton({ gameRef }: DeleteGameButtonProps) {
 
   const handleDeleteGame = () => {
     if (!gameRef) return;
+    clearHostSession();
     deleteDoc(gameRef)
       .then(() => {
         router.push('/host');

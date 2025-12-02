@@ -38,6 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { HostReconnectBanner } from '@/components/app/host-reconnect-banner';
 
 function GameStateBadge({ state }: { state: Game['state'] }) {
     let text;
@@ -235,6 +236,9 @@ export default function HostDashboardPage() {
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-7xl">
+
+        {/* Host Reconnection Banner */}
+        <HostReconnectBanner />
 
         {/* Active Games Section */}
         {activeGames && activeGames.length > 0 && (

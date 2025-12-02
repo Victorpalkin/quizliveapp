@@ -9,12 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, Copy, Check, XCircle, QrCode } from 'lucide-react';
 import { Header } from '@/components/app/header';
 import { QRCodeSVG } from 'qrcode.react';
-import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, updateDoc, DocumentReference, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Game } from '@/lib/types';
+import type { Game, Quiz } from '@/lib/types';
+import { saveHostSession, clearHostSession } from '@/lib/host-session';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,14 +50,29 @@ export default function HostLobbyPage() {
   const gameId = params.gameId as string;
   const router = useRouter();
   const firestore = useFirestore();
+  const { user } = useUser();
   const [joinUrl, setJoinUrl] = useState<string>('');
 
   const gameRef = useMemoFirebase(() => doc(firestore, 'games', gameId) as DocumentReference<Game>, [firestore, gameId]);
   const { data: game, loading: gameLoading } = useDoc(gameRef);
 
+  // Fetch quiz for session saving
+  const quizRef = useMemoFirebase(
+    () => game ? doc(firestore, 'quizzes', game.quizId) as DocumentReference<Quiz> : null,
+    [firestore, game]
+  );
+  const { data: quiz } = useDoc(quizRef);
+
   // Only create players query after game is loaded to prevent race condition
   const playersQuery = useMemoFirebase(() => game ? collection(firestore, 'games', gameId, 'players') : null, [firestore, gameId, game]);
   const { data: players, loading: playersLoading } = useCollection(playersQuery);
+
+  // Save host session when lobby is loaded (so host can return if they leave)
+  useEffect(() => {
+    if (game && quiz && user) {
+      saveHostSession(gameId, game.gamePin, game.quizId, quiz.title, user.uid);
+    }
+  }, [gameId, game, quiz, user]);
 
   useEffect(() => {
     if (game?.gamePin) {
@@ -96,6 +112,7 @@ export default function HostLobbyPage() {
 
   const handleCancelGame = () => {
     if (!gameRef) return;
+    clearHostSession();
     deleteDoc(gameRef)
         .then(() => {
             router.push('/host');
