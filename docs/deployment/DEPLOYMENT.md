@@ -386,8 +386,10 @@ gcloud services enable storage.googleapis.com
 gcloud services enable cloudbilling.googleapis.com
 gcloud services enable cloudfunctions.googleapis.com
 gcloud services enable firebaseextensions.googleapis.com
-gcloud services enable eventarc.googleapis.com
-gcloud services enable aiplatform.googleapis.com  # For AI quiz generation (Gemini 3 Pro)
+gcloud services enable eventarc.googleapis.com       # For Firestore trigger functions (v2)
+gcloud services enable pubsub.googleapis.com         # Required by Eventarc and Cloud Scheduler
+gcloud services enable cloudscheduler.googleapis.com # For scheduled functions (cleanupOldGames)
+gcloud services enable aiplatform.googleapis.com     # For AI quiz generation (Gemini 3 Pro)
 ```
 
 **For Production Project:**
@@ -405,8 +407,10 @@ gcloud services enable storage.googleapis.com
 gcloud services enable cloudbilling.googleapis.com
 gcloud services enable cloudfunctions.googleapis.com
 gcloud services enable firebaseextensions.googleapis.com
-gcloud services enable eventarc.googleapis.com
-gcloud services enable aiplatform.googleapis.com  # For AI quiz generation (Gemini 3 Pro)
+gcloud services enable eventarc.googleapis.com       # For Firestore trigger functions (v2)
+gcloud services enable pubsub.googleapis.com         # Required by Eventarc and Cloud Scheduler
+gcloud services enable cloudscheduler.googleapis.com # For scheduled functions (cleanupOldGames)
+gcloud services enable aiplatform.googleapis.com     # For AI quiz generation (Gemini 3 Pro)
 ```
 
 ### 3.2 Create Custom Service Accounts for Cloud Build
@@ -502,6 +506,21 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${DEV_SA_EMAIL}" \
   --role="roles/serviceusage.serviceUsageConsumer"
 
+# Grant Cloud Scheduler Admin role (for scheduled functions like cleanupOldGames)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/cloudscheduler.admin"
+
+# Grant Eventarc Admin role (for Firestore trigger functions like onGameUpdated, onGameDeleted)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/eventarc.admin"
+
+# Grant Pub/Sub Admin role (required by Eventarc for Firestore triggers)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/pubsub.admin"
+
 # Verify permissions
 echo "Permissions granted to: ${DEV_SA_EMAIL}"
 gcloud projects get-iam-policy $DEV_PROJECT_ID \
@@ -560,6 +579,21 @@ gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
 gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
   --member="serviceAccount:${PROD_SA_EMAIL}" \
   --role="roles/serviceusage.serviceUsageConsumer"
+
+# Grant Cloud Scheduler Admin role (for scheduled functions like cleanupOldGames)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/cloudscheduler.admin"
+
+# Grant Eventarc Admin role (for Firestore trigger functions like onGameUpdated, onGameDeleted)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/eventarc.admin"
+
+# Grant Pub/Sub Admin role (required by Eventarc for Firestore triggers)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/pubsub.admin"
 
 # Verify permissions
 echo "Permissions granted to: ${PROD_SA_EMAIL}"
@@ -706,7 +740,22 @@ Firebase Cloud Functions v2 (deployed on Cloud Run) require IAM authentication b
 **For Development Project:**
 
 ```bash
+# Quiz generation
 gcloud functions add-invoker-policy-binding generateQuizWithAI \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$DEV_PROJECT_ID \
+  --gen2
+
+# Image generation
+gcloud functions add-invoker-policy-binding generateQuestionImage \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$DEV_PROJECT_ID \
+  --gen2
+
+# Crowdsourced question evaluation
+gcloud functions add-invoker-policy-binding evaluateSubmissions \
   --region=europe-west4 \
   --member="allUsers" \
   --project=$DEV_PROJECT_ID \
@@ -716,7 +765,22 @@ gcloud functions add-invoker-policy-binding generateQuizWithAI \
 **For Production Project:**
 
 ```bash
+# Quiz generation
 gcloud functions add-invoker-policy-binding generateQuizWithAI \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$PROD_PROJECT_ID \
+  --gen2
+
+# Image generation
+gcloud functions add-invoker-policy-binding generateQuestionImage \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$PROD_PROJECT_ID \
+  --gen2
+
+# Crowdsourced question evaluation
+gcloud functions add-invoker-policy-binding evaluateSubmissions \
   --region=europe-west4 \
   --member="allUsers" \
   --project=$PROD_PROJECT_ID \
@@ -1358,9 +1422,75 @@ gcloud functions add-invoker-policy-binding generateQuestionImage \
   --member="allUsers" \
   --project=$DEV_PROJECT_ID \
   --gen2
+
+# Crowdsourced question evaluation function
+gcloud functions add-invoker-policy-binding evaluateSubmissions \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$DEV_PROJECT_ID \
+  --gen2
 ```
 
 This is safe because the functions still require Firebase Auth at the application level. This step is automated in Cloud Build, so you only need to run it manually for initial setup or troubleshooting.
+
+### Issue: Firestore trigger or scheduled functions not appearing in Firebase Console
+
+**Symptoms:**
+- Functions like `onGameUpdated`, `onGameDeleted`, or `cleanupOldGames` are not deployed
+- Cloud Build shows success but functions don't appear in Firebase Console
+- No deployment errors visible in logs
+
+**Root Cause:**
+Firebase Functions v2 trigger types require additional Google Cloud APIs that may not be enabled:
+
+| Function Type | Required APIs |
+|--------------|---------------|
+| `onSchedule` | Cloud Scheduler API, Pub/Sub API |
+| `onDocumentUpdated` | Eventarc API, Pub/Sub API |
+| `onDocumentDeleted` | Eventarc API, Pub/Sub API |
+
+**Solution:**
+
+1. Enable the required APIs:
+
+```bash
+# For dev (or use $PROD_PROJECT_ID for production)
+gcloud services enable eventarc.googleapis.com --project=$DEV_PROJECT_ID
+gcloud services enable pubsub.googleapis.com --project=$DEV_PROJECT_ID
+gcloud services enable cloudscheduler.googleapis.com --project=$DEV_PROJECT_ID
+```
+
+2. Grant Cloud Build service account the required roles:
+
+```bash
+# For dev (or use $PROD_PROJECT_ID and PROD_SA_EMAIL for production)
+DEV_SA_EMAIL="cloudbuild-sa-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Cloud Scheduler Admin (for scheduled functions)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/cloudscheduler.admin"
+
+# Eventarc Admin (for Firestore triggers)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/eventarc.admin"
+
+# Pub/Sub Admin (required by Eventarc)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/pubsub.admin"
+```
+
+3. Redeploy the functions:
+
+```bash
+firebase deploy --only functions --config firebase.dev.json --project $DEV_PROJECT_ID
+```
+
+**Expected Functions After Fix:**
+- **default codebase**: submitAnswer, createHostAccount, computeQuestionResults, onGameUpdated, onGameDeleted, cleanupOldGames
+- **ai codebase**: generateQuizWithAI, generateQuestionImage, evaluateSubmissions
 
 ---
 
