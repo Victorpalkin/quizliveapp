@@ -34,7 +34,7 @@ export function LobbyScreen({
   const topicPrompt = crowdsourceSettings?.topicPrompt;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 md:p-8">
+    <div className={`flex flex-col items-center min-h-screen bg-background p-4 md:p-8 ${isCrowdsourceEnabled ? 'justify-start py-8' : 'justify-center'}`}>
       <div className="w-full max-w-2xl space-y-6">
         {/* Crowdsource Explanation & Submission - shown first when enabled */}
         {isCrowdsourceEnabled && (

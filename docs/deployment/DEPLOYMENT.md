@@ -679,6 +679,11 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${AI_SA_EMAIL}" \
   --role="roles/storage.objectAdmin"
 
+# Grant Cloud Datastore User role (required for reading/writing Firestore in evaluateSubmissions)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/datastore.user"
+
 # Verify the service account was created and has correct permissions
 echo "AI Functions service account created: ${AI_SA_EMAIL}"
 gcloud projects get-iam-policy $DEV_PROJECT_ID \
@@ -711,6 +716,11 @@ gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
   --member="serviceAccount:${AI_SA_EMAIL}" \
   --role="roles/storage.objectAdmin"
 
+# Grant Cloud Datastore User role (required for reading/writing Firestore in evaluateSubmissions)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/datastore.user"
+
 # Verify the service account was created and has correct permissions
 echo "AI Functions service account created: ${AI_SA_EMAIL}"
 gcloud projects get-iam-policy $PROD_PROJECT_ID \
@@ -722,7 +732,7 @@ gcloud projects get-iam-policy $PROD_PROJECT_ID \
 **Why a custom service account?**
 
 - **Security isolation**: AI functions have separate credentials from other functions
-- **Least privilege**: Only grants required roles (`roles/aiplatform.user` + `roles/storage.objectAdmin`)
+- **Least privilege**: Only grants required roles (`roles/aiplatform.user` + `roles/storage.objectAdmin` + `roles/datastore.user`)
 - **Auditability**: Easy to track AI API usage per service account
 - **Revocation**: Can disable AI access without affecting other functions
 
@@ -732,6 +742,7 @@ gcloud projects get-iam-policy $PROD_PROJECT_ID \
 |------|---------|
 | `roles/aiplatform.user` | Call Gemini API via Vertex AI |
 | `roles/storage.objectAdmin` | Upload AI-generated images to Firebase Storage |
+| `roles/datastore.user` | Read/write Firestore for crowdsourced question evaluation |
 
 **Grant Cloud Build permission to deploy with AI service account:**
 
@@ -1411,6 +1422,11 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${AI_SA_EMAIL}" \
   --role="roles/storage.objectAdmin"
 
+# Grant Cloud Datastore User role (for Firestore access in evaluateSubmissions)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/datastore.user"
+
 # Verify the Vertex AI API is enabled
 gcloud services list --enabled --project=$DEV_PROJECT_ID | grep aiplatform
 
@@ -1752,6 +1768,7 @@ Monitor costs in [Google Cloud Console](https://console.cloud.google.com/billing
   - [ ] AI service account has required roles (least privilege):
     - [ ] `roles/aiplatform.user` - for Gemini API access
     - [ ] `roles/storage.objectAdmin` - for AI-generated image storage
+    - [ ] `roles/datastore.user` - for Firestore access in evaluateSubmissions
   - [ ] Cloud Build service account can act as AI service account (`roles/iam.serviceAccountUser`)
   - [ ] AI functions deployed from `functions-ai` codebase with custom service account
   - [ ] AI functions allow unauthenticated invocations for CORS (automated in Cloud Build)

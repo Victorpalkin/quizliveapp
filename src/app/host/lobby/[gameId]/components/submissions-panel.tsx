@@ -171,13 +171,13 @@ export function SubmissionsPanel({ gameId, game, quiz }: SubmissionsPanelProps) 
       {/* Crowdsource Info Card */}
       <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5 rounded-2xl">
         <div className="p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-gradient-to-br from-primary to-accent p-3">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-gradient-to-br from-primary to-accent p-3 flex-shrink-0">
               <MessageSquarePlus className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="text-xl font-semibold">Question Crowdsourcing Active</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="text-xl font-semibold leading-tight">Question Crowdsourcing Active</h3>
+              <p className="text-sm text-muted-foreground mt-1">
                 Players can submit questions while waiting in the lobby
               </p>
             </div>
@@ -205,11 +205,11 @@ export function SubmissionsPanel({ gameId, game, quiz }: SubmissionsPanelProps) 
 
       {/* Submissions Panel */}
       <Card className="border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
-        <CardHeader className="flex-row items-center justify-between gap-3 p-6">
-          <div className="flex items-center gap-3">
-            <Lightbulb className="text-primary h-6 w-6" />
+        <CardHeader className="flex-row items-start justify-between gap-3 p-6">
+          <div className="flex items-start gap-3">
+            <Lightbulb className="text-primary h-6 w-6 mt-1 flex-shrink-0" />
             <div>
-              <CardTitle className="text-2xl font-semibold">
+              <CardTitle className="text-2xl font-semibold leading-tight">
                 Player Submissions ({submissionsLoading ? '...' : submissions?.length || 0})
               </CardTitle>
               <CardDescription className="mt-1">
@@ -219,7 +219,7 @@ export function SubmissionsPanel({ gameId, game, quiz }: SubmissionsPanelProps) 
               </CardDescription>
             </div>
           </div>
-          {isLocked && <Lock className="h-5 w-5 text-amber-500" />}
+          {isLocked && <Lock className="h-5 w-5 text-amber-500 flex-shrink-0" />}
         </CardHeader>
       <CardContent className="p-6 pt-0 space-y-4">
         {/* Evaluate button (before evaluation) */}
