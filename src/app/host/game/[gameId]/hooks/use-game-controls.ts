@@ -50,7 +50,7 @@ export function useGameControls(
   // IMPORTANT: Compute results BEFORE changing state to 'leaderboard'
   // This ensures players see correct rank/streak data when they transition to result screen
   const finishQuestion = useCallback(async () => {
-    if (!game) return;
+    if (!game || !quiz) return;
 
     // Show loading indicator on host side (while still in 'question' state)
     setIsComputingResults(true);
@@ -59,9 +59,11 @@ export function useGameControls(
     try {
       // Compute results FIRST (players still see question/waiting screen)
       const computeResults = httpsCallable(functions, 'computeQuestionResults');
+      const effectiveQuestions = getEffectiveQuestions(game, quiz);
       await computeResults({
         gameId,
         questionIndex: game.currentQuestionIndex,
+        questionType: effectiveQuestions[game.currentQuestionIndex]?.type || 'single-choice',
       });
 
       // THEN transition to leaderboard (players now see correct data)
@@ -75,7 +77,7 @@ export function useGameControls(
     } finally {
       setIsComputingResults(false);
     }
-  }, [game, gameId, functions, updateGame]);
+  }, [game, quiz, gameId, functions, updateGame]);
 
   const handleNext = useCallback(async () => {
     if (!game || !quiz || !gameRef) return;
@@ -95,13 +97,16 @@ export function useGameControls(
       } else {
         // Re-compute final results to ensure accuracy
         // This catches any last-second answers that may have been submitted
+        // Note: computeQuestionResults is idempotent - safe to call multiple times
         setIsComputingResults(true);
         setComputeError(null);
         try {
           const computeResults = httpsCallable(functions, 'computeQuestionResults');
+          const effectiveQuestions = getEffectiveQuestions(game, quiz);
           await computeResults({
             gameId,
             questionIndex: game.currentQuestionIndex,
+            questionType: effectiveQuestions[game.currentQuestionIndex]?.type || 'single-choice',
           });
         } catch (error: any) {
           console.error('[Game Controls] Error computing final results:', error);

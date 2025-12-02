@@ -9,6 +9,7 @@ import { ALLOWED_ORIGINS, REGION, GRACE_PERIOD_MS } from '../config';
 interface ComputeQuestionResultsRequest {
   gameId: string;
   questionIndex: number;
+  questionType: string;  // Passed from caller to determine streak behavior
 }
 
 /**
@@ -38,11 +39,11 @@ export const computeQuestionResults = onCall(
   async (request): Promise<ComputeQuestionResultsResult> => {
     const data = request.data as ComputeQuestionResultsRequest;
 
-    if (!data.gameId || data.questionIndex === undefined) {
-      throw new HttpsError('invalid-argument', 'gameId and questionIndex are required');
+    if (!data.gameId || data.questionIndex === undefined || !data.questionType) {
+      throw new HttpsError('invalid-argument', 'gameId, questionIndex, and questionType are required');
     }
 
-    const { gameId, questionIndex } = data;
+    const { gameId, questionIndex, questionType } = data;
     const db = admin.firestore();
 
     try {
@@ -116,23 +117,36 @@ export const computeQuestionResults = onCall(
       });
 
       // 6. Compute streaks for ALL players
-      // This handles timeouts correctly (no answer = streak reset)
+      // Uses questionType from parameter (not player answer) to handle slides/polls correctly
+      // Uses lastStreakQuestionIndex for idempotency (safe to call multiple times)
       const playerStreaks: Record<string, number> = {};
 
       allPlayersSnapshot.forEach(doc => {
         const playerData = doc.data() as Player;
+        const lastStreakQuestionIndex = playerData.lastStreakQuestionIndex ?? -1;
+
+        // IDEMPOTENCY CHECK: Skip if already computed for this question
+        if (lastStreakQuestionIndex >= questionIndex) {
+          playerStreaks[doc.id] = playerData.currentStreak || 0;
+          return;
+        }
+
         const answers = playerData.answers || [];
         const answer = answers.find(a => a.questionIndex === questionIndex);
         const previousStreak = playerData.currentStreak || 0;
 
-        // Calculate new streak
         let newStreak: number;
-        if (!answer) {
-          // No answer (timeout) = reset streak
-          newStreak = 0;
-        } else if (answer.questionType === 'poll-single' || answer.questionType === 'poll-multiple') {
-          // Polls don't affect streak
+
+        // Use question type from parameter (NOT from player answer)
+        // This correctly handles slides (no answer submitted) and poll timeouts
+        if (questionType === 'slide' ||
+            questionType === 'poll-single' ||
+            questionType === 'poll-multiple') {
+          // Slides and polls don't affect streak at all (even on timeout)
           newStreak = previousStreak;
+        } else if (!answer) {
+          // No answer on scored question = timeout = reset streak
+          newStreak = 0;
         } else if (answer.isCorrect) {
           // Correct answer = increment
           newStreak = previousStreak + 1;
@@ -163,11 +177,20 @@ export const computeQuestionResults = onCall(
         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // 9. Batch update player documents with new streaks
-      // This ensures player.currentStreak is accurate for the leaderboard display
+      // 9. Batch update player documents with new streaks (idempotent)
+      // Only updates if this question hasn't been processed yet
       const batch = db.batch();
       allPlayersSnapshot.forEach(doc => {
-        batch.update(doc.ref, { currentStreak: playerStreaks[doc.id] });
+        const playerData = doc.data() as Player;
+        const lastStreakQuestionIndex = playerData.lastStreakQuestionIndex ?? -1;
+
+        // Only update if this is a new question (idempotent)
+        if (questionIndex > lastStreakQuestionIndex) {
+          batch.update(doc.ref, {
+            currentStreak: playerStreaks[doc.id],
+            lastStreakQuestionIndex: questionIndex
+          });
+        }
       });
       await batch.commit();
 
