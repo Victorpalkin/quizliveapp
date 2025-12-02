@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { Header } from '@/components/app/header';
 import { QuizPreview } from '@/components/app/quiz-preview';
 import { useToast } from '@/hooks/use-toast';
@@ -202,12 +203,7 @@ export default function CreateQuizWithAIPage() {
   };
 
   if (userLoading || !user) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading...</p>
-      </div>
-    );
+    return <FullPageLoader />;
   }
 
   return (

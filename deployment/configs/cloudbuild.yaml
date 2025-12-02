@@ -107,8 +107,8 @@ steps:
       - |
         npm install -g firebase-tools
         echo "Deploying Cloud Functions to ${PROJECT_ID}..."
-        echo "  - Codebase 'default': submitAnswer, createHostAccount"
-        echo "  - Codebase 'ai': generateQuizWithAI (Gemini 3 Pro), generateQuestionImage (Gemini 3 Pro Image)"
+        echo "  - Codebase 'default': submitAnswer, createHostAccount, computeQuestionResults, onGameUpdated, onGameDeleted, cleanupOldGames"
+        echo "  - Codebase 'ai': generateQuizWithAI, generateQuestionImage, evaluateSubmissions"
         firebase deploy --only functions --config ${_FIREBASE_CONFIG} --project ${PROJECT_ID} --non-interactive --force
         echo "✅ Cloud Functions deployed successfully (all codebases)"
     id: 'deploy-functions'
@@ -135,6 +135,13 @@ steps:
 
         # generateQuestionImage - AI image generation using Gemini 3 Pro Image
         gcloud functions add-invoker-policy-binding generateQuestionImage \
+          --region=${_REGION} \
+          --member="allUsers" \
+          --project=${PROJECT_ID} \
+          --gen2
+
+        # evaluateSubmissions - AI evaluation of crowdsourced questions
+        gcloud functions add-invoker-policy-binding evaluateSubmissions \
           --region=${_REGION} \
           --member="allUsers" \
           --project=${PROJECT_ID} \

@@ -32,6 +32,7 @@
 | Copy quiz (own) | ✅ Implemented | Medium | Duplicate your own quizzes to modify |
 | AI quiz generation | ✅ Implemented | Very High | Generate quiz questions from topics using Gemini 3 Pro |
 | AI image generation | ✅ Implemented | High | Generate question images with AI, preview & regenerate flow |
+| Question crowdsourcing | ✅ Implemented | High | Players submit questions in lobby, AI evaluates and selects best ones |
 
 ### UX/UI Enhancements ✅
 
@@ -302,6 +303,7 @@ Based on impact/effort analysis, implement in this order:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.4 | 2025-12-02 | Added question crowdsourcing to implemented features |
 | 1.3 | 2025-11-25 | Added AI quiz generation and AI image generation to implemented features |
 | 1.2 | 2025-11-21 | Comprehensive audit: Removed 9 fully implemented features, updated 4 partial implementations with clarifications |
 | 1.1 | 2025-11-17 | Added Phase 1 refactoring completion notes and Phase 2 opportunities |

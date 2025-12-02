@@ -114,6 +114,35 @@ service cloud.firestore {
         // Players cannot be deleted
         allow delete: if false;
       }
+
+      // Question submissions for crowdsourced questions
+      match /submissions/{submissionId} {
+        // Anyone can read submissions (for display in lobby)
+        allow read: if true;
+
+        // Players can create submissions during lobby ONLY if not locked
+        // - Game must be in lobby state
+        // - Submissions must not be locked (host hasn't clicked "Evaluate")
+        // - Player must provide valid data
+        // Note: Use .get() with default to safely access nested crowdsourceState.submissionsLocked
+        allow create: if get(/databases/$(database)/documents/games/$(gameId)).data.state == 'lobby' &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.get('crowdsourceState', {'submissionsLocked': false}).submissionsLocked != true &&
+                         request.resource.data.playerId is string &&
+                         request.resource.data.playerName is string &&
+                         request.resource.data.questionText is string &&
+                         request.resource.data.questionText.size() >= 10 &&
+                         request.resource.data.questionText.size() <= 500 &&
+                         request.resource.data.answers.size() == 4 &&
+                         request.resource.data.correctAnswerIndex >= 0 &&
+                         request.resource.data.correctAnswerIndex <= 3;
+
+        // Only host can update submissions (for AI evaluation results)
+        allow update: if request.auth != null &&
+                         request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId;
+
+        // Deletes handled by Cloud Functions (cleanup on game end/cancel)
+        allow delete: if false;
+      }
     }
   }
 }

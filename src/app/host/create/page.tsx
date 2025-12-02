@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { Header } from '@/components/app/header';
 import { QuizForm, type QuizFormData } from '@/components/app/quiz-form';
 import { useToast } from '@/hooks/use-toast';
@@ -168,12 +168,7 @@ export default function CreateQuizPage() {
   };
 
   if (userLoading || !user) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading...</p>
-      </div>
-    );
+    return <FullPageLoader />;
   }
 
   return (

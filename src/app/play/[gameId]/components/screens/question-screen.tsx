@@ -1,4 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { CircularTimer } from '@/components/app/circular-timer';
 import type { Question, Quiz, Game } from '@/lib/types';
 import {
@@ -12,6 +13,8 @@ import {
 } from '@/components/app/player-question';
 import { QuestionCounter } from '@/components/app/question-counter';
 import { QuestionTypeBadges } from '@/components/app/question-type-badges';
+import { Users } from 'lucide-react';
+import { getEffectiveQuestions } from '@/lib/utils/game-utils';
 
 interface QuestionScreenProps {
   question: Question;
@@ -52,7 +55,15 @@ export function QuestionScreen({
     <div className="w-full h-full flex flex-col">
       <header className="p-4 flex items-center justify-center flex-col gap-2">
         <p className="text-2xl font-bold text-center">{question.text}</p>
-        <QuestionTypeBadges question={question} />
+        <div className="flex items-center gap-2 flex-wrap justify-center">
+          <QuestionTypeBadges question={question} />
+          {question?.submittedBy && (
+            <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+              <Users className="w-3 h-3 mr-1" />
+              Submitted by {question.submittedBy}
+            </Badge>
+          )}
+        </div>
         {question.type === 'multiple-choice' && question.showAnswerCount !== false && (
           <p className="text-sm text-muted-foreground">
             Select {question.correctAnswerIndices.length} answer{question.correctAnswerIndices.length > 1 ? 's' : ''}
@@ -121,7 +132,7 @@ export function QuestionScreen({
       <footer className="p-4 text-center">
         <QuestionCounter
           current={game.currentQuestionIndex + 1}
-          total={quiz.questions.length}
+          total={getEffectiveQuestions(game, quiz).length}
           variant="full"
         />
       </footer>

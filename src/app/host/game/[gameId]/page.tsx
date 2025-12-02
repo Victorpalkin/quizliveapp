@@ -16,6 +16,7 @@ import { QuestionCounter } from '@/components/app/question-counter';
 import { QuestionTypeBadges } from '@/components/app/question-type-badges';
 import { saveHostSession, clearHostSession } from '@/lib/host-session';
 import { useUser } from '@/firebase';
+import { getEffectiveQuestions } from '@/lib/utils/game-utils';
 
 // Hooks
 import { useGameState } from './hooks/use-game-state';
@@ -46,6 +47,9 @@ export default function HostGamePage() {
     gameLoading, quizLoading
   } = useGameState(gameId);
 
+  // Get effective questions (includes crowdsourced questions when integrated)
+  const effectiveQuestions = getEffectiveQuestions(game, quiz);
+
   // Save host session when game and quiz are loaded
   useEffect(() => {
     if (game && quiz && user && game.state !== 'ended') {
@@ -60,7 +64,7 @@ export default function HostGamePage() {
     }
   }, [game?.state]);
 
-  const question = quiz?.questions[game?.currentQuestionIndex || 0];
+  const question = effectiveQuestions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;
 
   // Game controls
@@ -178,7 +182,15 @@ export default function HostGamePage() {
               <CardContent className="p-8">
                 <div className="flex flex-col items-center gap-3">
                   <p className="text-3xl font-bold">{question.text}</p>
-                  <QuestionTypeBadges question={question} />
+                  <div className="flex items-center gap-2 flex-wrap justify-center">
+                    <QuestionTypeBadges question={question} />
+                    {question?.submittedBy && (
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                        <Users className="w-3 h-3 mr-1" />
+                        Submitted by {question.submittedBy}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -316,7 +328,7 @@ export default function HostGamePage() {
         <div>
           <QuestionCounter
             current={(game?.currentQuestionIndex || 0) + 1}
-            total={quiz?.questions.length || 0}
+            total={effectiveQuestions.length}
             className="text-lg mr-4"
           />
           {game?.state === 'question' && (

@@ -71,6 +71,7 @@ export interface Player {
   score: number;
   answers: PlayerAnswer[];
   currentStreak?: number;
+  lastStreakQuestionIndex?: number;  // For idempotent streak calculation
 }
 
 /**

@@ -386,8 +386,10 @@ gcloud services enable storage.googleapis.com
 gcloud services enable cloudbilling.googleapis.com
 gcloud services enable cloudfunctions.googleapis.com
 gcloud services enable firebaseextensions.googleapis.com
-gcloud services enable eventarc.googleapis.com
-gcloud services enable aiplatform.googleapis.com  # For AI quiz generation (Gemini 3 Pro)
+gcloud services enable eventarc.googleapis.com       # For Firestore trigger functions (v2)
+gcloud services enable pubsub.googleapis.com         # Required by Eventarc and Cloud Scheduler
+gcloud services enable cloudscheduler.googleapis.com # For scheduled functions (cleanupOldGames)
+gcloud services enable aiplatform.googleapis.com     # For AI quiz generation (Gemini 3 Pro)
 ```
 
 **For Production Project:**
@@ -405,8 +407,10 @@ gcloud services enable storage.googleapis.com
 gcloud services enable cloudbilling.googleapis.com
 gcloud services enable cloudfunctions.googleapis.com
 gcloud services enable firebaseextensions.googleapis.com
-gcloud services enable eventarc.googleapis.com
-gcloud services enable aiplatform.googleapis.com  # For AI quiz generation (Gemini 3 Pro)
+gcloud services enable eventarc.googleapis.com       # For Firestore trigger functions (v2)
+gcloud services enable pubsub.googleapis.com         # Required by Eventarc and Cloud Scheduler
+gcloud services enable cloudscheduler.googleapis.com # For scheduled functions (cleanupOldGames)
+gcloud services enable aiplatform.googleapis.com     # For AI quiz generation (Gemini 3 Pro)
 ```
 
 ### 3.2 Create Custom Service Accounts for Cloud Build
@@ -502,12 +506,49 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${DEV_SA_EMAIL}" \
   --role="roles/serviceusage.serviceUsageConsumer"
 
+# Grant Cloud Scheduler Admin role (for scheduled functions like cleanupOldGames)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/cloudscheduler.admin"
+
+# Grant Eventarc Admin role (for Firestore trigger functions like onGameUpdated, onGameDeleted)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/eventarc.admin"
+
+# Grant Pub/Sub Admin role (required by Eventarc for Firestore triggers)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/pubsub.admin"
+
 # Verify permissions
 echo "Permissions granted to: ${DEV_SA_EMAIL}"
 gcloud projects get-iam-policy $DEV_PROJECT_ID \
   --flatten="bindings[].members" \
   --filter="bindings.members:serviceAccount:${DEV_SA_EMAIL}" \
   --format="table(bindings.role)"
+
+# Grant GCP service agent bindings (required for Eventarc/Firestore triggers)
+PROJECT_NUMBER=$(gcloud projects describe $DEV_PROJECT_ID --format="value(projectNumber)")
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com \
+  --role=roles/iam.serviceAccountTokenCreator
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/run.invoker
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/eventarc.eventReceiver
+
+# Eventarc Service Agent needs serviceAgent role
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-eventarc.iam.gserviceaccount.com \
+  --role=roles/eventarc.serviceAgent
+
+echo "GCP service agent bindings configured for Eventarc"
 ```
 
 **For Production Project:**
@@ -561,12 +602,49 @@ gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
   --member="serviceAccount:${PROD_SA_EMAIL}" \
   --role="roles/serviceusage.serviceUsageConsumer"
 
+# Grant Cloud Scheduler Admin role (for scheduled functions like cleanupOldGames)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/cloudscheduler.admin"
+
+# Grant Eventarc Admin role (for Firestore trigger functions like onGameUpdated, onGameDeleted)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/eventarc.admin"
+
+# Grant Pub/Sub Admin role (required by Eventarc for Firestore triggers)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${PROD_SA_EMAIL}" \
+  --role="roles/pubsub.admin"
+
 # Verify permissions
 echo "Permissions granted to: ${PROD_SA_EMAIL}"
 gcloud projects get-iam-policy $PROD_PROJECT_ID \
   --flatten="bindings[].members" \
   --filter="bindings.members:serviceAccount:${PROD_SA_EMAIL}" \
   --format="table(bindings.role)"
+
+# Grant GCP service agent bindings (required for Eventarc/Firestore triggers)
+PROJECT_NUMBER=$(gcloud projects describe $PROD_PROJECT_ID --format="value(projectNumber)")
+
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member=serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com \
+  --role=roles/iam.serviceAccountTokenCreator
+
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/run.invoker
+
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/eventarc.eventReceiver
+
+# Eventarc Service Agent needs serviceAgent role
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member=serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-eventarc.iam.gserviceaccount.com \
+  --role=roles/eventarc.serviceAgent
+
+echo "GCP service agent bindings configured for Eventarc"
 ```
 
 ### 3.4 Create Custom Service Account for AI Functions
@@ -601,6 +679,11 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${AI_SA_EMAIL}" \
   --role="roles/storage.objectAdmin"
 
+# Grant Cloud Datastore User role (required for reading/writing Firestore in evaluateSubmissions)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/datastore.user"
+
 # Verify the service account was created and has correct permissions
 echo "AI Functions service account created: ${AI_SA_EMAIL}"
 gcloud projects get-iam-policy $DEV_PROJECT_ID \
@@ -633,6 +716,11 @@ gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
   --member="serviceAccount:${AI_SA_EMAIL}" \
   --role="roles/storage.objectAdmin"
 
+# Grant Cloud Datastore User role (required for reading/writing Firestore in evaluateSubmissions)
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/datastore.user"
+
 # Verify the service account was created and has correct permissions
 echo "AI Functions service account created: ${AI_SA_EMAIL}"
 gcloud projects get-iam-policy $PROD_PROJECT_ID \
@@ -644,7 +732,7 @@ gcloud projects get-iam-policy $PROD_PROJECT_ID \
 **Why a custom service account?**
 
 - **Security isolation**: AI functions have separate credentials from other functions
-- **Least privilege**: Only grants required roles (`roles/aiplatform.user` + `roles/storage.objectAdmin`)
+- **Least privilege**: Only grants required roles (`roles/aiplatform.user` + `roles/storage.objectAdmin` + `roles/datastore.user`)
 - **Auditability**: Easy to track AI API usage per service account
 - **Revocation**: Can disable AI access without affecting other functions
 
@@ -654,6 +742,7 @@ gcloud projects get-iam-policy $PROD_PROJECT_ID \
 |------|---------|
 | `roles/aiplatform.user` | Call Gemini API via Vertex AI |
 | `roles/storage.objectAdmin` | Upload AI-generated images to Firebase Storage |
+| `roles/datastore.user` | Read/write Firestore for crowdsourced question evaluation |
 
 **Grant Cloud Build permission to deploy with AI service account:**
 
@@ -706,7 +795,22 @@ Firebase Cloud Functions v2 (deployed on Cloud Run) require IAM authentication b
 **For Development Project:**
 
 ```bash
+# Quiz generation
 gcloud functions add-invoker-policy-binding generateQuizWithAI \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$DEV_PROJECT_ID \
+  --gen2
+
+# Image generation
+gcloud functions add-invoker-policy-binding generateQuestionImage \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$DEV_PROJECT_ID \
+  --gen2
+
+# Crowdsourced question evaluation
+gcloud functions add-invoker-policy-binding evaluateSubmissions \
   --region=europe-west4 \
   --member="allUsers" \
   --project=$DEV_PROJECT_ID \
@@ -716,7 +820,22 @@ gcloud functions add-invoker-policy-binding generateQuizWithAI \
 **For Production Project:**
 
 ```bash
+# Quiz generation
 gcloud functions add-invoker-policy-binding generateQuizWithAI \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$PROD_PROJECT_ID \
+  --gen2
+
+# Image generation
+gcloud functions add-invoker-policy-binding generateQuestionImage \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$PROD_PROJECT_ID \
+  --gen2
+
+# Crowdsourced question evaluation
+gcloud functions add-invoker-policy-binding evaluateSubmissions \
   --region=europe-west4 \
   --member="allUsers" \
   --project=$PROD_PROJECT_ID \
@@ -1303,6 +1422,11 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member="serviceAccount:${AI_SA_EMAIL}" \
   --role="roles/storage.objectAdmin"
 
+# Grant Cloud Datastore User role (for Firestore access in evaluateSubmissions)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${AI_SA_EMAIL}" \
+  --role="roles/datastore.user"
+
 # Verify the Vertex AI API is enabled
 gcloud services list --enabled --project=$DEV_PROJECT_ID | grep aiplatform
 
@@ -1358,9 +1482,128 @@ gcloud functions add-invoker-policy-binding generateQuestionImage \
   --member="allUsers" \
   --project=$DEV_PROJECT_ID \
   --gen2
+
+# Crowdsourced question evaluation function
+gcloud functions add-invoker-policy-binding evaluateSubmissions \
+  --region=europe-west4 \
+  --member="allUsers" \
+  --project=$DEV_PROJECT_ID \
+  --gen2
 ```
 
 This is safe because the functions still require Firebase Auth at the application level. This step is automated in Cloud Build, so you only need to run it manually for initial setup or troubleshooting.
+
+### Issue: Firestore trigger or scheduled functions not appearing in Firebase Console
+
+**Symptoms:**
+- Functions like `onGameUpdated`, `onGameDeleted`, or `cleanupOldGames` are not deployed
+- Cloud Build shows success but functions don't appear in Firebase Console
+- No deployment errors visible in logs
+
+**Root Cause:**
+Firebase Functions v2 trigger types require additional Google Cloud APIs that may not be enabled:
+
+| Function Type | Required APIs |
+|--------------|---------------|
+| `onSchedule` | Cloud Scheduler API, Pub/Sub API |
+| `onDocumentUpdated` | Eventarc API, Pub/Sub API |
+| `onDocumentDeleted` | Eventarc API, Pub/Sub API |
+
+**Solution:**
+
+1. Enable the required APIs:
+
+```bash
+# For dev (or use $PROD_PROJECT_ID for production)
+gcloud services enable eventarc.googleapis.com --project=$DEV_PROJECT_ID
+gcloud services enable pubsub.googleapis.com --project=$DEV_PROJECT_ID
+gcloud services enable cloudscheduler.googleapis.com --project=$DEV_PROJECT_ID
+```
+
+2. Grant Cloud Build service account the required roles:
+
+```bash
+# For dev (or use $PROD_PROJECT_ID and PROD_SA_EMAIL for production)
+DEV_SA_EMAIL="cloudbuild-sa-dev@${DEV_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Cloud Scheduler Admin (for scheduled functions)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/cloudscheduler.admin"
+
+# Eventarc Admin (for Firestore triggers)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/eventarc.admin"
+
+# Pub/Sub Admin (required by Eventarc)
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member="serviceAccount:${DEV_SA_EMAIL}" \
+  --role="roles/pubsub.admin"
+```
+
+3. Grant GCP service agent IAM bindings (required for Eventarc to work):
+
+```bash
+# Get your project number
+PROJECT_NUMBER=$(gcloud projects describe $DEV_PROJECT_ID --format="value(projectNumber)")
+
+# Pub/Sub service account needs token creator role
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com \
+  --role=roles/iam.serviceAccountTokenCreator
+
+# Compute service account needs run.invoker for Eventarc to invoke functions
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/run.invoker
+
+# Compute service account needs eventarc.eventReceiver to receive events
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/eventarc.eventReceiver
+
+# Eventarc Service Agent needs serviceAgent role
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-eventarc.iam.gserviceaccount.com \
+  --role=roles/eventarc.serviceAgent
+```
+
+4. Wait 2-3 minutes for permissions to propagate, then redeploy the functions:
+
+```bash
+firebase deploy --only functions --config firebase.dev.json --project $DEV_PROJECT_ID
+```
+
+**Expected Functions After Fix:**
+
+- **default codebase**: submitAnswer, createHostAccount, computeQuestionResults, onGameUpdated, onGameDeleted, cleanupOldGames
+- **ai codebase**: generateQuizWithAI, generateQuestionImage, evaluateSubmissions
+
+### Issue: Cloud Scheduler location not valid error
+
+**Symptoms:**
+- Error: `Location 'europe-west4' is not a valid location. Use ListLocations to list valid locations.`
+- Scheduled functions (like `cleanupOldGames`) fail to deploy
+
+**Root Cause:**
+Cloud Scheduler is not available in all regions. `europe-west4` is not supported.
+
+**Solution:**
+The `cleanupOldGames` function uses `europe-west1` instead of `europe-west4` for Cloud Scheduler compatibility. This is configured in `functions/src/functions/cleanupOldGames.ts`:
+
+```typescript
+// Cloud Scheduler is not available in europe-west4, so we use europe-west1
+const SCHEDULER_REGION = 'europe-west1';
+```
+
+To check available Cloud Scheduler locations:
+
+```bash
+gcloud scheduler locations list
+```
+
+**Note:** The scheduled function will run in `europe-west1` while other functions run in `europe-west4`. This has no functional impact.
 
 ---
 
@@ -1525,6 +1768,7 @@ Monitor costs in [Google Cloud Console](https://console.cloud.google.com/billing
   - [ ] AI service account has required roles (least privilege):
     - [ ] `roles/aiplatform.user` - for Gemini API access
     - [ ] `roles/storage.objectAdmin` - for AI-generated image storage
+    - [ ] `roles/datastore.user` - for Firestore access in evaluateSubmissions
   - [ ] Cloud Build service account can act as AI service account (`roles/iam.serviceAccountUser`)
   - [ ] AI functions deployed from `functions-ai` codebase with custom service account
   - [ ] AI functions allow unauthenticated invocations for CORS (automated in Cloud Build)

@@ -43,13 +43,14 @@ export const GEMINI_MODEL = 'gemini-3-pro-preview';
 
 /**
  * Service account for AI functions
- * This service account has permissions for Vertex AI and Firebase Storage
+ * This service account has permissions for Vertex AI, Firebase Storage, and Firestore
  * Format: {name}@{project-id}.iam.gserviceaccount.com
  *
  * The service account is created during deployment with name: 'gquiz-ai-functions'
  * Required roles:
  *   - roles/aiplatform.user        (Vertex AI access for Gemini API)
  *   - roles/storage.objectAdmin    (Firebase Storage for AI-generated images)
+ *   - roles/datastore.user         (Firestore access for evaluateSubmissions)
  *
  * See docs/deployment/DEPLOYMENT.md section 3.4 for setup instructions.
  */

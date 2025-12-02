@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Clock, Gauge } from 'lucide-react';
+import { CheckCircle, Clock, Gauge, Users, MessageSquarePlus } from 'lucide-react';
 import Image from 'next/image';
 import type { Quiz } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -40,6 +40,42 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
           {quiz.questions.length} {quiz.questions.length === 1 ? 'Question' : 'Questions'}
         </Badge>
       </div>
+
+      {/* Crowdsource Settings */}
+      {quiz.crowdsource?.enabled && (
+        <Card className="rounded-2xl border-dashed border-2 border-primary/30 bg-primary/5">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <MessageSquarePlus className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-sm">Player Question Submissions Enabled</h3>
+                </div>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>
+                    <span className="font-medium text-foreground">Topic:</span>{' '}
+                    {quiz.crowdsource.topicPrompt || 'Not specified'}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline" className="rounded-full text-xs">
+                      <Users className="h-3 w-3 mr-1" />
+                      {quiz.crowdsource.maxSubmissionsPerPlayer} per player
+                    </Badge>
+                    <Badge variant="outline" className="rounded-full text-xs">
+                      {quiz.crowdsource.questionsNeeded} questions needed
+                    </Badge>
+                    <Badge variant="outline" className="rounded-full text-xs capitalize">
+                      {quiz.crowdsource.integrationMode} mode
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Questions */}
       <div className="space-y-6">

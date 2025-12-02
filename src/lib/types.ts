@@ -12,6 +12,7 @@ interface BaseQuestion {
   text: string;
   timeLimit?: number; // in seconds
   imageUrl?: string;
+  submittedBy?: string; // Player name for crowdsourced questions
 }
 
 // Single choice question - exactly one correct answer
@@ -70,12 +71,22 @@ export interface PollMultipleQuestion extends BaseQuestion {
 // Discriminated union of all question types
 export type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion;
 
+// Crowdsource settings configured during quiz creation/edit
+export interface CrowdsourceSettings {
+  enabled: boolean;                  // Default: false
+  topicPrompt: string;               // e.g., "European geography"
+  questionsNeeded: number;           // How many questions to select (default: 10)
+  maxSubmissionsPerPlayer: number;   // Default: 3
+  integrationMode: 'append' | 'replace' | 'prepend';  // Default: 'append'
+}
+
 export interface Quiz {
   id: string;
   title: string;
   description: string;
   questions: Question[];
   hostId: string;
+  crowdsource?: CrowdsourceSettings;  // Optional crowdsource configuration
 }
 
 export interface QuizShare {
@@ -124,6 +135,13 @@ export interface Player {
     currentStreak: number;
 }
 
+// Runtime state for crowdsourced questions during lobby
+export interface CrowdsourceState {
+  submissionsLocked: boolean;    // True when AI evaluation starts - no new submissions
+  evaluationComplete: boolean;   // Has AI evaluated yet
+  selectedCount: number;         // How many questions selected
+}
+
 export interface Game {
     id: string;
     quizId: string;
@@ -132,6 +150,8 @@ export interface Game {
     currentQuestionIndex: number;
     gamePin: string;
     questionStartTime?: Timestamp; // Firestore server timestamp when current question started (for timer sync)
+    crowdsourceState?: CrowdsourceState;  // Runtime state for crowdsourced questions
+    questions?: Question[];  // Override questions (used when crowdsourced questions are integrated)
 }
 
 // Cloud Function response interface for submitAnswer
@@ -169,4 +189,23 @@ export interface GameLeaderboard {
   playerRanks: Record<string, PlayerRankInfo>;  // Map of playerId -> rank info
   playerStreaks: Record<string, number>;  // Map of playerId -> streak count
   lastUpdated: Timestamp | null;
+}
+
+// Question submission from a player during lobby (crowdsourced questions)
+export interface QuestionSubmission {
+  id: string;
+  playerId: string;
+  playerName: string;
+  submittedAt: Timestamp;
+  expireAt: Timestamp;  // For Firestore TTL cleanup (24 hours from creation)
+
+  // Question content (single-choice only for MVP)
+  questionText: string;
+  answers: string[];  // 4 answer options
+  correctAnswerIndex: number;  // Stored but NOT shown to host
+
+  // AI evaluation results (populated after evaluation)
+  aiScore?: number;        // 0-100 quality score
+  aiReasoning?: string;    // Why this score
+  aiSelected?: boolean;    // Selected for quiz
 }
