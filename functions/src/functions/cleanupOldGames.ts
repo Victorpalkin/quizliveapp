@@ -1,6 +1,8 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
-import { REGION } from '../config';
+
+// Cloud Scheduler is not available in europe-west4, so we use europe-west1 for scheduled functions
+const SCHEDULER_REGION = 'europe-west1';
 
 const RETENTION_DAYS = 30;
 
@@ -75,7 +77,7 @@ async function deleteGameWithSubcollections(gameRef: admin.firestore.DocumentRef
 export const cleanupOldGames = onSchedule(
   {
     schedule: '0 3 * * *', // Daily at 3:00 AM UTC
-    region: REGION,
+    region: SCHEDULER_REGION,
     timeoutSeconds: 540, // 9 minutes (max for scheduled functions)
     memory: '512MiB',
   },

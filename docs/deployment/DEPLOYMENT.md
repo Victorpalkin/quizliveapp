@@ -543,6 +543,11 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
   --role=roles/eventarc.eventReceiver
 
+# Eventarc Service Agent needs serviceAgent role
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-eventarc.iam.gserviceaccount.com \
+  --role=roles/eventarc.serviceAgent
+
 echo "GCP service agent bindings configured for Eventarc"
 ```
 
@@ -633,6 +638,11 @@ gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
 gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
   --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
   --role=roles/eventarc.eventReceiver
+
+# Eventarc Service Agent needs serviceAgent role
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member=serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-eventarc.iam.gserviceaccount.com \
+  --role=roles/eventarc.serviceAgent
 
 echo "GCP service agent bindings configured for Eventarc"
 ```
@@ -1536,17 +1546,48 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
 gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
   --role=roles/eventarc.eventReceiver
+
+# Eventarc Service Agent needs serviceAgent role
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-eventarc.iam.gserviceaccount.com \
+  --role=roles/eventarc.serviceAgent
 ```
 
-4. Redeploy the functions:
+4. Wait 2-3 minutes for permissions to propagate, then redeploy the functions:
 
 ```bash
 firebase deploy --only functions --config firebase.dev.json --project $DEV_PROJECT_ID
 ```
 
 **Expected Functions After Fix:**
+
 - **default codebase**: submitAnswer, createHostAccount, computeQuestionResults, onGameUpdated, onGameDeleted, cleanupOldGames
 - **ai codebase**: generateQuizWithAI, generateQuestionImage, evaluateSubmissions
+
+### Issue: Cloud Scheduler location not valid error
+
+**Symptoms:**
+- Error: `Location 'europe-west4' is not a valid location. Use ListLocations to list valid locations.`
+- Scheduled functions (like `cleanupOldGames`) fail to deploy
+
+**Root Cause:**
+Cloud Scheduler is not available in all regions. `europe-west4` is not supported.
+
+**Solution:**
+The `cleanupOldGames` function uses `europe-west1` instead of `europe-west4` for Cloud Scheduler compatibility. This is configured in `functions/src/functions/cleanupOldGames.ts`:
+
+```typescript
+// Cloud Scheduler is not available in europe-west4, so we use europe-west1
+const SCHEDULER_REGION = 'europe-west1';
+```
+
+To check available Cloud Scheduler locations:
+
+```bash
+gcloud scheduler locations list
+```
+
+**Note:** The scheduled function will run in `europe-west1` while other functions run in `europe-west4`. This has no functional impact.
 
 ---
 
