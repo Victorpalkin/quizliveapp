@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, DocumentReference } from 'firebase/firestore';
+import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where, DocumentReference, Query } from 'firebase/firestore';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
-import type { Quiz, Player, Game, GameLeaderboard } from '@/lib/types';
+import type { Quiz, Player, Game, GameLeaderboard, QuestionSubmission } from '@/lib/types';
+import { getEffectiveQuestions } from '@/lib/utils/game-utils';
 
 // Hooks
 import { useSessionManager } from './hooks/use-session-manager';
@@ -74,6 +75,16 @@ export default function PlayerGamePage() {
     return leaderboard.playerStreaks[playerId] || 0;
   }, [leaderboard, playerId]);
 
+  // Subscribe to player's question submissions (for crowdsourced questions)
+  const submissionsQuery = useMemoFirebase(
+    () => gameDocId ? query(
+      collection(firestore, 'games', gameDocId, 'submissions'),
+      where('playerId', '==', playerId)
+    ) as Query<QuestionSubmission> : null,
+    [firestore, gameDocId, playerId]
+  );
+  const { data: playerSubmissions } = useCollection<QuestionSubmission>(submissionsQuery);
+
   // Quiz caching (quiz is immutable during game)
   const [cachedQuiz, setCachedQuiz] = useState<Quiz | null>(null);
   const quizRef = useMemoFirebase(
@@ -89,7 +100,9 @@ export default function PlayerGamePage() {
   }, [quizData, cachedQuiz]);
 
   const quiz = cachedQuiz || (quizData as Quiz | null);
-  const question = quiz?.questions[game?.currentQuestionIndex || 0];
+  // Use effective questions (game.questions if crowdsourced, otherwise quiz.questions)
+  const effectiveQuestions = getEffectiveQuestions(game, quiz);
+  const question = effectiveQuestions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;
 
   // State machine
@@ -233,7 +246,17 @@ export default function PlayerGamePage() {
         );
 
       case 'lobby':
-        return <LobbyScreen playerName={player?.name || ''} gamePin={game?.gamePin || ''} />;
+        return (
+          <LobbyScreen
+            playerName={player?.name || ''}
+            gamePin={game?.gamePin || ''}
+            gameId={gameDocId || ''}
+            playerId={playerId}
+            crowdsourceSettings={quiz?.crowdsource}
+            crowdsourceState={game?.crowdsourceState}
+            playerSubmissions={playerSubmissions || []}
+          />
+        );
 
       case 'preparing':
         return <PreparingScreen />;

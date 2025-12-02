@@ -10,12 +10,13 @@ import { Users, Copy, Check, XCircle, QrCode } from 'lucide-react';
 import { Header } from '@/components/app/header';
 import { QRCodeSVG } from 'qrcode.react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, updateDoc, DocumentReference, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, updateDoc, DocumentReference, deleteDoc, setDoc, serverTimestamp, query, where, Query, getDocs } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Game, Quiz } from '@/lib/types';
+import type { Game, Quiz, QuestionSubmission, SingleChoiceQuestion, Question } from '@/lib/types';
 import { saveHostSession, clearHostSession } from '@/lib/host-session';
+import { SubmissionsPanel } from './components/submissions-panel';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -81,7 +82,7 @@ export default function HostLobbyPage() {
   }, [game?.gamePin]);
   
   const handleStartGame = async () => {
-    if (!gameRef) return;
+    if (!gameRef || !quiz) return;
 
     try {
       // Initialize leaderboard aggregate with player count before starting game
@@ -95,8 +96,51 @@ export default function HostLobbyPage() {
         lastUpdated: serverTimestamp(),
       });
 
-      // Now start the game
-      const updateData = { state: 'preparing' as const };
+      // Check if crowdsourcing is enabled and integrate selected questions
+      const updateData: Partial<Game> = { state: 'preparing' as const };
+
+      if (quiz.crowdsource?.enabled) {
+        // Get selected submissions
+        const submissionsRef = collection(firestore, 'games', gameId, 'submissions');
+        const selectedQuery = query(submissionsRef, where('aiSelected', '==', true));
+        const selectedSnapshot = await getDocs(selectedQuery);
+
+        if (!selectedSnapshot.empty) {
+          // Convert submissions to questions
+          const crowdsourcedQuestions: SingleChoiceQuestion[] = selectedSnapshot.docs.map(doc => {
+            const sub = doc.data() as QuestionSubmission;
+            return {
+              type: 'single-choice' as const,
+              text: sub.questionText,
+              timeLimit: 20, // Default time limit
+              answers: sub.answers.map(text => ({ text })),
+              correctAnswerIndex: sub.correctAnswerIndex,
+            };
+          });
+
+          // Integrate based on mode
+          const originalQuestions = quiz.questions || [];
+          const integrationMode = quiz.crowdsource.integrationMode || 'append';
+
+          let integratedQuestions: Question[];
+          switch (integrationMode) {
+            case 'prepend':
+              integratedQuestions = [...crowdsourcedQuestions, ...originalQuestions];
+              break;
+            case 'replace':
+              integratedQuestions = crowdsourcedQuestions;
+              break;
+            case 'append':
+            default:
+              integratedQuestions = [...originalQuestions, ...crowdsourcedQuestions];
+              break;
+          }
+
+          // Store integrated questions in the game document
+          updateData.questions = integratedQuestions;
+        }
+      }
+
       await updateDoc(gameRef, updateData);
       router.push(`/host/game/${gameId}`);
     } catch (error) {
@@ -223,6 +267,13 @@ export default function HostLobbyPage() {
                 </Button>
             </Card>
           </div>
+
+          {/* Crowdsourced Questions Panel */}
+          {game && quiz && (
+            <div className="max-w-5xl mx-auto w-full">
+              <SubmissionsPanel gameId={gameId} game={game} quiz={quiz} />
+            </div>
+          )}
         </div>
 
         <div className="mt-12 border-t border-border w-full max-w-5xl pt-8 flex justify-center">

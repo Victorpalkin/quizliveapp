@@ -6,3 +6,4 @@ admin.initializeApp();
 // Export AI Cloud Functions
 export { generateQuizWithAI } from './functions/generateQuizWithAI';
 export { generateQuestionImage } from './functions/generateQuestionImage';
+export { evaluateSubmissions } from './functions/evaluateSubmissions';

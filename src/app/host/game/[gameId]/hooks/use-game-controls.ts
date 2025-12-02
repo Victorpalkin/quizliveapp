@@ -3,7 +3,7 @@ import { updateDoc, serverTimestamp, DocumentReference, Timestamp, doc, getFires
 import { httpsCallable } from 'firebase/functions';
 import { useFunctions, trackEvent } from '@/firebase';
 import type { Game, Quiz } from '@/lib/types';
-import { isLastQuestion as checkIsLastQuestion } from '@/lib/utils/game-utils';
+import { isLastQuestion as checkIsLastQuestion, getEffectiveQuestions } from '@/lib/utils/game-utils';
 import { handleFirestoreError } from '@/lib/utils/error-utils';
 
 export function useGameControls(
@@ -112,7 +112,7 @@ export function useGameControls(
 
         // Track game ended
         trackEvent('game_ended', {
-          question_count: quiz.questions.length,
+          question_count: getEffectiveQuestions(game, quiz).length,
         });
 
         updateGame({ state: 'ended' });
@@ -126,8 +126,9 @@ export function useGameControls(
   const startQuestion = useCallback(() => {
     if (!game || !quiz) return;
 
+    const questions = getEffectiveQuestions(game, quiz);
     const questionIndex = game.currentQuestionIndex;
-    const question = quiz.questions[questionIndex];
+    const question = questions[questionIndex];
 
     // Track question started
     trackEvent('question_started', {
@@ -138,7 +139,7 @@ export function useGameControls(
     // Track game started on first question
     if (questionIndex === 0) {
       trackEvent('game_started', {
-        question_count: quiz.questions.length,
+        question_count: questions.length,
       });
     }
 
