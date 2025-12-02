@@ -38,12 +38,14 @@ interface EvaluationResult {
 const EVALUATION_PROMPT = `You are evaluating trivia questions submitted by players for a live quiz game.
 
 Your task is to score each question from 0-100 based on the following criteria:
-- Topic relevance (0-30): How well does the question match the specified topic?
-- Clarity (0-25): Is the question clear and unambiguous?
-- Difficulty balance (0-20): Is it challenging but fair? (not too easy, not impossibly hard)
-- Answer quality (0-25): Are the wrong answers plausible but clearly incorrect? Is the correct answer definitively correct?
+- Topic relevance (0-25): How well does the question match the specified topic?
+- Clarity (0-20): Is the question clear and unambiguous?
+- Difficulty balance (0-15): Is it challenging but fair? (not too easy, not impossibly hard)
+- Answer correctness (0-25): Is the marked correct answer ACTUALLY correct? Penalize heavily if wrong!
+- Distractor quality (0-15): Are the wrong answers plausible but clearly incorrect?
 
-IMPORTANT: You will NOT see which answer is marked as correct. Evaluate only the question text and answer options.
+CRITICAL: The "correctAnswerIndex" field indicates which answer the player marked as correct (0-indexed).
+You MUST verify this is factually accurate. If the marked answer is WRONG, give a score of 0-20 maximum.
 
 Respond ONLY with valid JSON in this exact format:
 {
@@ -51,18 +53,19 @@ Respond ONLY with valid JSON in this exact format:
     {
       "submissionId": "id1",
       "score": 85,
-      "reasoning": "Great question about X, clear wording, good distractors"
+      "reasoning": "Great question about X, correct answer verified, good distractors"
     },
     {
       "submissionId": "id2",
-      "score": 45,
-      "reasoning": "Off-topic for the specified theme, answers too obvious"
+      "score": 15,
+      "reasoning": "The marked correct answer is factually wrong - Paris is not the capital of Germany"
     }
   ]
 }
 
 Guidelines:
 - Be fair and consistent in scoring
+- ALWAYS verify the marked correct answer is factually accurate
 - Penalize off-topic questions heavily (score < 30)
 - Penalize unclear or ambiguous questions
 - Reward creative, engaging questions that match the topic
@@ -172,17 +175,18 @@ export const evaluateSubmissions = onCall(
       };
     }
 
-    // Prepare submissions for evaluation (IMPORTANT: hide correct answer from AI)
+    // Prepare submissions for evaluation
     const submissions: QuestionSubmission[] = submissionsSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data() as Omit<QuestionSubmission, 'id'>,
     }));
 
-    // Build the evaluation request - hide correctAnswerIndex from AI
+    // Build the evaluation request - include correctAnswerIndex so AI can validate accuracy
     const submissionsForAI = submissions.map(s => ({
       submissionId: s.id,
       questionText: s.questionText,
-      answers: s.answers, // Just the answer texts, not which is correct
+      answers: s.answers,
+      correctAnswerIndex: s.correctAnswerIndex, // AI needs this to verify answer is correct
       playerName: s.playerName,
     }));
 
