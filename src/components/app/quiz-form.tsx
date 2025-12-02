@@ -111,14 +111,45 @@ const questionSchema = z.discriminatedUnion('type', [
   pollMultipleQuestionSchema,
 ]);
 
-// Crowdsource settings schema
+// Crowdsource settings schema with conditional validation
 const crowdsourceSchema = z.object({
   enabled: z.boolean(),
-  topicPrompt: z.string().min(1, 'Topic prompt is required when crowdsourcing is enabled.'),
-  questionsNeeded: z.number().min(1).max(50),
-  maxSubmissionsPerPlayer: z.number().min(1).max(10),
-  integrationMode: z.enum(['append', 'prepend', 'replace']),
-}).optional();
+  topicPrompt: z.string().optional(),
+  questionsNeeded: z.number().min(1).max(50).optional(),
+  maxSubmissionsPerPlayer: z.number().min(1).max(10).optional(),
+  integrationMode: z.enum(['append', 'prepend', 'replace']).optional(),
+}).optional().superRefine((data, ctx) => {
+  if (data?.enabled) {
+    if (!data.topicPrompt || data.topicPrompt.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Topic prompt is required when crowdsourcing is enabled.',
+        path: ['topicPrompt'],
+      });
+    }
+    if (!data.questionsNeeded || data.questionsNeeded < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Questions needed must be at least 1.',
+        path: ['questionsNeeded'],
+      });
+    }
+    if (!data.maxSubmissionsPerPlayer || data.maxSubmissionsPerPlayer < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Max submissions per player must be at least 1.',
+        path: ['maxSubmissionsPerPlayer'],
+      });
+    }
+    if (!data.integrationMode) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Integration mode is required.',
+        path: ['integrationMode'],
+      });
+    }
+  }
+});
 
 const quizSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters long.'),
@@ -144,10 +175,26 @@ interface QuizFormProps {
 export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, additionalContent, quizId, tempId }: QuizFormProps) {
   const form = useForm<QuizFormData>({
     resolver: zodResolver(quizSchema),
-    defaultValues: initialData || {
+    defaultValues: initialData ? {
+      ...initialData,
+      crowdsource: initialData.crowdsource ?? {
+        enabled: false,
+        topicPrompt: '',
+        questionsNeeded: 10,
+        maxSubmissionsPerPlayer: 3,
+        integrationMode: 'append',
+      },
+    } : {
       title: '',
       description: '',
       questions: [],
+      crowdsource: {
+        enabled: false,
+        topicPrompt: '',
+        questionsNeeded: 10,
+        maxSubmissionsPerPlayer: 3,
+        integrationMode: 'append',
+      },
     },
   });
 

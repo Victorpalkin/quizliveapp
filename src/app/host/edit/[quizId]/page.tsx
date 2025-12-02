@@ -57,6 +57,7 @@ export default function EditQuizPage() {
         title: quizData.title,
         description: quizData.description,
         questions: quizData.questions as any,
+        crowdsource: quizData.crowdsource,
       });
     }
   }, [quizData]);
@@ -137,6 +138,11 @@ export default function EditQuizPage() {
       // Only include description if it has a value
       if (quizDataForUpload.description !== undefined && quizDataForUpload.description !== '') {
         finalQuizUpdate.description = quizDataForUpload.description;
+      }
+
+      // Include crowdsource settings (clean undefined values)
+      if (quizDataForUpload.crowdsource) {
+        finalQuizUpdate.crowdsource = removeUndefined(quizDataForUpload.crowdsource);
       }
 
       await updateDoc(quizRef, finalQuizUpdate);

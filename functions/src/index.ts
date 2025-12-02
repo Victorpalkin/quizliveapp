@@ -10,3 +10,6 @@ export { computeQuestionResults } from './functions/computeQuestionResults';
 
 // Export Cleanup Triggers
 export { onGameUpdated, onGameDeleted } from './functions/cleanupSubmissions';
+
+// Export Scheduled Cleanup Functions
+export { cleanupOldGames } from './functions/cleanupOldGames';

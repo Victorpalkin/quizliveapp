@@ -3,13 +3,13 @@ import * as admin from 'firebase-admin';
 import { REGION } from '../config';
 
 /**
- * Deletes all submissions for a given game.
- * This is called when a game is cancelled or ended.
+ * Deletes all documents in a subcollection.
+ * Uses batched writes for efficiency (Firestore limit: 500 per batch).
  */
-async function deleteAllSubmissions(gameId: string): Promise<number> {
+async function deleteSubcollection(gameId: string, subcollectionName: string): Promise<number> {
   const db = admin.firestore();
-  const submissionsRef = db.collection('games').doc(gameId).collection('submissions');
-  const snapshot = await submissionsRef.get();
+  const collectionRef = db.collection('games').doc(gameId).collection(subcollectionName);
+  const snapshot = await collectionRef.get();
 
   if (snapshot.empty) {
     return 0;
@@ -47,6 +47,19 @@ async function deleteAllSubmissions(gameId: string): Promise<number> {
 }
 
 /**
+ * Deletes all subcollections for a game (players, submissions, aggregates).
+ */
+async function deleteAllGameSubcollections(gameId: string): Promise<{ players: number; submissions: number; aggregates: number }> {
+  const [players, submissions, aggregates] = await Promise.all([
+    deleteSubcollection(gameId, 'players'),
+    deleteSubcollection(gameId, 'submissions'),
+    deleteSubcollection(gameId, 'aggregates'),
+  ]);
+
+  return { players, submissions, aggregates };
+}
+
+/**
  * Cloud Function triggered when a game document is updated.
  * Cleans up submissions when game state changes to 'ended'.
  */
@@ -66,7 +79,7 @@ export const onGameUpdated = onDocumentUpdated(
       const gameId = event.params.gameId;
       console.log(`[Cleanup] Game ${gameId} ended, cleaning up submissions...`);
 
-      const deletedCount = await deleteAllSubmissions(gameId);
+      const deletedCount = await deleteSubcollection(gameId, 'submissions');
       console.log(`[Cleanup] Deleted ${deletedCount} submissions for game ${gameId}`);
     }
   }
@@ -74,7 +87,7 @@ export const onGameUpdated = onDocumentUpdated(
 
 /**
  * Cloud Function triggered when a game document is deleted.
- * This handles cancellation where the game document is deleted entirely.
+ * Cleans up ALL subcollections (players, submissions, aggregates).
  */
 export const onGameDeleted = onDocumentDeleted(
   {
@@ -83,9 +96,9 @@ export const onGameDeleted = onDocumentDeleted(
   },
   async (event) => {
     const gameId = event.params.gameId;
-    console.log(`[Cleanup] Game ${gameId} deleted, cleaning up submissions...`);
+    console.log(`[Cleanup] Game ${gameId} deleted, cleaning up all subcollections...`);
 
-    const deletedCount = await deleteAllSubmissions(gameId);
-    console.log(`[Cleanup] Deleted ${deletedCount} submissions for game ${gameId}`);
+    const deleted = await deleteAllGameSubcollections(gameId);
+    console.log(`[Cleanup] Deleted for game ${gameId}: ${deleted.players} players, ${deleted.submissions} submissions, ${deleted.aggregates} aggregates`);
   }
 );
