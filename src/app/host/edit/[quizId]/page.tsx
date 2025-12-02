@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { Header } from '@/components/app/header';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizForm, type QuizFormData } from '@/components/app/quiz-form';
@@ -199,21 +199,11 @@ export default function EditQuizPage() {
   };
 
   if (userLoading || quizLoading || !user) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading...</p>
-      </div>
-    );
+    return <FullPageLoader />;
   }
 
   if (!initialData) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading quiz data...</p>
-      </div>
-    );
+    return <FullPageLoader message="Loading quiz data..." />;
   }
 
   return (

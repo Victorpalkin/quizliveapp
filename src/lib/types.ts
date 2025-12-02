@@ -12,6 +12,7 @@ interface BaseQuestion {
   text: string;
   timeLimit?: number; // in seconds
   imageUrl?: string;
+  submittedBy?: string; // Player name for crowdsourced questions
 }
 
 // Single choice question - exactly one correct answer

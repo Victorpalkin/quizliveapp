@@ -7,9 +7,13 @@ const AUTO_FINISH_DELAY_MS = 1500; // Delay before auto-finishing when all playe
 
 interface UseQuestionTimerOptions {
   timeLimit: number;
-  questionStartTime: Timestamp | undefined;
+  questionStartTime?: Timestamp;
   currentQuestionIndex: number;
   isActive?: boolean;
+  // For host with aggregate-based counting (more efficient)
+  totalPlayers?: number;
+  totalAnswered?: number;
+  // For host with player array-based counting (legacy)
   players?: Player[];
   onAutoFinish?: () => void;
 }
@@ -33,6 +37,8 @@ export function useQuestionTimer({
   questionStartTime,
   currentQuestionIndex,
   isActive = true,
+  totalPlayers,
+  totalAnswered,
   players,
   onAutoFinish,
 }: UseQuestionTimerOptions) {
@@ -40,20 +46,24 @@ export function useQuestionTimer({
   const finishedRef = useRef(false);
   const countdownIntervalRef = useRef<NodeJS.Timeout>();
 
-  // Count players who have answered (host only)
+  // Count players who have answered (for player array-based counting)
   // Memoize to avoid recalculating on every render
-  const answeredPlayers = useMemo(() => {
+  const answeredPlayersFromArray = useMemo(() => {
     if (!players) return 0;
     return players.filter(p =>
       p.answers?.some(a => a.questionIndex === currentQuestionIndex)
     ).length;
   }, [players, currentQuestionIndex]);
 
+  // Use aggregate-based counts if provided, otherwise fall back to array-based
+  const effectiveTotalPlayers = totalPlayers ?? players?.length ?? 0;
+  const effectiveTotalAnswered = totalAnswered ?? answeredPlayersFromArray;
+
   // Auto-finish when all players answered (host only)
   // Includes delay to allow in-flight answer submissions to complete
   useEffect(() => {
-    if (isActive && !finishedRef.current && onAutoFinish && players && players.length > 0) {
-      if (answeredPlayers === players.length) {
+    if (isActive && !finishedRef.current && onAutoFinish && effectiveTotalPlayers > 0) {
+      if (effectiveTotalAnswered >= effectiveTotalPlayers) {
         console.log('[Timer] All players answered - delaying auto-finish by 1.5s for in-flight submissions');
 
         // Delay auto-finish to allow in-flight answers to reach the server
@@ -69,7 +79,7 @@ export function useQuestionTimer({
         return () => clearTimeout(timeoutId);
       }
     }
-  }, [players, answeredPlayers, isActive, onAutoFinish]);
+  }, [effectiveTotalPlayers, effectiveTotalAnswered, isActive, onAutoFinish]);
 
   // Simplified timer - always starts at full time limit
   useEffect(() => {
@@ -114,7 +124,7 @@ export function useQuestionTimer({
 
   return {
     time,
-    answeredPlayers,
+    answeredPlayers: effectiveTotalAnswered,
     resetTimer
   };
 }

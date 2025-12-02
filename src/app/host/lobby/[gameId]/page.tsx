@@ -5,8 +5,14 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { CopyButton } from '@/components/ui/copy-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Copy, Check, XCircle, QrCode } from 'lucide-react';
+import { Users, Copy, XCircle, QrCode, Play } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Header } from '@/components/app/header';
 import { QRCodeSVG } from 'qrcode.react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
@@ -29,22 +35,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <Button variant="outline" size="icon" onClick={handleCopy} className="rounded-lg hover:scale-[1.02] transition-all duration-300">
-      {copied ? <Check className="h-5 w-5 text-green-500" /> : <Copy className="h-5 w-5" />}
-    </Button>
-  );
-}
 
 export default function HostLobbyPage() {
   const params = useParams();
@@ -115,6 +105,7 @@ export default function HostLobbyPage() {
               timeLimit: 20, // Default time limit
               answers: sub.answers.map(text => ({ text })),
               correctAnswerIndex: sub.correctAnswerIndex,
+              submittedBy: sub.playerName, // Include player name for crowdsourced questions
             };
           });
 
@@ -175,136 +166,158 @@ export default function HostLobbyPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
-      <main className="flex-1 container mx-auto p-4 md:p-8 flex flex-col items-center justify-center">
-        <div className="w-full max-w-6xl space-y-12 text-center">
-            <div className="space-y-4">
-                <h1 className="text-5xl md:text-6xl font-semibold tracking-tight">Your Quiz is Ready!</h1>
-                <p className="text-muted-foreground text-xl">Players can now join your game.</p>
-            </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            <Card className="border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
-              <CardHeader className="p-6">
-                <CardDescription className="text-sm font-semibold tracking-wider uppercase mb-4">GAME PIN</CardDescription>
-                {gameLoading ? <Skeleton className="h-20 w-56 mx-auto rounded-xl" /> : (
-                  <CardTitle className="text-7xl font-mono tracking-widest flex items-center justify-center gap-4">
-                    {game?.gamePin}
-                    {game?.gamePin && <CopyButton text={game.gamePin} />}
-                  </CardTitle>
-                )}
-              </CardHeader>
-            </Card>
-
-            <Card className="border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
-              <CardHeader className="p-6">
-                <div className="flex items-center gap-2 justify-center mb-4">
-                  <QrCode className="h-5 w-5 text-primary" />
-                  <CardDescription className="text-sm font-semibold tracking-wider uppercase">SCAN TO JOIN</CardDescription>
-                </div>
-                {gameLoading || !joinUrl ? (
-                  <Skeleton className="h-52 w-52 mx-auto rounded-xl" />
-                ) : (
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="bg-white p-4 rounded-xl shadow-sm">
-                      <QRCodeSVG
-                        value={joinUrl}
-                        size={192}
-                        level="M"
-                        includeMargin={false}
-                      />
+      <main className="flex-1 container mx-auto p-4 md:p-8">
+        <div className="w-full max-w-4xl mx-auto space-y-6">
+          {/* Compact Join Bar */}
+          <Card className="border border-card-border shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* PIN Section */}
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-muted-foreground uppercase tracking-wide">PIN</span>
+                  {gameLoading ? (
+                    <Skeleton className="h-10 w-32" />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-3xl font-mono font-bold tracking-widest">{game?.gamePin}</span>
+                      {game?.gamePin && <CopyButton text={game.gamePin} />}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigator.clipboard.writeText(joinUrl)}
-                      className="text-sm px-4 py-2 rounded-lg"
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy Link
-                    </Button>
-                  </div>
-                )}
-              </CardHeader>
-            </Card>
-          </div>
+                  )}
+                </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            <Card className="border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
-              <CardHeader className="flex-row items-center gap-3 p-6">
-                <Users className="text-primary h-6 w-6" />
-                <CardTitle className="text-2xl font-semibold">
-                  Players Joined ({playersLoading || gameLoading ? '...' : players?.length || 0})
-                </CardTitle>
+                {/* Divider */}
+                <div className="hidden sm:block h-8 w-px bg-border" />
+
+                {/* QR & Link Actions */}
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <QrCode className="h-4 w-4 mr-2" />
+                        QR Code
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-4" align="end">
+                      <div className="flex flex-col items-center gap-3">
+                        <p className="text-sm font-medium">Scan to join</p>
+                        {joinUrl && (
+                          <div className="bg-white p-3 rounded-lg">
+                            <QRCodeSVG value={joinUrl} size={160} level="M" />
+                          </div>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigator.clipboard.writeText(joinUrl)}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Link
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Players List - Takes 2 columns */}
+            <Card className="lg:col-span-2 border border-card-border shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-xl">Players</CardTitle>
+                  </div>
+                  <span className="text-2xl font-bold text-primary">
+                    {playersLoading || gameLoading ? '...' : players?.length || 0}
+                  </span>
+                </div>
               </CardHeader>
-              <CardContent className="p-6 pt-0">
+              <CardContent>
                 {playersLoading ? (
                   <div className="space-y-2">
-                    <Skeleton className="h-14 w-full rounded-lg" />
-                    <Skeleton className="h-14 w-full rounded-lg" />
-                    <Skeleton className="h-14 w-full rounded-lg" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
                   </div>
+                ) : players?.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    Waiting for players to join...
+                  </p>
                 ) : (
-                  <ul className="space-y-3 text-left">
+                  <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto">
                     {players?.map(player => (
-                      <li key={player.id} className="p-4 bg-muted rounded-xl font-medium text-lg transition-all duration-200 hover:bg-muted/80">
+                      <span
+                        key={player.id}
+                        className="px-3 py-1.5 bg-muted rounded-full text-sm font-medium"
+                      >
                         {player.name}
-                      </li>
+                      </span>
                     ))}
-                    {players?.length === 0 && <p className="text-muted-foreground text-center p-8 text-lg">Waiting for players to join...</p>}
-                  </ul>
+                  </div>
                 )}
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-primary shadow-lg flex flex-col justify-center items-center p-8 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5">
-                <CardTitle className="text-3xl font-semibold mb-3">Ready to Start?</CardTitle>
-                <CardDescription className="mb-8 text-base">Once you begin, no more players can join.</CardDescription>
+            {/* Start Game Card */}
+            <Card className="border-2 border-primary/20 shadow-sm bg-gradient-to-br from-primary/5 to-accent/5">
+              <CardContent className="p-6 flex flex-col items-center justify-center h-full text-center gap-4">
+                <div>
+                  <CardTitle className="text-xl mb-2">Ready to Start?</CardTitle>
+                  <CardDescription>
+                    No more players can join after starting
+                  </CardDescription>
+                </div>
                 <Button
                   onClick={handleStartGame}
-                  className="text-lg px-12 py-6 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold shadow-lg"
+                  size="lg"
+                  className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
                 >
-                    Start Game
+                  <Play className="h-5 w-5 mr-2" />
+                  Start Game
                 </Button>
+              </CardContent>
             </Card>
           </div>
 
           {/* Crowdsourced Questions Panel */}
           {game && quiz && (
-            <div className="max-w-5xl mx-auto w-full">
-              <SubmissionsPanel gameId={gameId} game={game} quiz={quiz} />
-            </div>
+            <SubmissionsPanel gameId={gameId} game={game} quiz={quiz} />
           )}
-        </div>
 
-        <div className="mt-12 border-t border-border w-full max-w-5xl pt-8 flex justify-center">
+          {/* Cancel Game - Subtle footer action */}
+          <div className="pt-4 border-t border-border flex justify-center">
             <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="outline" className="px-6 py-4 rounded-xl">
-                        <XCircle className="mr-2 h-5 w-5" />
-                        Cancel Game
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="rounded-2xl shadow-xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-2xl font-semibold">Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-base">
-                            This will cancel the game for all players and cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="rounded-xl">Back</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleCancelGame} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
-                            Yes, Cancel Game
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Cancel Game
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel this game?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove all players and cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Back</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleCancelGame}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Yes, Cancel Game
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
             </AlertDialog>
+          </div>
         </div>
       </main>
     </div>
   );
 }
-
-    
-
-    

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -34,6 +34,18 @@ export function SubmissionsPanel({ gameId, game, quiz }: SubmissionsPanelProps) 
     [firestore, gameId]
   );
   const { data: submissions, loading: submissionsLoading } = useCollection<QuestionSubmission>(submissionsQuery);
+
+  // Derived state after submissions are loaded
+  const isLocked = crowdsourceState?.submissionsLocked;
+  const hasEvaluated = crowdsourceState?.evaluationComplete || submissions?.some(s => s.aiScore !== undefined);
+
+  // Sync selection state with AI selections when submissions update from Firestore
+  useEffect(() => {
+    if (hasEvaluated && submissions) {
+      const aiSelected = submissions.filter(s => s.aiSelected).map(s => s.id);
+      setSelectedSubmissions(new Set(aiSelected));
+    }
+  }, [submissions, hasEvaluated]);
 
   // Toggle submission expansion
   const toggleExpanded = (submissionId: string) => {
@@ -96,10 +108,7 @@ export function SubmissionsPanel({ gameId, game, quiz }: SubmissionsPanelProps) 
       });
 
       if (result.data.success) {
-        // Auto-select the AI-selected submissions
-        const selectedSubs = submissions?.filter(s => s.aiSelected) || [];
-        setSelectedSubmissions(new Set(selectedSubs.map(s => s.id)));
-
+        // Selection state will auto-sync via useEffect when Firestore updates
         toast({
           title: 'AI Evaluation Complete',
           description: `Evaluated ${result.data.evaluatedCount} submissions, selected ${result.data.selectedCount} questions.`,
@@ -162,9 +171,6 @@ export function SubmissionsPanel({ gameId, game, quiz }: SubmissionsPanelProps) 
     // Then by score (descending)
     return (b.aiScore || 0) - (a.aiScore || 0);
   });
-
-  const isLocked = crowdsourceState?.submissionsLocked;
-  const hasEvaluated = crowdsourceState?.evaluationComplete || sortedSubmissions.some(s => s.aiScore !== undefined);
 
   return (
     <div className="space-y-6">
