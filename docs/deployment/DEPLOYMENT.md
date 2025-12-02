@@ -527,6 +527,23 @@ gcloud projects get-iam-policy $DEV_PROJECT_ID \
   --flatten="bindings[].members" \
   --filter="bindings.members:serviceAccount:${DEV_SA_EMAIL}" \
   --format="table(bindings.role)"
+
+# Grant GCP service agent bindings (required for Eventarc/Firestore triggers)
+PROJECT_NUMBER=$(gcloud projects describe $DEV_PROJECT_ID --format="value(projectNumber)")
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com \
+  --role=roles/iam.serviceAccountTokenCreator
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/run.invoker
+
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/eventarc.eventReceiver
+
+echo "GCP service agent bindings configured for Eventarc"
 ```
 
 **For Production Project:**
@@ -601,6 +618,23 @@ gcloud projects get-iam-policy $PROD_PROJECT_ID \
   --flatten="bindings[].members" \
   --filter="bindings.members:serviceAccount:${PROD_SA_EMAIL}" \
   --format="table(bindings.role)"
+
+# Grant GCP service agent bindings (required for Eventarc/Firestore triggers)
+PROJECT_NUMBER=$(gcloud projects describe $PROD_PROJECT_ID --format="value(projectNumber)")
+
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member=serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com \
+  --role=roles/iam.serviceAccountTokenCreator
+
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/run.invoker
+
+gcloud projects add-iam-policy-binding $PROD_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/eventarc.eventReceiver
+
+echo "GCP service agent bindings configured for Eventarc"
 ```
 
 ### 3.4 Create Custom Service Account for AI Functions
@@ -1482,7 +1516,29 @@ gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
   --role="roles/pubsub.admin"
 ```
 
-3. Redeploy the functions:
+3. Grant GCP service agent IAM bindings (required for Eventarc to work):
+
+```bash
+# Get your project number
+PROJECT_NUMBER=$(gcloud projects describe $DEV_PROJECT_ID --format="value(projectNumber)")
+
+# Pub/Sub service account needs token creator role
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com \
+  --role=roles/iam.serviceAccountTokenCreator
+
+# Compute service account needs run.invoker for Eventarc to invoke functions
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/run.invoker
+
+# Compute service account needs eventarc.eventReceiver to receive events
+gcloud projects add-iam-policy-binding $DEV_PROJECT_ID \
+  --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \
+  --role=roles/eventarc.eventReceiver
+```
+
+4. Redeploy the functions:
 
 ```bash
 firebase deploy --only functions --config firebase.dev.json --project $DEV_PROJECT_ID
