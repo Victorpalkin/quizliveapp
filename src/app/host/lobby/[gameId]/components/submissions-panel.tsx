@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Lightbulb, Loader2, Lock, Sparkles, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Lightbulb, Loader2, Lock, Sparkles, Check, X, ChevronDown, ChevronUp, MessageSquarePlus, Users } from 'lucide-react';
 import { useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, doc, updateDoc, Query } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -167,23 +167,60 @@ export function SubmissionsPanel({ gameId, game, quiz }: SubmissionsPanelProps) 
   const hasEvaluated = crowdsourceState?.evaluationComplete || sortedSubmissions.some(s => s.aiScore !== undefined);
 
   return (
-    <Card className="border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
-      <CardHeader className="flex-row items-center justify-between gap-3 p-6">
-        <div className="flex items-center gap-3">
-          <Lightbulb className="text-primary h-6 w-6" />
-          <div>
-            <CardTitle className="text-2xl font-semibold">
-              Player Submissions ({submissionsLoading ? '...' : submissions?.length || 0})
-            </CardTitle>
-            <CardDescription className="mt-1">
-              {isLocked
-                ? 'Submissions are locked. Review and select questions below.'
-                : 'Players can submit questions until you click "Evaluate with AI"'}
-            </CardDescription>
+    <div className="space-y-6">
+      {/* Crowdsource Info Card */}
+      <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5 rounded-2xl">
+        <div className="p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-gradient-to-br from-primary to-accent p-3">
+              <MessageSquarePlus className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold">Question Crowdsourcing Active</h3>
+              <p className="text-sm text-muted-foreground">
+                Players can submit questions while waiting in the lobby
+              </p>
+            </div>
           </div>
+
+          <div className="flex items-start gap-3 text-muted-foreground">
+            <Users className="w-5 h-5 mt-0.5 flex-shrink-0" />
+            <p className="text-sm">
+              Each player can submit up to {crowdsourceSettings.maxSubmissionsPerPlayer} questions.
+              The top {crowdsourceSettings.questionsNeeded} will be selected by AI and added to the game.
+            </p>
+          </div>
+
+          {/* Topic Display */}
+          {crowdsourceSettings.topicPrompt && (
+            <div className="bg-background/80 rounded-xl p-4 border border-card-border">
+              <p className="text-sm text-muted-foreground mb-1">Topic for player questions:</p>
+              <p className="text-lg font-medium text-foreground">
+                {crowdsourceSettings.topicPrompt}
+              </p>
+            </div>
+          )}
         </div>
-        {isLocked && <Lock className="h-5 w-5 text-amber-500" />}
-      </CardHeader>
+      </Card>
+
+      {/* Submissions Panel */}
+      <Card className="border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
+        <CardHeader className="flex-row items-center justify-between gap-3 p-6">
+          <div className="flex items-center gap-3">
+            <Lightbulb className="text-primary h-6 w-6" />
+            <div>
+              <CardTitle className="text-2xl font-semibold">
+                Player Submissions ({submissionsLoading ? '...' : submissions?.length || 0})
+              </CardTitle>
+              <CardDescription className="mt-1">
+                {isLocked
+                  ? 'Submissions are locked. Review and select questions below.'
+                  : 'Players can submit questions until you click "Evaluate with AI"'}
+              </CardDescription>
+            </div>
+          </div>
+          {isLocked && <Lock className="h-5 w-5 text-amber-500" />}
+        </CardHeader>
       <CardContent className="p-6 pt-0 space-y-4">
         {/* Evaluate button (before evaluation) */}
         {!isLocked && (
@@ -307,6 +344,7 @@ export function SubmissionsPanel({ gameId, game, quiz }: SubmissionsPanelProps) 
           </ul>
         )}
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }

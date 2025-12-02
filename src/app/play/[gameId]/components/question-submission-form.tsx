@@ -19,6 +19,7 @@ interface QuestionSubmissionFormProps {
   playerName: string;
   maxSubmissions: number;
   currentSubmissionCount: number;
+  topicPrompt?: string;
   onSubmissionComplete?: () => void;
 }
 
@@ -28,6 +29,7 @@ export function QuestionSubmissionForm({
   playerName,
   maxSubmissions,
   currentSubmissionCount,
+  topicPrompt,
   onSubmissionComplete,
 }: QuestionSubmissionFormProps) {
   const firestore = useFirestore();
@@ -134,7 +136,9 @@ export function QuestionSubmissionForm({
             <Label htmlFor="question">Your Question</Label>
             <Textarea
               id="question"
-              placeholder="Enter your question here (10-500 characters)"
+              placeholder={topicPrompt
+                ? `Write a question about "${topicPrompt}" (10-500 characters)`
+                : "Enter your question here (10-500 characters)"}
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
               className="min-h-[100px] resize-none"

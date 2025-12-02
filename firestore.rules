@@ -124,9 +124,9 @@ service cloud.firestore {
         // - Game must be in lobby state
         // - Submissions must not be locked (host hasn't clicked "Evaluate")
         // - Player must provide valid data
+        // Note: Use .get() with default to safely access nested crowdsourceState.submissionsLocked
         allow create: if get(/databases/$(database)/documents/games/$(gameId)).data.state == 'lobby' &&
-                         (get(/databases/$(database)/documents/games/$(gameId)).data.crowdsourceState == null ||
-                          get(/databases/$(database)/documents/games/$(gameId)).data.crowdsourceState.submissionsLocked != true) &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.get('crowdsourceState', {'submissionsLocked': false}).submissionsLocked != true &&
                          request.resource.data.playerId is string &&
                          request.resource.data.playerName is string &&
                          request.resource.data.questionText is string &&
