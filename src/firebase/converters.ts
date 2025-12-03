@@ -6,11 +6,12 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { Quiz, Game, Player, QuizShare, InterestCloudActivity, InterestSubmission, RankingActivity, RankingItem, PlayerRatings } from '@/lib/types';
+import { removeUndefined } from '@/lib/firestore-utils';
 
 export const quizConverter: FirestoreDataConverter<Quiz> = {
   toFirestore(quiz: Quiz): DocumentData {
     const { id, ...data } = quiz;
-    return data;
+    return removeUndefined(data);
   },
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
@@ -30,7 +31,7 @@ export const quizConverter: FirestoreDataConverter<Quiz> = {
 export const gameConverter: FirestoreDataConverter<Game> = {
   toFirestore(game: Game): DocumentData {
     const { id, ...data } = game;
-    return data;
+    return removeUndefined(data);
   },
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
@@ -61,7 +62,7 @@ export const gameConverter: FirestoreDataConverter<Game> = {
 export const playerConverter: FirestoreDataConverter<Player> = {
   toFirestore(player: Player): DocumentData {
     const { id, ...data } = player;
-    return data;
+    return removeUndefined(data);
   },
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
@@ -82,10 +83,10 @@ export const quizShareConverter: FirestoreDataConverter<QuizShare> = {
   toFirestore(quizShare: QuizShare): DocumentData {
     const { id, ...data } = quizShare;
     // Convert Date to Timestamp for Firestore
-    return {
+    return removeUndefined({
       ...data,
       createdAt: data.createdAt instanceof Date ? Timestamp.fromDate(data.createdAt) : data.createdAt,
-    };
+    });
   },
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
@@ -107,15 +108,11 @@ export const quizShareConverter: FirestoreDataConverter<QuizShare> = {
 export const interestCloudActivityConverter: FirestoreDataConverter<InterestCloudActivity> = {
   toFirestore(activity: InterestCloudActivity): DocumentData {
     const { id, ...data } = activity;
-    // Filter out undefined values (Firestore rejects undefined)
-    const filtered = Object.fromEntries(
-      Object.entries(data).filter(([_, v]) => v !== undefined)
-    );
-    return {
-      ...filtered,
+    return removeUndefined({
+      ...data,
       createdAt: data.createdAt instanceof Date ? Timestamp.fromDate(data.createdAt) : data.createdAt,
       updatedAt: data.updatedAt instanceof Date ? Timestamp.fromDate(data.updatedAt) : data.updatedAt,
-    };
+    });
   },
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
@@ -138,7 +135,7 @@ export const interestCloudActivityConverter: FirestoreDataConverter<InterestClou
 export const interestSubmissionConverter: FirestoreDataConverter<InterestSubmission> = {
   toFirestore(submission: InterestSubmission): DocumentData {
     const { id, ...data } = submission;
-    return data;
+    return removeUndefined(data);
   },
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
@@ -163,15 +160,11 @@ export const interestSubmissionConverter: FirestoreDataConverter<InterestSubmiss
 export const rankingActivityConverter: FirestoreDataConverter<RankingActivity> = {
   toFirestore(activity: RankingActivity): DocumentData {
     const { id, ...data } = activity;
-    // Filter out undefined values (Firestore rejects undefined)
-    const filtered = Object.fromEntries(
-      Object.entries(data).filter(([_, v]) => v !== undefined)
-    );
-    return {
-      ...filtered,
+    return removeUndefined({
+      ...data,
       createdAt: data.createdAt instanceof Date ? Timestamp.fromDate(data.createdAt) : data.createdAt,
       updatedAt: data.updatedAt instanceof Date ? Timestamp.fromDate(data.updatedAt) : data.updatedAt,
-    };
+    });
   },
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
@@ -194,10 +187,7 @@ export const rankingActivityConverter: FirestoreDataConverter<RankingActivity> =
 export const rankingItemConverter: FirestoreDataConverter<RankingItem> = {
   toFirestore(item: RankingItem): DocumentData {
     const { id, ...data } = item;
-    // Filter out undefined values
-    return Object.fromEntries(
-      Object.entries(data).filter(([_, v]) => v !== undefined)
-    );
+    return removeUndefined(data);
   },
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
@@ -220,13 +210,13 @@ export const rankingItemConverter: FirestoreDataConverter<RankingItem> = {
 
 export const playerRatingsConverter: FirestoreDataConverter<PlayerRatings> = {
   toFirestore(ratings: PlayerRatings): DocumentData {
-    return {
+    return removeUndefined({
       playerId: ratings.playerId,
       playerName: ratings.playerName,
       ratings: ratings.ratings,
       submittedAt: ratings.submittedAt,
       isComplete: ratings.isComplete,
-    };
+    });
   },
   fromFirestore(
     snapshot: QueryDocumentSnapshot,

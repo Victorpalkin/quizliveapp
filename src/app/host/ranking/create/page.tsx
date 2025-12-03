@@ -18,6 +18,7 @@ import Link from 'next/link';
 import type { RankingActivity, RankingMetric, RankingConfig, PredefinedItem } from '@/lib/types';
 import { rankingActivityConverter } from '@/firebase/converters';
 import { nanoid } from 'nanoid';
+import { removeUndefined } from '@/lib/firestore-utils';
 import {
   Select,
   SelectContent,
@@ -87,11 +88,16 @@ export default function CreateRankingPage() {
   const addPredefinedItem = () => {
     if (!newItemText.trim()) return;
 
+    // Build item without undefined values (Firestore rejects undefined)
     const newItem: PredefinedItem = {
       id: nanoid(8),
       text: newItemText.trim(),
-      description: newItemDescription.trim() || undefined,
     };
+
+    // Only add description if it has content
+    if (newItemDescription.trim()) {
+      newItem.description = newItemDescription.trim();
+    }
 
     setPredefinedItems([...predefinedItems, newItem]);
     setNewItemText('');
@@ -142,7 +148,7 @@ export default function CreateRankingPage() {
 
     try {
       const config: RankingConfig = {
-        metrics,
+        metrics: removeUndefined(metrics),
         predefinedItems,
         allowParticipantItems,
         maxItemsPerParticipant,
@@ -150,19 +156,20 @@ export default function CreateRankingPage() {
         showItemSubmitter,
       };
 
+      // Build activity data - converter handles undefined filtering
       const activityData = {
-        type: 'ranking',
+        type: 'ranking' as const,
         title: title.trim(),
         description: description.trim() || undefined,
         hostId: user.uid,
         config,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      } as unknown as RankingActivity;
+      };
 
       const docRef = await addDoc(
         collection(firestore, 'activities').withConverter(rankingActivityConverter),
-        activityData
+        removeUndefined(activityData) as unknown as RankingActivity
       );
 
       toast({

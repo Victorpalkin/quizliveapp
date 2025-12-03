@@ -15,6 +15,7 @@ import { httpsCallable } from 'firebase/functions';
 import { Loader2, Sparkles, Send, Save, RotateCcw, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import type { Quiz, Question } from '@/lib/types';
+import { removeUndefined } from '@/lib/firestore-utils';
 
 // Types for AI quiz generation
 interface ChatMessage {
@@ -31,24 +32,6 @@ interface GeneratedQuiz {
 interface GenerateQuizResponse {
   quiz: GeneratedQuiz;
   message: string;
-}
-
-// Helper function to remove undefined values from objects
-function removeUndefined<T>(obj: T): T {
-  if (obj === null || obj === undefined) return obj;
-  if (Array.isArray(obj)) {
-    return obj.map(removeUndefined) as T;
-  }
-  if (typeof obj === 'object') {
-    const cleaned: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-      if (value !== undefined) {
-        cleaned[key] = removeUndefined(value);
-      }
-    }
-    return cleaned as T;
-  }
-  return obj;
 }
 
 export default function CreateQuizWithAIPage() {

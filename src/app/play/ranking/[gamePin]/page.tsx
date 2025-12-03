@@ -194,11 +194,11 @@ export default function PlayerRankingPage() {
 
       // Create player document
       await setDoc(doc(firestore, 'games', gameId, 'players', newPlayerId), {
+        id: newPlayerId,  // Required by Firestore rules
         name: playerName.trim(),
         score: 0,
         answers: [],
         currentStreak: 0,
-        joinedAt: serverTimestamp(),
       });
 
       setPlayerId(newPlayerId);

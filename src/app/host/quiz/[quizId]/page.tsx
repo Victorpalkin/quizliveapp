@@ -14,27 +14,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { nanoid } from 'nanoid';
 import type { Quiz } from '@/lib/types';
-
-// Helper to remove undefined values from an object (Firestore doesn't accept undefined)
-function removeUndefined<T extends Record<string, any>>(obj: T): Partial<T> {
-  const cleaned: any = {};
-  for (const key in obj) {
-    const value = obj[key];
-    if (value !== undefined) {
-      // Recursively clean nested objects
-      if (Array.isArray(value)) {
-        cleaned[key] = value.map((item: any) =>
-          typeof item === 'object' && item !== null ? removeUndefined(item) : item
-        );
-      } else if (typeof value === 'object' && value !== null && Object.prototype.toString.call(value) !== '[object Date]') {
-        cleaned[key] = removeUndefined(value);
-      } else {
-        cleaned[key] = value;
-      }
-    }
-  }
-  return cleaned;
-}
+import { removeUndefined } from '@/lib/firestore-utils';
 
 export default function EditQuizPage() {
   const router = useRouter();
