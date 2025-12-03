@@ -1,4 +1,4 @@
-import { onDocumentUpdated, onDocumentDeleted } from 'firebase-functions/v2/firestore';
+import { onDocumentDeleted } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
 import { REGION } from '../config';
 
@@ -59,31 +59,8 @@ async function deleteAllGameSubcollections(gameId: string): Promise<{ players: n
   return { players, submissions, aggregates };
 }
 
-/**
- * Cloud Function triggered when a game document is updated.
- * Cleans up submissions when game state changes to 'ended'.
- */
-export const onGameUpdated = onDocumentUpdated(
-  {
-    document: 'games/{gameId}',
-    region: REGION,
-  },
-  async (event) => {
-    const before = event.data?.before.data();
-    const after = event.data?.after.data();
-
-    if (!before || !after) return;
-
-    // Check if game just transitioned to 'ended' state
-    if (before.state !== 'ended' && after.state === 'ended') {
-      const gameId = event.params.gameId;
-      console.log(`[Cleanup] Game ${gameId} ended, cleaning up submissions...`);
-
-      const deletedCount = await deleteSubcollection(gameId, 'submissions');
-      console.log(`[Cleanup] Deleted ${deletedCount} submissions for game ${gameId}`);
-    }
-  }
-);
+// Note: onGameUpdated was removed. Submissions are now preserved for analytics
+// and only deleted when the entire game is deleted (via onGameDeleted).
 
 /**
  * Cloud Function triggered when a game document is deleted.

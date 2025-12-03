@@ -79,10 +79,12 @@ service cloud.firestore {
       // Only the host can update or delete the game
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.hostId;
 
-      // Leaderboard aggregates subcollection
+      // Leaderboard and analytics aggregates subcollection
       match /aggregates/{aggId} {
-        // Anyone can read aggregates (for host leaderboard display)
-        allow read: if true;
+        // Leaderboard readable by all (for gameplay), analytics only by host
+        allow read: if aggId != 'analytics' ||
+                      (request.auth != null &&
+                       request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId);
 
         // Only the host can create/update aggregates (initialization from lobby)
         // Cloud Functions also update this using admin SDK
