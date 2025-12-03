@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Home, CheckCircle, Users, XCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Home, CheckCircle, Users, XCircle, Loader2, AlertCircle, BarChart3 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CircularTimer } from '@/components/app/circular-timer';
 import { AnswerButton } from '@/components/app/answer-button';
@@ -128,8 +128,14 @@ export default function HostGamePage() {
         <h1 className="text-4xl font-bold mb-4">Quiz Over!</h1>
         <p className="text-muted-foreground mb-8">Here are the final results.</p>
         <FinalLeaderboardView topPlayers={topPlayers} totalPlayers={totalPlayers} />
-        <div className="mt-8 flex gap-4">
-          <Button asChild>
+        <div className="mt-8 flex flex-col sm:flex-row gap-4">
+          <Button asChild className="bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300">
+            <Link href={`/host/analytics/${gameId}`}>
+              <BarChart3 className="mr-2 h-4 w-4" />
+              View Analytics
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
             <Link href="/host">
               <Home className="mr-2 h-4 w-4" />
               Exit to Dashboard
