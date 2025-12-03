@@ -82,9 +82,9 @@ export default function InterestCloudGamePage() {
   // Save host session
   useEffect(() => {
     if (game && activity && user) {
-      saveHostSession(gameId, game.gamePin, game.activityId || '', activity.title, user.uid, 'interest-cloud');
+      saveHostSession(gameId, game.gamePin, game.activityId || '', activity.title, user.uid, 'interest-cloud', game.state);
     }
-  }, [gameId, game, activity, user]);
+  }, [gameId, game, activity, user, game?.state]);
 
   // Set join URL
   useEffect(() => {

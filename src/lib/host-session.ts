@@ -11,6 +11,7 @@ export interface HostSession {
   hostId: string;
   timestamp: number; // When session was last updated
   activityType?: ActivityType; // 'quiz' | 'interest-cloud'
+  gameState?: string; // Current game state for routing (e.g., 'lobby', 'question', 'collecting')
 }
 
 const SESSION_KEY = 'gquiz_host_session';
@@ -28,7 +29,8 @@ export function saveHostSession(
   quizId: string,
   quizTitle: string,
   hostId: string,
-  activityType: ActivityType = 'quiz'
+  activityType: ActivityType = 'quiz',
+  gameState?: string
 ): void {
   if (!isBrowser) return;
   try {
@@ -40,6 +42,7 @@ export function saveHostSession(
       hostId,
       timestamp: Date.now(),
       activityType,
+      gameState,
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } catch (error) {
@@ -105,7 +108,8 @@ export function refreshHostSessionTimestamp(): void {
       session.quizId,
       session.quizTitle,
       session.hostId,
-      session.activityType || 'quiz'
+      session.activityType || 'quiz',
+      session.gameState
     );
   }
 }

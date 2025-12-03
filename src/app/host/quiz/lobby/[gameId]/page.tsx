@@ -61,7 +61,7 @@ export default function HostLobbyPage() {
   // Save host session when lobby is loaded (so host can return if they leave)
   useEffect(() => {
     if (game && quiz && user) {
-      saveHostSession(gameId, game.gamePin, game.quizId, quiz.title, user.uid);
+      saveHostSession(gameId, game.gamePin, game.quizId, quiz.title, user.uid, 'quiz', 'lobby');
     }
   }, [gameId, game, quiz, user]);
 

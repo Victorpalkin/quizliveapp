@@ -53,9 +53,9 @@ export default function HostGamePage() {
   // Save host session when game and quiz are loaded
   useEffect(() => {
     if (game && quiz && user && game.state !== 'ended') {
-      saveHostSession(gameId, game.gamePin, game.quizId, quiz.title, user.uid);
+      saveHostSession(gameId, game.gamePin, game.quizId, quiz.title, user.uid, 'quiz', game.state);
     }
-  }, [gameId, game, quiz, user]);
+  }, [gameId, game, quiz, user, game?.state]);
 
   // Clear host session when game ends
   useEffect(() => {
