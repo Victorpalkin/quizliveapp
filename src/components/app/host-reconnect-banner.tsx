@@ -24,7 +24,10 @@ export function HostReconnectBanner() {
   }
 
   const handleReconnect = () => {
-    router.push(`/host/quiz/game/${session.gameId}`);
+    const basePath = session.activityType === 'interest-cloud'
+      ? '/host/interest-cloud/game'
+      : '/host/quiz/game';
+    router.push(`${basePath}/${session.gameId}`);
   };
 
   const handleDismiss = () => {
@@ -93,7 +96,10 @@ export function HostReconnectOverlay() {
   }
 
   const handleReconnect = () => {
-    router.push(`/host/quiz/game/${session.gameId}`);
+    const basePath = session.activityType === 'interest-cloud'
+      ? '/host/interest-cloud/game'
+      : '/host/quiz/game';
+    router.push(`${basePath}/${session.gameId}`);
   };
 
   const handleDismiss = () => {

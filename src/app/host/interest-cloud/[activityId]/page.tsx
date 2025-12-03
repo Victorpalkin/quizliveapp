@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
-import { Cloud, ArrowLeft, Play, Loader2, Settings } from 'lucide-react';
+import { Cloud, ArrowLeft, Play, Loader2, Settings, Pencil } from 'lucide-react';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, collection, addDoc, serverTimestamp, DocumentReference } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -140,9 +140,16 @@ export default function InterestCloudDetailPage() {
           {/* Configuration Card */}
           <Card className="shadow-md rounded-2xl border border-card-border">
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <Settings className="h-5 w-5 text-muted-foreground" />
-                <CardTitle>Configuration</CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle>Configuration</CardTitle>
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/host/interest-cloud/edit/${activityId}`}>
+                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                  </Link>
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">

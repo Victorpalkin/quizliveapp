@@ -36,11 +36,18 @@ export default function InterestCloudGamePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [joinUrl, setJoinUrl] = useState('');
 
+  // Typed ref for reading with converter
   const gameRef = useMemoFirebase(
     () => doc(firestore, 'games', gameId).withConverter(gameConverter) as DocumentReference<Game>,
     [firestore, gameId]
   );
   const { data: game, loading: gameLoading } = useDoc(gameRef);
+
+  // Plain ref for updates (updateDoc doesn't work well with converters)
+  const gameDocRef = useMemoFirebase(
+    () => doc(firestore, 'games', gameId),
+    [firestore, gameId]
+  );
 
   // Fetch activity
   const activityRef = useMemoFirebase(
@@ -75,7 +82,7 @@ export default function InterestCloudGamePage() {
   // Save host session
   useEffect(() => {
     if (game && activity && user) {
-      saveHostSession(gameId, game.gamePin, game.activityId || '', activity.title, user.uid);
+      saveHostSession(gameId, game.gamePin, game.activityId || '', activity.title, user.uid, 'interest-cloud');
     }
   }, [gameId, game, activity, user]);
 
@@ -87,23 +94,23 @@ export default function InterestCloudGamePage() {
   }, [game?.gamePin]);
 
   const handleToggleSubmissions = async () => {
-    if (!gameRef || !game) return;
+    if (!gameDocRef || !game) return;
 
     try {
-      await updateDoc(gameRef, { submissionsOpen: !game.submissionsOpen });
+      await updateDoc(gameDocRef, { submissionsOpen: !game.submissionsOpen });
     } catch (error) {
       console.error("Error toggling submissions: ", error);
     }
   };
 
   const handleStopAndProcess = async () => {
-    if (!gameRef) return;
+    if (!gameDocRef) return;
 
     setIsProcessing(true);
 
     try {
       // Close submissions and update state to processing
-      await updateDoc(gameRef, { state: 'processing', submissionsOpen: false });
+      await updateDoc(gameDocRef, { state: 'processing', submissionsOpen: false });
 
       // Call the AI function to extract topics
       const functions = getFunctions(undefined, 'europe-west4');
@@ -120,27 +127,27 @@ export default function InterestCloudGamePage() {
         description: "Could not process submissions. Please try again.",
       });
       // Revert to collecting state
-      await updateDoc(gameRef, { state: 'collecting', submissionsOpen: true });
+      await updateDoc(gameDocRef, { state: 'collecting', submissionsOpen: true });
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleCollectMore = async () => {
-    if (!gameRef) return;
+    if (!gameDocRef) return;
 
     try {
-      await updateDoc(gameRef, { state: 'collecting', submissionsOpen: true });
+      await updateDoc(gameDocRef, { state: 'collecting', submissionsOpen: true });
     } catch (error) {
       console.error("Error resuming collection: ", error);
     }
   };
 
   const handleEndSession = async () => {
-    if (!gameRef) return;
+    if (!gameDocRef) return;
 
     try {
-      await updateDoc(gameRef, { state: 'ended', submissionsOpen: false });
+      await updateDoc(gameDocRef, { state: 'ended', submissionsOpen: false });
       clearHostSession();
     } catch (error) {
       console.error("Error ending session: ", error);

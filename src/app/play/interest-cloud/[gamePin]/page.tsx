@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, addDoc, serverTimestamp, getDocs, DocumentReference, Query } from 'firebase/firestore';
+import { doc, collection, query, where, setDoc, addDoc, serverTimestamp, getDocs, DocumentReference, Query } from 'firebase/firestore';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
 import type { Game, Player, InterestCloudActivity, InterestSubmission, TopicCloudResult } from '@/lib/types';
@@ -129,7 +129,8 @@ export default function InterestCloudPlayerPage() {
         currentStreak: 0,
       };
 
-      await addDoc(collection(firestore, 'games', gameDocId, 'players'), {
+      // Use setDoc with playerId as document ID to match Firestore rules
+      await setDoc(doc(firestore, 'games', gameDocId, 'players', playerId), {
         id: playerId,
         ...playerData,
       });

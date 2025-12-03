@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, Trash2, Cloud } from 'lucide-react';
+import { Gamepad2, Trash2, Cloud, Pencil } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +34,11 @@ export function ActivityCard({ activity, onDelete }: ActivityCardProps) {
           <CardDescription className="text-base">Interest Cloud</CardDescription>
         </div>
         <div className='flex items-center gap-1'>
+          <Button asChild variant="ghost" size="icon" title="Edit activity" className="hover:bg-muted rounded-lg">
+            <Link href={`/host/interest-cloud/edit/${activity.id}`}>
+              <Pencil className="h-5 w-5" />
+            </Link>
+          </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon" title="Delete activity" className="hover:bg-muted rounded-lg">

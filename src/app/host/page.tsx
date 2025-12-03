@@ -9,7 +9,7 @@ import { Header } from '@/components/app/header';
 import { SharedQuizzes } from '@/components/app/shared-quizzes';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
-import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3 } from 'lucide-react';
+import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion } from 'lucide-react';
 import { CreateDropdown } from './components/create-dropdown';
 import { QuizCard } from './components/quiz-card';
 import { ActivityCard } from './components/activity-card';
@@ -276,6 +276,14 @@ export default function HostDashboardPage() {
   const activeGames = games?.filter(g => g.state !== 'ended');
   const completedGames = games?.filter(g => g.state === 'ended');
 
+  // Helper to get activity/quiz title for a game
+  const getGameTitle = (game: Game): string => {
+    if (game.activityType === 'interest-cloud') {
+      return activities?.find(a => a.id === game.activityId)?.title || 'Interest Cloud';
+    }
+    return quizzes?.find(q => q.id === game.quizId)?.title || 'Quiz';
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
@@ -389,58 +397,66 @@ export default function HostDashboardPage() {
         {/* Shared Quizzes Section */}
         <SharedQuizzes />
 
-        {/* Completed Games Section */}
+        {/* Completed Activities Section */}
         {completedGames && completedGames.length > 0 && (
             <div className="mb-12">
-                <h2 className="text-3xl font-semibold mb-6">Completed Games</h2>
+                <h2 className="text-3xl font-semibold mb-6">Completed Activities</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {gamesLoading ? (
                         <Card className="shadow-md"><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
                     ) : (
-                        completedGames.map(game => (
-                            <Card key={game.id} className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
-                                <CardHeader className="p-6">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <CardTitle className="text-2xl font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
-                                        <GameStateBadge state={game.state} />
-                                    </div>
-                                    <CardDescription className="text-base">
-                                        {quizzes?.find(q => q.id === game.quizId)?.title || '...'}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
-                                    <Button className="w-full px-6 py-4 rounded-xl" variant="outline" onClick={() => handleOpenGame(game)}>
-                                        <Eye className="mr-2 h-4 w-4" /> View Results
-                                    </Button>
-                                    <Button asChild className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 font-semibold">
-                                        <Link href={`/host/quiz/analytics/${game.id}`}>
-                                            <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
-                                        </Link>
-                                    </Button>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button className="w-full px-6 py-4 rounded-xl" variant="ghost">
-                                                <Trash2 className="mr-2 h-4 w-4" /> Delete Record
+                        completedGames.map(game => {
+                            const isInterestCloud = game.activityType === 'interest-cloud';
+                            return (
+                                <Card key={game.id} className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
+                                    <CardHeader className="p-6">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <CardTitle className="text-2xl font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
+                                            <div className={`flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md ${isInterestCloud ? 'bg-blue-500/20 text-blue-500' : 'bg-purple-500/20 text-purple-500'}`}>
+                                                {isInterestCloud ? <Cloud className="h-3 w-3" /> : <FileQuestion className="h-3 w-3" />}
+                                                {isInterestCloud ? 'Interest Cloud' : 'Quiz'}
+                                            </div>
+                                        </div>
+                                        <CardDescription className="text-base">
+                                            {getGameTitle(game)}
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
+                                        <Button className="w-full px-6 py-4 rounded-xl" variant="outline" onClick={() => handleOpenGame(game)}>
+                                            <Eye className="mr-2 h-4 w-4" /> View Results
+                                        </Button>
+                                        {!isInterestCloud && (
+                                            <Button asChild className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 font-semibold">
+                                                <Link href={`/host/quiz/analytics/${game.id}`}>
+                                                    <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
+                                                </Link>
                                             </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent className="rounded-2xl shadow-xl">
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle className="text-2xl font-semibold">Delete this game record?</AlertDialogTitle>
-                                                <AlertDialogDescription className="text-base">
-                                                    This will permanently delete the record for game '{game.gamePin}'.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel className="rounded-xl">Back</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
-                                                    Yes, Delete
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </CardContent>
-                            </Card>
-                        ))
+                                        )}
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button className="w-full px-6 py-4 rounded-xl" variant="ghost">
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Record
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent className="rounded-2xl shadow-xl">
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle className="text-2xl font-semibold">Delete this record?</AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-base">
+                                                        This will permanently delete the record for '{game.gamePin}'.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel className="rounded-xl">Back</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
+                                                        Yes, Delete
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })
                     )}
                 </div>
             </div>

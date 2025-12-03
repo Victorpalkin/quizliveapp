@@ -50,6 +50,8 @@ export const gameConverter: FirestoreDataConverter<Game> = {
       // Activity system fields
       activityType: data.activityType,
       activityId: data.activityId,
+      // Interest Cloud specific
+      submissionsOpen: data.submissionsOpen,
     };
   }
 };
