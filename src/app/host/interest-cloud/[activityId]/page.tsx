@@ -41,20 +41,21 @@ export default function InterestCloudDetailPage() {
         activityId: activityId,
         quizId: '', // Empty for non-quiz activities
         hostId: user.uid,
-        state: 'lobby' as const,
+        state: 'collecting' as const,
         currentQuestionIndex: 0,
         gamePin: nanoid(8).toUpperCase(),
         createdAt: serverTimestamp(),
+        submissionsOpen: true, // Submissions open immediately
       };
 
       const gameDoc = await addDoc(collection(firestore, 'games'), gameData);
 
       toast({
-        title: 'Session Created!',
-        description: 'Your Interest Cloud lobby is now open.',
+        title: 'Session Started!',
+        description: 'Participants can now join and submit.',
       });
 
-      router.push(`/host/interest-cloud/lobby/${gameDoc.id}`);
+      router.push(`/host/interest-cloud/game/${gameDoc.id}`);
     } catch (error) {
       console.error('Error launching session:', error);
       toast({

@@ -13,11 +13,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Cloud, Loader2, Send, CheckCircle, Home } from 'lucide-react';
+import { Cloud, Loader2, Send, CheckCircle, Home, PauseCircle } from 'lucide-react';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { WordCloud } from '@/components/app/word-cloud';
 
-type PlayerState = 'joining' | 'lobby' | 'submitting' | 'waiting' | 'viewing' | 'ended' | 'cancelled';
+type PlayerState = 'joining' | 'submitting' | 'waiting' | 'viewing' | 'ended' | 'cancelled';
 
 export default function InterestCloudPlayerPage() {
   const params = useParams();
@@ -72,7 +72,7 @@ export default function InterestCloudPlayerPage() {
   const { data: playerSubmissions } = useCollection<InterestSubmission>(submissionsQuery);
 
   // Keep awake
-  const shouldKeepAwake = ['lobby', 'submitting', 'waiting', 'viewing'].includes(state);
+  const shouldKeepAwake = ['submitting', 'waiting', 'viewing'].includes(state);
   useWakeLock(shouldKeepAwake);
 
   // Find game by PIN on mount
@@ -90,24 +90,20 @@ export default function InterestCloudPlayerPage() {
 
   // Sync state with game state
   useEffect(() => {
-    if (!game) return;
+    if (!game || !player) return;
 
     // Handle game state changes
     switch (game.state) {
-      case 'lobby':
-        if (state === 'joining' && player) {
-          setState('lobby');
-        }
-        break;
       case 'collecting':
-        if (state === 'lobby' || state === 'waiting') {
+        // Check if submissions are open
+        if (game.submissionsOpen) {
           setState('submitting');
+        } else {
+          setState('waiting');
         }
         break;
       case 'processing':
-        if (state === 'submitting') {
-          setState('waiting');
-        }
+        setState('waiting');
         break;
       case 'display':
         setState('viewing');
@@ -116,7 +112,7 @@ export default function InterestCloudPlayerPage() {
         setState('ended');
         break;
     }
-  }, [game?.state, player, state]);
+  }, [game?.state, game?.submissionsOpen, player]);
 
   // Handle joining the game
   const handleJoinGame = async () => {
@@ -139,7 +135,13 @@ export default function InterestCloudPlayerPage() {
       });
 
       setPlayer({ id: playerId, ...playerData });
-      setState('lobby');
+
+      // Immediately go to submitting or waiting based on game state
+      if (game?.submissionsOpen) {
+        setState('submitting');
+      } else {
+        setState('waiting');
+      }
     } catch (error) {
       console.error('Error joining game:', error);
     } finally {
@@ -227,27 +229,10 @@ export default function InterestCloudPlayerPage() {
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Joining...
                     </>
                   ) : (
-                    'Join'
+                    'Join & Submit'
                   )}
                 </Button>
               </form>
-            </CardContent>
-          </Card>
-        );
-
-      case 'lobby':
-        return (
-          <Card className="w-full max-w-md text-center shadow-2xl">
-            <CardContent className="p-8">
-              <Cloud className="h-16 w-16 mx-auto mb-4 text-blue-500" />
-              <h2 className="text-2xl font-bold mb-2">You're In!</h2>
-              <p className="text-lg text-muted-foreground mb-4">
-                Welcome, <span className="font-semibold">{player?.name}</span>
-              </p>
-              <p className="text-muted-foreground">
-                Waiting for the host to start collecting...
-              </p>
-              <Loader2 className="h-8 w-8 mx-auto mt-6 text-blue-500 animate-spin" />
             </CardContent>
           </Card>
         );
@@ -323,11 +308,31 @@ export default function InterestCloudPlayerPage() {
         return (
           <Card className="w-full max-w-md text-center shadow-2xl">
             <CardContent className="p-8">
-              <Loader2 className="h-16 w-16 mx-auto mb-4 text-blue-500 animate-spin" />
-              <h2 className="text-2xl font-bold mb-2">Processing...</h2>
+              <PauseCircle className="h-16 w-16 mx-auto mb-4 text-orange-500" />
+              <h2 className="text-2xl font-bold mb-2">
+                {game?.state === 'processing' ? 'Processing...' : 'Submissions Paused'}
+              </h2>
               <p className="text-muted-foreground">
-                AI is analyzing all submissions
+                {game?.state === 'processing'
+                  ? 'AI is analyzing all submissions'
+                  : 'The host will resume submissions soon'}
               </p>
+              {playerSubmissions && playerSubmissions.length > 0 && (
+                <div className="mt-6 text-left">
+                  <p className="text-sm font-medium mb-2">Your submissions:</p>
+                  <div className="space-y-2">
+                    {playerSubmissions.map((sub) => (
+                      <div
+                        key={sub.id}
+                        className="flex items-center gap-2 p-2 bg-muted rounded-lg"
+                      >
+                        <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <span className="text-sm">{sub.rawText}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         );

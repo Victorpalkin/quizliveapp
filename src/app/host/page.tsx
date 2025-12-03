@@ -9,10 +9,14 @@ import { Header } from '@/components/app/header';
 import { SharedQuizzes } from '@/components/app/shared-quizzes';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
-import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye, Edit, Share2, Sparkles, BarChart3, Cloud } from 'lucide-react';
+import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3 } from 'lucide-react';
+import { CreateDropdown } from './components/create-dropdown';
+import { QuizCard } from './components/quiz-card';
+import { ActivityCard } from './components/activity-card';
+import { EmptyContentState } from './components/empty-content-state';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { useCollection, useFirestore, useUser, useMemoFirebase, useStorage } from '@/firebase';
-import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getDoc, CollectionReference, Query } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getDoc, Query } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
@@ -335,190 +339,48 @@ export default function HostDashboardPage() {
             </div>
         )}
 
-        {/* My Quizzes Section */}
+        {/* My Content Section */}
         <div className="mb-12">
             <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-                <h1 className="text-5xl font-semibold">My Quizzes</h1>
-                <div className="flex gap-3">
-                    <Button asChild variant="outline" className="px-6 py-4 hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
-                        <Link href="/host/quiz/create-ai">
-                            <Sparkles className="mr-2 h-5 w-5" /> Create with AI
-                        </Link>
-                    </Button>
-                    <Button asChild className="px-6 py-4 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
-                        <Link href="/host/quiz/create">
-                            <PlusCircle className="mr-2 h-5 w-5" /> Create New Quiz
-                        </Link>
-                    </Button>
-                </div>
+                <h1 className="text-5xl font-semibold">My Content</h1>
+                <CreateDropdown />
             </div>
 
-            {quizzesLoading ? (
+            {(quizzesLoading || activitiesLoading) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[...Array(3)].map((_, i) => (
                         <Card key={i} className="shadow-md rounded-2xl border border-card-border">
                             <CardHeader className="p-6">
-                                <div className="h-6 bg-muted rounded-lg w-3/4"></div>
-                                <div className="h-4 bg-muted rounded-lg w-1/2 mt-2"></div>
+                                <div className="h-6 bg-muted rounded-lg w-3/4 animate-pulse"></div>
+                                <div className="h-4 bg-muted rounded-lg w-1/2 mt-2 animate-pulse"></div>
                             </CardHeader>
                             <CardContent className="p-6 pt-0">
-                                <div className="h-10 bg-muted rounded-lg w-full"></div>
+                                <div className="h-10 bg-muted rounded-lg w-full animate-pulse"></div>
                             </CardContent>
                         </Card>
                     ))}
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {quizzes && quizzes.map(quiz => (
-                        <Card key={quiz.id} className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
-                            <CardHeader className="flex flex-row items-start justify-between p-6">
-                                <div className='flex-grow'>
-                                    <CardTitle className="text-2xl font-semibold mb-2">{quiz.title}</CardTitle>
-                                    <CardDescription className="text-base">{quiz.questions.length} questions</CardDescription>
-                                </div>
-                                <div className='flex items-center gap-1'>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => setShareDialogQuiz({ id: quiz.id, title: quiz.title })}
-                                      title="Share quiz"
-                                      className="hover:bg-muted rounded-lg"
-                                    >
-                                      <Share2 className="h-5 w-5 text-muted-foreground" />
-                                    </Button>
-                                    <Button asChild variant="ghost" size="icon" title="Edit quiz" className="hover:bg-muted rounded-lg">
-                                        <Link href={`/host/quiz/${quiz.id}`}>
-                                            <Edit className="h-5 w-5 text-muted-foreground" />
-                                        </Link>
-                                    </Button>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" title="Delete quiz" className="hover:bg-muted rounded-lg">
-                                                <Trash2 className="h-5 w-5 text-destructive" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent className="rounded-2xl shadow-xl">
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle className="text-2xl font-semibold">Are you sure you want to delete this quiz?</AlertDialogTitle>
-                                                <AlertDialogDescription className="text-base">
-                                                    This action cannot be undone. This will permanently delete the quiz '{quiz.title}' and all its images.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteQuiz(quiz.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
-                                                    Delete
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
-                                <Button
-                                    className="w-full px-6 py-4 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold"
-                                    onClick={() => handleHostGame(quiz.id)}
-                                >
-                                  <Gamepad2 className="mr-2 h-4 w-4" /> Host Game
-                                </Button>
-                                <Button className="w-full px-6 py-4 rounded-xl" variant="outline" onClick={() => setPreviewQuiz(quiz)}>
-                                  <Eye className="mr-2 h-4 w-4" /> Preview Quiz
-                                </Button>
-                            </CardContent>
-                        </Card>
+                    {quizzes?.map(quiz => (
+                        <QuizCard
+                            key={quiz.id}
+                            quiz={quiz}
+                            onHost={handleHostGame}
+                            onPreview={setPreviewQuiz}
+                            onShare={setShareDialogQuiz}
+                            onDelete={handleDeleteQuiz}
+                        />
                     ))}
-
-                    {quizzes?.length === 0 && (
-                        <div className="col-span-full text-center text-muted-foreground py-16">
-                            <p className="mb-6 text-lg">You haven't created any quizzes yet.</p>
-                            <Button asChild variant="outline" className="px-6 py-4 rounded-xl">
-                                <Link href="/host/quiz/create">
-                                    Create Your First Quiz
-                                </Link>
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
-
-        {/* My Activities Section */}
-        <div className="mb-12">
-            <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-                <h2 className="text-3xl font-semibold">My Activities</h2>
-                <Button asChild className="px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
-                    <Link href="/host/interest-cloud/create">
-                        <Cloud className="mr-2 h-5 w-5" /> New Interest Cloud
-                    </Link>
-                </Button>
-            </div>
-
-            {activitiesLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[...Array(2)].map((_, i) => (
-                        <Card key={i} className="shadow-md rounded-2xl border border-card-border">
-                            <CardHeader className="p-6">
-                                <div className="h-6 bg-muted rounded-lg w-3/4"></div>
-                                <div className="h-4 bg-muted rounded-lg w-1/2 mt-2"></div>
-                            </CardHeader>
-                            <CardContent className="p-6 pt-0">
-                                <div className="h-10 bg-muted rounded-lg w-full"></div>
-                            </CardContent>
-                        </Card>
+                    {activities?.map(activity => (
+                        <ActivityCard
+                            key={activity.id}
+                            activity={activity}
+                            onDelete={handleDeleteActivity}
+                        />
                     ))}
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {activities && activities.map(activity => (
-                        <Card key={activity.id} className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
-                            <CardHeader className="flex flex-row items-start justify-between p-6">
-                                <div className='flex-grow'>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <Cloud className="h-5 w-5 text-blue-500" />
-                                        <CardTitle className="text-2xl font-semibold">{activity.title}</CardTitle>
-                                    </div>
-                                    <CardDescription className="text-base">Interest Cloud</CardDescription>
-                                </div>
-                                <div className='flex items-center gap-1'>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" title="Delete activity" className="hover:bg-muted rounded-lg">
-                                                <Trash2 className="h-5 w-5 text-destructive" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent className="rounded-2xl shadow-xl">
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle className="text-2xl font-semibold">Delete this activity?</AlertDialogTitle>
-                                                <AlertDialogDescription className="text-base">
-                                                    This action cannot be undone. This will permanently delete '{activity.title}'.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteActivity(activity.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
-                                                    Delete
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
-                                <Button asChild className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
-                                    <Link href={`/host/interest-cloud/${activity.id}`}>
-                                        <Gamepad2 className="mr-2 h-4 w-4" /> Launch Session
-                                    </Link>
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    ))}
-
-                    {(!activities || activities.length === 0) && (
-                        <div className="col-span-full text-center text-muted-foreground py-8">
-                            <Cloud className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                            <p className="mb-4 text-lg">No activities yet.</p>
-                            <p className="text-sm">Create an Interest Cloud to collect topics from your audience!</p>
-                        </div>
+                    {(!quizzes?.length && !activities?.length) && (
+                        <EmptyContentState />
                     )}
                 </div>
             )}

@@ -165,6 +165,9 @@ export interface Game {
     // Activity system fields (optional for backward compatibility)
     activityType?: ActivityType;  // Default: 'quiz' for existing games
     activityId?: string;          // Reference to activity document (for non-quiz activities)
+
+    // Interest Cloud specific
+    submissionsOpen?: boolean;    // Whether submissions are currently accepted
 }
 
 // Cloud Function response interface for submitAnswer

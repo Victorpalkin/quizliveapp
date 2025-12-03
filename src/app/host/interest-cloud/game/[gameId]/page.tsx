@@ -2,9 +2,10 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { CopyButton } from '@/components/ui/copy-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
-import { Cloud, StopCircle, Loader2, RefreshCw, Home, MessageSquare } from 'lucide-react';
+import { Cloud, StopCircle, Loader2, RefreshCw, Home, MessageSquare, Users, QrCode, Copy, PlayCircle, PauseCircle } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, collection, updateDoc, DocumentReference, Query } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,12 +13,18 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import type { Game, InterestCloudActivity, InterestSubmission, TopicCloudResult } from '@/lib/types';
 import { gameConverter, interestCloudActivityConverter, interestSubmissionConverter } from '@/firebase/converters';
-import { clearHostSession } from '@/lib/host-session';
+import { clearHostSession, saveHostSession } from '@/lib/host-session';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { WordCloud } from '@/components/app/word-cloud';
 import { useState, useEffect } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
+import { QRCodeSVG } from 'qrcode.react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export default function InterestCloudGamePage() {
   const params = useParams();
@@ -27,6 +34,7 @@ export default function InterestCloudGamePage() {
   const { user, loading: userLoading } = useUser();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [joinUrl, setJoinUrl] = useState('');
 
   const gameRef = useMemoFirebase(
     () => doc(firestore, 'games', gameId).withConverter(gameConverter) as DocumentReference<Game>,
@@ -43,6 +51,13 @@ export default function InterestCloudGamePage() {
   );
   const { data: activity } = useDoc(activityRef);
 
+  // Fetch participants
+  const playersQuery = useMemoFirebase(
+    () => game ? collection(firestore, 'games', gameId, 'players') : null,
+    [firestore, gameId, game]
+  );
+  const { data: players, loading: playersLoading } = useCollection(playersQuery);
+
   // Fetch submissions
   const submissionsQuery = useMemoFirebase(
     () => game ? collection(firestore, 'games', gameId, 'submissions').withConverter(interestSubmissionConverter) as Query<InterestSubmission> : null,
@@ -57,14 +72,38 @@ export default function InterestCloudGamePage() {
   );
   const { data: topicCloud } = useDoc(topicsRef);
 
+  // Save host session
+  useEffect(() => {
+    if (game && activity && user) {
+      saveHostSession(gameId, game.gamePin, game.activityId || '', activity.title, user.uid);
+    }
+  }, [gameId, game, activity, user]);
+
+  // Set join URL
+  useEffect(() => {
+    if (game?.gamePin) {
+      setJoinUrl(`${window.location.origin}/play/${game.gamePin}`);
+    }
+  }, [game?.gamePin]);
+
+  const handleToggleSubmissions = async () => {
+    if (!gameRef || !game) return;
+
+    try {
+      await updateDoc(gameRef, { submissionsOpen: !game.submissionsOpen });
+    } catch (error) {
+      console.error("Error toggling submissions: ", error);
+    }
+  };
+
   const handleStopAndProcess = async () => {
     if (!gameRef) return;
 
     setIsProcessing(true);
 
     try {
-      // First update state to processing
-      await updateDoc(gameRef, { state: 'processing' });
+      // Close submissions and update state to processing
+      await updateDoc(gameRef, { state: 'processing', submissionsOpen: false });
 
       // Call the AI function to extract topics
       const functions = getFunctions(undefined, 'europe-west4');
@@ -81,7 +120,7 @@ export default function InterestCloudGamePage() {
         description: "Could not process submissions. Please try again.",
       });
       // Revert to collecting state
-      await updateDoc(gameRef, { state: 'collecting' });
+      await updateDoc(gameRef, { state: 'collecting', submissionsOpen: true });
     } finally {
       setIsProcessing(false);
     }
@@ -91,7 +130,7 @@ export default function InterestCloudGamePage() {
     if (!gameRef) return;
 
     try {
-      await updateDoc(gameRef, { state: 'collecting' });
+      await updateDoc(gameRef, { state: 'collecting', submissionsOpen: true });
     } catch (error) {
       console.error("Error resuming collection: ", error);
     }
@@ -101,7 +140,7 @@ export default function InterestCloudGamePage() {
     if (!gameRef) return;
 
     try {
-      await updateDoc(gameRef, { state: 'ended' });
+      await updateDoc(gameRef, { state: 'ended', submissionsOpen: false });
       clearHostSession();
     } catch (error) {
       console.error("Error ending session: ", error);
@@ -117,24 +156,117 @@ export default function InterestCloudGamePage() {
     return <FullPageLoader />;
   }
 
+  // PIN/QR Section (always visible when session is active)
+  const renderJoinSection = () => {
+    if (game?.state === 'ended') return null;
+
+    return (
+      <Card className="border border-card-border shadow-sm mb-6">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* PIN Section */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground uppercase tracking-wide">PIN</span>
+              <div className="flex items-center gap-2">
+                <span className="text-3xl font-mono font-bold tracking-widest">{game?.gamePin}</span>
+                {game?.gamePin && <CopyButton text={game.gamePin} />}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="hidden sm:block h-8 w-px bg-border" />
+
+            {/* Participants */}
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-muted-foreground" />
+              <span className="text-lg font-semibold">{players?.length || 0} joined</span>
+            </div>
+
+            {/* Divider */}
+            <div className="hidden sm:block h-8 w-px bg-border" />
+
+            {/* QR & Link Actions */}
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <QrCode className="h-4 w-4 mr-2" />
+                    QR Code
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-4" align="end">
+                  <div className="flex flex-col items-center gap-3">
+                    <p className="text-sm font-medium">Scan to join</p>
+                    {joinUrl && (
+                      <div className="bg-white p-3 rounded-lg">
+                        <QRCodeSVG value={joinUrl} size={160} level="M" />
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigator.clipboard.writeText(joinUrl)}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Link
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const renderContent = () => {
     switch (game?.state) {
       case 'collecting':
         return (
           <div className="space-y-6">
-            {/* Submission Count */}
-            <Card className="border-2 border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-purple-500/5">
-              <CardContent className="p-8 text-center">
-                <MessageSquare className="h-12 w-12 mx-auto mb-4 text-blue-500" />
-                <p className="text-6xl font-bold mb-2">{submissions?.length || 0}</p>
-                <p className="text-xl text-muted-foreground">Submissions Received</p>
+            {/* Submission Status */}
+            <Card className={`border-2 ${game.submissionsOpen ? 'border-green-500/30 bg-gradient-to-br from-green-500/5 to-blue-500/5' : 'border-orange-500/30 bg-gradient-to-br from-orange-500/5 to-red-500/5'}`}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <MessageSquare className={`h-10 w-10 ${game.submissionsOpen ? 'text-green-500' : 'text-orange-500'}`} />
+                    <div>
+                      <p className="text-4xl font-bold">{submissions?.length || 0}</p>
+                      <p className="text-muted-foreground">Submissions</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleToggleSubmissions}
+                    variant={game.submissionsOpen ? "outline" : "default"}
+                    size="lg"
+                    className={game.submissionsOpen ? '' : 'bg-green-500 hover:bg-green-600'}
+                  >
+                    {game.submissionsOpen ? (
+                      <>
+                        <PauseCircle className="mr-2 h-5 w-5" />
+                        Pause Submissions
+                      </>
+                    ) : (
+                      <>
+                        <PlayCircle className="mr-2 h-5 w-5" />
+                        Resume Submissions
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {game.submissionsOpen
+                    ? 'Participants can submit their interests now'
+                    : 'Submissions are paused - participants are waiting'}
+                </p>
               </CardContent>
             </Card>
 
             {/* Prompt */}
             <Card className="border border-card-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Current Prompt</CardTitle>
+                <CardTitle className="text-lg">Prompt</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-lg italic">"{activity?.config.prompt}"</p>
@@ -160,6 +292,30 @@ export default function InterestCloudGamePage() {
               </Card>
             )}
 
+            {/* Participants */}
+            {players && players.length > 0 && (
+              <Card className="border border-card-border">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Participants</CardTitle>
+                    <span className="text-sm text-muted-foreground">{players.length} joined</span>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                    {players.map(player => (
+                      <span
+                        key={player.id}
+                        className="px-3 py-1.5 bg-muted rounded-full text-sm font-medium"
+                      >
+                        {player.name}
+                      </span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Stop & Process Button */}
             <Button
               onClick={handleStopAndProcess}
@@ -168,7 +324,7 @@ export default function InterestCloudGamePage() {
               className="w-full py-6 text-lg bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90"
             >
               <StopCircle className="mr-2 h-6 w-6" />
-              Stop & Process Results
+              Analyze Results
             </Button>
           </div>
         );
@@ -204,17 +360,23 @@ export default function InterestCloudGamePage() {
             </Card>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-3xl font-bold">{players?.length || 0}</p>
+                  <p className="text-muted-foreground">Participants</p>
+                </CardContent>
+              </Card>
               <Card>
                 <CardContent className="p-6 text-center">
                   <p className="text-3xl font-bold">{submissions?.length || 0}</p>
-                  <p className="text-muted-foreground">Total Submissions</p>
+                  <p className="text-muted-foreground">Submissions</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-6 text-center">
                   <p className="text-3xl font-bold">{topicCloud?.topics?.length || 0}</p>
-                  <p className="text-muted-foreground">Unique Topics</p>
+                  <p className="text-muted-foreground">Topics</p>
                 </CardContent>
               </Card>
             </div>
@@ -278,15 +440,17 @@ export default function InterestCloudGamePage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
-      <main className="flex-1 container mx-auto p-4 md:p-8 max-w-2xl">
+      <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl">
         {/* Title */}
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex items-center gap-3 mb-6">
           <Cloud className="h-8 w-8 text-blue-500" />
           <div>
             <h1 className="text-3xl font-bold">{activity?.title || 'Interest Cloud'}</h1>
-            <p className="text-muted-foreground">PIN: {game?.gamePin}</p>
           </div>
         </div>
+
+        {/* PIN/QR Section - always visible */}
+        {renderJoinSection()}
 
         {renderContent()}
       </main>
