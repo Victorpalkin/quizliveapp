@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
-import { Cloud, StopCircle, Loader2, RefreshCw, Home, MessageSquare, Users, QrCode, Copy, PlayCircle, PauseCircle } from 'lucide-react';
+import { Cloud, StopCircle, Loader2, RefreshCw, Home, MessageSquare, Users, QrCode, Copy, PlayCircle, PauseCircle, XCircle } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, collection, updateDoc, DocumentReference, Query } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -323,16 +323,27 @@ export default function InterestCloudGamePage() {
               </Card>
             )}
 
-            {/* Stop & Process Button */}
-            <Button
-              onClick={handleStopAndProcess}
-              size="lg"
-              disabled={!submissions?.length}
-              className="w-full py-6 text-lg bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90"
-            >
-              <StopCircle className="mr-2 h-6 w-6" />
-              Analyze Results
-            </Button>
+            {/* Action Buttons */}
+            <div className="flex gap-4">
+              <Button
+                onClick={handleStopAndProcess}
+                size="lg"
+                disabled={!submissions?.length}
+                className="flex-1 py-6 text-lg bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90"
+              >
+                <StopCircle className="mr-2 h-6 w-6" />
+                Analyze Results
+              </Button>
+              <Button
+                onClick={handleEndSession}
+                size="lg"
+                variant="outline"
+                className="py-6 text-lg"
+              >
+                <XCircle className="mr-2 h-5 w-5" />
+                Finish
+              </Button>
+            </div>
           </div>
         );
 
