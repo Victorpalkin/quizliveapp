@@ -1,4 +1,4 @@
-# gQuiz Refactoring Plan
+# Zivo Refactoring Plan
 
 **Generated:** 2025-11-19
 **Updated:** 2025-11-19

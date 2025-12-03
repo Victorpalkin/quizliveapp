@@ -20,11 +20,13 @@ import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getD
 import { ref, deleteObject } from 'firebase/storage';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
-import type { Quiz, Game, InterestCloudActivity } from '@/lib/types';
+import type { Quiz, Game, InterestCloudActivity, RankingActivity } from '@/lib/types';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { quizConverter, gameConverter, interestCloudActivityConverter } from '@/firebase/converters';
+import { quizConverter, gameConverter, interestCloudActivityConverter, rankingActivityConverter } from '@/firebase/converters';
+
+type Activity = InterestCloudActivity | RankingActivity;
 import {
   AlertDialog,
   AlertDialogAction,
@@ -97,14 +99,33 @@ export default function HostDashboardPage() {
   const { data: games, loading: gamesLoading } = useCollection<Game>(gamesQuery);
 
   // Fetch Interest Cloud activities
-  const activitiesQuery = useMemoFirebase(() =>
+  const interestCloudQuery = useMemoFirebase(() =>
     user ? query(
       collection(firestore, 'activities').withConverter(interestCloudActivityConverter),
-      where('hostId', '==', user.uid)
+      where('hostId', '==', user.uid),
+      where('type', '==', 'interest-cloud')
     ) as Query<InterestCloudActivity> : null
   , [user, firestore]);
 
-  const { data: activities, loading: activitiesLoading } = useCollection<InterestCloudActivity>(activitiesQuery);
+  const { data: interestCloudActivities, loading: interestCloudLoading } = useCollection<InterestCloudActivity>(interestCloudQuery);
+
+  // Fetch Ranking activities
+  const rankingQuery = useMemoFirebase(() =>
+    user ? query(
+      collection(firestore, 'activities').withConverter(rankingActivityConverter),
+      where('hostId', '==', user.uid),
+      where('type', '==', 'ranking')
+    ) as Query<RankingActivity> : null
+  , [user, firestore]);
+
+  const { data: rankingActivities, loading: rankingLoading } = useCollection<RankingActivity>(rankingQuery);
+
+  // Combine activities for display
+  const activities: Activity[] = [
+    ...(interestCloudActivities || []),
+    ...(rankingActivities || [])
+  ];
+  const activitiesLoading = interestCloudLoading || rankingLoading;
 
   useEffect(() => {
     if (!userLoading && !user) {
@@ -231,12 +252,16 @@ export default function HostDashboardPage() {
         // Route based on activity type
         if (game.activityType === 'interest-cloud') {
             router.push(`/host/interest-cloud/lobby/${game.id}`);
+        } else if (game.activityType === 'ranking') {
+            router.push(`/host/ranking/game/${game.id}`);
         } else {
             router.push(`/host/quiz/lobby/${game.id}`);
         }
     } else {
         if (game.activityType === 'interest-cloud') {
             router.push(`/host/interest-cloud/game/${game.id}`);
+        } else if (game.activityType === 'ranking') {
+            router.push(`/host/ranking/game/${game.id}`);
         } else {
             router.push(`/host/quiz/game/${game.id}`);
         }
@@ -279,7 +304,10 @@ export default function HostDashboardPage() {
   // Helper to get activity/quiz title for a game
   const getGameTitle = (game: Game): string => {
     if (game.activityType === 'interest-cloud') {
-      return activities?.find(a => a.id === game.activityId)?.title || 'Interest Cloud';
+      return activities.find(a => a.id === game.activityId)?.title || 'Interest Cloud';
+    }
+    if (game.activityType === 'ranking') {
+      return activities.find(a => a.id === game.activityId)?.title || 'Ranking';
     }
     return quizzes?.find(q => q.id === game.quizId)?.title || 'Quiz';
   };
@@ -407,14 +435,30 @@ export default function HostDashboardPage() {
                     ) : (
                         completedGames.map(game => {
                             const isInterestCloud = game.activityType === 'interest-cloud';
+                            const isRanking = game.activityType === 'ranking';
+                            const isQuiz = !isInterestCloud && !isRanking;
+
+                            // Determine badge styling
+                            const badgeClass = isInterestCloud
+                                ? 'bg-blue-500/20 text-blue-500'
+                                : isRanking
+                                    ? 'bg-orange-500/20 text-orange-500'
+                                    : 'bg-purple-500/20 text-purple-500';
+                            const badgeIcon = isInterestCloud
+                                ? <Cloud className="h-3 w-3" />
+                                : isRanking
+                                    ? <BarChart3 className="h-3 w-3" />
+                                    : <FileQuestion className="h-3 w-3" />;
+                            const badgeLabel = isInterestCloud ? 'Interest Cloud' : isRanking ? 'Ranking' : 'Quiz';
+
                             return (
                                 <Card key={game.id} className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
                                     <CardHeader className="p-6">
                                         <div className="flex justify-between items-center mb-2">
                                             <CardTitle className="text-2xl font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
-                                            <div className={`flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md ${isInterestCloud ? 'bg-blue-500/20 text-blue-500' : 'bg-purple-500/20 text-purple-500'}`}>
-                                                {isInterestCloud ? <Cloud className="h-3 w-3" /> : <FileQuestion className="h-3 w-3" />}
-                                                {isInterestCloud ? 'Interest Cloud' : 'Quiz'}
+                                            <div className={`flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md ${badgeClass}`}>
+                                                {badgeIcon}
+                                                {badgeLabel}
                                             </div>
                                         </div>
                                         <CardDescription className="text-base">
@@ -425,7 +469,7 @@ export default function HostDashboardPage() {
                                         <Button className="w-full px-6 py-4 rounded-xl" variant="outline" onClick={() => handleOpenGame(game)}>
                                             <Eye className="mr-2 h-4 w-4" /> View Results
                                         </Button>
-                                        {!isInterestCloud && (
+                                        {isQuiz && (
                                             <Button asChild className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 font-semibold">
                                                 <Link href={`/host/quiz/analytics/${game.id}`}>
                                                     <BarChart3 className="mr-2 h-4 w-4" /> View Analytics

@@ -5,7 +5,7 @@ import {
   FirestoreDataConverter,
   Timestamp,
 } from 'firebase/firestore';
-import { Quiz, Game, Player, QuizShare, InterestCloudActivity, InterestSubmission } from '@/lib/types';
+import { Quiz, Game, Player, QuizShare, InterestCloudActivity, InterestSubmission, RankingActivity, RankingItem, PlayerRatings } from '@/lib/types';
 
 export const quizConverter: FirestoreDataConverter<Quiz> = {
   toFirestore(quiz: Quiz): DocumentData {
@@ -52,6 +52,8 @@ export const gameConverter: FirestoreDataConverter<Game> = {
       activityId: data.activityId,
       // Interest Cloud specific
       submissionsOpen: data.submissionsOpen,
+      // Ranking specific
+      itemSubmissionsOpen: data.itemSubmissionsOpen,
     };
   }
 };
@@ -150,6 +152,93 @@ export const interestSubmissionConverter: FirestoreDataConverter<InterestSubmiss
       rawText: data.rawText,
       submittedAt: data.submittedAt,
       extractedTopics: data.extractedTopics,
+    };
+  }
+};
+
+// ==========================================
+// Ranking Activity Converters
+// ==========================================
+
+export const rankingActivityConverter: FirestoreDataConverter<RankingActivity> = {
+  toFirestore(activity: RankingActivity): DocumentData {
+    const { id, ...data } = activity;
+    // Filter out undefined values (Firestore rejects undefined)
+    const filtered = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v !== undefined)
+    );
+    return {
+      ...filtered,
+      createdAt: data.createdAt instanceof Date ? Timestamp.fromDate(data.createdAt) : data.createdAt,
+      updatedAt: data.updatedAt instanceof Date ? Timestamp.fromDate(data.updatedAt) : data.updatedAt,
+    };
+  },
+  fromFirestore(
+    snapshot: QueryDocumentSnapshot,
+    options: SnapshotOptions
+  ): RankingActivity {
+    const data = snapshot.data(options);
+    return {
+      id: snapshot.id,
+      type: 'ranking',
+      title: data.title,
+      description: data.description,
+      hostId: data.hostId,
+      config: data.config,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date(),
+    };
+  }
+};
+
+export const rankingItemConverter: FirestoreDataConverter<RankingItem> = {
+  toFirestore(item: RankingItem): DocumentData {
+    const { id, ...data } = item;
+    // Filter out undefined values
+    return Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v !== undefined)
+    );
+  },
+  fromFirestore(
+    snapshot: QueryDocumentSnapshot,
+    options: SnapshotOptions
+  ): RankingItem {
+    const data = snapshot.data(options);
+    return {
+      id: snapshot.id,
+      text: data.text,
+      description: data.description,
+      submittedBy: data.submittedBy,
+      submittedByPlayerId: data.submittedByPlayerId,
+      isHostItem: data.isHostItem ?? true,
+      approved: data.approved ?? true,
+      order: data.order ?? 0,
+      createdAt: data.createdAt,
+    };
+  }
+};
+
+export const playerRatingsConverter: FirestoreDataConverter<PlayerRatings> = {
+  toFirestore(ratings: PlayerRatings): DocumentData {
+    return {
+      playerId: ratings.playerId,
+      playerName: ratings.playerName,
+      ratings: ratings.ratings,
+      submittedAt: ratings.submittedAt,
+      isComplete: ratings.isComplete,
+    };
+  },
+  fromFirestore(
+    snapshot: QueryDocumentSnapshot,
+    options: SnapshotOptions
+  ): PlayerRatings {
+    const data = snapshot.data(options);
+    return {
+      playerId: data.playerId,
+      playerName: data.playerName,
+      ratings: data.ratings || {},
+      submittedAt: data.submittedAt,
+      isComplete: data.isComplete ?? false,
     };
   }
 };

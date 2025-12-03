@@ -251,3 +251,140 @@ export interface ComputeGameAnalyticsResult {
     totalQuestions: number;
   };
 }
+
+// ==========================================
+// Ranking Activity Types
+// ==========================================
+
+/**
+ * Metric configuration for ranking activity
+ */
+export interface RankingMetric {
+  id: string;
+  name: string;
+  description?: string;
+  scaleType: 'stars' | 'numeric' | 'labels';
+  scaleMin: number;
+  scaleMax: number;
+  scaleLabels?: string[];
+  weight: number;
+  lowerIsBetter: boolean;
+}
+
+/**
+ * A predefined item template stored in activity config
+ */
+export interface PredefinedItem {
+  id: string;
+  text: string;
+  description?: string;
+}
+
+/**
+ * Ranking activity configuration
+ */
+export interface RankingConfig {
+  metrics: RankingMetric[];
+  predefinedItems: PredefinedItem[];
+  allowParticipantItems: boolean;
+  maxItemsPerParticipant: number;
+  requireApproval: boolean;
+  showItemSubmitter: boolean;
+}
+
+/**
+ * Ranking activity document
+ */
+export interface RankingActivity {
+  id: string;
+  type: 'ranking';
+  title: string;
+  description?: string;
+  hostId: string;
+  config: RankingConfig;
+}
+
+/**
+ * Ranking item to be rated
+ */
+export interface RankingItem {
+  id: string;
+  text: string;
+  description?: string;
+  submittedBy?: string;
+  submittedByPlayerId?: string;
+  isHostItem: boolean;
+  approved: boolean;
+  order: number;
+}
+
+/**
+ * Player's ratings for items
+ */
+export interface PlayerRatings {
+  playerId: string;
+  playerName: string;
+  ratings: {
+    [itemId: string]: {
+      [metricId: string]: number;
+    };
+  };
+  isComplete: boolean;
+}
+
+/**
+ * Metric score details for an item
+ */
+export interface MetricScoreDetails {
+  rawAverage: number;
+  normalizedAverage: number;
+  median: number;
+  stdDev: number;
+  distribution: number[];
+  responseCount: number;
+}
+
+/**
+ * Individual item result with scores
+ */
+export interface RankingItemResult {
+  itemId: string;
+  itemText: string;
+  itemDescription?: string;
+  overallScore: number;
+  rank: number;
+  metricScores: {
+    [metricId: string]: MetricScoreDetails;
+  };
+  consensusLevel: 'high' | 'medium' | 'low';
+}
+
+/**
+ * Complete ranking results document
+ * Stored at: games/{gameId}/aggregates/rankings
+ */
+export interface RankingResults {
+  items: RankingItemResult[];
+  totalParticipants: number;
+  participantsWhoRated: number;
+  processedAt: admin.firestore.FieldValue;
+}
+
+/**
+ * Request interface for computeRankingResults Cloud Function
+ */
+export interface ComputeRankingResultsRequest {
+  gameId: string;
+}
+
+/**
+ * Result returned from computeRankingResults function
+ */
+export interface ComputeRankingResultsResult {
+  success: boolean;
+  message: string;
+  results?: {
+    totalItems: number;
+    totalParticipants: number;
+  };
+}

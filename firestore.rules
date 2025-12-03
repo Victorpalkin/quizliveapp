@@ -185,6 +185,52 @@ service cloud.firestore {
         // Deletes handled by Cloud Functions (cleanup on game end/cancel)
         allow delete: if false;
       }
+
+      // Ranking items subcollection - items to be ranked by participants
+      match /items/{itemId} {
+        // Anyone can read items (for display during ranking)
+        allow read: if true;
+
+        // Host can create items OR players can submit items if allowed (during collecting state)
+        allow create: if (
+                         // Host can always create items for their game
+                         (request.auth != null &&
+                          request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId)
+                         ||
+                         // Players can submit items during collecting state (no auth required)
+                         (get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'ranking' &&
+                          get(/databases/$(database)/documents/games/$(gameId)).data.state == 'collecting' &&
+                          request.resource.data.text is string &&
+                          request.resource.data.text.size() >= 1 &&
+                          request.resource.data.text.size() <= 500 &&
+                          request.resource.data.isHostItem == false &&
+                          request.resource.data.submittedByPlayerId is string)
+                       );
+
+        // Only host can update items (approve/reject, reorder)
+        allow update: if request.auth != null &&
+                         request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId;
+
+        // Only host can delete items
+        allow delete: if request.auth != null &&
+                         request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId;
+      }
+
+      // Ranking ratings subcollection - player ratings for items
+      match /ratings/{ratingId} {
+        // Anyone can read ratings (for host to see progress and for results)
+        allow read: if true;
+
+        // Players can create/update their own ratings (during ranking state)
+        // The ratingId should match the playerId
+        allow create, update: if ratingId == request.resource.data.playerId &&
+                                 request.resource.data.playerName is string &&
+                                 get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'ranking' &&
+                                 get(/databases/$(database)/documents/games/$(gameId)).data.state == 'ranking';
+
+        // No client-side deletes
+        allow delete: if false;
+      }
     }
   }
 }

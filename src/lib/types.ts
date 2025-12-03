@@ -143,7 +143,7 @@ export interface CrowdsourceState {
 }
 
 // Activity types for the Activity system
-export type ActivityType = 'quiz' | 'interest-cloud';
+export type ActivityType = 'quiz' | 'interest-cloud' | 'ranking';
 
 // Quiz game states (existing)
 export type QuizGameState = 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
@@ -151,11 +151,14 @@ export type QuizGameState = 'lobby' | 'preparing' | 'question' | 'leaderboard' |
 // Interest Cloud game states
 export type InterestCloudGameState = 'lobby' | 'collecting' | 'processing' | 'display' | 'ended';
 
+// Ranking game states
+export type RankingGameState = 'collecting' | 'ranking' | 'analyzing' | 'results' | 'ended';
+
 export interface Game {
     id: string;
     quizId: string;
     hostId: string;
-    state: QuizGameState | InterestCloudGameState;
+    state: QuizGameState | InterestCloudGameState | RankingGameState;
     currentQuestionIndex: number;
     gamePin: string;
     questionStartTime?: Timestamp; // Firestore server timestamp when current question started (for timer sync)
@@ -168,6 +171,9 @@ export interface Game {
 
     // Interest Cloud specific
     submissionsOpen?: boolean;    // Whether submissions are currently accepted
+
+    // Ranking specific
+    itemSubmissionsOpen?: boolean;  // Whether item submissions are accepted during collecting phase
 }
 
 // Cloud Function response interface for submitAnswer
@@ -379,5 +385,120 @@ export interface TopicEntry {
 export interface TopicCloudResult {
   topics: TopicEntry[];
   totalSubmissions: number;
+  processedAt: Timestamp;
+}
+
+// ==========================================
+// Ranking Activity Types
+// ==========================================
+
+/**
+ * A metric that items are scored on
+ */
+export interface RankingMetric {
+  id: string;
+  name: string;                    // e.g., "Impact", "Effort", "Complexity"
+  description?: string;            // Help text for participants
+  scaleType: 'stars' | 'numeric' | 'labels';
+  scaleMin: number;                // e.g., 1
+  scaleMax: number;                // e.g., 5 or 10
+  scaleLabels?: string[];          // For 'labels' type: ["Low", "Medium", "High"]
+  weight: number;                  // Weight for aggregate calculation (default: 1)
+  lowerIsBetter: boolean;          // true for metrics like "Complexity", "Effort", "Risk"
+}
+
+/**
+ * Configuration for Ranking activity
+ */
+/**
+ * A predefined item template stored in activity config
+ */
+export interface PredefinedItem {
+  id: string;
+  text: string;
+  description?: string;
+}
+
+export interface RankingConfig {
+  metrics: RankingMetric[];              // 1-5 metrics to rate on
+  predefinedItems: PredefinedItem[];     // Items pre-created by host
+  allowParticipantItems: boolean;        // Can participants suggest items?
+  maxItemsPerParticipant: number;        // If allowed, how many? (default: 3)
+  requireApproval: boolean;              // Must host approve participant items?
+  showItemSubmitter: boolean;            // Show who submitted each item?
+}
+
+/**
+ * Ranking activity stored in /activities/{activityId}
+ */
+export interface RankingActivity {
+  id: string;
+  type: 'ranking';
+  title: string;
+  description?: string;
+  hostId: string;
+  config: RankingConfig;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * An item to be ranked, stored in /games/{gameId}/items/{itemId}
+ */
+export interface RankingItem {
+  id: string;
+  text: string;                     // Item name/description
+  description?: string;             // Optional longer description
+  submittedBy?: string;             // Player name (if participant-submitted)
+  submittedByPlayerId?: string;     // Player ID
+  isHostItem: boolean;              // true if added by host
+  approved: boolean;                // For participant items requiring approval
+  order: number;                    // Display order
+  createdAt: Timestamp;
+}
+
+/**
+ * A player's ratings for all items, stored in /games/{gameId}/ratings/{playerId}
+ */
+export interface PlayerRatings {
+  playerId: string;
+  playerName: string;
+  ratings: {
+    [itemId: string]: {
+      [metricId: string]: number;   // The score given
+    };
+  };
+  submittedAt: Timestamp;
+  isComplete: boolean;              // Rated all items on all metrics
+}
+
+/**
+ * Aggregated results for a single item
+ */
+export interface RankingItemResult {
+  itemId: string;
+  itemText: string;
+  overallScore: number;             // Weighted average across metrics (0-1 normalized)
+  rank: number;                     // Final position
+  metricScores: {
+    [metricId: string]: {
+      rawAverage: number;           // Original scale average (e.g., 3.5 on 1-5 scale)
+      normalizedAverage: number;    // 0-1 normalized (accounts for lowerIsBetter)
+      median: number;
+      stdDev: number;               // For consensus calculation
+      distribution: number[];       // Count per score value
+      responseCount: number;
+    };
+  };
+  consensusLevel: 'high' | 'medium' | 'low';  // Based on stdDev
+}
+
+/**
+ * Aggregated ranking results stored in /games/{gameId}/aggregates/rankings
+ */
+export interface RankingResults {
+  items: RankingItemResult[];
+  totalParticipants: number;
+  participantsWhoRated: number;
   processedAt: Timestamp;
 }

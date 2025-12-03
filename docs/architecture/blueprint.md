@@ -1,4 +1,4 @@
-# gQuiz - Architecture Blueprint
+# Zivo - Architecture Blueprint
 
 **Last Updated:** 2025-12-02
 
@@ -23,7 +23,7 @@ Comprehensive architecture documentation covering system design, state managemen
 ## System Overview
 
 ### Product Description
-gQuiz is a real-time multiplayer quiz application inspired by Kahoot. Hosts create quizzes and launch live games with unique PINs. Players join via their devices and compete in synchronized real-time gameplay with immediate scoring feedback and live leaderboards.
+Zivo is a real-time audience engagement platform for interactive sessions. Hosts create activities (quizzes, interest clouds, prioritization rankings) and launch live games with unique PINs. Players join via their devices and participate in synchronized real-time activities with immediate feedback and live results.
 
 ### Core Features
 - **Quiz Creation**: Multiple question types (single/multiple choice, slider, polls), time limits, images

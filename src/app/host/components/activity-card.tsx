@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, Trash2, Cloud, Pencil } from 'lucide-react';
+import { Gamepad2, Trash2, Cloud, Pencil, BarChart3 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,27 +15,41 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { InterestCloudActivity } from '@/lib/types';
+import type { InterestCloudActivity, RankingActivity } from '@/lib/types';
+
+type Activity = InterestCloudActivity | RankingActivity;
 
 interface ActivityCardProps {
-  activity: InterestCloudActivity;
+  activity: Activity;
   onDelete: (activityId: string) => void;
 }
 
 export function ActivityCard({ activity, onDelete }: ActivityCardProps) {
+  const isRanking = activity.type === 'ranking';
+  const isInterestCloud = activity.type === 'interest-cloud';
+
+  // Determine icon, colors, and routes based on activity type
+  const Icon = isRanking ? BarChart3 : Cloud;
+  const iconColor = isRanking ? 'text-orange-500' : 'text-blue-500';
+  const gradientClass = isRanking
+    ? 'from-orange-500 to-red-500'
+    : 'from-blue-500 to-purple-500';
+  const activityTypePath = isRanking ? 'ranking' : 'interest-cloud';
+  const activityLabel = isRanking ? 'Ranking' : 'Interest Cloud';
+
   return (
     <Card className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
       <CardHeader className="flex flex-row items-start justify-between p-6">
         <div className='flex-grow'>
           <div className="flex items-center gap-2 mb-2">
-            <Cloud className="h-5 w-5 text-blue-500" />
+            <Icon className={`h-5 w-5 ${iconColor}`} />
             <CardTitle className="text-2xl font-semibold">{activity.title}</CardTitle>
           </div>
-          <CardDescription className="text-base">Interest Cloud</CardDescription>
+          <CardDescription className="text-base">{activityLabel}</CardDescription>
         </div>
         <div className='flex items-center gap-1'>
           <Button asChild variant="ghost" size="icon" title="Edit activity" className="hover:bg-muted rounded-lg">
-            <Link href={`/host/interest-cloud/edit/${activity.id}`}>
+            <Link href={`/host/${activityTypePath}/edit/${activity.id}`}>
               <Pencil className="h-5 w-5" />
             </Link>
           </Button>
@@ -63,8 +77,8 @@ export function ActivityCard({ activity, onDelete }: ActivityCardProps) {
         </div>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
-        <Button asChild className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
-          <Link href={`/host/interest-cloud/${activity.id}`}>
+        <Button asChild className={`w-full px-6 py-4 bg-gradient-to-r ${gradientClass} hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold`}>
+          <Link href={`/host/${activityTypePath}/${activity.id}`}>
             <Gamepad2 className="mr-2 h-4 w-4" /> Launch Session
           </Link>
         </Button>

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/app/theme-toggle';
-import { BrainCircuit, Play, Sparkles } from 'lucide-react';
+import { Zap, Play, Sparkles, BrainCircuit, Cloud, BarChart3 } from 'lucide-react';
 import { HostReconnectOverlay } from '@/components/app/host-reconnect-banner';
 
 export default function Home() {
@@ -22,20 +22,20 @@ export default function Home() {
           {/* Logo and Title on same line */}
           <div className="flex items-center justify-center gap-4">
             <div className="rounded-2xl bg-gradient-to-br from-primary to-accent p-4">
-              <BrainCircuit className="h-12 w-12 text-white" />
+              <Zap className="h-12 w-12 text-white" />
             </div>
             <h1 className="text-6xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent leading-tight py-2">
-              gQuiz
+              Zivo
             </h1>
           </div>
 
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Create engaging quizzes and play live with friends, students, or colleagues
+            Engage your audience with interactive sessions — quizzes, polls, and more
           </p>
 
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Sparkles className="h-4 w-4" />
-            <span>Simple, elegant, and fun</span>
+            <span>Real-time • Collaborative • Insightful</span>
           </div>
         </div>
 
@@ -46,14 +46,28 @@ export default function Home() {
             <CardContent className="p-10">
               <div className="flex flex-col items-center gap-6">
                 <div className="rounded-2xl bg-primary/10 p-6 group-hover:bg-primary/20 transition-colors">
-                  <BrainCircuit className="h-12 w-12 text-primary" />
+                  <Zap className="h-12 w-12 text-primary" />
                 </div>
 
                 <div className="space-y-3">
-                  <h2 className="text-2xl font-semibold">Host a Quiz</h2>
+                  <h2 className="text-2xl font-semibold">Host Activities</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    Create custom quizzes and host live game sessions with real-time scoring
+                    Create and run interactive sessions with your audience
                   </p>
+                  <div className="flex flex-col gap-2 text-sm text-left pt-2">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <BrainCircuit className="h-4 w-4 text-primary" />
+                      <span>Live Quizzes</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Cloud className="h-4 w-4 text-blue-500" />
+                      <span>Interest Clouds</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <BarChart3 className="h-4 w-4 text-orange-500" />
+                      <span>Prioritization Rankings</span>
+                    </div>
+                  </div>
                 </div>
 
                 <Button
@@ -78,9 +92,9 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-3">
-                  <h2 className="text-2xl font-semibold">Join a Game</h2>
+                  <h2 className="text-2xl font-semibold">Join a Session</h2>
                   <p className="text-muted-foreground leading-relaxed">
-                    Enter a game PIN and compete against others in real-time quiz battles
+                    Enter a session PIN to participate in live activities
                   </p>
                 </div>
 

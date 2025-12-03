@@ -1,4 +1,4 @@
-# gQuiz - Bug Fixes and Technical Solutions
+# Zivo - Bug Fixes and Technical Solutions
 
 **Last Updated:** 2025-11-25
 

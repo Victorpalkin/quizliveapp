@@ -152,7 +152,7 @@ export default function HostGamePage() {
       {/* Header */}
       <header className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold">gQuiz</h1>
+          <h1 className="text-xl font-bold">Zivo</h1>
           <div className="text-2xl font-mono bg-muted text-muted-foreground px-4 py-1 rounded-md">{game?.gamePin}</div>
         </div>
         <div className="flex items-center gap-2">

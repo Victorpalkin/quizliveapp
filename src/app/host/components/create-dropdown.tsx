@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PlusCircle, Sparkles, FileText, Cloud, ChevronDown } from 'lucide-react';
+import { PlusCircle, Sparkles, FileText, Cloud, ChevronDown, BarChart3 } from 'lucide-react';
 
 export function CreateDropdown() {
   return (
@@ -37,6 +37,12 @@ export function CreateDropdown() {
           <Link href="/host/interest-cloud/create" className="flex items-center">
             <Cloud className="mr-2 h-4 w-4" />
             Create Interest Cloud
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/host/ranking/create" className="flex items-center">
+            <BarChart3 className="mr-2 h-4 w-4" />
+            Create Ranking
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

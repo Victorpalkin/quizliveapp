@@ -1,4 +1,4 @@
-# gQuiz Deployment Guide
+# Zivo Deployment Guide
 
 This guide covers setting up production and dev/test environments with automatic CI/CD deployment from GitHub using Cloud Build.
 
@@ -224,7 +224,7 @@ Firebase App Check helps protect your backend from abuse by verifying requests c
 2. Click gear icon → Project settings
 3. Scroll to "Your apps"
 4. Click "Web" icon (</>) to create web app
-5. Register app name (e.g., `gQuiz Dev`, `Your App Dev`, etc.)
+5. Register app name (e.g., `Zivo Dev`, `Your App Dev`, etc.)
 6. Copy the Firebase configuration object
 7. Save these values - you'll need them for `.env.development`
 
@@ -663,7 +663,7 @@ gcloud config set project $DEV_PROJECT_ID
 
 # Create custom service account for AI functions
 gcloud iam service-accounts create gquiz-ai-functions \
-  --display-name="gQuiz AI Functions Service Account" \
+  --display-name="Zivo AI Functions Service Account" \
   --description="Custom service account for AI Cloud Functions (Vertex AI + Storage access)"
 
 # Get the service account email
@@ -700,7 +700,7 @@ gcloud config set project $PROD_PROJECT_ID
 
 # Create custom service account for AI functions
 gcloud iam service-accounts create gquiz-ai-functions \
-  --display-name="gQuiz AI Functions Service Account" \
+  --display-name="Zivo AI Functions Service Account" \
   --description="Custom service account for AI Cloud Functions (Vertex AI + Storage access)"
 
 # Get the service account email
@@ -1409,7 +1409,7 @@ gcloud iam service-accounts describe $AI_SA_EMAIL --project=$DEV_PROJECT_ID
 
 # If it doesn't exist, create it
 gcloud iam service-accounts create gquiz-ai-functions \
-  --display-name="gQuiz AI Functions Service Account" \
+  --display-name="Zivo AI Functions Service Account" \
   --project=$DEV_PROJECT_ID
 
 # Grant Vertex AI User role (for Gemini API)

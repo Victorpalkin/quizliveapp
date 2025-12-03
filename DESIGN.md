@@ -1,4 +1,4 @@
-# gQuiz Design System
+# Zivo Design System
 
 **Design Philosophy**: Minimalist, Apple-inspired aesthetic with clean cards, subtle gradients, and sophisticated typography. Completely distinct from colorful game-show aesthetic.
 
