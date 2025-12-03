@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useUser } from '@/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { useUser, useFunctions } from '@/firebase';
 import { useGameAnalytics } from './hooks/use-game-analytics';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
-import { ArrowLeft, BarChart3, TrendingUp, HelpCircle, Trophy, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, BarChart3, TrendingUp, HelpCircle, Trophy, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import { OverviewTab } from './components/overview-tab';
 import { QuestionsTab } from './components/questions-tab';
 import { LeaderboardTab } from './components/leaderboard-tab';
@@ -19,8 +20,14 @@ export default function AnalyticsPage() {
   const params = useParams();
   const gameId = params.gameId as string;
   const { user, loading: userLoading } = useUser();
+  const functions = useFunctions();
 
   const { game, analytics, loading, analyticsExists } = useGameAnalytics(gameId);
+
+  // State for auto-generating analytics
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const generationAttempted = useRef(false);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -28,6 +35,48 @@ export default function AnalyticsPage() {
       router.push('/login');
     }
   }, [user, userLoading, router]);
+
+  // Auto-generate analytics when page loads and analytics don't exist
+  useEffect(() => {
+    // Only attempt once per page load
+    if (generationAttempted.current) return;
+
+    // Wait for data to load
+    if (loading || userLoading) return;
+
+    // Check prerequisites
+    if (!user || !game || game.hostId !== user.uid || game.state !== 'ended') return;
+
+    // If analytics already exist, no need to generate
+    if (analyticsExists && analytics) return;
+
+    // Generate analytics
+    generationAttempted.current = true;
+    generateAnalytics();
+  }, [loading, userLoading, user, game, analyticsExists, analytics]);
+
+  const generateAnalytics = async () => {
+    setIsGenerating(true);
+    setGenerationError(null);
+
+    try {
+      const computeGameAnalytics = httpsCallable(functions, 'computeGameAnalytics');
+      await computeGameAnalytics({ gameId });
+      // Analytics will be loaded via the real-time listener in useGameAnalytics
+    } catch (error: any) {
+      console.error('[Analytics] Error generating analytics:', error);
+      const errorMessage = error?.message || error?.code || 'Failed to generate analytics';
+      setGenerationError(errorMessage);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleRetry = () => {
+    generationAttempted.current = false;
+    setGenerationError(null);
+    generateAnalytics();
+  };
 
   // Loading state
   if (loading || userLoading) {
@@ -81,21 +130,52 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Analytics not generated yet
+  // Generating analytics
+  if (isGenerating) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-8">
+        <Loader2 className="h-16 w-16 text-primary mb-4 animate-spin" />
+        <h1 className="text-2xl font-bold mb-2">Generating Analytics</h1>
+        <p className="text-muted-foreground mb-6">
+          Crunching the numbers... This may take a moment.
+        </p>
+      </div>
+    );
+  }
+
+  // Generation error
+  if (generationError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-8">
+        <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+        <h1 className="text-2xl font-bold mb-2">Failed to Generate Analytics</h1>
+        <p className="text-muted-foreground mb-2">
+          {generationError}
+        </p>
+        <p className="text-sm text-muted-foreground mb-6">
+          Please try again or contact support if the issue persists.
+        </p>
+        <div className="flex gap-4">
+          <Button onClick={handleRetry}>
+            Try Again
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/host">Back to Dashboard</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Analytics not generated yet (shouldn't normally reach here due to auto-generation)
   if (!analyticsExists || !analytics) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        <BarChart3 className="h-16 w-16 text-muted-foreground mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Analytics Not Generated</h1>
+        <Loader2 className="h-16 w-16 text-primary mb-4 animate-spin" />
+        <h1 className="text-2xl font-bold mb-2">Preparing Analytics</h1>
         <p className="text-muted-foreground mb-6">
-          Analytics haven&apos;t been generated for this game yet.
+          Setting up your analytics dashboard...
         </p>
-        <p className="text-sm text-muted-foreground mb-6">
-          Go to the dashboard and click &quot;Generate Analytics&quot; on this game.
-        </p>
-        <Button asChild>
-          <Link href="/host">Back to Dashboard</Link>
-        </Button>
       </div>
     );
   }

@@ -9,7 +9,7 @@ import { Header } from '@/components/app/header';
 import { SharedQuizzes } from '@/components/app/shared-quizzes';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
-import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye, Edit, Share2, Sparkles } from 'lucide-react';
+import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye, Edit, Share2, Sparkles, BarChart3 } from 'lucide-react';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { useCollection, useFirestore, useUser, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getDoc, CollectionReference, Query } from 'firebase/firestore';
@@ -423,6 +423,11 @@ export default function HostDashboardPage() {
                                 <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
                                     <Button className="w-full px-6 py-4 rounded-xl" variant="outline" onClick={() => handleOpenGame(game)}>
                                         <Eye className="mr-2 h-4 w-4" /> View Results
+                                    </Button>
+                                    <Button asChild className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 font-semibold">
+                                        <Link href={`/host/analytics/${game.id}`}>
+                                            <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
+                                        </Link>
                                     </Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
