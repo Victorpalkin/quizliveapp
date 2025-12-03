@@ -170,7 +170,7 @@ export const computeGameAnalytics = onCall(
         scoreDistribution,
         fullLeaderboard,
         summary,
-        crowdsourceStats,
+        ...(crowdsourceStats && { crowdsourceStats }),
       };
 
       // 14. Write to Firestore
@@ -213,8 +213,8 @@ function buildQuestionStats(questions: Question[], players: (Player & { id: stri
         questionIndex: index,
         questionText: question.text,
         questionType: question.type,
-        imageUrl: question.imageUrl,
-        submittedBy: question.submittedBy,
+        ...(question.imageUrl && { imageUrl: question.imageUrl }),
+        ...(question.submittedBy && { submittedBy: question.submittedBy }),
         totalAnswered: 0,
         totalTimeout: 0,
         timeoutRate: 0,
@@ -296,7 +296,7 @@ function buildQuestionStats(questions: Question[], players: (Player & { id: stri
         correctValue: question.correctValue || 0,
         minValue: question.minValue || 0,
         maxValue: question.maxValue || 100,
-        unit: question.unit,
+        ...(question.unit && { unit: question.unit }),
         playerValues,
       };
     } else if (question.type === 'free-response') {
@@ -329,11 +329,11 @@ function buildQuestionStats(questions: Question[], players: (Player & { id: stri
       questionIndex: index,
       questionText: question.text,
       questionType: question.type,
-      imageUrl: question.imageUrl,
-      submittedBy: question.submittedBy,
-      answerDistribution,
-      sliderDistribution,
-      freeResponseDistribution,
+      ...(question.imageUrl && { imageUrl: question.imageUrl }),
+      ...(question.submittedBy && { submittedBy: question.submittedBy }),
+      ...(answerDistribution && { answerDistribution }),
+      ...(sliderDistribution && { sliderDistribution }),
+      ...(freeResponseDistribution && { freeResponseDistribution }),
       totalAnswered,
       totalTimeout,
       timeoutRate,
