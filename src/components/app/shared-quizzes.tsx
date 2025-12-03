@@ -178,7 +178,7 @@ export function SharedQuizzes() {
         has_images: copiedImageCount > 0,
       });
 
-      router.push(`/host/edit/${newQuizId}`);
+      router.push(`/host/quiz/${newQuizId}`);
     } catch (error) {
       console.error('Error copying quiz:', error);
       toast({
@@ -206,7 +206,7 @@ export function SharedQuizzes() {
         createdAt: serverTimestamp(),
       });
 
-      router.push(`/host/lobby/${gameDoc.id}`);
+      router.push(`/host/quiz/lobby/${gameDoc.id}`);
     } catch (error) {
       console.error('Error creating game:', error);
       toast({

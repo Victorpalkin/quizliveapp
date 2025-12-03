@@ -24,7 +24,7 @@ export function HostReconnectBanner() {
   }
 
   const handleReconnect = () => {
-    router.push(`/host/game/${session.gameId}`);
+    router.push(`/host/quiz/game/${session.gameId}`);
   };
 
   const handleDismiss = () => {
@@ -93,7 +93,7 @@ export function HostReconnectOverlay() {
   }
 
   const handleReconnect = () => {
-    router.push(`/host/game/${session.gameId}`);
+    router.push(`/host/quiz/game/${session.gameId}`);
   };
 
   const handleDismiss = () => {

@@ -124,7 +124,7 @@ export default function AnalyticsPage() {
         <h1 className="text-2xl font-bold mb-2">Game In Progress</h1>
         <p className="text-muted-foreground mb-6">Analytics are only available after the game ends.</p>
         <Button asChild>
-          <Link href={`/host/game/${gameId}`}>Go to Game</Link>
+          <Link href={`/host/quiz/game/${gameId}`}>Go to Game</Link>
         </Button>
       </div>
     );

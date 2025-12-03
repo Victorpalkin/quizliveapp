@@ -130,7 +130,7 @@ export default function HostGamePage() {
         <FinalLeaderboardView topPlayers={topPlayers} totalPlayers={totalPlayers} />
         <div className="mt-8 flex flex-col sm:flex-row gap-4">
           <Button asChild className="bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300">
-            <Link href={`/host/analytics/${gameId}`}>
+            <Link href={`/host/quiz/analytics/${gameId}`}>
               <BarChart3 className="mr-2 h-4 w-4" />
               View Analytics
             </Link>

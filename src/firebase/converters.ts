@@ -103,8 +103,12 @@ export const quizShareConverter: FirestoreDataConverter<QuizShare> = {
 export const interestCloudActivityConverter: FirestoreDataConverter<InterestCloudActivity> = {
   toFirestore(activity: InterestCloudActivity): DocumentData {
     const { id, ...data } = activity;
+    // Filter out undefined values (Firestore rejects undefined)
+    const filtered = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v !== undefined)
+    );
     return {
-      ...data,
+      ...filtered,
       createdAt: data.createdAt instanceof Date ? Timestamp.fromDate(data.createdAt) : data.createdAt,
       updatedAt: data.updatedAt instanceof Date ? Timestamp.fromDate(data.updatedAt) : data.updatedAt,
     };

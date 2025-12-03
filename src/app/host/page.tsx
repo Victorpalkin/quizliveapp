@@ -129,7 +129,7 @@ export default function HostDashboardPage() {
                 title: 'Game Created!',
                 description: 'Your game lobby is now open.',
             });
-            router.push(`/host/lobby/${gameDoc.id}`);
+            router.push(`/host/quiz/lobby/${gameDoc.id}`);
         })
         .catch((error) => {
             console.error("Error creating game: ", error);
@@ -228,13 +228,13 @@ export default function HostDashboardPage() {
         if (game.activityType === 'interest-cloud') {
             router.push(`/host/interest-cloud/lobby/${game.id}`);
         } else {
-            router.push(`/host/lobby/${game.id}`);
+            router.push(`/host/quiz/lobby/${game.id}`);
         }
     } else {
         if (game.activityType === 'interest-cloud') {
             router.push(`/host/interest-cloud/game/${game.id}`);
         } else {
-            router.push(`/host/game/${game.id}`);
+            router.push(`/host/quiz/game/${game.id}`);
         }
     }
   }
@@ -341,12 +341,12 @@ export default function HostDashboardPage() {
                 <h1 className="text-5xl font-semibold">My Quizzes</h1>
                 <div className="flex gap-3">
                     <Button asChild variant="outline" className="px-6 py-4 hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
-                        <Link href="/host/create-ai">
+                        <Link href="/host/quiz/create-ai">
                             <Sparkles className="mr-2 h-5 w-5" /> Create with AI
                         </Link>
                     </Button>
                     <Button asChild className="px-6 py-4 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
-                        <Link href="/host/create">
+                        <Link href="/host/quiz/create">
                             <PlusCircle className="mr-2 h-5 w-5" /> Create New Quiz
                         </Link>
                     </Button>
@@ -387,7 +387,7 @@ export default function HostDashboardPage() {
                                       <Share2 className="h-5 w-5 text-muted-foreground" />
                                     </Button>
                                     <Button asChild variant="ghost" size="icon" title="Edit quiz" className="hover:bg-muted rounded-lg">
-                                        <Link href={`/host/edit/${quiz.id}`}>
+                                        <Link href={`/host/quiz/${quiz.id}`}>
                                             <Edit className="h-5 w-5 text-muted-foreground" />
                                         </Link>
                                     </Button>
@@ -432,7 +432,7 @@ export default function HostDashboardPage() {
                         <div className="col-span-full text-center text-muted-foreground py-16">
                             <p className="mb-6 text-lg">You haven't created any quizzes yet.</p>
                             <Button asChild variant="outline" className="px-6 py-4 rounded-xl">
-                                <Link href="/host/create">
+                                <Link href="/host/quiz/create">
                                     Create Your First Quiz
                                 </Link>
                             </Button>
@@ -551,7 +551,7 @@ export default function HostDashboardPage() {
                                         <Eye className="mr-2 h-4 w-4" /> View Results
                                     </Button>
                                     <Button asChild className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 font-semibold">
-                                        <Link href={`/host/analytics/${game.id}`}>
+                                        <Link href={`/host/quiz/analytics/${game.id}`}>
                                             <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
                                         </Link>
                                     </Button>

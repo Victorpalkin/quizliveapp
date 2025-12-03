@@ -14,7 +14,8 @@ import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import type { InterestCloudConfig } from '@/lib/types';
+import type { InterestCloudConfig, InterestCloudActivity } from '@/lib/types';
+import { interestCloudActivityConverter } from '@/firebase/converters';
 
 export default function CreateInterestCloudPage() {
   const router = useRouter();
@@ -67,16 +68,19 @@ export default function CreateInterestCloudPage() {
       };
 
       const activityData = {
-        type: 'interest-cloud' as const,
+        type: 'interest-cloud',
         title: title.trim(),
         description: description.trim() || undefined,
         hostId: user.uid,
         config,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      };
+      } as unknown as InterestCloudActivity;
 
-      const docRef = await addDoc(collection(firestore, 'activities'), activityData);
+      const docRef = await addDoc(
+        collection(firestore, 'activities').withConverter(interestCloudActivityConverter),
+        activityData
+      );
 
       toast({
         title: 'Interest Cloud Created!',

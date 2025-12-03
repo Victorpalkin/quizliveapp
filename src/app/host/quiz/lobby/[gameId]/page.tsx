@@ -133,7 +133,7 @@ export default function HostLobbyPage() {
       }
 
       await updateDoc(gameRef, updateData);
-      router.push(`/host/game/${gameId}`);
+      router.push(`/host/quiz/game/${gameId}`);
     } catch (error) {
       console.error("Error starting game: ", error);
       const permissionError = new FirestorePermissionError({
