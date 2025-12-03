@@ -9,18 +9,18 @@ import { Header } from '@/components/app/header';
 import { SharedQuizzes } from '@/components/app/shared-quizzes';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
-import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye, Edit, Share2, Sparkles, BarChart3 } from 'lucide-react';
+import { PlusCircle, Loader2, Gamepad2, Trash2, XCircle, LogIn, Eye, Edit, Share2, Sparkles, BarChart3, Cloud } from 'lucide-react';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { useCollection, useFirestore, useUser, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getDoc, CollectionReference, Query } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
-import type { Quiz, Game } from '@/lib/types';
+import type { Quiz, Game, InterestCloudActivity } from '@/lib/types';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { quizConverter, gameConverter } from '@/firebase/converters';
+import { quizConverter, gameConverter, interestCloudActivityConverter } from '@/firebase/converters';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -91,6 +91,16 @@ export default function HostDashboardPage() {
     , [user, firestore]);
 
   const { data: games, loading: gamesLoading } = useCollection<Game>(gamesQuery);
+
+  // Fetch Interest Cloud activities
+  const activitiesQuery = useMemoFirebase(() =>
+    user ? query(
+      collection(firestore, 'activities').withConverter(interestCloudActivityConverter),
+      where('hostId', '==', user.uid)
+    ) as Query<InterestCloudActivity> : null
+  , [user, firestore]);
+
+  const { data: activities, loading: activitiesLoading } = useCollection<InterestCloudActivity>(activitiesQuery);
 
   useEffect(() => {
     if (!userLoading && !user) {
@@ -214,10 +224,44 @@ export default function HostDashboardPage() {
 
   const handleOpenGame = (game: Game) => {
     if (game.state === 'lobby') {
-        router.push(`/host/lobby/${game.id}`);
+        // Route based on activity type
+        if (game.activityType === 'interest-cloud') {
+            router.push(`/host/interest-cloud/lobby/${game.id}`);
+        } else {
+            router.push(`/host/lobby/${game.id}`);
+        }
     } else {
-        router.push(`/host/game/${game.id}`);
+        if (game.activityType === 'interest-cloud') {
+            router.push(`/host/interest-cloud/game/${game.id}`);
+        } else {
+            router.push(`/host/game/${game.id}`);
+        }
     }
+  }
+
+  const handleDeleteActivity = async (activityId: string) => {
+    if (!firestore) return;
+    const activityRef = doc(firestore, 'activities', activityId);
+    deleteDoc(activityRef)
+      .then(() => {
+        toast({
+          title: 'Activity Deleted',
+          description: 'The activity has been successfully removed.',
+        });
+      })
+      .catch((error) => {
+        console.error("Error deleting activity:", error);
+        const permissionError = new FirestorePermissionError({
+            path: activityRef.path,
+            operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not delete the activity. Please try again.",
+        });
+      });
   }
 
 
@@ -392,6 +436,88 @@ export default function HostDashboardPage() {
                                     Create Your First Quiz
                                 </Link>
                             </Button>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+
+        {/* My Activities Section */}
+        <div className="mb-12">
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
+                <h2 className="text-3xl font-semibold">My Activities</h2>
+                <Button asChild className="px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
+                    <Link href="/host/interest-cloud/create">
+                        <Cloud className="mr-2 h-5 w-5" /> New Interest Cloud
+                    </Link>
+                </Button>
+            </div>
+
+            {activitiesLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(2)].map((_, i) => (
+                        <Card key={i} className="shadow-md rounded-2xl border border-card-border">
+                            <CardHeader className="p-6">
+                                <div className="h-6 bg-muted rounded-lg w-3/4"></div>
+                                <div className="h-4 bg-muted rounded-lg w-1/2 mt-2"></div>
+                            </CardHeader>
+                            <CardContent className="p-6 pt-0">
+                                <div className="h-10 bg-muted rounded-lg w-full"></div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {activities && activities.map(activity => (
+                        <Card key={activity.id} className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
+                            <CardHeader className="flex flex-row items-start justify-between p-6">
+                                <div className='flex-grow'>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Cloud className="h-5 w-5 text-blue-500" />
+                                        <CardTitle className="text-2xl font-semibold">{activity.title}</CardTitle>
+                                    </div>
+                                    <CardDescription className="text-base">Interest Cloud</CardDescription>
+                                </div>
+                                <div className='flex items-center gap-1'>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" title="Delete activity" className="hover:bg-muted rounded-lg">
+                                                <Trash2 className="h-5 w-5 text-destructive" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent className="rounded-2xl shadow-xl">
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle className="text-2xl font-semibold">Delete this activity?</AlertDialogTitle>
+                                                <AlertDialogDescription className="text-base">
+                                                    This action cannot be undone. This will permanently delete '{activity.title}'.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteActivity(activity.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
+                                                    Delete
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
+                                <Button asChild className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold">
+                                    <Link href={`/host/interest-cloud/${activity.id}`}>
+                                        <Gamepad2 className="mr-2 h-4 w-4" /> Launch Session
+                                    </Link>
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    ))}
+
+                    {(!activities || activities.length === 0) && (
+                        <div className="col-span-full text-center text-muted-foreground py-8">
+                            <Cloud className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p className="mb-4 text-lg">No activities yet.</p>
+                            <p className="text-sm">Create an Interest Cloud to collect topics from your audience!</p>
                         </div>
                     )}
                 </div>

@@ -5,7 +5,7 @@ import {
   FirestoreDataConverter,
   Timestamp,
 } from 'firebase/firestore';
-import { Quiz, Game, Player, QuizShare } from '@/lib/types';
+import { Quiz, Game, Player, QuizShare, InterestCloudActivity, InterestSubmission } from '@/lib/types';
 
 export const quizConverter: FirestoreDataConverter<Quiz> = {
   toFirestore(quiz: Quiz): DocumentData {
@@ -45,6 +45,11 @@ export const gameConverter: FirestoreDataConverter<Game> = {
       currentQuestionIndex: data.currentQuestionIndex,
       gamePin: data.gamePin,
       questionStartTime: data.questionStartTime,
+      crowdsourceState: data.crowdsourceState,
+      questions: data.questions,
+      // Activity system fields
+      activityType: data.activityType,
+      activityId: data.activityId,
     };
   }
 };
@@ -91,6 +96,54 @@ export const quizShareConverter: FirestoreDataConverter<QuizShare> = {
       sharedBy: data.sharedBy,
       sharedByEmail: data.sharedByEmail,
       createdAt: data.createdAt?.toDate() || new Date(),
+    };
+  }
+};
+
+export const interestCloudActivityConverter: FirestoreDataConverter<InterestCloudActivity> = {
+  toFirestore(activity: InterestCloudActivity): DocumentData {
+    const { id, ...data } = activity;
+    return {
+      ...data,
+      createdAt: data.createdAt instanceof Date ? Timestamp.fromDate(data.createdAt) : data.createdAt,
+      updatedAt: data.updatedAt instanceof Date ? Timestamp.fromDate(data.updatedAt) : data.updatedAt,
+    };
+  },
+  fromFirestore(
+    snapshot: QueryDocumentSnapshot,
+    options: SnapshotOptions
+  ): InterestCloudActivity {
+    const data = snapshot.data(options);
+    return {
+      id: snapshot.id,
+      type: 'interest-cloud',
+      title: data.title,
+      description: data.description,
+      hostId: data.hostId,
+      config: data.config,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date(),
+    };
+  }
+};
+
+export const interestSubmissionConverter: FirestoreDataConverter<InterestSubmission> = {
+  toFirestore(submission: InterestSubmission): DocumentData {
+    const { id, ...data } = submission;
+    return data;
+  },
+  fromFirestore(
+    snapshot: QueryDocumentSnapshot,
+    options: SnapshotOptions
+  ): InterestSubmission {
+    const data = snapshot.data(options);
+    return {
+      id: snapshot.id,
+      playerId: data.playerId,
+      playerName: data.playerName,
+      rawText: data.rawText,
+      submittedAt: data.submittedAt,
+      extractedTopics: data.extractedTopics,
     };
   }
 };

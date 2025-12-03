@@ -55,6 +55,13 @@ export default function PlayerGamePage() {
   );
   const { data: game, loading: gameLoading } = useDoc(gameRef);
 
+  // Redirect to activity-specific player page if not a quiz
+  useEffect(() => {
+    if (!gameLoading && game && game.activityType === 'interest-cloud') {
+      router.replace(`/play/interest-cloud/${gamePin}`);
+    }
+  }, [game, gameLoading, gamePin, router]);
+
   // Subscribe to leaderboard aggregate for rank info
   // Rank is now computed in computeQuestionResults and stored in the aggregate
   const leaderboardRef = useMemoFirebase(

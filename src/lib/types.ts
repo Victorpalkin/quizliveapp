@@ -142,16 +142,29 @@ export interface CrowdsourceState {
   selectedCount: number;         // How many questions selected
 }
 
+// Activity types for the Activity system
+export type ActivityType = 'quiz' | 'interest-cloud';
+
+// Quiz game states (existing)
+export type QuizGameState = 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
+
+// Interest Cloud game states
+export type InterestCloudGameState = 'lobby' | 'collecting' | 'processing' | 'display' | 'ended';
+
 export interface Game {
     id: string;
     quizId: string;
     hostId: string;
-    state: 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
+    state: QuizGameState | InterestCloudGameState;
     currentQuestionIndex: number;
     gamePin: string;
     questionStartTime?: Timestamp; // Firestore server timestamp when current question started (for timer sync)
     crowdsourceState?: CrowdsourceState;  // Runtime state for crowdsourced questions
     questions?: Question[];  // Override questions (used when crowdsourced questions are integrated)
+
+    // Activity system fields (optional for backward compatibility)
+    activityType?: ActivityType;  // Default: 'quiz' for existing games
+    activityId?: string;          // Reference to activity document (for non-quiz activities)
 }
 
 // Cloud Function response interface for submitAnswer
@@ -306,4 +319,62 @@ export interface LeaderboardWithStats {
   timeouts: number;
   accuracy: number;         // Percentage 0-100
   avgResponseTime: number;  // In seconds
+}
+
+// ==========================================
+// Interest Cloud Activity Types
+// ==========================================
+
+/**
+ * Configuration for Interest Cloud activity
+ */
+export interface InterestCloudConfig {
+  prompt: string;                    // e.g., "What topics interest you most?"
+  maxSubmissionsPerPlayer: number;   // Default: 3
+  allowMultipleRounds: boolean;      // Can host reopen for more submissions
+}
+
+/**
+ * Interest Cloud activity stored in /activities/{activityId}
+ */
+export interface InterestCloudActivity {
+  id: string;
+  type: 'interest-cloud';
+  title: string;
+  description?: string;
+  hostId: string;
+  config: InterestCloudConfig;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Player interest submission stored in /games/{gameId}/submissions/{submissionId}
+ */
+export interface InterestSubmission {
+  id: string;
+  playerId: string;
+  playerName: string;
+  rawText: string;              // Free-form text about interests
+  submittedAt: Timestamp;
+  extractedTopics?: string[];   // Filled by AI after processing
+}
+
+/**
+ * A single topic in the aggregated word cloud
+ */
+export interface TopicEntry {
+  topic: string;                // Normalized topic name
+  count: number;                // How many times mentioned
+  variations: string[];         // Original phrasings that mapped to this topic
+  submissionIds: string[];      // Which submissions contained this topic
+}
+
+/**
+ * Aggregated topic cloud result stored in /games/{gameId}/aggregates/topics
+ */
+export interface TopicCloudResult {
+  topics: TopicEntry[];
+  totalSubmissions: number;
+  processedAt: Timestamp;
 }

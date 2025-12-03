@@ -65,16 +65,47 @@ service cloud.firestore {
       }
     }
 
+    // Activities collection (for non-quiz activities like Interest Cloud)
+    match /activities/{activityId} {
+      // Anyone can read activity details (needed for players to see activity info)
+      allow read: if true;
+
+      // Only authenticated hosts can create activities
+      allow create: if request.auth != null &&
+                      request.auth.uid == request.resource.data.hostId;
+
+      // Only the activity owner can update or delete
+      allow update, delete: if request.auth != null &&
+                              request.auth.uid == resource.data.hostId;
+    }
+
+    // Helper function to check if user owns an activity
+    function ownsActivity(activityId) {
+      return request.auth != null &&
+             request.auth.uid == get(/databases/$(database)/documents/activities/$(activityId)).data.hostId;
+    }
+
     // Game sessions
     match /games/{gameId} {
       // Anyone can read game state
       allow read: if true;
 
-      // Authenticated hosts can create games for their own quizzes OR shared quizzes
+      // Authenticated hosts can create games:
+      // - For quiz games: must own the quiz OR have shared access
+      // - For activity games: must own the activity
       allow create: if request.auth != null &&
                       request.auth.uid == request.resource.data.hostId &&
-                      (request.auth.uid == get(/databases/$(database)/documents/quizzes/$(request.resource.data.quizId)).data.hostId ||
-                       hasQuizAccess(request.resource.data.quizId));
+                      (
+                        // Quiz-based games (existing flow)
+                        (request.resource.data.get('activityType', 'quiz') == 'quiz' &&
+                         (request.auth.uid == get(/databases/$(database)/documents/quizzes/$(request.resource.data.quizId)).data.hostId ||
+                          hasQuizAccess(request.resource.data.quizId)))
+                        ||
+                        // Activity-based games (Interest Cloud, etc.)
+                        (request.resource.data.activityType != 'quiz' &&
+                         request.resource.data.activityId != null &&
+                         ownsActivity(request.resource.data.activityId))
+                      );
 
       // Only the host can update or delete the game
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.hostId;
@@ -117,26 +148,35 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      // Question submissions for crowdsourced questions
+      // Submissions subcollection - used for both:
+      // 1. Quiz crowdsource questions (questionText, answers, correctAnswerIndex)
+      // 2. Interest Cloud submissions (rawText)
       match /submissions/{submissionId} {
         // Anyone can read submissions (for display in lobby)
         allow read: if true;
 
-        // Players can create submissions during lobby ONLY if not locked
-        // - Game must be in lobby state
-        // - Submissions must not be locked (host hasn't clicked "Evaluate")
-        // - Player must provide valid data
-        // Note: Use .get() with default to safely access nested crowdsourceState.submissionsLocked
-        allow create: if get(/databases/$(database)/documents/games/$(gameId)).data.state == 'lobby' &&
-                         get(/databases/$(database)/documents/games/$(gameId)).data.get('crowdsourceState', {'submissionsLocked': false}).submissionsLocked != true &&
-                         request.resource.data.playerId is string &&
+        // Players can create submissions based on game type and state
+        allow create: if request.resource.data.playerId is string &&
                          request.resource.data.playerName is string &&
-                         request.resource.data.questionText is string &&
-                         request.resource.data.questionText.size() >= 10 &&
-                         request.resource.data.questionText.size() <= 500 &&
-                         request.resource.data.answers.size() == 4 &&
-                         request.resource.data.correctAnswerIndex >= 0 &&
-                         request.resource.data.correctAnswerIndex <= 3;
+                         (
+                           // Quiz crowdsource submissions (existing validation)
+                           (get(/databases/$(database)/documents/games/$(gameId)).data.get('activityType', 'quiz') == 'quiz' &&
+                            get(/databases/$(database)/documents/games/$(gameId)).data.state == 'lobby' &&
+                            get(/databases/$(database)/documents/games/$(gameId)).data.get('crowdsourceState', {'submissionsLocked': false}).submissionsLocked != true &&
+                            request.resource.data.questionText is string &&
+                            request.resource.data.questionText.size() >= 10 &&
+                            request.resource.data.questionText.size() <= 500 &&
+                            request.resource.data.answers.size() == 4 &&
+                            request.resource.data.correctAnswerIndex >= 0 &&
+                            request.resource.data.correctAnswerIndex <= 3)
+                           ||
+                           // Interest Cloud submissions (during collecting state)
+                           (get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'interest-cloud' &&
+                            get(/databases/$(database)/documents/games/$(gameId)).data.state == 'collecting' &&
+                            request.resource.data.rawText is string &&
+                            request.resource.data.rawText.size() >= 1 &&
+                            request.resource.data.rawText.size() <= 1000)
+                         );
 
         // Only host can update submissions (for AI evaluation results)
         allow update: if request.auth != null &&
