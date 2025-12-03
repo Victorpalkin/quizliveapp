@@ -373,6 +373,40 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Questions</CardTitle>
+            <CardDescription>
+              {mode === 'create' ? 'Add' : 'Edit'} questions and answers for your quiz. Each question can have between 2 and 8 answers.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <QuizFormProvider value={quizFormContextValue}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={questionIds} strategy={verticalListSortingStrategy}>
+                  {questions.map((q, qIndex) => (
+                    <QuestionCard
+                      key={questionIds[qIndex]}
+                      id={questionIds[qIndex]}
+                      question={q}
+                      questionIndex={qIndex}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </QuizFormProvider>
+            <Button type="button" variant="outline" onClick={() => addQuestion()} className="w-full">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Question
+            </Button>
+            <FormMessage>{form.formState.errors.questions?.message}</FormMessage>
+          </CardContent>
+        </Card>
+
         {/* Crowdsource Settings */}
         <Card>
           <CardHeader>
@@ -509,40 +543,6 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
               />
             </CardContent>
           )}
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Questions</CardTitle>
-            <CardDescription>
-              {mode === 'create' ? 'Add' : 'Edit'} questions and answers for your quiz. Each question can have between 2 and 8 answers.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <QuizFormProvider value={quizFormContextValue}>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext items={questionIds} strategy={verticalListSortingStrategy}>
-                  {questions.map((q, qIndex) => (
-                    <QuestionCard
-                      key={questionIds[qIndex]}
-                      id={questionIds[qIndex]}
-                      question={q}
-                      questionIndex={qIndex}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            </QuizFormProvider>
-            <Button type="button" variant="outline" onClick={() => addQuestion()} className="w-full">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Question
-            </Button>
-            <FormMessage>{form.formState.errors.questions?.message}</FormMessage>
-          </CardContent>
         </Card>
 
         {additionalContent}

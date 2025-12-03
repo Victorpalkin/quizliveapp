@@ -107,7 +107,7 @@ export const extractTopics = onCall(
   {
     region: REGION,
     cors: ALLOWED_ORIGINS,
-    timeoutSeconds: 120,
+    timeoutSeconds: 180,
     memory: '512MiB',
     maxInstances: 5,
     concurrency: 5,
