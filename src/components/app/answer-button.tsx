@@ -102,13 +102,14 @@ export function AnswerButton({
 
         // Interactive states
         !disabled && 'hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] cursor-pointer',
-        disabled && 'opacity-50 cursor-not-allowed',
+        disabled && !selected && 'opacity-50 cursor-not-allowed',
 
-        // Selected state - gradient left border
+        // Selected state - gradient left border with pop animation
         selected && [
           'border-l-4',
           `bg-gradient-to-r ${colors.selectedBg}`,
           'shadow-xl',
+          'animate-[confirmPop_0.3s_ease-out]',
           // Add gradient border using pseudo-element
           'relative',
           'before:absolute before:left-0 before:top-0 before:h-full before:w-1',
@@ -118,36 +119,59 @@ export function AnswerButton({
 
         className
       )}
+      style={selected ? {
+        animation: 'confirmPop 0.3s ease-out',
+      } : undefined}
     >
       <div className="flex items-center gap-4">
-        {/* Letter Badge */}
+        {/* Letter Badge - shows checkmark when selected for single-choice */}
         <div className={cn(
           'flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center',
-          'text-xl font-semibold transition-colors',
+          'text-xl font-semibold transition-all duration-300',
           selected
-            ? `bg-gradient-to-br ${colors.badge} text-white`
+            ? `bg-gradient-to-br ${colors.badge} text-white scale-110`
             : 'bg-muted text-muted-foreground'
         )}>
-          {letter}
+          {selected && !showCheck ? (
+            <Check className="w-6 h-6 text-white animate-[scaleIn_0.2s_ease-out]" />
+          ) : (
+            letter
+          )}
         </div>
 
         {/* Answer Text */}
-        <div className="flex-1 text-lg font-normal">
+        <div className={cn(
+          'flex-1 text-lg font-normal transition-all duration-300',
+          selected && 'font-medium'
+        )}>
           {text}
         </div>
 
-        {/* Checkmark for selected */}
+        {/* Checkmark for multiple-choice selected */}
         {showCheck && selected && (
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 animate-[scaleIn_0.2s_ease-out]">
             <div className={cn(
-              'w-6 h-6 rounded-full flex items-center justify-center',
+              'w-8 h-8 rounded-full flex items-center justify-center',
               `bg-gradient-to-br ${colors.badge}`
             )}>
-              <Check className="w-4 h-4 text-white" />
+              <Check className="w-5 h-5 text-white" />
             </div>
           </div>
         )}
       </div>
+
+      {/* Inline keyframes for the animations */}
+      <style jsx>{`
+        @keyframes confirmPop {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.03); }
+          100% { transform: scale(1); }
+        }
+        @keyframes scaleIn {
+          0% { transform: scale(0); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </button>
   );
 }

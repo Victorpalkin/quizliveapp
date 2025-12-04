@@ -126,10 +126,23 @@ export function LobbyScreen({
           </div>
         </Card>
 
-        {/* Loading indicator */}
-        <div className="flex justify-center">
-          <LoadingSpinner message="Waiting for the host to start the game..." />
-        </div>
+        {/* Waiting for Host indicator */}
+        <Card className="border-2 border-dashed border-primary/30 bg-primary/5">
+          <div className="p-6 text-center">
+            <div className="flex justify-center mb-3">
+              <div className="relative">
+                <div className="w-3 h-3 bg-primary rounded-full animate-ping absolute" />
+                <div className="w-3 h-3 bg-primary rounded-full" />
+              </div>
+            </div>
+            <p className="text-lg font-medium text-foreground">
+              Waiting for host to start...
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              The game will begin automatically when the host is ready
+            </p>
+          </div>
+        </Card>
       </div>
     </div>
   );
