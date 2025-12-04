@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, Trash2, Eye, Edit, Share2 } from 'lucide-react';
+import { Gamepad2, Trash2, Eye, Edit, Share2, FileQuestion } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import type { Quiz } from '@/lib/types';
+import { formatRelativeTime } from '@/lib/utils/format-date';
 
 interface QuizCardProps {
   quiz: Quiz;
@@ -26,12 +27,20 @@ interface QuizCardProps {
 }
 
 export function QuizCard({ quiz, onHost, onPreview, onShare, onDelete }: QuizCardProps) {
+  const dateDisplay = formatRelativeTime(quiz.updatedAt || quiz.createdAt);
+
   return (
     <Card className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
       <CardHeader className="flex flex-row items-start justify-between p-6">
         <div className='flex-grow'>
-          <CardTitle className="text-2xl font-semibold mb-2">{quiz.title}</CardTitle>
-          <CardDescription className="text-base">{quiz.questions.length} questions</CardDescription>
+          <div className="flex items-center gap-2 mb-2">
+            <FileQuestion className="h-5 w-5 text-purple-500" />
+            <CardTitle className="text-2xl font-semibold">{quiz.title}</CardTitle>
+          </div>
+          <CardDescription className="text-base">
+            {quiz.questions.length} questions
+            {dateDisplay && <span className="text-muted-foreground"> · {dateDisplay}</span>}
+          </CardDescription>
         </div>
         <div className='flex items-center gap-1'>
           <Button

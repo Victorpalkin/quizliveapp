@@ -147,7 +147,36 @@ const lobbyTourSteps: Step[] = [
   },
 ];
 
-type TourType = 'create-activity' | 'quiz-form' | 'lobby';
+// Tour steps for the dashboard page
+const dashboardTourSteps: Step[] = [
+  {
+    target: 'body',
+    content: 'Welcome to your dashboard! This is where you manage all your activities and games.',
+    placement: 'center',
+    disableBeacon: true,
+    title: 'Your Dashboard',
+  },
+  {
+    target: '[data-tour="create-button"]',
+    content: 'Click here to create a new quiz, interest cloud, or ranking activity.',
+    placement: 'bottom',
+    title: 'Create New Content',
+  },
+  {
+    target: '[data-tour="content-filters"]',
+    content: 'Filter and sort your content to quickly find what you need.',
+    placement: 'bottom',
+    title: 'Filter & Sort',
+  },
+  {
+    target: '[data-tour="content-grid"]',
+    content: 'Your quizzes and activities appear here. Click any card to edit or launch it.',
+    placement: 'top',
+    title: 'Your Content',
+  },
+];
+
+type TourType = 'create-activity' | 'quiz-form' | 'lobby' | 'dashboard';
 
 interface CreationTourProps {
   /** Which tour to show */
@@ -162,6 +191,7 @@ const tourConfig: Record<TourType, { key: OnboardingKey; steps: Step[] }> = {
   'create-activity': { key: 'create-activity-tour', steps: createActivityTourSteps },
   'quiz-form': { key: 'quiz-form-tour', steps: quizFormTourSteps },
   'lobby': { key: 'lobby-tour', steps: lobbyTourSteps },
+  'dashboard': { key: 'dashboard-tour', steps: dashboardTourSteps },
 };
 
 /**

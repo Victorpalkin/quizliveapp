@@ -9,7 +9,8 @@ import { Header } from '@/components/app/header';
 import { SharedQuizzes } from '@/components/app/shared-quizzes';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
-import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion } from 'lucide-react';
+import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion, Gamepad2, ArrowUpDown } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateDropdown } from './components/create-dropdown';
 import { QuizCard } from './components/quiz-card';
 import { ActivityCard } from './components/activity-card';
@@ -46,6 +47,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { HostReconnectBanner } from '@/components/app/host-reconnect-banner';
+import { CreationTour } from '@/components/app/creation-tour';
 
 function GameStateBadge({ state }: { state: Game['state'] }) {
     let text;
@@ -85,6 +87,12 @@ export default function HostDashboardPage() {
 
   // State for preview dialog
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
+
+  // Filter and sort state
+  type FilterType = 'all' | 'quiz' | 'interest-cloud' | 'ranking';
+  type SortType = 'recent' | 'alphabetical' | 'created';
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [sortType, setSortType] = useState<SortType>('recent');
 
   const quizzesQuery = useMemoFirebase(() =>
     user ? query(collection(firestore, 'quizzes').withConverter(quizConverter), where('hostId', '==', user.uid)) as Query<Quiz> : null
@@ -135,6 +143,16 @@ export default function HostDashboardPage() {
       router.push('/verify-email');
     }
   }, [user, userLoading, router]);
+
+  // Redirect new users with no content to the create page
+  useEffect(() => {
+    if (!quizzesLoading && !activitiesLoading && user) {
+      const hasNoContent = (!quizzes || quizzes.length === 0) && (!activities || activities.length === 0);
+      if (hasNoContent) {
+        router.push('/host/create');
+      }
+    }
+  }, [quizzes, activities, quizzesLoading, activitiesLoading, user, router]);
 
   const handleHostGame = async (quizId: string) => {
     if (!user) return;
@@ -317,13 +335,21 @@ export default function HostDashboardPage() {
       <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-7xl">
 
+        {/* Dashboard Tour for new users */}
+        <CreationTour tourType="dashboard" />
+
         {/* Host Reconnection Banner */}
         <HostReconnectBanner />
 
         {/* Active Games Section */}
         {activeGames && activeGames.length > 0 && (
             <div className="mb-12">
-                <h2 className="text-3xl font-semibold mb-6">Active Games</h2>
+                <div className="flex items-center gap-3 mb-6">
+                    <h2 className="text-3xl font-semibold">Active Games</h2>
+                    <span className="px-2.5 py-0.5 text-sm font-medium bg-green-500/20 text-green-600 dark:text-green-400 rounded-full">
+                        {activeGames.length} live
+                    </span>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {gamesLoading ? (
                         <Card className="shadow-md"><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
@@ -377,9 +403,54 @@ export default function HostDashboardPage() {
 
         {/* My Content Section */}
         <div className="mb-12">
-            <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-                <h1 className="text-5xl font-semibold">My Content</h1>
-                <CreateDropdown />
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                    <h1 className="text-5xl font-semibold">My Content</h1>
+                    {!quizzesLoading && !activitiesLoading && (quizzes?.length || 0) + (activities?.length || 0) > 0 && (
+                        <span className="px-3 py-1 text-sm font-medium bg-muted text-muted-foreground rounded-full">
+                            {(quizzes?.length || 0) + (activities?.length || 0)}
+                        </span>
+                    )}
+                </div>
+                <div data-tour="create-button">
+                    <CreateDropdown />
+                </div>
+            </div>
+
+            {/* Filter and Sort Controls */}
+            <div className="flex flex-wrap items-center gap-4 mb-6" data-tour="content-filters">
+                {/* Filter Tabs */}
+                <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                    {[
+                        { value: 'all', label: 'All' },
+                        { value: 'quiz', label: 'Quizzes' },
+                        { value: 'interest-cloud', label: 'Interest Clouds' },
+                        { value: 'ranking', label: 'Rankings' },
+                    ].map(({ value, label }) => (
+                        <Button
+                            key={value}
+                            variant={filterType === value ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => setFilterType(value as FilterType)}
+                            className="rounded-md"
+                        >
+                            {label}
+                        </Button>
+                    ))}
+                </div>
+
+                {/* Sort Dropdown */}
+                <Select value={sortType} onValueChange={(value) => setSortType(value as SortType)}>
+                    <SelectTrigger className="w-[180px]">
+                        <ArrowUpDown className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="recent">Recently edited</SelectItem>
+                        <SelectItem value="created">Recently created</SelectItem>
+                        <SelectItem value="alphabetical">Alphabetical</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
 
             {(quizzesLoading || activitiesLoading) ? (
@@ -396,30 +467,93 @@ export default function HostDashboardPage() {
                         </Card>
                     ))}
                 </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {quizzes?.map(quiz => (
-                        <QuizCard
-                            key={quiz.id}
-                            quiz={quiz}
-                            onHost={handleHostGame}
-                            onPreview={setPreviewQuiz}
-                            onShare={setShareDialogQuiz}
-                            onDelete={handleDeleteQuiz}
-                        />
-                    ))}
-                    {activities?.map(activity => (
-                        <ActivityCard
-                            key={activity.id}
-                            activity={activity}
-                            onDelete={handleDeleteActivity}
-                        />
-                    ))}
-                    {(!quizzes?.length && !activities?.length) && (
-                        <EmptyContentState />
-                    )}
-                </div>
-            )}
+            ) : (() => {
+                // Build unified list of items for filtering and sorting
+                type ContentItem = {
+                    type: 'quiz' | 'interest-cloud' | 'ranking';
+                    data: Quiz | Activity;
+                    title: string;
+                    updatedAt?: Date;
+                    createdAt?: Date;
+                };
+
+                const allItems: ContentItem[] = [
+                    ...(quizzes?.map(q => ({
+                        type: 'quiz' as const,
+                        data: q,
+                        title: q.title,
+                        updatedAt: q.updatedAt,
+                        createdAt: q.createdAt,
+                    })) || []),
+                    ...(activities?.map(a => ({
+                        type: a.type,
+                        data: a,
+                        title: a.title,
+                        updatedAt: a.updatedAt,
+                        createdAt: a.createdAt,
+                    })) || []),
+                ];
+
+                // Apply filter
+                const filteredItems = filterType === 'all'
+                    ? allItems
+                    : allItems.filter(item => item.type === filterType);
+
+                // Apply sort
+                const sortedItems = [...filteredItems].sort((a, b) => {
+                    const getDate = (item: ContentItem, field: 'updatedAt' | 'createdAt') => {
+                        const date = item[field];
+                        return date ? new Date(date).getTime() : 0;
+                    };
+
+                    switch (sortType) {
+                        case 'recent':
+                            return getDate(b, 'updatedAt') - getDate(a, 'updatedAt') || getDate(b, 'createdAt') - getDate(a, 'createdAt');
+                        case 'created':
+                            return getDate(b, 'createdAt') - getDate(a, 'createdAt');
+                        case 'alphabetical':
+                            return a.title.localeCompare(b.title);
+                        default:
+                            return 0;
+                    }
+                });
+
+                if (sortedItems.length === 0) {
+                    return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <EmptyContentState userName={user?.displayName || undefined} />
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="content-grid">
+                        {sortedItems.map(item => {
+                            if (item.type === 'quiz') {
+                                const quiz = item.data as Quiz;
+                                return (
+                                    <QuizCard
+                                        key={quiz.id}
+                                        quiz={quiz}
+                                        onHost={handleHostGame}
+                                        onPreview={setPreviewQuiz}
+                                        onShare={setShareDialogQuiz}
+                                        onDelete={handleDeleteQuiz}
+                                    />
+                                );
+                            }
+                            const activity = item.data as Activity;
+                            return (
+                                <ActivityCard
+                                    key={activity.id}
+                                    activity={activity}
+                                    onDelete={handleDeleteActivity}
+                                />
+                            );
+                        })}
+                    </div>
+                );
+            })()}
         </div>
 
         {/* Shared Quizzes Section */}
@@ -428,7 +562,14 @@ export default function HostDashboardPage() {
         {/* Completed Activities Section */}
         {completedGames && completedGames.length > 0 && (
             <div className="mb-12">
-                <h2 className="text-3xl font-semibold mb-6">Completed Activities</h2>
+                <div className="border-t border-border pt-8 mb-6">
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-3xl font-semibold">Completed Activities</h2>
+                        <span className="px-2.5 py-0.5 text-sm font-medium bg-muted text-muted-foreground rounded-full">
+                            {completedGames.length}
+                        </span>
+                    </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {gamesLoading ? (
                         <Card className="shadow-md"><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
@@ -466,11 +607,19 @@ export default function HostDashboardPage() {
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
+                                        {isQuiz && (
+                                            <Button
+                                                className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 font-semibold"
+                                                onClick={() => handleHostGame(game.quizId)}
+                                            >
+                                                <Gamepad2 className="mr-2 h-4 w-4" /> Host Again
+                                            </Button>
+                                        )}
                                         <Button className="w-full px-6 py-4 rounded-xl" variant="outline" onClick={() => handleOpenGame(game)}>
                                             <Eye className="mr-2 h-4 w-4" /> View Results
                                         </Button>
                                         {isQuiz && (
-                                            <Button asChild className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 font-semibold">
+                                            <Button asChild className="w-full px-6 py-4 rounded-xl" variant="outline">
                                                 <Link href={`/host/quiz/analytics/${game.id}`}>
                                                     <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
                                                 </Link>

@@ -87,6 +87,8 @@ export interface Quiz {
   questions: Question[];
   hostId: string;
   crowdsource?: CrowdsourceSettings;  // Optional crowdsource configuration
+  createdAt?: Date;   // Optional for backward compatibility with existing quizzes
+  updatedAt?: Date;   // Optional for backward compatibility
 }
 
 export interface QuizShare {

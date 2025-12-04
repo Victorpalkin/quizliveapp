@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
  */
 export type OnboardingKey =
   | 'dashboard-welcome'
+  | 'dashboard-tour'
   | 'create-activity-tour'
   | 'quiz-form-tour'
   | 'lobby-tour'
