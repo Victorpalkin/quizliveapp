@@ -60,7 +60,7 @@ export function ActivityCard({ activity, onDelete }: ActivityCardProps) {
   const dateDisplay = formatRelativeTime(activity.updatedAt || activity.createdAt);
 
   return (
-    <Card className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
+    <Card variant="interactive" className="flex flex-col">
       <CardHeader className="flex flex-row items-start justify-between p-6">
         <div className='flex-grow'>
           <div className="flex items-center gap-2 mb-2">
@@ -103,7 +103,7 @@ export function ActivityCard({ activity, onDelete }: ActivityCardProps) {
         </div>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
-        <Button asChild className={`w-full px-6 py-4 bg-gradient-to-r ${gradientClass} hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold`}>
+        <Button asChild variant="gradient" size="xl" className={`w-full bg-gradient-to-r ${gradientClass}`}>
           <Link href={`/host/${activityTypePath}/${activity.id}`}>
             <Gamepad2 className="mr-2 h-4 w-4" /> Launch Session
           </Link>

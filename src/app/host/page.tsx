@@ -144,13 +144,22 @@ export default function HostDashboardPage() {
     }
   }, [user, userLoading, router]);
 
-  // Redirect new users with no content to the create page
+  // Redirect first-time users (no content at all) to the create page
+  // Only redirect once data has fully loaded and confirmed empty
   useEffect(() => {
-    if (!quizzesLoading && !activitiesLoading && user) {
-      const hasNoContent = (!quizzes || quizzes.length === 0) && (!activities || activities.length === 0);
-      if (hasNoContent) {
-        router.push('/host/create');
-      }
+    // Wait for all data to finish loading
+    if (quizzesLoading || activitiesLoading || !user) return;
+
+    // quizzes/activities will be null/undefined while loading, then an array when loaded
+    // Only redirect if we have confirmed empty arrays (not null/undefined)
+    const quizzesLoaded = Array.isArray(quizzes);
+    const activitiesLoaded = Array.isArray(activities);
+
+    if (!quizzesLoaded || !activitiesLoaded) return;
+
+    const hasNoContent = quizzes.length === 0 && activities.length === 0;
+    if (hasNoContent) {
+      router.push('/host/create');
     }
   }, [quizzes, activities, quizzesLoading, activitiesLoading, user, router]);
 
@@ -352,10 +361,10 @@ export default function HostDashboardPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {gamesLoading ? (
-                        <Card className="shadow-md"><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
+                        <Card><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
                     ) : (
                         activeGames.map(game => (
-                            <Card key={game.id} className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
+                            <Card key={game.id} variant="interactive" className="flex flex-col">
                                 <CardHeader className="p-6">
                                     <div className="flex justify-between items-center mb-2">
                                         <CardTitle className="text-2xl font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
@@ -367,14 +376,16 @@ export default function HostDashboardPage() {
                                 </CardHeader>
                                 <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
                                     <Button
-                                        className="w-full px-6 py-4 bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 rounded-xl font-semibold"
+                                        variant="gradient"
+                                        size="xl"
+                                        className="w-full"
                                         onClick={() => handleOpenGame(game)}
                                     >
                                         <LogIn className="mr-2 h-4 w-4" /> Open Game
                                     </Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button className="w-full px-6 py-4 rounded-xl" variant="outline">
+                                            <Button size="xl" className="w-full" variant="outline">
                                                 <XCircle className="mr-2 h-4 w-4" /> Cancel Game
                                             </Button>
                                         </AlertDialogTrigger>
@@ -456,7 +467,7 @@ export default function HostDashboardPage() {
             {(quizzesLoading || activitiesLoading) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[...Array(3)].map((_, i) => (
-                        <Card key={i} className="shadow-md rounded-2xl border border-card-border">
+                        <Card key={i}>
                             <CardHeader className="p-6">
                                 <div className="h-6 bg-muted rounded-lg w-3/4 animate-pulse"></div>
                                 <div className="h-4 bg-muted rounded-lg w-1/2 mt-2 animate-pulse"></div>
@@ -572,7 +583,7 @@ export default function HostDashboardPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {gamesLoading ? (
-                        <Card className="shadow-md"><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
+                        <Card><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
                     ) : (
                         completedGames.map(game => {
                             const isInterestCloud = game.activityType === 'interest-cloud';
@@ -593,7 +604,7 @@ export default function HostDashboardPage() {
                             const badgeLabel = isInterestCloud ? 'Interest Cloud' : isRanking ? 'Ranking' : 'Quiz';
 
                             return (
-                                <Card key={game.id} className="flex flex-col border border-card-border shadow-md hover:shadow-lg transition-all duration-300 rounded-2xl">
+                                <Card key={game.id} variant="interactive" className="flex flex-col">
                                     <CardHeader className="p-6">
                                         <div className="flex justify-between items-center mb-2">
                                             <CardTitle className="text-2xl font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
@@ -609,17 +620,19 @@ export default function HostDashboardPage() {
                                     <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
                                         {isQuiz && (
                                             <Button
-                                                className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300 font-semibold"
+                                                variant="gradient"
+                                                size="xl"
+                                                className="w-full"
                                                 onClick={() => handleHostGame(game.quizId)}
                                             >
                                                 <Gamepad2 className="mr-2 h-4 w-4" /> Host Again
                                             </Button>
                                         )}
-                                        <Button className="w-full px-6 py-4 rounded-xl" variant="outline" onClick={() => handleOpenGame(game)}>
+                                        <Button size="xl" className="w-full" variant="outline" onClick={() => handleOpenGame(game)}>
                                             <Eye className="mr-2 h-4 w-4" /> View Results
                                         </Button>
                                         {isQuiz && (
-                                            <Button asChild className="w-full px-6 py-4 rounded-xl" variant="outline">
+                                            <Button asChild size="xl" className="w-full" variant="outline">
                                                 <Link href={`/host/quiz/analytics/${game.id}`}>
                                                     <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
                                                 </Link>
@@ -627,7 +640,7 @@ export default function HostDashboardPage() {
                                         )}
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
-                                                <Button className="w-full px-6 py-4 rounded-xl" variant="ghost">
+                                                <Button size="xl" className="w-full" variant="ghost">
                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete Record
                                                 </Button>
                                             </AlertDialogTrigger>

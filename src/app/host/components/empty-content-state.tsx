@@ -62,7 +62,8 @@ export function EmptyContentState({ userName }: EmptyContentStateProps) {
         {activityTypes.map(({ type, title, description, icon: Icon, href, gradient, iconColor }) => (
           <Card
             key={type}
-            className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-primary/20"
+            variant="interactive"
+            className="group"
           >
             <CardHeader className="pb-2">
               <div className={`inline-flex items-center justify-center w-10 h-10 rounded-lg bg-muted mb-2`}>
