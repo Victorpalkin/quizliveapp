@@ -77,11 +77,6 @@ export function EmptyContentState({ filterType }: EmptyContentStateProps) {
             </Link>
           </Button>
         )}
-        <Button asChild variant="ghost" className="text-muted-foreground">
-          <Link href="/host/create">
-            Browse all activities
-          </Link>
-        </Button>
       </div>
     </div>
   );

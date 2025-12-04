@@ -9,7 +9,7 @@ import { Header } from '@/components/app/header';
 import { SharedQuizzes } from '@/components/app/shared-quizzes';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
-import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion, Gamepad2, ArrowUpDown } from 'lucide-react';
+import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion, Gamepad2, ArrowUpDown, Sparkles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateDropdown } from './components/create-dropdown';
 import { QuizCard } from './components/quiz-card';
@@ -423,7 +423,13 @@ export default function HostDashboardPage() {
                         </span>
                     )}
                 </div>
-                <div data-tour="create-button">
+                <div className="flex items-center gap-3" data-tour="create-button">
+                    <Button asChild variant="outline">
+                        <Link href="/host/create">
+                            <Sparkles className="mr-2 h-4 w-4 text-amber-500" />
+                            Explore Activity Types
+                        </Link>
+                    </Button>
                     <CreateDropdown />
                 </div>
             </div>
