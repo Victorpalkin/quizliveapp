@@ -251,7 +251,9 @@ export function CreationTour({ tourType, run: runProp, onComplete }: CreationTou
       showProgress
       scrollToFirstStep
       disableScrolling={false}
+      disableOverlayClose
       spotlightPadding={8}
+      scrollOffset={80}
       styles={tourStyles}
       callback={handleJoyrideCallback}
       locale={{

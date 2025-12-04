@@ -610,60 +610,65 @@ export default function HostDashboardPage() {
 
                             return (
                                 <Card key={game.id} variant="interactive" className="flex flex-col">
-                                    <CardHeader className="p-6">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <CardTitle className="text-2xl font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
-                                            <div className={`flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md ${badgeClass}`}>
+                                    <CardHeader className="p-4 pb-3">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
                                                 {badgeIcon}
-                                                {badgeLabel}
+                                                <CardTitle className="text-lg font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
                                             </div>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent className="rounded-2xl shadow-xl">
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle className="text-2xl font-semibold">Delete this record?</AlertDialogTitle>
+                                                        <AlertDialogDescription className="text-base">
+                                                            This will permanently delete the record for &apos;{game.gamePin}&apos;.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel className="rounded-xl">Back</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
+                                                            Yes, Delete
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
                                         </div>
-                                        <CardDescription className="text-base">
+                                        <CardDescription className="text-sm">
                                             {getGameTitle(game)}
                                         </CardDescription>
                                     </CardHeader>
-                                    <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
-                                        {isQuiz && (
+                                    <CardContent className="flex flex-col gap-2 p-4 pt-0">
+                                        <div className="flex gap-2">
                                             <Button
                                                 variant="gradient"
-                                                size="xl"
+                                                className="flex-1"
+                                                onClick={() => handleOpenGame(game)}
+                                            >
+                                                <Eye className="mr-2 h-4 w-4" /> Results
+                                            </Button>
+                                            {isQuiz && (
+                                                <Button asChild variant="gradient" className="flex-1">
+                                                    <Link href={`/host/quiz/analytics/${game.id}`}>
+                                                        <BarChart3 className="mr-2 h-4 w-4" /> Analytics
+                                                    </Link>
+                                                </Button>
+                                            )}
+                                        </div>
+                                        {isQuiz && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
                                                 className="w-full"
                                                 onClick={() => handleHostGame(game.quizId)}
                                             >
                                                 <Gamepad2 className="mr-2 h-4 w-4" /> Host Again
                                             </Button>
                                         )}
-                                        <Button size="xl" className="w-full" variant="outline" onClick={() => handleOpenGame(game)}>
-                                            <Eye className="mr-2 h-4 w-4" /> View Results
-                                        </Button>
-                                        {isQuiz && (
-                                            <Button asChild size="xl" className="w-full" variant="outline">
-                                                <Link href={`/host/quiz/analytics/${game.id}`}>
-                                                    <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
-                                                </Link>
-                                            </Button>
-                                        )}
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button size="xl" className="w-full" variant="ghost">
-                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Record
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent className="rounded-2xl shadow-xl">
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle className="text-2xl font-semibold">Delete this record?</AlertDialogTitle>
-                                                    <AlertDialogDescription className="text-base">
-                                                        This will permanently delete the record for '{game.gamePin}'.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel className="rounded-xl">Back</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
-                                                        Yes, Delete
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
                                     </CardContent>
                                 </Card>
                             );
