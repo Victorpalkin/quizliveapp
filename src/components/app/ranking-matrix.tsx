@@ -11,8 +11,8 @@ import {
   ReferenceLine,
   Cell,
   Label,
-  LabelList,
   ReferenceArea,
+  Customized,
 } from 'recharts';
 import type { RankingItemResult, RankingMetric } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -81,11 +81,19 @@ function getQuadrantColor(
   y: number,
   midX: number,
   midY: number,
-  colorMap: ReturnType<typeof getQuadrantColorMap>
+  colorMap: ReturnType<typeof getQuadrantColorMap>,
+  xReversed: boolean,
+  yReversed: boolean
 ): string {
-  if (x >= midX && y >= midY) return colorMap.topRight;
-  if (x < midX && y >= midY) return colorMap.topLeft;
-  if (x >= midX && y < midY) return colorMap.bottomRight;
+  // When axis is reversed, the "high" side is visually flipped
+  // For reversed X: left side is high values, right side is low values
+  // For reversed Y: bottom side is high values, top side is low values
+  const isRightSide = xReversed ? x < midX : x >= midX;
+  const isTopSide = yReversed ? y < midY : y >= midY;
+
+  if (isRightSide && isTopSide) return colorMap.topRight;
+  if (!isRightSide && isTopSide) return colorMap.topLeft;
+  if (isRightSide && !isTopSide) return colorMap.bottomRight;
   return colorMap.bottomLeft;
 }
 
@@ -144,9 +152,9 @@ export function RankingMatrix({ items, metrics, className }: RankingMatrixProps)
             ? item.itemText.slice(0, 13) + '...'
             : item.itemText,
           fullName: item.itemText,
-          // Use raw average for display, but position based on normalized (accounts for lowerIsBetter)
-          x: xScore.normalizedAverage * 100,
-          y: yScore.normalizedAverage * 100,
+          // Use raw average for positioning (absolute values)
+          x: xScore.rawAverage,
+          y: yScore.rawAverage,
           xValue: xScore.rawAverage,
           yValue: yScore.rawAverage,
           xMetricName: xMetric.name,
@@ -156,6 +164,34 @@ export function RankingMatrix({ items, metrics, className }: RankingMatrixProps)
         };
       });
   }, [items, xMetricId, yMetricId, xMetric, yMetric]);
+
+  // Calculate axis domains based on metric scales
+  const xDomain: [number, number] = useMemo(() => {
+    if (!xMetric) return [0, 100];
+    // For lowerIsBetter, reverse the axis (max to min) so lower values are on the right (good side)
+    return xMetric.lowerIsBetter
+      ? [xMetric.scaleMax, xMetric.scaleMin]
+      : [xMetric.scaleMin, xMetric.scaleMax];
+  }, [xMetric]);
+
+  const yDomain: [number, number] = useMemo(() => {
+    if (!yMetric) return [0, 100];
+    // For lowerIsBetter, reverse the axis (max to min) so lower values are on the top (good side)
+    return yMetric.lowerIsBetter
+      ? [yMetric.scaleMax, yMetric.scaleMin]
+      : [yMetric.scaleMin, yMetric.scaleMax];
+  }, [yMetric]);
+
+  // Calculate midpoint for quadrant lines (middle of the scale)
+  const midX = useMemo(() => {
+    if (!xMetric) return 50;
+    return (xMetric.scaleMin + xMetric.scaleMax) / 2;
+  }, [xMetric]);
+
+  const midY = useMemo(() => {
+    if (!yMetric) return 50;
+    return (yMetric.scaleMin + yMetric.scaleMax) / 2;
+  }, [yMetric]);
 
   if (metrics.length < 2) {
     return (
@@ -172,10 +208,6 @@ export function RankingMatrix({ items, metrics, className }: RankingMatrixProps)
       </div>
     );
   }
-
-  // Calculate midpoints for quadrant lines (50% of normalized range)
-  const midX = 50;
-  const midY = 50;
 
   // Get quadrant color map based on metric directions
   const quadrantColorMap = useMemo(() =>
@@ -331,35 +363,35 @@ export function RankingMatrix({ items, metrics, className }: RankingMatrixProps)
       <div style={{ height: 400 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 30, right: 20, bottom: 40, left: 40 }}>
-            {/* Quadrant background colors */}
+            {/* Quadrant background colors - use scale min/max for boundaries */}
             <ReferenceArea
-              x1={0}
+              x1={xMetric?.scaleMin || 0}
               x2={midX}
               y1={midY}
-              y2={100}
+              y2={yMetric?.scaleMax || 100}
               fill={quadrantColorMap.topLeft}
               fillOpacity={0.08}
             />
             <ReferenceArea
               x1={midX}
-              x2={100}
+              x2={xMetric?.scaleMax || 100}
               y1={midY}
-              y2={100}
+              y2={yMetric?.scaleMax || 100}
               fill={quadrantColorMap.topRight}
               fillOpacity={0.08}
             />
             <ReferenceArea
-              x1={0}
+              x1={xMetric?.scaleMin || 0}
               x2={midX}
-              y1={0}
+              y1={yMetric?.scaleMin || 0}
               y2={midY}
               fill={quadrantColorMap.bottomLeft}
               fillOpacity={0.08}
             />
             <ReferenceArea
               x1={midX}
-              x2={100}
-              y1={0}
+              x2={xMetric?.scaleMax || 100}
+              y1={yMetric?.scaleMin || 0}
               y2={midY}
               fill={quadrantColorMap.bottomRight}
               fillOpacity={0.08}
@@ -368,14 +400,15 @@ export function RankingMatrix({ items, metrics, className }: RankingMatrixProps)
             <XAxis
               type="number"
               dataKey="x"
-              domain={[0, 100]}
-              tickFormatter={(value) => `${value}%`}
+              domain={xDomain}
+              tickFormatter={(value) => value.toFixed(1)}
               axisLine={{ stroke: '#e5e7eb' }}
               tickLine={false}
               tick={{ fill: '#9ca3af', fontSize: 11 }}
+              reversed={xMetric?.lowerIsBetter}
             >
               <Label
-                value={xMetric?.name || 'X'}
+                value={`${xMetric?.name || 'X'}${xMetric?.lowerIsBetter ? ' (lower is better →)' : ''}`}
                 position="bottom"
                 offset={20}
                 style={{ fill: '#6b7280', fontSize: 12 }}
@@ -384,14 +417,15 @@ export function RankingMatrix({ items, metrics, className }: RankingMatrixProps)
             <YAxis
               type="number"
               dataKey="y"
-              domain={[0, 100]}
-              tickFormatter={(value) => `${value}%`}
+              domain={yDomain}
+              tickFormatter={(value) => value.toFixed(1)}
               axisLine={{ stroke: '#e5e7eb' }}
               tickLine={false}
               tick={{ fill: '#9ca3af', fontSize: 11 }}
+              reversed={yMetric?.lowerIsBetter}
             >
               <Label
-                value={yMetric?.name || 'Y'}
+                value={`${yMetric?.name || 'Y'}${yMetric?.lowerIsBetter ? ' (lower is better ↑)' : ''}`}
                 angle={-90}
                 position="left"
                 offset={20}
@@ -420,49 +454,75 @@ export function RankingMatrix({ items, metrics, className }: RankingMatrixProps)
               {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
-                  fill={getQuadrantColor(entry.x, entry.y, midX, midY, quadrantColorMap)}
+                  fill={getQuadrantColor(
+                    entry.x,
+                    entry.y,
+                    midX,
+                    midY,
+                    quadrantColorMap,
+                    xMetric?.lowerIsBetter || false,
+                    yMetric?.lowerIsBetter || false
+                  )}
                   stroke="#fff"
                   strokeWidth={2}
                   r={12}
                 />
               ))}
-              <LabelList
-                dataKey="name"
-                position="top"
-                offset={16}
-                content={({ x, y, value }) => (
-                  <g>
-                    <rect
-                      x={(x as number) - 40}
-                      y={(y as number) - 24}
-                      width={80}
-                      height={18}
-                      fill="white"
-                      fillOpacity={0.85}
-                      rx={4}
-                    />
-                    <text
-                      x={x}
-                      y={(y as number) - 12}
-                      textAnchor="middle"
-                      fontSize={11}
-                      fontWeight={500}
-                      fill="#374151"
-                    >
-                      {value}
-                    </text>
-                  </g>
-                )}
-              />
             </Scatter>
+
+            {/* Custom labels layer */}
+            <Customized
+              component={(props: { xAxisMap?: Record<string, { scale: (v: number) => number }>; yAxisMap?: Record<string, { scale: (v: number) => number }> }) => {
+                const { xAxisMap, yAxisMap } = props;
+                if (!xAxisMap || !yAxisMap) return null;
+                const xAxis = Object.values(xAxisMap)[0];
+                const yAxis = Object.values(yAxisMap)[0];
+                if (!xAxis?.scale || !yAxis?.scale) return null;
+
+                return (
+                  <g>
+                    {chartData.map((entry, index) => {
+                      const cx = xAxis.scale(entry.x);
+                      const cy = yAxis.scale(entry.y);
+                      const labelWidth = Math.min(entry.name.length * 7 + 12, 100);
+
+                      return (
+                        <g key={`label-${index}`}>
+                          <rect
+                            x={cx - labelWidth / 2}
+                            y={cy - 32}
+                            width={labelWidth}
+                            height={18}
+                            fill="white"
+                            fillOpacity={0.9}
+                            rx={4}
+                            stroke="#e5e7eb"
+                            strokeWidth={1}
+                          />
+                          <text
+                            x={cx}
+                            y={cy - 20}
+                            textAnchor="middle"
+                            fontSize={11}
+                            fontWeight={500}
+                            fill="#374151"
+                          >
+                            {entry.name}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </g>
+                );
+              }}
+            />
           </ScatterChart>
         </ResponsiveContainer>
       </div>
 
       {/* Legend */}
       <div className="text-xs text-muted-foreground text-center">
-        <p>Items are positioned by their normalized scores, adjusted for metric direction.</p>
-        <p className="mt-1">The ★ quadrant contains items that score best on both metrics.</p>
+        <p>Items are positioned by their average ratings. Axes are oriented so &quot;better&quot; values are toward the ★ quadrant.</p>
       </div>
     </div>
   );
