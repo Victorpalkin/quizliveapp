@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,6 +69,7 @@ import { RankingHeatmap } from '@/components/app/ranking-heatmap';
 import { RankingMatrix } from '@/components/app/ranking-matrix';
 import { ConsensusList } from '@/components/app/consensus-indicator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { KeyboardShortcutsHint } from '@/components/app/game-header';
 
 export default function RankingGamePage() {
   const params = useParams();
@@ -308,6 +309,34 @@ export default function RankingGamePage() {
       console.error('Error canceling game:', error);
     }
   };
+
+  // Keyboard shortcuts handler
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Don't trigger if user is typing in an input
+    if (
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement
+    ) {
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (game?.state === 'collecting' && items && items.filter(i => i.approved).length > 0 && !isTransitioning) {
+        handleStartRanking();
+      } else if (game?.state === 'ranking' && !isTransitioning) {
+        handleEndRanking();
+      } else if (game?.state === 'results') {
+        handleEndSession();
+      }
+    }
+  }, [game?.state, items, isTransitioning]);
+
+  // Set up keyboard event listener
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   if (userLoading || gameLoading || activityLoading) {
     return <FullPageLoader />;
@@ -745,6 +774,22 @@ export default function RankingGamePage() {
                 End Session & Return to Dashboard
               </Button>
             </>
+          )}
+
+          {/* Keyboard Shortcuts Hint */}
+          {game.state !== 'ended' && game.state !== 'analyzing' && (
+            <KeyboardShortcutsHint
+              shortcuts={
+                game.state === 'collecting'
+                  ? [{ key: 'Enter', action: 'Start Ranking' }]
+                  : game.state === 'ranking'
+                  ? [{ key: 'Enter', action: 'Show Results' }]
+                  : game.state === 'results'
+                  ? [{ key: 'Enter', action: 'End Session' }]
+                  : []
+              }
+              className="justify-center"
+            />
           )}
 
           {/* Cancel Game */}

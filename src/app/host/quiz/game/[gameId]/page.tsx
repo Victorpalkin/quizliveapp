@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -14,6 +14,7 @@ import { AnswerButton } from '@/components/app/answer-button';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { QuestionCounter } from '@/components/app/question-counter';
 import { QuestionTypeBadges } from '@/components/app/question-type-badges';
+import { KeyboardShortcutsHint } from '@/components/app/game-header';
 import { saveHostSession, clearHostSession } from '@/lib/host-session';
 import { useUser } from '@/firebase';
 import { getEffectiveQuestions } from '@/lib/utils/game-utils';
@@ -97,6 +98,36 @@ export default function HostGamePage() {
       startQuestion();
     }
   }, [game?.state, startQuestion]);
+
+  // Track if cancel dialog is open to prevent keyboard shortcuts
+  const cancelDialogRef = useRef(false);
+
+  // Keyboard shortcuts handler
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Don't trigger if user is typing in an input or if cancel dialog is open
+    if (
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement ||
+      cancelDialogRef.current
+    ) {
+      return;
+    }
+
+    if (event.key === ' ' || event.key === 'Enter') {
+      event.preventDefault();
+      if (game?.state === 'question' && !isComputingResults) {
+        finishQuestion();
+      } else if (game?.state === 'leaderboard' && !isComputingResults) {
+        handleNext();
+      }
+    }
+  }, [game?.state, isComputingResults, finishQuestion, handleNext]);
+
+  // Set up keyboard event listener
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   // Loading state
   if (gameLoading || quizLoading) {
@@ -326,29 +357,37 @@ export default function HostGamePage() {
       )}
 
       {/* Footer */}
-      <footer className="mt-8 flex justify-between items-center gap-4">
-        <div className="flex items-center gap-2 text-lg font-medium">
-          <Users className="h-5 w-5"/>
-          <span>{totalAnswered} / {totalPlayers} Answered</span>
+      <footer className="mt-8 flex flex-col gap-4">
+        <div className="flex justify-between items-center gap-4">
+          <div className="flex items-center gap-2 text-lg font-medium">
+            <Users className="h-5 w-5"/>
+            <span>{totalAnswered} / {totalPlayers} Answered</span>
+          </div>
+          <div>
+            <QuestionCounter
+              current={(game?.currentQuestionIndex || 0) + 1}
+              total={effectiveQuestions.length}
+              className="text-lg mr-4"
+            />
+            {game?.state === 'question' && (
+              <Button onClick={finishQuestion} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Finish Question
+              </Button>
+            )}
+            {game?.state === 'leaderboard' && (
+              <Button onClick={handleNext} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
+                {isLastQuestion ? 'End Game' : 'Next Question'}
+              </Button>
+            )}
+          </div>
         </div>
-        <div>
-          <QuestionCounter
-            current={(game?.currentQuestionIndex || 0) + 1}
-            total={effectiveQuestions.length}
-            className="text-lg mr-4"
-          />
-          {game?.state === 'question' && (
-            <Button onClick={finishQuestion} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Finish Question
-            </Button>
-          )}
-          {game?.state === 'leaderboard' && (
-            <Button onClick={handleNext} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
-              {isLastQuestion ? 'End Game' : 'Next Question'}
-            </Button>
-          )}
-        </div>
+        <KeyboardShortcutsHint
+          shortcuts={[
+            { key: 'Space', action: game?.state === 'question' ? 'Finish' : 'Next' },
+          ]}
+          className="justify-center"
+        />
       </footer>
     </div>
   );

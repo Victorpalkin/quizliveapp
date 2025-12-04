@@ -7,7 +7,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Copy, XCircle, QrCode, Play } from 'lucide-react';
+import { Users, Copy, XCircle, QrCode, Play, Lightbulb } from 'lucide-react';
+import { ReadinessChecklist, TipBanner } from '@/components/app/host-action-hint';
+import { CreationTour } from '@/components/app/creation-tour';
 import {
   Popover,
   PopoverContent,
@@ -166,6 +168,7 @@ export default function HostLobbyPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
+      <CreationTour tourType="lobby" />
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <div className="w-full max-w-4xl mx-auto space-y-6">
           {/* Compact Join Bar */}
@@ -173,7 +176,7 @@ export default function HostLobbyPage() {
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 {/* PIN Section */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3" data-tour="game-pin">
                   <span className="text-sm font-medium text-muted-foreground uppercase tracking-wide">PIN</span>
                   {gameLoading ? (
                     <Skeleton className="h-10 w-32" />
@@ -189,7 +192,7 @@ export default function HostLobbyPage() {
                 <div className="hidden sm:block h-8 w-px bg-border" />
 
                 {/* QR & Link Actions */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" data-tour="qr-code">
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" size="sm">
@@ -221,10 +224,31 @@ export default function HostLobbyPage() {
             </CardContent>
           </Card>
 
+          {/* Tips and Readiness */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TipBanner>
+              Share the PIN or scan the QR code with your audience to let them join
+            </TipBanner>
+            <ReadinessChecklist
+              items={[
+                {
+                  label: 'Players joined',
+                  isReady: (players?.length || 0) > 0,
+                  detail: `${players?.length || 0} player${(players?.length || 0) !== 1 ? 's' : ''}`,
+                },
+                ...(quiz?.crowdsource?.enabled ? [{
+                  label: 'Crowdsourced questions reviewed',
+                  isReady: game?.crowdsourceState?.evaluationComplete || false,
+                  detail: game?.crowdsourceState?.selectedCount ? `${game.crowdsourceState.selectedCount} selected` : 'Pending',
+                }] : []),
+              ]}
+            />
+          </div>
+
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Players List - Takes 2 columns */}
-            <Card className="lg:col-span-2 border border-card-border shadow-sm">
+            <Card className="lg:col-span-2 border border-card-border shadow-sm" data-tour="players-list">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -263,7 +287,7 @@ export default function HostLobbyPage() {
             </Card>
 
             {/* Start Game Card */}
-            <Card className="border-2 border-primary/20 shadow-sm bg-gradient-to-br from-primary/5 to-accent/5">
+            <Card className="border-2 border-primary/20 shadow-sm bg-gradient-to-br from-primary/5 to-accent/5" data-tour="start-game">
               <CardContent className="p-6 flex flex-col items-center justify-center h-full text-center gap-4">
                 <div>
                   <CardTitle className="text-xl mb-2">Ready to Start?</CardTitle>

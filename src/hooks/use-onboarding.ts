@@ -9,6 +9,7 @@ export type OnboardingKey =
   | 'dashboard-welcome'
   | 'create-activity-tour'
   | 'quiz-form-tour'
+  | 'lobby-tour'
   | 'live-game-tour'
   | 'question-types-seen';
 

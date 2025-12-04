@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { CallBackProps, Step } from 'react-joyride';
-import { useOnboarding } from '@/hooks/use-onboarding';
+import { useOnboarding, type OnboardingKey } from '@/hooks/use-onboarding';
 
 // Dynamically import Joyride to avoid SSR issues
 const Joyride = dynamic(() => import('react-joyride'), { ssr: false });
@@ -112,14 +112,57 @@ const quizFormTourSteps: Step[] = [
   },
 ];
 
+// Tour steps for the lobby page
+const lobbyTourSteps: Step[] = [
+  {
+    target: 'body',
+    content: 'Your session is ready! Let\'s see how to get players to join.',
+    placement: 'center',
+    disableBeacon: true,
+    title: 'Session Created!',
+  },
+  {
+    target: '[data-tour="game-pin"]',
+    content: 'Share this PIN with your audience. They can enter it at the join page to participate.',
+    placement: 'bottom',
+    title: 'Game PIN',
+  },
+  {
+    target: '[data-tour="qr-code"]',
+    content: 'For in-person events, display the QR code. Participants can scan it to join instantly.',
+    placement: 'bottom',
+    title: 'QR Code',
+  },
+  {
+    target: '[data-tour="players-list"]',
+    content: 'Watch players join in real-time. Their names will appear here as they connect.',
+    placement: 'top',
+    title: 'Player List',
+  },
+  {
+    target: '[data-tour="start-game"]',
+    content: 'When everyone has joined, click here to start. No more players can join after this!',
+    placement: 'left',
+    title: 'Start the Game',
+  },
+];
+
+type TourType = 'create-activity' | 'quiz-form' | 'lobby';
+
 interface CreationTourProps {
   /** Which tour to show */
-  tourType: 'create-activity' | 'quiz-form';
+  tourType: TourType;
   /** Whether to run the tour immediately */
   run?: boolean;
   /** Callback when tour completes or is skipped */
   onComplete?: () => void;
 }
+
+const tourConfig: Record<TourType, { key: OnboardingKey; steps: Step[] }> = {
+  'create-activity': { key: 'create-activity-tour', steps: createActivityTourSteps },
+  'quiz-form': { key: 'quiz-form-tour', steps: quizFormTourSteps },
+  'lobby': { key: 'lobby-tour', steps: lobbyTourSteps },
+};
 
 /**
  * CreationTour - Guided tour component for onboarding new users
@@ -131,13 +174,16 @@ interface CreationTourProps {
  *
  * // In quiz form page
  * <CreationTour tourType="quiz-form" />
+ *
+ * // In lobby page
+ * <CreationTour tourType="lobby" />
  * ```
  *
  * Add `data-tour="..."` attributes to target elements in the UI.
  */
 export function CreationTour({ tourType, run: runProp, onComplete }: CreationTourProps) {
-  const onboardingKey = tourType === 'create-activity' ? 'create-activity-tour' : 'quiz-form-tour';
-  const { shouldShow, complete, isLoaded } = useOnboarding(onboardingKey);
+  const config = tourConfig[tourType];
+  const { shouldShow, complete, isLoaded } = useOnboarding(config.key);
   const [run, setRun] = useState(false);
 
   // Start the tour when loaded and should show
@@ -149,7 +195,7 @@ export function CreationTour({ tourType, run: runProp, onComplete }: CreationTou
     }
   }, [isLoaded, shouldShow, runProp]);
 
-  const steps = tourType === 'create-activity' ? createActivityTourSteps : quizFormTourSteps;
+  const steps = config.steps;
 
   const handleJoyrideCallback = (data: CallBackProps) => {
     const { status, type } = data;
@@ -192,9 +238,9 @@ export function CreationTour({ tourType, run: runProp, onComplete }: CreationTou
 /**
  * Hook to manually trigger a tour
  */
-export function useTour(tourType: 'create-activity' | 'quiz-form') {
-  const onboardingKey = tourType === 'create-activity' ? 'create-activity-tour' : 'quiz-form-tour';
-  const { reset, complete } = useOnboarding(onboardingKey);
+export function useTour(tourType: TourType) {
+  const config = tourConfig[tourType];
+  const { reset, complete } = useOnboarding(config.key);
 
   return {
     startTour: reset,

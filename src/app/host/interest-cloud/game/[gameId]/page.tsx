@@ -16,7 +16,7 @@ import { gameConverter, interestCloudActivityConverter, interestSubmissionConver
 import { clearHostSession, saveHostSession } from '@/lib/host-session';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { WordCloud } from '@/components/app/word-cloud';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { QRCodeSVG } from 'qrcode.react';
@@ -25,6 +25,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { KeyboardShortcutsHint } from '@/components/app/game-header';
+import { HostActionHint } from '@/components/app/host-action-hint';
 
 export default function InterestCloudGamePage() {
   const params = useParams();
@@ -158,6 +160,39 @@ export default function InterestCloudGamePage() {
     clearHostSession();
     router.push('/host');
   };
+
+  // Keyboard shortcuts handler
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Don't trigger if user is typing in an input
+    if (
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement
+    ) {
+      return;
+    }
+
+    if (event.key === ' ') {
+      event.preventDefault();
+      if (game?.state === 'collecting') {
+        handleToggleSubmissions();
+      } else if (game?.state === 'display' && activity?.config.allowMultipleRounds) {
+        handleCollectMore();
+      }
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      if (game?.state === 'collecting' && submissions?.length) {
+        handleStopAndProcess();
+      } else if (game?.state === 'display') {
+        handleEndSession();
+      }
+    }
+  }, [game?.state, activity?.config.allowMultipleRounds, submissions?.length]);
+
+  // Set up keyboard event listener
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   if (userLoading || gameLoading) {
     return <FullPageLoader />;
@@ -471,6 +506,26 @@ export default function InterestCloudGamePage() {
         {renderJoinSection()}
 
         {renderContent()}
+
+        {/* Keyboard Shortcuts Hint */}
+        {game?.state !== 'ended' && game?.state !== 'processing' && (
+          <KeyboardShortcutsHint
+            shortcuts={
+              game?.state === 'collecting'
+                ? [
+                    { key: 'Space', action: game.submissionsOpen ? 'Pause' : 'Resume' },
+                    { key: 'Enter', action: 'Analyze' },
+                  ]
+                : game?.state === 'display'
+                ? [
+                    ...(activity?.config.allowMultipleRounds ? [{ key: 'Space', action: 'Collect More' }] : []),
+                    { key: 'Enter', action: 'End Session' },
+                  ]
+                : []
+            }
+            className="justify-center mt-6"
+          />
+        )}
       </main>
     </div>
   );
