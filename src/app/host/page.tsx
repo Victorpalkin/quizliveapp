@@ -9,7 +9,7 @@ import { Header } from '@/components/app/header';
 import { SharedQuizzes } from '@/components/app/shared-quizzes';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
-import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion, Gamepad2, ArrowUpDown, Sparkles } from 'lucide-react';
+import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion, Gamepad2, ArrowUpDown, Sparkles, RotateCcw } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateDropdown } from './components/create-dropdown';
 import { QuizCard } from './components/quiz-card';
@@ -673,6 +673,16 @@ export default function HostDashboardPage() {
                                                 onClick={() => handleHostGame(game.quizId)}
                                             >
                                                 <Gamepad2 className="mr-2 h-4 w-4" /> Host Again
+                                            </Button>
+                                        )}
+                                        {isRanking && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="w-full"
+                                                onClick={() => router.push(`/host/ranking/game/${game.id}`)}
+                                            >
+                                                <RotateCcw className="mr-2 h-4 w-4" /> Reopen Session
                                             </Button>
                                         )}
                                     </CardContent>

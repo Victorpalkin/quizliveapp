@@ -26,6 +26,8 @@ import {
   XCircle,
   CheckCircle,
   Clock,
+  RotateCcw,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Popover,
@@ -52,6 +54,8 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDocs,
+  writeBatch,
   serverTimestamp,
   DocumentReference,
   query,
@@ -126,9 +130,9 @@ export default function RankingGamePage() {
   );
   const { data: ratings, loading: ratingsLoading } = useCollection(ratingsQuery);
 
-  // Ranking results aggregate (only when in results state)
+  // Ranking results aggregate (when in results or ended state)
   const resultsRef = useMemoFirebase(
-    () => game?.state === 'results'
+    () => (game?.state === 'results' || game?.state === 'ended')
       ? doc(firestore, 'games', gameId, 'aggregates', 'rankings') as DocumentReference<RankingResults>
       : null,
     [firestore, gameId, game?.state]
@@ -307,6 +311,68 @@ export default function RankingGamePage() {
       router.push('/host');
     } catch (error) {
       console.error('Error canceling game:', error);
+    }
+  };
+
+  const handleReopenKeepData = async () => {
+    if (!game) return;
+    setIsTransitioning(true);
+    try {
+      await updateDoc(gameRef, { state: 'ranking' as RankingGameState });
+      toast({
+        title: 'Session Reopened',
+        description: 'Participants can now submit additional ratings using the same PIN.',
+      });
+    } catch (error) {
+      console.error('Error reopening session:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not reopen the session. Please try again.",
+      });
+    } finally {
+      setIsTransitioning(false);
+    }
+  };
+
+  const handleReopenClearData = async () => {
+    if (!game) return;
+    setIsTransitioning(true);
+    try {
+      // Delete all ratings subcollection documents
+      const ratingsSnapshot = await getDocs(collection(firestore, 'games', gameId, 'ratings'));
+      if (ratingsSnapshot.docs.length > 0) {
+        const batch = writeBatch(firestore);
+        ratingsSnapshot.docs.forEach(docSnap => batch.delete(docSnap.ref));
+        await batch.commit();
+      }
+
+      // Delete aggregates
+      try {
+        await deleteDoc(doc(firestore, 'games', gameId, 'aggregates', 'rankings'));
+      } catch {
+        // Aggregates may not exist, ignore
+      }
+
+      // Update state to 'collecting' (allows adding new items too)
+      await updateDoc(gameRef, {
+        state: 'collecting' as RankingGameState,
+        itemSubmissionsOpen: activity?.config.allowParticipantItems || false,
+      });
+
+      toast({
+        title: 'Session Reopened',
+        description: 'Starting fresh with no ratings. Previous data has been cleared.',
+      });
+    } catch (error) {
+      console.error('Error reopening session:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not reopen the session. Please try again.",
+      });
+    } finally {
+      setIsTransitioning(false);
     }
   };
 
@@ -772,6 +838,129 @@ export default function RankingGamePage() {
                 className="w-full"
               >
                 End Session & Return to Dashboard
+              </Button>
+            </>
+          )}
+
+          {/* Ended State - View Results & Reopen Options */}
+          {game.state === 'ended' && (
+            <>
+              <Card className="border border-card-border shadow-sm">
+                <CardHeader>
+                  <CardTitle>Session Results</CardTitle>
+                  <CardDescription>
+                    {rankingResults?.participantsWhoRated || ratingsCount} participants rated {rankingResults?.items.length || approvedItems.length} items
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {resultsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : rankingResults?.items && rankingResults.items.length > 0 ? (
+                    <Tabs defaultValue="ranking" className="w-full">
+                      <TabsList className={`grid w-full mb-4 ${activity && activity.config.metrics.length >= 2 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                        <TabsTrigger value="ranking">Ranking</TabsTrigger>
+                        <TabsTrigger value="heatmap">Heatmap</TabsTrigger>
+                        {activity && activity.config.metrics.length >= 2 && (
+                          <TabsTrigger value="matrix">Matrix</TabsTrigger>
+                        )}
+                        <TabsTrigger value="consensus">Consensus</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="ranking" className="mt-0">
+                        <RankingBarChart items={rankingResults.items} />
+                      </TabsContent>
+
+                      <TabsContent value="heatmap" className="mt-0">
+                        {activity && (
+                          <RankingHeatmap
+                            items={rankingResults.items}
+                            metrics={activity.config.metrics}
+                          />
+                        )}
+                      </TabsContent>
+
+                      {activity && activity.config.metrics.length >= 2 && (
+                        <TabsContent value="matrix" className="mt-0">
+                          <RankingMatrix
+                            items={rankingResults.items}
+                            metrics={activity.config.metrics}
+                          />
+                        </TabsContent>
+                      )}
+
+                      <TabsContent value="consensus" className="mt-0">
+                        <ConsensusList items={rankingResults.items} />
+                      </TabsContent>
+                    </Tabs>
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">
+                      No results available.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Reopen Options */}
+              <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <RefreshCw className="h-5 w-5" />
+                    Continue This Session?
+                  </CardTitle>
+                  <CardDescription>
+                    Reopen to collect more ratings from additional participants. The same PIN ({game.gamePin}) will be used.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    onClick={handleReopenKeepData}
+                    disabled={isTransitioning}
+                    className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90"
+                  >
+                    {isTransitioning ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                    )}
+                    Reopen & Keep Existing Ratings
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="flex-1" disabled={isTransitioning}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Reopen & Start Fresh
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Clear all existing data?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will delete all ratings and results. You&apos;ll start with the same items but no participant data. This cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleReopenClearData}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Yes, Clear & Reopen
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardContent>
+              </Card>
+
+              <Button
+                variant="outline"
+                onClick={() => router.push('/host')}
+                size="lg"
+                className="w-full"
+              >
+                Back to Dashboard
               </Button>
             </>
           )}
