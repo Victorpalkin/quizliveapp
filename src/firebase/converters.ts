@@ -8,10 +8,31 @@ import {
 import { Quiz, Game, Player, QuizShare, InterestCloudActivity, InterestSubmission, RankingActivity, RankingItem, PlayerRatings } from '@/lib/types';
 import { removeUndefined } from '@/lib/firestore-utils';
 
+/**
+ * Safely convert a Firestore timestamp field to a Date.
+ * Handles: Timestamp objects, serverTimestamp() sentinels (null/undefined), and missing fields.
+ */
+function toDateSafe(value: unknown): Date | undefined {
+  if (!value) return undefined;
+  // Check if it's a Firestore Timestamp (has toDate method)
+  if (typeof value === 'object' && 'toDate' in value && typeof (value as Timestamp).toDate === 'function') {
+    return (value as Timestamp).toDate();
+  }
+  // If it's already a Date, return it
+  if (value instanceof Date) {
+    return value;
+  }
+  return undefined;
+}
+
 export const quizConverter: FirestoreDataConverter<Quiz> = {
   toFirestore(quiz: Quiz): DocumentData {
     const { id, ...data } = quiz;
-    return removeUndefined(data);
+    return removeUndefined({
+      ...data,
+      createdAt: data.createdAt instanceof Date ? Timestamp.fromDate(data.createdAt) : data.createdAt,
+      updatedAt: data.updatedAt instanceof Date ? Timestamp.fromDate(data.updatedAt) : data.updatedAt,
+    });
   },
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
@@ -24,6 +45,9 @@ export const quizConverter: FirestoreDataConverter<Quiz> = {
       description: data.description,
       questions: data.questions,
       hostId: data.hostId,
+      crowdsource: data.crowdsource,
+      createdAt: toDateSafe(data.createdAt),
+      updatedAt: toDateSafe(data.updatedAt),
     };
   }
 };
@@ -100,7 +124,7 @@ export const quizShareConverter: FirestoreDataConverter<QuizShare> = {
       sharedWith: data.sharedWith,
       sharedBy: data.sharedBy,
       sharedByEmail: data.sharedByEmail,
-      createdAt: data.createdAt?.toDate() || new Date(),
+      createdAt: toDateSafe(data.createdAt) || new Date(),
     };
   }
 };
@@ -126,8 +150,8 @@ export const interestCloudActivityConverter: FirestoreDataConverter<InterestClou
       description: data.description,
       hostId: data.hostId,
       config: data.config,
-      createdAt: data.createdAt?.toDate() || new Date(),
-      updatedAt: data.updatedAt?.toDate() || new Date(),
+      createdAt: toDateSafe(data.createdAt) || new Date(),
+      updatedAt: toDateSafe(data.updatedAt) || new Date(),
     };
   }
 };
@@ -178,8 +202,8 @@ export const rankingActivityConverter: FirestoreDataConverter<RankingActivity> =
       description: data.description,
       hostId: data.hostId,
       config: data.config,
-      createdAt: data.createdAt?.toDate() || new Date(),
-      updatedAt: data.updatedAt?.toDate() || new Date(),
+      createdAt: toDateSafe(data.createdAt) || new Date(),
+      updatedAt: toDateSafe(data.updatedAt) || new Date(),
     };
   }
 };
