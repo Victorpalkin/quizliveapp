@@ -431,20 +431,25 @@ export default function HostDashboardPage() {
             {/* Filter and Sort Controls */}
             <div className="flex flex-wrap items-center gap-4 mb-6" data-tour="content-filters">
                 {/* Filter Tabs */}
-                <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                <div className="flex items-center gap-1 bg-muted p-1.5 rounded-xl">
                     {[
-                        { value: 'all', label: 'All' },
-                        { value: 'quiz', label: 'Quizzes' },
-                        { value: 'interest-cloud', label: 'Interest Clouds' },
-                        { value: 'ranking', label: 'Rankings' },
-                    ].map(({ value, label }) => (
+                        { value: 'all', label: 'All', icon: null },
+                        { value: 'quiz', label: 'Quizzes', icon: FileQuestion },
+                        { value: 'interest-cloud', label: 'Interest Clouds', icon: Cloud },
+                        { value: 'ranking', label: 'Rankings', icon: BarChart3 },
+                    ].map(({ value, label, icon: Icon }) => (
                         <Button
                             key={value}
-                            variant={filterType === value ? 'secondary' : 'ghost'}
+                            variant="ghost"
                             size="sm"
                             onClick={() => setFilterType(value as FilterType)}
-                            className="rounded-md"
+                            className={`rounded-lg transition-all duration-200 ${
+                                filterType === value
+                                    ? 'bg-background shadow-sm text-foreground font-medium'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
                         >
+                            {Icon && <Icon className={`h-4 w-4 mr-1.5 ${filterType === value ? 'text-primary' : ''}`} />}
                             {label}
                         </Button>
                     ))}
@@ -532,7 +537,7 @@ export default function HostDashboardPage() {
                 if (sortedItems.length === 0) {
                     return (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <EmptyContentState userName={user?.displayName || undefined} />
+                            <EmptyContentState />
                         </div>
                     );
                 }
