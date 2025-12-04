@@ -11,6 +11,8 @@ import {
   ReferenceLine,
   Cell,
   Label,
+  LabelList,
+  ReferenceArea,
 } from 'recharts';
 import type { RankingItemResult, RankingMetric } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -30,19 +32,61 @@ interface RankingMatrixProps {
   className?: string;
 }
 
-// Quadrant colors
+// Quadrant colors - will be assigned dynamically based on metric directions
 const QUADRANT_COLORS = {
-  topRight: '#22c55e',    // green - best quadrant
-  topLeft: '#3b82f6',     // blue
-  bottomRight: '#f59e0b', // amber
-  bottomLeft: '#ef4444',  // red - worst quadrant
+  best: '#22c55e',      // green - best quadrant
+  good: '#3b82f6',      // blue - good on one metric
+  mixed: '#f59e0b',     // amber - good on other metric
+  worst: '#ef4444',     // red - worst quadrant
 };
 
-function getQuadrantColor(x: number, y: number, midX: number, midY: number): string {
-  if (x >= midX && y >= midY) return QUADRANT_COLORS.topRight;
-  if (x < midX && y >= midY) return QUADRANT_COLORS.topLeft;
-  if (x >= midX && y < midY) return QUADRANT_COLORS.bottomRight;
-  return QUADRANT_COLORS.bottomLeft;
+// Determine which quadrant is "best" based on metric lowerIsBetter flags
+// Returns colors for: topLeft, topRight, bottomLeft, bottomRight
+function getQuadrantColorMap(xLowerIsBetter: boolean, yLowerIsBetter: boolean) {
+  // Best X: high if !lowerIsBetter, low if lowerIsBetter (right vs left)
+  // Best Y: high if !lowerIsBetter, low if lowerIsBetter (top vs bottom)
+  const bestX = xLowerIsBetter ? 'left' : 'right';
+  const bestY = yLowerIsBetter ? 'bottom' : 'top';
+
+  // Determine quadrant colors based on which is best
+  const colors = {
+    topLeft: QUADRANT_COLORS.mixed,
+    topRight: QUADRANT_COLORS.mixed,
+    bottomLeft: QUADRANT_COLORS.mixed,
+    bottomRight: QUADRANT_COLORS.mixed,
+  };
+
+  // Best quadrant (good on both)
+  const bestQuadrant = `${bestY}${bestX.charAt(0).toUpperCase() + bestX.slice(1)}` as keyof typeof colors;
+  colors[bestQuadrant] = QUADRANT_COLORS.best;
+
+  // Worst quadrant (bad on both) - opposite of best
+  const worstY = bestY === 'top' ? 'bottom' : 'top';
+  const worstX = bestX === 'left' ? 'Right' : 'Left';
+  const worstQuadrant = `${worstY}${worstX}` as keyof typeof colors;
+  colors[worstQuadrant] = QUADRANT_COLORS.worst;
+
+  // The other two quadrants are "good" (good on one metric)
+  for (const key of Object.keys(colors) as (keyof typeof colors)[]) {
+    if (colors[key] === QUADRANT_COLORS.mixed) {
+      colors[key] = QUADRANT_COLORS.good;
+    }
+  }
+
+  return colors;
+}
+
+function getQuadrantColor(
+  x: number,
+  y: number,
+  midX: number,
+  midY: number,
+  colorMap: ReturnType<typeof getQuadrantColorMap>
+): string {
+  if (x >= midX && y >= midY) return colorMap.topRight;
+  if (x < midX && y >= midY) return colorMap.topLeft;
+  if (x >= midX && y < midY) return colorMap.bottomRight;
+  return colorMap.bottomLeft;
 }
 
 interface CustomTooltipProps {
@@ -133,6 +177,57 @@ export function RankingMatrix({ items, metrics, className }: RankingMatrixProps)
   const midX = 50;
   const midY = 50;
 
+  // Get quadrant color map based on metric directions
+  const quadrantColorMap = useMemo(() =>
+    getQuadrantColorMap(xMetric?.lowerIsBetter || false, yMetric?.lowerIsBetter || false),
+    [xMetric?.lowerIsBetter, yMetric?.lowerIsBetter]
+  );
+
+  // Generate quadrant labels based on metric directions
+  const quadrantLabels = useMemo(() => {
+    const xBest = xMetric?.lowerIsBetter ? 'Low' : 'High';
+    const xWorst = xMetric?.lowerIsBetter ? 'High' : 'Low';
+    const yBest = yMetric?.lowerIsBetter ? 'Low' : 'High';
+    const yWorst = yMetric?.lowerIsBetter ? 'High' : 'Low';
+
+    return {
+      topLeft: {
+        x: xWorst,
+        y: yBest,
+        isBest: xMetric?.lowerIsBetter && !yMetric?.lowerIsBetter ? false :
+                !xMetric?.lowerIsBetter && yMetric?.lowerIsBetter ? false :
+                xMetric?.lowerIsBetter && yMetric?.lowerIsBetter ? false : false,
+        color: quadrantColorMap.topLeft,
+      },
+      topRight: {
+        x: xBest,
+        y: yBest,
+        isBest: !xMetric?.lowerIsBetter && !yMetric?.lowerIsBetter,
+        color: quadrantColorMap.topRight,
+      },
+      bottomLeft: {
+        x: xWorst,
+        y: yWorst,
+        isBest: xMetric?.lowerIsBetter && yMetric?.lowerIsBetter,
+        color: quadrantColorMap.bottomLeft,
+      },
+      bottomRight: {
+        x: xBest,
+        y: yWorst,
+        isBest: false,
+        color: quadrantColorMap.bottomRight,
+      },
+    };
+  }, [xMetric?.lowerIsBetter, yMetric?.lowerIsBetter, quadrantColorMap]);
+
+  // Determine which quadrant is best
+  const bestQuadrantKey = useMemo(() => {
+    if (!xMetric?.lowerIsBetter && !yMetric?.lowerIsBetter) return 'topRight';
+    if (xMetric?.lowerIsBetter && !yMetric?.lowerIsBetter) return 'topLeft';
+    if (!xMetric?.lowerIsBetter && yMetric?.lowerIsBetter) return 'bottomRight';
+    return 'bottomLeft';
+  }, [xMetric?.lowerIsBetter, yMetric?.lowerIsBetter]);
+
   return (
     <div className={cn('space-y-4', className)}>
       {/* Axis Selectors */}
@@ -186,24 +281,90 @@ export function RankingMatrix({ items, metrics, className }: RankingMatrixProps)
 
       {/* Quadrant Labels */}
       <div className="grid grid-cols-2 gap-2 text-xs text-center">
-        <div className="p-1.5 rounded bg-blue-500/10 text-blue-600 border border-blue-500/20">
-          High {yMetric?.name} / Low {xMetric?.name}
+        <div
+          className="p-1.5 rounded border"
+          style={{
+            backgroundColor: `${quadrantColorMap.topLeft}10`,
+            borderColor: `${quadrantColorMap.topLeft}30`,
+            color: quadrantColorMap.topLeft,
+          }}
+        >
+          {bestQuadrantKey === 'topLeft' && '★ '}Best {yMetric?.name} / Best {xMetric?.name}
+          {bestQuadrantKey !== 'topLeft' && `Best ${yMetric?.name} / Worst ${xMetric?.name}`}
         </div>
-        <div className="p-1.5 rounded bg-green-500/10 text-green-600 border border-green-500/20">
-          High {yMetric?.name} / High {xMetric?.name} ★
+        <div
+          className="p-1.5 rounded border"
+          style={{
+            backgroundColor: `${quadrantColorMap.topRight}10`,
+            borderColor: `${quadrantColorMap.topRight}30`,
+            color: quadrantColorMap.topRight,
+          }}
+        >
+          {bestQuadrantKey === 'topRight' && '★ '}Best {yMetric?.name} / Best {xMetric?.name}
+          {bestQuadrantKey !== 'topRight' && `Best ${yMetric?.name} / Worst ${xMetric?.name}`}
         </div>
-        <div className="p-1.5 rounded bg-red-500/10 text-red-600 border border-red-500/20">
-          Low {yMetric?.name} / Low {xMetric?.name}
+        <div
+          className="p-1.5 rounded border"
+          style={{
+            backgroundColor: `${quadrantColorMap.bottomLeft}10`,
+            borderColor: `${quadrantColorMap.bottomLeft}30`,
+            color: quadrantColorMap.bottomLeft,
+          }}
+        >
+          {bestQuadrantKey === 'bottomLeft' && '★ '}Best {yMetric?.name} / Best {xMetric?.name}
+          {bestQuadrantKey !== 'bottomLeft' && `Worst ${yMetric?.name} / Worst ${xMetric?.name}`}
         </div>
-        <div className="p-1.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/20">
-          Low {yMetric?.name} / High {xMetric?.name}
+        <div
+          className="p-1.5 rounded border"
+          style={{
+            backgroundColor: `${quadrantColorMap.bottomRight}10`,
+            borderColor: `${quadrantColorMap.bottomRight}30`,
+            color: quadrantColorMap.bottomRight,
+          }}
+        >
+          {bestQuadrantKey === 'bottomRight' && '★ '}Best {yMetric?.name} / Best {xMetric?.name}
+          {bestQuadrantKey !== 'bottomRight' && `Worst ${yMetric?.name} / Best ${xMetric?.name}`}
         </div>
       </div>
 
       {/* Chart */}
       <div style={{ height: 400 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 20, right: 20, bottom: 40, left: 40 }}>
+          <ScatterChart margin={{ top: 30, right: 20, bottom: 40, left: 40 }}>
+            {/* Quadrant background colors */}
+            <ReferenceArea
+              x1={0}
+              x2={midX}
+              y1={midY}
+              y2={100}
+              fill={quadrantColorMap.topLeft}
+              fillOpacity={0.08}
+            />
+            <ReferenceArea
+              x1={midX}
+              x2={100}
+              y1={midY}
+              y2={100}
+              fill={quadrantColorMap.topRight}
+              fillOpacity={0.08}
+            />
+            <ReferenceArea
+              x1={0}
+              x2={midX}
+              y1={0}
+              y2={midY}
+              fill={quadrantColorMap.bottomLeft}
+              fillOpacity={0.08}
+            />
+            <ReferenceArea
+              x1={midX}
+              x2={100}
+              y1={0}
+              y2={midY}
+              fill={quadrantColorMap.bottomRight}
+              fillOpacity={0.08}
+            />
+
             <XAxis
               type="number"
               dataKey="x"
@@ -259,12 +420,40 @@ export function RankingMatrix({ items, metrics, className }: RankingMatrixProps)
               {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
-                  fill={getQuadrantColor(entry.x, entry.y, midX, midY)}
+                  fill={getQuadrantColor(entry.x, entry.y, midX, midY, quadrantColorMap)}
                   stroke="#fff"
                   strokeWidth={2}
-                  r={8}
+                  r={12}
                 />
               ))}
+              <LabelList
+                dataKey="name"
+                position="top"
+                offset={16}
+                content={({ x, y, value }) => (
+                  <g>
+                    <rect
+                      x={(x as number) - 40}
+                      y={(y as number) - 24}
+                      width={80}
+                      height={18}
+                      fill="white"
+                      fillOpacity={0.85}
+                      rx={4}
+                    />
+                    <text
+                      x={x}
+                      y={(y as number) - 12}
+                      textAnchor="middle"
+                      fontSize={11}
+                      fontWeight={500}
+                      fill="#374151"
+                    >
+                      {value}
+                    </text>
+                  </g>
+                )}
+              />
             </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
@@ -272,8 +461,8 @@ export function RankingMatrix({ items, metrics, className }: RankingMatrixProps)
 
       {/* Legend */}
       <div className="text-xs text-muted-foreground text-center">
-        <p>Items are positioned by their normalized scores. Higher values = better (adjusted for &quot;lower is better&quot; metrics).</p>
-        <p className="mt-1">The top-right quadrant (★) contains items that score well on both metrics.</p>
+        <p>Items are positioned by their normalized scores, adjusted for metric direction.</p>
+        <p className="mt-1">The ★ quadrant contains items that score best on both metrics.</p>
       </div>
     </div>
   );
