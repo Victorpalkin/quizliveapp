@@ -8,14 +8,26 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/app/header';
-import { Cloud, ArrowLeft, Loader2 } from 'lucide-react';
+import { Cloud, ArrowLeft, Loader2, Lightbulb, Eye } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import type { InterestCloudConfig, InterestCloudActivity } from '@/lib/types';
 import { interestCloudActivityConverter } from '@/firebase/converters';
+import { FeatureTooltip } from '@/components/ui/feature-tooltip';
+
+// Example prompts for inspiration
+const EXAMPLE_PROMPTS = [
+  { label: 'Team interests', prompt: 'What topics interest you most?' },
+  { label: 'Workshop topics', prompt: 'What would you like to learn more about?' },
+  { label: 'Icebreaker', prompt: 'Share a hobby or passion of yours!' },
+  { label: 'Brainstorming', prompt: 'What ideas do you have for our next project?' },
+  { label: 'Feedback', prompt: 'What should we focus on improving?' },
+  { label: 'Expectations', prompt: 'What do you hope to get out of this session?' },
+];
 
 export default function CreateInterestCloudPage() {
   const router = useRouter();
@@ -149,8 +161,14 @@ export default function CreateInterestCloudPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="prompt">Prompt for Participants *</Label>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="prompt">Prompt for Participants *</Label>
+                <FeatureTooltip
+                  content="This is the question your audience will see. Make it clear and engaging!"
+                  icon="tip"
+                />
+              </div>
               <Textarea
                 id="prompt"
                 value={prompt}
@@ -162,6 +180,26 @@ export default function CreateInterestCloudPage() {
               <p className="text-sm text-muted-foreground">
                 This is what participants will see when submitting their interests
               </p>
+
+              {/* Example prompts */}
+              <div className="pt-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Lightbulb className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm font-medium">Need inspiration? Try these:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {EXAMPLE_PROMPTS.map(({ label, prompt: examplePrompt }) => (
+                    <Badge
+                      key={label}
+                      variant="outline"
+                      className="cursor-pointer hover:bg-primary/10 transition-colors"
+                      onClick={() => setPrompt(examplePrompt)}
+                    >
+                      {label}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -182,7 +220,13 @@ export default function CreateInterestCloudPage() {
 
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <Label htmlFor="multipleRounds">Allow Multiple Rounds</Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="multipleRounds">Allow Multiple Rounds</Label>
+                  <FeatureTooltip
+                    content="When enabled, participants can add more responses after seeing the initial word cloud. Great for iterative brainstorming!"
+                    icon="info"
+                  />
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Let participants submit more after viewing results
                 </p>
@@ -193,6 +237,36 @@ export default function CreateInterestCloudPage() {
                 onCheckedChange={setAllowMultipleRounds}
               />
             </div>
+
+            {/* Participant Preview */}
+            <Card className="bg-muted/30 border-dashed">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Participant Preview</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-lg bg-background border p-4 space-y-3">
+                  <p className="text-lg font-medium">{prompt || 'Your prompt will appear here...'}</p>
+                  <div className="space-y-2">
+                    {Array.from({ length: Math.min(maxSubmissions, 3) }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                          {i + 1}
+                        </div>
+                        <div className="flex-1 h-10 rounded-md border border-dashed bg-muted/50" />
+                      </div>
+                    ))}
+                    {maxSubmissions > 3 && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        + {maxSubmissions - 3} more fields
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             <div className="pt-4 border-t">
               <Button

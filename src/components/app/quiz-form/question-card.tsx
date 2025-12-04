@@ -5,7 +5,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trash2, GripVertical, ChevronDown, ChevronRight, CheckCircle2, ListChecks, SlidersHorizontal, FileText, MessageSquare, Vote, ListTodo } from 'lucide-react';
+import { QuestionTypeTooltip } from '@/components/ui/feature-tooltip';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
@@ -120,7 +121,10 @@ export function QuestionCard({
           <CardContent className="space-y-4">
         {/* Question Type Selector */}
         <FormItem>
-          <FormLabel>Question Type</FormLabel>
+          <div className="flex items-center gap-2">
+            <FormLabel>Question Type</FormLabel>
+            <QuestionTypeTooltip type={question.type as keyof typeof TYPE_LABELS} />
+          </div>
           <Select
             value={question.type}
             onValueChange={(value: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'free-response' | 'poll-single' | 'poll-multiple') => {
@@ -133,13 +137,55 @@ export function QuestionCard({
               </SelectTrigger>
             </FormControl>
             <SelectContent>
-              <SelectItem value="single-choice">Single Choice</SelectItem>
-              <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-              <SelectItem value="free-response">Free Response</SelectItem>
-              <SelectItem value="slider">Slider (Numeric)</SelectItem>
-              <SelectItem value="slide">Slide (Info)</SelectItem>
-              <SelectItem value="poll-single">Poll (Single)</SelectItem>
-              <SelectItem value="poll-multiple">Poll (Multiple)</SelectItem>
+              <SelectItem value="single-choice">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span>Single Choice</span>
+                  <span className="text-xs text-muted-foreground ml-auto">One correct answer</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="multiple-choice">
+                <div className="flex items-center gap-2">
+                  <ListChecks className="h-4 w-4 text-blue-500" />
+                  <span>Multiple Choice</span>
+                  <span className="text-xs text-muted-foreground ml-auto">Multiple correct</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="free-response">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-purple-500" />
+                  <span>Free Response</span>
+                  <span className="text-xs text-muted-foreground ml-auto">Type answer</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="slider">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4 text-orange-500" />
+                  <span>Slider</span>
+                  <span className="text-xs text-muted-foreground ml-auto">Estimate a number</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="slide">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-gray-500" />
+                  <span>Info Slide</span>
+                  <span className="text-xs text-muted-foreground ml-auto">No question</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="poll-single">
+                <div className="flex items-center gap-2">
+                  <Vote className="h-4 w-4 text-teal-500" />
+                  <span>Poll (Single)</span>
+                  <span className="text-xs text-muted-foreground ml-auto">Opinion, 1 choice</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="poll-multiple">
+                <div className="flex items-center gap-2">
+                  <ListTodo className="h-4 w-4 text-teal-500" />
+                  <span>Poll (Multiple)</span>
+                  <span className="text-xs text-muted-foreground ml-auto">Opinion, multi</span>
+                </div>
+              </SelectItem>
             </SelectContent>
           </Select>
         </FormItem>

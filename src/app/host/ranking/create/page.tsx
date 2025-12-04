@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Header } from '@/components/app/header';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, ArrowLeft, Loader2, Plus, Trash2, GripVertical, ArrowUp, ArrowDown, ListPlus } from 'lucide-react';
+import { BarChart3, ArrowLeft, Loader2, Plus, Trash2, GripVertical, ArrowUp, ArrowDown, ListPlus, Sparkles, Target, Scale, Vote } from 'lucide-react';
+import { FeatureTooltip } from '@/components/ui/feature-tooltip';
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +40,56 @@ const DEFAULT_METRIC: () => RankingMetric = () => ({
   lowerIsBetter: false,
 });
 
+// Pre-built templates for common use cases
+interface RankingTemplate {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  metrics: Omit<RankingMetric, 'id'>[];
+}
+
+const RANKING_TEMPLATES: RankingTemplate[] = [
+  {
+    id: 'impact-effort',
+    name: 'Impact/Effort Matrix',
+    description: 'Prioritize by impact vs. effort - great for project planning',
+    icon: <Target className="h-5 w-5 text-green-500" />,
+    metrics: [
+      { name: 'Impact', description: 'How much value will this deliver?', scaleType: 'stars', scaleMin: 1, scaleMax: 5, scaleLabels: [], weight: 1, lowerIsBetter: false },
+      { name: 'Effort', description: 'How much work is required?', scaleType: 'stars', scaleMin: 1, scaleMax: 5, scaleLabels: [], weight: 1, lowerIsBetter: true },
+    ],
+  },
+  {
+    id: 'priority',
+    name: 'Simple Priority',
+    description: 'Single metric ranking by importance',
+    icon: <BarChart3 className="h-5 w-5 text-orange-500" />,
+    metrics: [
+      { name: 'Priority', description: 'How important is this?', scaleType: 'stars', scaleMin: 1, scaleMax: 5, scaleLabels: [], weight: 1, lowerIsBetter: false },
+    ],
+  },
+  {
+    id: 'feasibility',
+    name: 'Importance + Feasibility',
+    description: 'Balance desirability with practicality',
+    icon: <Scale className="h-5 w-5 text-blue-500" />,
+    metrics: [
+      { name: 'Importance', description: 'How important is this to achieve?', scaleType: 'stars', scaleMin: 1, scaleMax: 5, scaleLabels: [], weight: 1.5, lowerIsBetter: false },
+      { name: 'Feasibility', description: 'How realistic is it to accomplish?', scaleType: 'stars', scaleMin: 1, scaleMax: 5, scaleLabels: [], weight: 1, lowerIsBetter: false },
+    ],
+  },
+  {
+    id: 'voting',
+    name: 'Dot Voting',
+    description: 'Simple yes/no voting for quick decisions',
+    icon: <Vote className="h-5 w-5 text-purple-500" />,
+    metrics: [
+      { name: 'Vote', description: 'Do you support this?', scaleType: 'labels', scaleMin: 1, scaleMax: 2, scaleLabels: ['No', 'Yes'], weight: 1, lowerIsBetter: false },
+    ],
+  },
+];
+
 export default function CreateRankingPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -56,6 +107,19 @@ export default function CreateRankingPage() {
   const [requireApproval, setRequireApproval] = useState(true);
   const [showItemSubmitter, setShowItemSubmitter] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Apply a template
+  const applyTemplate = (template: RankingTemplate) => {
+    const metricsWithIds = template.metrics.map(m => ({
+      ...m,
+      id: nanoid(8),
+    }));
+    setMetrics(metricsWithIds);
+    toast({
+      title: `Template Applied: ${template.name}`,
+      description: `${template.metrics.length} metric(s) configured.`,
+    });
+  };
 
   const addMetric = () => {
     if (metrics.length >= 5) {
@@ -243,15 +307,59 @@ export default function CreateRankingPage() {
             </CardContent>
           </Card>
 
+          {/* Quick Start Templates */}
+          <Card className="shadow-lg rounded-2xl border border-card-border bg-gradient-to-br from-primary/5 to-transparent">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <CardTitle>Quick Start Templates</CardTitle>
+              </div>
+              <CardDescription>
+                Choose a template to pre-configure your metrics, or start from scratch below
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {RANKING_TEMPLATES.map((template) => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => applyTemplate(template)}
+                    className="flex items-start gap-3 p-3 rounded-lg border bg-background hover:border-primary/50 hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <div className="mt-0.5">{template.icon}</div>
+                    <div>
+                      <p className="font-medium">{template.name}</p>
+                      <p className="text-sm text-muted-foreground">{template.description}</p>
+                      <div className="flex gap-1 mt-1">
+                        {template.metrics.map((m, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">
+                            {m.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Metrics Configuration */}
           <Card className="shadow-lg rounded-2xl border border-card-border">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Metrics</CardTitle>
-                  <CardDescription>
-                    Define criteria for rating items (1-5 metrics)
-                  </CardDescription>
+                <div className="flex items-center gap-2">
+                  <div>
+                    <CardTitle>Metrics</CardTitle>
+                    <CardDescription>
+                      Define criteria for rating items (1-5 metrics)
+                    </CardDescription>
+                  </div>
+                  <FeatureTooltip
+                    content="Metrics are the criteria participants use to rate items. For example, 'Impact' and 'Effort' for a prioritization exercise."
+                    icon="info"
+                  />
                 </div>
                 <Button
                   variant="outline"
@@ -381,6 +489,14 @@ export default function CreateRankingPage() {
                           <><ArrowUp className="h-3 w-3 text-green-500" /> Higher is better</>
                         )}
                       </Label>
+                      <FeatureTooltip
+                        content={metric.lowerIsBetter
+                          ? "Items with lower scores will rank higher. Use for metrics like 'Effort' or 'Cost' where less is better."
+                          : "Items with higher scores will rank higher. Use for metrics like 'Impact' or 'Value' where more is better."
+                        }
+                        icon="info"
+                        iconSize={14}
+                      />
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -394,6 +510,11 @@ export default function CreateRankingPage() {
                         max={10}
                         step={0.1}
                         className="w-20"
+                      />
+                      <FeatureTooltip
+                        content="Weight determines how much this metric counts in the final ranking. Higher weight = more influence. Default is 1."
+                        icon="info"
+                        iconSize={14}
                       />
                     </div>
                   </div>
