@@ -279,7 +279,7 @@ export const computeRankingResults = onCall(
         itemResults.push({
           itemId: item.id,
           itemText: item.text,
-          itemDescription: item.description,
+          ...(item.description && { itemDescription: item.description }),
           overallScore,
           rank: 0, // Will be assigned after sorting
           metricScores,
