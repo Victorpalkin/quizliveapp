@@ -55,6 +55,7 @@ export default function PlayerRankingPage() {
   const [playerName, setPlayerName] = useState('');
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [gameId, setGameId] = useState<string | null>(null);
+  const [initializing, setInitializing] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -86,6 +87,7 @@ export default function PlayerRankingPage() {
     const init = async () => {
       const game = await findGameByPin();
       if (!game) {
+        setInitializing(false);
         toast({
           variant: "destructive",
           title: "Game not found",
@@ -100,7 +102,6 @@ export default function PlayerRankingPage() {
       const session = getPlayerSession();
       if (session && session.gamePin === gamePin) {
         // Verify player still exists in game
-        const playerRef = doc(firestore, 'games', game.id, 'players', session.playerId);
         const playerDoc = await getDocs(query(collection(firestore, 'games', game.id, 'players'), where('__name__', '==', session.playerId)));
 
         if (!playerDoc.empty) {
@@ -125,12 +126,14 @@ export default function PlayerRankingPage() {
           } else if (game.state === 'ended') {
             setPlayerState('ended');
           }
+          setInitializing(false);
           return;
         }
       }
 
       // No valid session, show join screen
       setPlayerState('joining');
+      setInitializing(false);
     };
 
     init();
@@ -335,7 +338,7 @@ export default function PlayerRankingPage() {
   );
   const progress = totalRatingsNeeded > 0 ? (currentRatingsCount / totalRatingsNeeded) * 100 : 0;
 
-  if (gameLoading || activityLoading) {
+  if (initializing || gameLoading || activityLoading) {
     return <FullPageLoader />;
   }
 
