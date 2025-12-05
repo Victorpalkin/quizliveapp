@@ -255,8 +255,8 @@ export default function PlayerRankingPage() {
       };
 
       await addDoc(
-        collection(firestore, 'games', gameId, 'items'),
-        itemData
+        collection(firestore, 'games', gameId, 'items').withConverter(rankingItemConverter),
+        itemData as RankingItem
       );
 
       setSubmittedItemCount(prev => prev + 1);
