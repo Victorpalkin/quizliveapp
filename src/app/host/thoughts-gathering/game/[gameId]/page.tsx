@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
-import { Cloud, StopCircle, Loader2, RefreshCw, Home, MessageSquare, Users, QrCode, Copy, PlayCircle, PauseCircle, XCircle } from 'lucide-react';
+import { Cloud, StopCircle, Loader2, RefreshCw, Home, MessageSquare, Users, QrCode, Copy, PlayCircle, PauseCircle, XCircle, BarChart3 } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, collection, updateDoc, DocumentReference, Query } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -455,6 +455,33 @@ export default function ThoughtsGatheringGamePage() {
                 End Session
               </Button>
             </div>
+
+            {/* Create Evaluation from Topics */}
+            {topicCloud?.topics && topicCloud.topics.length > 0 && (
+              <Card className="border border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-red-500/5">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <BarChart3 className="h-6 w-6 text-orange-500" />
+                      <div>
+                        <h3 className="font-semibold">Create Evaluation</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Turn these topics into a prioritization session
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => router.push(`/host/evaluation/create-from-thoughts?activityId=${game?.activityId}&gameId=${gameId}&source=topics`)}
+                      variant="outline"
+                      className="border-orange-500/30 hover:bg-orange-500/10"
+                    >
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      Create
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         );
 
@@ -473,10 +500,47 @@ export default function ThoughtsGatheringGamePage() {
               </CardContent>
             </Card>
 
+            {/* Create Evaluation from Results */}
+            {topicCloud?.topics && topicCloud.topics.length > 0 && (
+              <Card className="border-2 border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-red-500/5">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <BarChart3 className="h-6 w-6 text-orange-500" />
+                    <div>
+                      <CardTitle>Continue with Evaluation</CardTitle>
+                      <CardDescription>
+                        Prioritize the collected topics with your audience
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button
+                    onClick={() => router.push(`/host/evaluation/create-from-thoughts?activityId=${game?.activityId}&gameId=${gameId}&source=topics`)}
+                    size="lg"
+                    className="w-full py-6 bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90"
+                  >
+                    <BarChart3 className="mr-2 h-5 w-5" />
+                    Create Evaluation from Topics
+                  </Button>
+                  <Button
+                    onClick={() => router.push(`/host/evaluation/create-from-thoughts?activityId=${game?.activityId}&gameId=${gameId}&source=submissions`)}
+                    variant="outline"
+                    size="lg"
+                    className="w-full py-6"
+                  >
+                    <MessageSquare className="mr-2 h-5 w-5" />
+                    Create from Raw Submissions
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Return Button */}
             <Button
               onClick={handleReturnToDashboard}
               size="lg"
+              variant="outline"
               className="w-full py-6 text-lg"
             >
               <Home className="mr-2 h-5 w-5" />

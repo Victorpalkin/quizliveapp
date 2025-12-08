@@ -166,6 +166,7 @@ export interface Game {
     questionStartTime?: Timestamp; // Firestore server timestamp when current question started (for timer sync)
     crowdsourceState?: CrowdsourceState;  // Runtime state for crowdsourced questions
     questions?: Question[];  // Override questions (used when crowdsourced questions are integrated)
+    createdAt?: Date;  // When the game was created
 
     // Activity system fields (optional for backward compatibility)
     activityType?: ActivityType;  // Default: 'quiz' for existing games
@@ -442,6 +443,10 @@ export interface EvaluationActivity {
   config: EvaluationConfig;
   createdAt: Date;
   updatedAt: Date;
+  // Optional source tracking for evaluations created from other activities
+  sourceActivityId?: string;  // ID of source thoughts gathering activity
+  sourceGameId?: string;      // ID of source game (for topics/submissions)
+  sourceType?: 'thoughts-gathering'; // Type of source activity
 }
 
 /**

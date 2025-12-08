@@ -82,6 +82,7 @@ export const gameConverter: FirestoreDataConverter<Game> = {
       questionStartTime: data.questionStartTime,
       crowdsourceState: data.crowdsourceState,
       questions: data.questions,
+      createdAt: toDateSafe(data.createdAt),
       // Activity system fields
       activityType: data.activityType,
       activityId: data.activityId,
@@ -218,6 +219,10 @@ export const evaluationActivityConverter: FirestoreDataConverter<EvaluationActiv
       config: data.config,
       createdAt: toDateSafe(data.createdAt) || new Date(),
       updatedAt: toDateSafe(data.updatedAt) || new Date(),
+      // Source tracking fields (optional)
+      sourceActivityId: data.sourceActivityId,
+      sourceGameId: data.sourceGameId,
+      sourceType: data.sourceType,
     };
   }
 };

@@ -4,18 +4,19 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
-import { Cloud, ArrowLeft, Play, Loader2, Settings, Pencil } from 'lucide-react';
-import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, collection, addDoc, serverTimestamp, DocumentReference } from 'firebase/firestore';
+import { Cloud, ArrowLeft, Play, Loader2, Settings, Pencil, BarChart3, History } from 'lucide-react';
+import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, collection, addDoc, serverTimestamp, DocumentReference, query, where, orderBy, limit, Query } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useState } from 'react';
 import { nanoid } from 'nanoid';
-import { interestCloudActivityConverter } from '@/firebase/converters';
-import type { InterestCloudActivity } from '@/lib/types';
+import { thoughtsGatheringActivityConverter, gameConverter } from '@/firebase/converters';
+import type { ThoughtsGatheringActivity, Game } from '@/lib/types';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
+import { formatRelativeTime } from '@/lib/utils/format-date';
 
-export default function InterestCloudDetailPage() {
+export default function ThoughtsGatheringDetailPage() {
   const params = useParams();
   const activityId = params.activityId as string;
   const router = useRouter();
@@ -25,10 +26,24 @@ export default function InterestCloudDetailPage() {
   const [isLaunching, setIsLaunching] = useState(false);
 
   const activityRef = useMemoFirebase(
-    () => doc(firestore, 'activities', activityId).withConverter(interestCloudActivityConverter) as DocumentReference<InterestCloudActivity>,
+    () => doc(firestore, 'activities', activityId).withConverter(thoughtsGatheringActivityConverter) as DocumentReference<ThoughtsGatheringActivity>,
     [firestore, activityId]
   );
   const { data: activity, loading: activityLoading } = useDoc(activityRef);
+
+  // Query for completed games with this activity (to show "Create Evaluation" option)
+  const completedGamesQuery = useMemoFirebase(
+    () => user ? query(
+      collection(firestore, 'games').withConverter(gameConverter),
+      where('activityId', '==', activityId),
+      where('hostId', '==', user.uid),
+      where('state', '==', 'ended'),
+      orderBy('createdAt', 'desc'),
+      limit(5)
+    ) as Query<Game> : null,
+    [firestore, activityId, user]
+  );
+  const { data: completedGames, loading: gamesLoading } = useCollection<Game>(completedGamesQuery);
 
   const handleLaunchSession = async () => {
     if (!user || !activity) return;
@@ -37,7 +52,7 @@ export default function InterestCloudDetailPage() {
 
     try {
       const gameData = {
-        activityType: 'interest-cloud' as const,
+        activityType: 'thoughts-gathering' as const,
         activityId: activityId,
         quizId: '', // Empty for non-quiz activities
         hostId: user.uid,
@@ -55,7 +70,7 @@ export default function InterestCloudDetailPage() {
         description: 'Participants can now join and submit.',
       });
 
-      router.push(`/host/interest-cloud/game/${gameDoc.id}`);
+      router.push(`/host/thoughts-gathering/game/${gameDoc.id}`);
     } catch (error) {
       console.error('Error launching session:', error);
       toast({
@@ -68,7 +83,7 @@ export default function InterestCloudDetailPage() {
     }
   };
 
-  if (userLoading || activityLoading) {
+  if (userLoading || activityLoading || gamesLoading) {
     return <FullPageLoader />;
   }
 
@@ -105,7 +120,7 @@ export default function InterestCloudDetailPage() {
             <Cloud className="h-10 w-10 text-blue-500" />
             <div>
               <h1 className="text-4xl font-bold">{activity.title}</h1>
-              <p className="text-muted-foreground">Interest Cloud Activity</p>
+              <p className="text-muted-foreground">Thoughts Gathering Activity</p>
             </div>
           </div>
         </div>
@@ -146,7 +161,7 @@ export default function InterestCloudDetailPage() {
                   <CardTitle>Configuration</CardTitle>
                 </div>
                 <Button asChild variant="outline" size="sm">
-                  <Link href={`/host/interest-cloud/edit/${activityId}`}>
+                  <Link href={`/host/thoughts-gathering/edit/${activityId}`}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Link>
                 </Button>
@@ -179,6 +194,54 @@ export default function InterestCloudDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Create Evaluation from Past Sessions */}
+          {completedGames && completedGames.length > 0 && (
+            <Card className="shadow-lg rounded-2xl border-2 border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-red-500/5">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <BarChart3 className="h-6 w-6 text-orange-500" />
+                  <div>
+                    <CardTitle>Create Evaluation from Results</CardTitle>
+                    <CardDescription>
+                      Turn collected topics into a prioritization session
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Select a past session to use its topics as evaluation items:
+                </p>
+                <div className="space-y-2">
+                  {completedGames.map((game) => (
+                    <div
+                      key={game.id}
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <History className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">PIN: {game.gamePin}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatRelativeTime(game.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => router.push(`/host/evaluation/create-from-thoughts?activityId=${activityId}&gameId=${game.id}&source=topics`)}
+                        className="bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90"
+                      >
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        Create Evaluation
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* How it Works */}
           <Card className="shadow-md rounded-2xl border border-card-border">
