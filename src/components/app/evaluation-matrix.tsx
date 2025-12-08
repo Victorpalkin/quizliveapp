@@ -14,7 +14,7 @@ import {
   ReferenceArea,
   Customized,
 } from 'recharts';
-import type { RankingItemResult, RankingMetric } from '@/lib/types';
+import type { EvaluationItemResult, EvaluationMetric } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import {
@@ -26,9 +26,9 @@ import {
 } from '@/components/ui/select';
 import { Label as FormLabel } from '@/components/ui/label';
 
-interface RankingMatrixProps {
-  items: RankingItemResult[];
-  metrics: RankingMetric[];
+interface EvaluationMatrixProps {
+  items: EvaluationItemResult[];
+  metrics: EvaluationMetric[];
   className?: string;
 }
 
@@ -112,7 +112,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   );
 }
 
-export function RankingMatrix({ items, metrics, className }: RankingMatrixProps) {
+export function EvaluationMatrix({ items, metrics, className }: EvaluationMatrixProps) {
   // Default to first two metrics if available
   const [xMetricId, setXMetricId] = useState<string>(metrics[0]?.id || '');
   const [yMetricId, setYMetricId] = useState<string>(metrics[1]?.id || metrics[0]?.id || '');

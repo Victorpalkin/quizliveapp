@@ -24,9 +24,12 @@ export function HostReconnectBanner() {
   }
 
   const handleReconnect = () => {
-    if (session.activityType === 'interest-cloud') {
-      // Interest Cloud always goes to game page (no separate lobby)
-      router.push(`/host/interest-cloud/game/${session.gameId}`);
+    if (session.activityType === 'thoughts-gathering') {
+      // Thoughts Gathering always goes to game page (no separate lobby)
+      router.push(`/host/thoughts-gathering/game/${session.gameId}`);
+    } else if (session.activityType === 'evaluation') {
+      // Evaluation always goes to game page
+      router.push(`/host/evaluation/game/${session.gameId}`);
     } else {
       // Quiz: route based on game state
       const path = session.gameState === 'lobby' ? '/host/quiz/lobby' : '/host/quiz/game';
@@ -100,9 +103,12 @@ export function HostReconnectOverlay() {
   }
 
   const handleReconnect = () => {
-    if (session.activityType === 'interest-cloud') {
-      // Interest Cloud always goes to game page (no separate lobby)
-      router.push(`/host/interest-cloud/game/${session.gameId}`);
+    if (session.activityType === 'thoughts-gathering') {
+      // Thoughts Gathering always goes to game page (no separate lobby)
+      router.push(`/host/thoughts-gathering/game/${session.gameId}`);
+    } else if (session.activityType === 'evaluation') {
+      // Evaluation always goes to game page
+      router.push(`/host/evaluation/game/${session.gameId}`);
     } else {
       // Quiz: route based on game state
       const path = session.gameState === 'lobby' ? '/host/quiz/lobby' : '/host/quiz/game';

@@ -66,16 +66,16 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { saveHostSession, clearHostSession } from '@/lib/host-session';
-import { rankingActivityConverter, rankingItemConverter, playerRatingsConverter, playerConverter } from '@/firebase/converters';
-import type { Game, RankingActivity, RankingItem, PlayerRatings, RankingGameState, Player, RankingResults } from '@/lib/types';
-import { RankingBarChart } from '@/components/app/ranking-bar-chart';
-import { RankingHeatmap } from '@/components/app/ranking-heatmap';
-import { RankingMatrix } from '@/components/app/ranking-matrix';
+import { evaluationActivityConverter, evaluationItemConverter, playerRatingsConverter, playerConverter } from '@/firebase/converters';
+import type { Game, EvaluationActivity, EvaluationItem, PlayerRatings, EvaluationGameState, Player, EvaluationResults } from '@/lib/types';
+import { EvaluationBarChart } from '@/components/app/evaluation-bar-chart';
+import { EvaluationHeatmap } from '@/components/app/evaluation-heatmap';
+import { EvaluationMatrix } from '@/components/app/evaluation-matrix';
 import { ConsensusList } from '@/components/app/consensus-indicator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { KeyboardShortcutsHint } from '@/components/app/game-header';
 
-export default function RankingGamePage() {
+export default function EvaluationGamePage() {
   const params = useParams();
   const gameId = params.gameId as string;
   const router = useRouter();
@@ -100,7 +100,7 @@ export default function RankingGamePage() {
   // Activity document
   const activityRef = useMemoFirebase(
     () => game?.activityId
-      ? doc(firestore, 'activities', game.activityId).withConverter(rankingActivityConverter) as DocumentReference<RankingActivity>
+      ? doc(firestore, 'activities', game.activityId).withConverter(evaluationActivityConverter) as DocumentReference<EvaluationActivity>
       : null,
     [firestore, game?.activityId]
   );
@@ -116,7 +116,7 @@ export default function RankingGamePage() {
   // Items collection
   const itemsQuery = useMemoFirebase(
     () => game ? query(
-      collection(firestore, 'games', gameId, 'items').withConverter(rankingItemConverter),
+      collection(firestore, 'games', gameId, 'items').withConverter(evaluationItemConverter),
       orderBy('order', 'asc')
     ) : null,
     [firestore, gameId, game]
@@ -130,19 +130,19 @@ export default function RankingGamePage() {
   );
   const { data: ratings, loading: ratingsLoading } = useCollection(ratingsQuery);
 
-  // Ranking results aggregate (when in results or ended state)
+  // Evaluation results aggregate (when in results or ended state)
   const resultsRef = useMemoFirebase(
     () => (game?.state === 'results' || game?.state === 'ended')
-      ? doc(firestore, 'games', gameId, 'aggregates', 'rankings') as DocumentReference<RankingResults>
+      ? doc(firestore, 'games', gameId, 'aggregates', 'evaluations') as DocumentReference<EvaluationResults>
       : null,
     [firestore, gameId, game?.state]
   );
-  const { data: rankingResults, loading: resultsLoading } = useDoc(resultsRef);
+  const { data: evaluationResults, loading: resultsLoading } = useDoc(resultsRef);
 
   // Set join URL
   useEffect(() => {
     if (game?.gamePin) {
-      setJoinUrl(`${window.location.origin}/play/ranking/${game.gamePin}`);
+      setJoinUrl(`${window.location.origin}/play/evaluation/${game.gamePin}`);
     }
   }, [game?.gamePin]);
 
@@ -155,7 +155,7 @@ export default function RankingGamePage() {
         game.activityId || '',
         activity.title,
         user.uid,
-        'ranking',
+        'evaluation',
         game.state
       );
     }
@@ -173,7 +173,7 @@ export default function RankingGamePage() {
 
     setIsAddingItem(true);
     try {
-      const itemData: Omit<RankingItem, 'id'> = {
+      const itemData: Omit<EvaluationItem, 'id'> = {
         text: newItemText.trim(),
         description: newItemDescription.trim() || undefined,
         isHostItem: true,
@@ -183,8 +183,8 @@ export default function RankingGamePage() {
       };
 
       await addDoc(
-        collection(firestore, 'games', gameId, 'items').withConverter(rankingItemConverter),
-        itemData as RankingItem
+        collection(firestore, 'games', gameId, 'items').withConverter(evaluationItemConverter),
+        itemData as EvaluationItem
       );
 
       setNewItemText('');
@@ -222,11 +222,11 @@ export default function RankingGamePage() {
     }
   };
 
-  const handleStartRanking = async () => {
+  const handleStartRating = async () => {
     if (!game || !items || items.length === 0) {
       toast({
         variant: "destructive",
-        title: "No items to rank",
+        title: "No items to rate",
         description: "Please add at least one item before starting.",
       });
       return;
@@ -235,38 +235,38 @@ export default function RankingGamePage() {
     setIsTransitioning(true);
     try {
       await updateDoc(gameRef, {
-        state: 'ranking' as RankingGameState,
+        state: 'rating' as EvaluationGameState,
         itemSubmissionsOpen: false,
       });
     } catch (error) {
-      console.error('Error starting ranking:', error);
+      console.error('Error starting rating:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not start ranking phase.",
+        description: "Could not start rating phase.",
       });
     } finally {
       setIsTransitioning(false);
     }
   };
 
-  const handleEndRanking = async () => {
+  const handleEndRating = async () => {
     if (!game) return;
 
     setIsTransitioning(true);
     try {
       // Update state to analyzing first
       await updateDoc(gameRef, {
-        state: 'analyzing' as RankingGameState,
+        state: 'analyzing' as EvaluationGameState,
       });
 
       // Call Cloud Function to compute results
-      const computeRankingResults = httpsCallable<
+      const computeEvaluationResults = httpsCallable<
         { gameId: string },
         { success: boolean; message: string }
-      >(functions, 'computeRankingResults');
+      >(functions, 'computeEvaluationResults');
 
-      const result = await computeRankingResults({ gameId });
+      const result = await computeEvaluationResults({ gameId });
 
       if (!result.data.success) {
         throw new Error(result.data.message || 'Failed to compute results');
@@ -275,15 +275,15 @@ export default function RankingGamePage() {
       // The Cloud Function updates the state to 'results' on success
       setIsTransitioning(false);
     } catch (error) {
-      console.error('Error ending ranking:', error);
+      console.error('Error ending rating:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not compute ranking results. Please try again.",
+        description: "Could not compute evaluation results. Please try again.",
       });
       // Revert state on error
       await updateDoc(gameRef, {
-        state: 'ranking' as RankingGameState,
+        state: 'rating' as EvaluationGameState,
       });
       setIsTransitioning(false);
     }
@@ -294,7 +294,7 @@ export default function RankingGamePage() {
 
     try {
       await updateDoc(gameRef, {
-        state: 'ended' as RankingGameState,
+        state: 'ended' as EvaluationGameState,
       });
       clearHostSession();
       router.push('/host');
@@ -318,7 +318,7 @@ export default function RankingGamePage() {
     if (!game) return;
     setIsTransitioning(true);
     try {
-      await updateDoc(gameRef, { state: 'ranking' as RankingGameState });
+      await updateDoc(gameRef, { state: 'rating' as EvaluationGameState });
       toast({
         title: 'Session Reopened',
         description: 'Participants can now submit additional ratings using the same PIN.',
@@ -349,14 +349,14 @@ export default function RankingGamePage() {
 
       // Delete aggregates
       try {
-        await deleteDoc(doc(firestore, 'games', gameId, 'aggregates', 'rankings'));
+        await deleteDoc(doc(firestore, 'games', gameId, 'aggregates', 'evaluations'));
       } catch {
         // Aggregates may not exist, ignore
       }
 
       // Update state to 'collecting' (allows adding new items too)
       await updateDoc(gameRef, {
-        state: 'collecting' as RankingGameState,
+        state: 'collecting' as EvaluationGameState,
         itemSubmissionsOpen: activity?.config.allowParticipantItems || false,
       });
 
@@ -389,9 +389,9 @@ export default function RankingGamePage() {
     if (event.key === 'Enter') {
       event.preventDefault();
       if (game?.state === 'collecting' && items && items.filter(i => i.approved).length > 0 && !isTransitioning) {
-        handleStartRanking();
-      } else if (game?.state === 'ranking' && !isTransitioning) {
-        handleEndRanking();
+        handleStartRating();
+      } else if (game?.state === 'rating' && !isTransitioning) {
+        handleEndRating();
       } else if (game?.state === 'results') {
         handleEndSession();
       }
@@ -446,7 +446,7 @@ export default function RankingGamePage() {
             </div>
             <Badge variant="outline" className="text-lg px-4 py-2">
               {game.state === 'collecting' && 'Collecting Items'}
-              {game.state === 'ranking' && 'Ranking in Progress'}
+              {game.state === 'rating' && 'Rating in Progress'}
               {game.state === 'analyzing' && 'Analyzing Results'}
               {game.state === 'results' && 'Results Ready'}
               {game.state === 'ended' && 'Session Ended'}
@@ -661,17 +661,17 @@ export default function RankingGamePage() {
                 </Card>
               )}
 
-              {/* Start Ranking Button */}
+              {/* Start Rating Button */}
               <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
                 <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-4">
                   <div>
-                    <CardTitle className="text-xl mb-2">Ready to Start Ranking?</CardTitle>
+                    <CardTitle className="text-xl mb-2">Ready to Start Rating?</CardTitle>
                     <CardDescription>
                       {approvedItems.length} items • {playersCount} participants
                     </CardDescription>
                   </div>
                   <Button
-                    onClick={handleStartRanking}
+                    onClick={handleStartRating}
                     disabled={approvedItems.length === 0 || isTransitioning}
                     size="lg"
                     className="bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90"
@@ -681,19 +681,19 @@ export default function RankingGamePage() {
                     ) : (
                       <Play className="h-5 w-5 mr-2" />
                     )}
-                    Start Ranking
+                    Start Rating
                   </Button>
                 </CardContent>
               </Card>
             </>
           )}
 
-          {/* Ranking State */}
-          {game.state === 'ranking' && (
+          {/* Rating State */}
+          {game.state === 'rating' && (
             <>
               <Card className="border border-card-border shadow-sm">
                 <CardHeader>
-                  <CardTitle>Ranking in Progress</CardTitle>
+                  <CardTitle>Rating in Progress</CardTitle>
                   <CardDescription>
                     Participants are rating items on your metrics
                   </CardDescription>
@@ -736,13 +736,13 @@ export default function RankingGamePage() {
               <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
                 <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-4">
                   <div>
-                    <CardTitle className="text-xl mb-2">End Ranking?</CardTitle>
+                    <CardTitle className="text-xl mb-2">End Rating?</CardTitle>
                     <CardDescription>
                       This will calculate results based on current submissions
                     </CardDescription>
                   </div>
                   <Button
-                    onClick={handleEndRanking}
+                    onClick={handleEndRating}
                     disabled={isTransitioning}
                     size="lg"
                     className="bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90"
@@ -752,7 +752,7 @@ export default function RankingGamePage() {
                     ) : (
                       <ChevronRight className="h-5 w-5 mr-2" />
                     )}
-                    End Ranking & Show Results
+                    End Rating & Show Results
                   </Button>
                 </CardContent>
               </Card>
@@ -779,7 +779,7 @@ export default function RankingGamePage() {
                 <CardHeader>
                   <CardTitle>Results</CardTitle>
                   <CardDescription>
-                    {rankingResults?.participantsWhoRated || ratingsCount} participants rated {rankingResults?.items.length || approvedItems.length} items
+                    {evaluationResults?.participantsWhoRated || ratingsCount} participants rated {evaluationResults?.items.length || approvedItems.length} items
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -787,7 +787,7 @@ export default function RankingGamePage() {
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                     </div>
-                  ) : rankingResults?.items && rankingResults.items.length > 0 ? (
+                  ) : evaluationResults?.items && evaluationResults.items.length > 0 ? (
                     <Tabs defaultValue="ranking" className="w-full">
                       <TabsList className={`grid w-full mb-4 ${activity && activity.config.metrics.length >= 2 ? 'grid-cols-4' : 'grid-cols-3'}`}>
                         <TabsTrigger value="ranking">Ranking</TabsTrigger>
@@ -799,13 +799,13 @@ export default function RankingGamePage() {
                       </TabsList>
 
                       <TabsContent value="ranking" className="mt-0">
-                        <RankingBarChart items={rankingResults.items} />
+                        <EvaluationBarChart items={evaluationResults.items} />
                       </TabsContent>
 
                       <TabsContent value="heatmap" className="mt-0">
                         {activity && (
-                          <RankingHeatmap
-                            items={rankingResults.items}
+                          <EvaluationHeatmap
+                            items={evaluationResults.items}
                             metrics={activity.config.metrics}
                           />
                         )}
@@ -813,15 +813,15 @@ export default function RankingGamePage() {
 
                       {activity && activity.config.metrics.length >= 2 && (
                         <TabsContent value="matrix" className="mt-0">
-                          <RankingMatrix
-                            items={rankingResults.items}
+                          <EvaluationMatrix
+                            items={evaluationResults.items}
                             metrics={activity.config.metrics}
                           />
                         </TabsContent>
                       )}
 
                       <TabsContent value="consensus" className="mt-0">
-                        <ConsensusList items={rankingResults.items} />
+                        <ConsensusList items={evaluationResults.items} />
                       </TabsContent>
                     </Tabs>
                   ) : (
@@ -849,7 +849,7 @@ export default function RankingGamePage() {
                 <CardHeader>
                   <CardTitle>Session Results</CardTitle>
                   <CardDescription>
-                    {rankingResults?.participantsWhoRated || ratingsCount} participants rated {rankingResults?.items.length || approvedItems.length} items
+                    {evaluationResults?.participantsWhoRated || ratingsCount} participants rated {evaluationResults?.items.length || approvedItems.length} items
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -857,7 +857,7 @@ export default function RankingGamePage() {
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                     </div>
-                  ) : rankingResults?.items && rankingResults.items.length > 0 ? (
+                  ) : evaluationResults?.items && evaluationResults.items.length > 0 ? (
                     <Tabs defaultValue="ranking" className="w-full">
                       <TabsList className={`grid w-full mb-4 ${activity && activity.config.metrics.length >= 2 ? 'grid-cols-4' : 'grid-cols-3'}`}>
                         <TabsTrigger value="ranking">Ranking</TabsTrigger>
@@ -869,13 +869,13 @@ export default function RankingGamePage() {
                       </TabsList>
 
                       <TabsContent value="ranking" className="mt-0">
-                        <RankingBarChart items={rankingResults.items} />
+                        <EvaluationBarChart items={evaluationResults.items} />
                       </TabsContent>
 
                       <TabsContent value="heatmap" className="mt-0">
                         {activity && (
-                          <RankingHeatmap
-                            items={rankingResults.items}
+                          <EvaluationHeatmap
+                            items={evaluationResults.items}
                             metrics={activity.config.metrics}
                           />
                         )}
@@ -883,15 +883,15 @@ export default function RankingGamePage() {
 
                       {activity && activity.config.metrics.length >= 2 && (
                         <TabsContent value="matrix" className="mt-0">
-                          <RankingMatrix
-                            items={rankingResults.items}
+                          <EvaluationMatrix
+                            items={evaluationResults.items}
                             metrics={activity.config.metrics}
                           />
                         </TabsContent>
                       )}
 
                       <TabsContent value="consensus" className="mt-0">
-                        <ConsensusList items={rankingResults.items} />
+                        <ConsensusList items={evaluationResults.items} />
                       </TabsContent>
                     </Tabs>
                   ) : (
@@ -970,8 +970,8 @@ export default function RankingGamePage() {
             <KeyboardShortcutsHint
               shortcuts={
                 game.state === 'collecting'
-                  ? [{ key: 'Enter', action: 'Start Ranking' }]
-                  : game.state === 'ranking'
+                  ? [{ key: 'Enter', action: 'Start Rating' }]
+                  : game.state === 'rating'
                   ? [{ key: 'Enter', action: 'Show Results' }]
                   : game.state === 'results'
                   ? [{ key: 'Enter', action: 'End Session' }]

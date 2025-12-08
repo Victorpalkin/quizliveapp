@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { RankingItemResult, RankingMetric } from '@/lib/types';
+import type { EvaluationItemResult, EvaluationMetric } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import {
@@ -11,9 +11,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-interface RankingHeatmapProps {
-  items: RankingItemResult[];
-  metrics: RankingMetric[];
+interface EvaluationHeatmapProps {
+  items: EvaluationItemResult[];
+  metrics: EvaluationMetric[];
   className?: string;
 }
 
@@ -31,7 +31,7 @@ function getHeatmapColor(normalizedScore: number): string {
   return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
-export function RankingHeatmap({ items, metrics, className }: RankingHeatmapProps) {
+export function EvaluationHeatmap({ items, metrics, className }: EvaluationHeatmapProps) {
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => a.rank - b.rank);
   }, [items]);

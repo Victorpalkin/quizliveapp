@@ -11,10 +11,10 @@ import {
   Cell,
   LabelList,
 } from 'recharts';
-import type { RankingItemResult } from '@/lib/types';
+import type { EvaluationItemResult } from '@/lib/types';
 
-interface RankingBarChartProps {
-  items: RankingItemResult[];
+interface EvaluationBarChartProps {
+  items: EvaluationItemResult[];
   className?: string;
 }
 
@@ -32,7 +32,7 @@ function getRankColor(rank: number, total: number): string {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
-export function RankingBarChart({ items, className }: RankingBarChartProps) {
+export function EvaluationBarChart({ items, className }: EvaluationBarChartProps) {
   const chartData = useMemo(() => {
     return items
       .sort((a, b) => a.rank - b.rank)

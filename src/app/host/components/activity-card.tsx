@@ -15,10 +15,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { InterestCloudActivity, RankingActivity } from '@/lib/types';
+import type { ThoughtsGatheringActivity, EvaluationActivity } from '@/lib/types';
 import { formatRelativeTime } from '@/lib/utils/format-date';
 
-type Activity = InterestCloudActivity | RankingActivity;
+type Activity = ThoughtsGatheringActivity | EvaluationActivity;
 
 interface ActivityCardProps {
   activity: Activity;
@@ -26,27 +26,27 @@ interface ActivityCardProps {
 }
 
 export function ActivityCard({ activity, onDelete }: ActivityCardProps) {
-  const isRanking = activity.type === 'ranking';
-  const isInterestCloud = activity.type === 'interest-cloud';
+  const isEvaluation = activity.type === 'evaluation';
+  const isThoughtsGathering = activity.type === 'thoughts-gathering';
 
   // Determine icon, colors, and routes based on activity type
-  const Icon = isRanking ? BarChart3 : Cloud;
-  const iconColor = isRanking ? 'text-orange-500' : 'text-blue-500';
-  const gradientClass = isRanking
+  const Icon = isEvaluation ? BarChart3 : Cloud;
+  const iconColor = isEvaluation ? 'text-orange-500' : 'text-blue-500';
+  const gradientClass = isEvaluation
     ? 'from-orange-500 to-red-500'
     : 'from-blue-500 to-purple-500';
-  const activityTypePath = isRanking ? 'ranking' : 'interest-cloud';
-  const activityLabel = isRanking ? 'Ranking' : 'Interest Cloud';
+  const activityTypePath = isEvaluation ? 'evaluation' : 'thoughts-gathering';
+  const activityLabel = isEvaluation ? 'Evaluation' : 'Thoughts Gathering';
 
   // Get config summary based on activity type
   const getConfigSummary = (): string => {
-    if (isRanking) {
-      const rankingActivity = activity as RankingActivity;
-      const metricsCount = rankingActivity.config.metrics?.length || 0;
+    if (isEvaluation) {
+      const evaluationActivity = activity as EvaluationActivity;
+      const metricsCount = evaluationActivity.config.metrics?.length || 0;
       return `${metricsCount} metric${metricsCount !== 1 ? 's' : ''}`;
     }
-    if (isInterestCloud) {
-      const cloudActivity = activity as InterestCloudActivity;
+    if (isThoughtsGathering) {
+      const cloudActivity = activity as ThoughtsGatheringActivity;
       const prompt = cloudActivity.config.prompt;
       if (prompt && prompt.length > 30) {
         return `"${prompt.substring(0, 30)}..."`;

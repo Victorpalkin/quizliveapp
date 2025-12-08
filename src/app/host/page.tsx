@@ -21,13 +21,13 @@ import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getD
 import { ref, deleteObject } from 'firebase/storage';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
-import type { Quiz, Game, InterestCloudActivity, RankingActivity } from '@/lib/types';
+import type { Quiz, Game, ThoughtsGatheringActivity, EvaluationActivity } from '@/lib/types';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { quizConverter, gameConverter, interestCloudActivityConverter, rankingActivityConverter } from '@/firebase/converters';
+import { quizConverter, gameConverter, thoughtsGatheringActivityConverter, evaluationActivityConverter } from '@/firebase/converters';
 
-type Activity = InterestCloudActivity | RankingActivity;
+type Activity = ThoughtsGatheringActivity | EvaluationActivity;
 import {
   AlertDialog,
   AlertDialogAction,
@@ -89,7 +89,7 @@ export default function HostDashboardPage() {
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
 
   // Filter and sort state
-  type FilterType = 'all' | 'quiz' | 'interest-cloud' | 'ranking';
+  type FilterType = 'all' | 'quiz' | 'thoughts-gathering' | 'evaluation';
   type SortType = 'recent' | 'alphabetical' | 'created';
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [sortType, setSortType] = useState<SortType>('recent');
@@ -106,34 +106,34 @@ export default function HostDashboardPage() {
 
   const { data: games, loading: gamesLoading } = useCollection<Game>(gamesQuery);
 
-  // Fetch Interest Cloud activities
-  const interestCloudQuery = useMemoFirebase(() =>
+  // Fetch Thoughts Gathering activities
+  const thoughtsGatheringQuery = useMemoFirebase(() =>
     user ? query(
-      collection(firestore, 'activities').withConverter(interestCloudActivityConverter),
+      collection(firestore, 'activities').withConverter(thoughtsGatheringActivityConverter),
       where('hostId', '==', user.uid),
-      where('type', '==', 'interest-cloud')
-    ) as Query<InterestCloudActivity> : null
+      where('type', '==', 'thoughts-gathering')
+    ) as Query<ThoughtsGatheringActivity> : null
   , [user, firestore]);
 
-  const { data: interestCloudActivities, loading: interestCloudLoading } = useCollection<InterestCloudActivity>(interestCloudQuery);
+  const { data: thoughtsGatheringActivities, loading: thoughtsGatheringLoading } = useCollection<ThoughtsGatheringActivity>(thoughtsGatheringQuery);
 
-  // Fetch Ranking activities
-  const rankingQuery = useMemoFirebase(() =>
+  // Fetch Evaluation activities
+  const evaluationQuery = useMemoFirebase(() =>
     user ? query(
-      collection(firestore, 'activities').withConverter(rankingActivityConverter),
+      collection(firestore, 'activities').withConverter(evaluationActivityConverter),
       where('hostId', '==', user.uid),
-      where('type', '==', 'ranking')
-    ) as Query<RankingActivity> : null
+      where('type', '==', 'evaluation')
+    ) as Query<EvaluationActivity> : null
   , [user, firestore]);
 
-  const { data: rankingActivities, loading: rankingLoading } = useCollection<RankingActivity>(rankingQuery);
+  const { data: evaluationActivities, loading: evaluationLoading } = useCollection<EvaluationActivity>(evaluationQuery);
 
   // Combine activities for display
   const activities: Activity[] = [
-    ...(interestCloudActivities || []),
-    ...(rankingActivities || [])
+    ...(thoughtsGatheringActivities || []),
+    ...(evaluationActivities || [])
   ];
-  const activitiesLoading = interestCloudLoading || rankingLoading;
+  const activitiesLoading = thoughtsGatheringLoading || evaluationLoading;
 
   useEffect(() => {
     if (!userLoading && !user) {
@@ -277,18 +277,18 @@ export default function HostDashboardPage() {
   const handleOpenGame = (game: Game) => {
     if (game.state === 'lobby') {
         // Route based on activity type
-        if (game.activityType === 'interest-cloud') {
-            router.push(`/host/interest-cloud/lobby/${game.id}`);
-        } else if (game.activityType === 'ranking') {
-            router.push(`/host/ranking/game/${game.id}`);
+        if (game.activityType === 'thoughts-gathering') {
+            router.push(`/host/thoughts-gathering/lobby/${game.id}`);
+        } else if (game.activityType === 'evaluation') {
+            router.push(`/host/evaluation/game/${game.id}`);
         } else {
             router.push(`/host/quiz/lobby/${game.id}`);
         }
     } else {
-        if (game.activityType === 'interest-cloud') {
-            router.push(`/host/interest-cloud/game/${game.id}`);
-        } else if (game.activityType === 'ranking') {
-            router.push(`/host/ranking/game/${game.id}`);
+        if (game.activityType === 'thoughts-gathering') {
+            router.push(`/host/thoughts-gathering/game/${game.id}`);
+        } else if (game.activityType === 'evaluation') {
+            router.push(`/host/evaluation/game/${game.id}`);
         } else {
             router.push(`/host/quiz/game/${game.id}`);
         }
@@ -330,11 +330,11 @@ export default function HostDashboardPage() {
 
   // Helper to get activity/quiz title for a game
   const getGameTitle = (game: Game): string => {
-    if (game.activityType === 'interest-cloud') {
-      return activities.find(a => a.id === game.activityId)?.title || 'Interest Cloud';
+    if (game.activityType === 'thoughts-gathering') {
+      return activities.find(a => a.id === game.activityId)?.title || 'Thoughts Gathering';
     }
-    if (game.activityType === 'ranking') {
-      return activities.find(a => a.id === game.activityId)?.title || 'Ranking';
+    if (game.activityType === 'evaluation') {
+      return activities.find(a => a.id === game.activityId)?.title || 'Evaluation';
     }
     return quizzes?.find(q => q.id === game.quizId)?.title || 'Quiz';
   };
@@ -441,8 +441,8 @@ export default function HostDashboardPage() {
                     {[
                         { value: 'all', label: 'All', icon: null },
                         { value: 'quiz', label: 'Quizzes', icon: FileQuestion },
-                        { value: 'interest-cloud', label: 'Interest Clouds', icon: Cloud },
-                        { value: 'ranking', label: 'Rankings', icon: BarChart3 },
+                        { value: 'thoughts-gathering', label: 'Thoughts Gatherings', icon: Cloud },
+                        { value: 'evaluation', label: 'Evaluations', icon: BarChart3 },
                     ].map(({ value, label, icon: Icon }) => (
                         <Button
                             key={value}
@@ -492,7 +492,7 @@ export default function HostDashboardPage() {
             ) : (() => {
                 // Build unified list of items for filtering and sorting
                 type ContentItem = {
-                    type: 'quiz' | 'interest-cloud' | 'ranking';
+                    type: 'quiz' | 'thoughts-gathering' | 'evaluation';
                     data: Quiz | Activity;
                     title: string;
                     updatedAt?: Date;
@@ -597,22 +597,22 @@ export default function HostDashboardPage() {
                         <Card><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
                     ) : (
                         completedGames.map(game => {
-                            const isInterestCloud = game.activityType === 'interest-cloud';
-                            const isRanking = game.activityType === 'ranking';
-                            const isQuiz = !isInterestCloud && !isRanking;
+                            const isThoughtsGathering = game.activityType === 'thoughts-gathering';
+                            const isEvaluation = game.activityType === 'evaluation';
+                            const isQuiz = !isThoughtsGathering && !isEvaluation;
 
                             // Determine badge styling
-                            const badgeClass = isInterestCloud
+                            const badgeClass = isThoughtsGathering
                                 ? 'bg-blue-500/20 text-blue-500'
-                                : isRanking
+                                : isEvaluation
                                     ? 'bg-orange-500/20 text-orange-500'
                                     : 'bg-purple-500/20 text-purple-500';
-                            const badgeIcon = isInterestCloud
+                            const badgeIcon = isThoughtsGathering
                                 ? <Cloud className="h-3 w-3" />
-                                : isRanking
+                                : isEvaluation
                                     ? <BarChart3 className="h-3 w-3" />
                                     : <FileQuestion className="h-3 w-3" />;
-                            const badgeLabel = isInterestCloud ? 'Interest Cloud' : isRanking ? 'Ranking' : 'Quiz';
+                            const badgeLabel = isThoughtsGathering ? 'Thoughts Gathering' : isEvaluation ? 'Evaluation' : 'Quiz';
 
                             return (
                                 <Card key={game.id} variant="interactive" className="flex flex-col">
@@ -675,12 +675,12 @@ export default function HostDashboardPage() {
                                                 <Gamepad2 className="mr-2 h-4 w-4" /> Host Again
                                             </Button>
                                         )}
-                                        {isRanking && (
+                                        {isEvaluation && (
                                             <Button
                                                 variant="outline"
                                                 size="sm"
                                                 className="w-full"
-                                                onClick={() => router.push(`/host/ranking/game/${game.id}`)}
+                                                onClick={() => router.push(`/host/evaluation/game/${game.id}`)}
                                             >
                                                 <RotateCcw className="mr-2 h-4 w-4" /> Reopen Session
                                             </Button>

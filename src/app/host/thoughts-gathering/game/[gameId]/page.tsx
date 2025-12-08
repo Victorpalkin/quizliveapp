@@ -11,8 +11,8 @@ import { doc, collection, updateDoc, DocumentReference, Query } from 'firebase/f
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Game, InterestCloudActivity, InterestSubmission, TopicCloudResult } from '@/lib/types';
-import { gameConverter, interestCloudActivityConverter, interestSubmissionConverter } from '@/firebase/converters';
+import type { Game, ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
+import { gameConverter, thoughtsGatheringActivityConverter, thoughtSubmissionConverter } from '@/firebase/converters';
 import { clearHostSession, saveHostSession } from '@/lib/host-session';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { WordCloud } from '@/components/app/word-cloud';
@@ -28,7 +28,7 @@ import {
 import { KeyboardShortcutsHint } from '@/components/app/game-header';
 import { HostActionHint } from '@/components/app/host-action-hint';
 
-export default function InterestCloudGamePage() {
+export default function ThoughtsGatheringGamePage() {
   const params = useParams();
   const gameId = params.gameId as string;
   const router = useRouter();
@@ -54,7 +54,7 @@ export default function InterestCloudGamePage() {
   // Fetch activity
   const activityRef = useMemoFirebase(
     () => game?.activityId
-      ? doc(firestore, 'activities', game.activityId).withConverter(interestCloudActivityConverter) as DocumentReference<InterestCloudActivity>
+      ? doc(firestore, 'activities', game.activityId).withConverter(thoughtsGatheringActivityConverter) as DocumentReference<ThoughtsGatheringActivity>
       : null,
     [firestore, game?.activityId]
   );
@@ -69,10 +69,10 @@ export default function InterestCloudGamePage() {
 
   // Fetch submissions
   const submissionsQuery = useMemoFirebase(
-    () => game ? collection(firestore, 'games', gameId, 'submissions').withConverter(interestSubmissionConverter) as Query<InterestSubmission> : null,
+    () => game ? collection(firestore, 'games', gameId, 'submissions').withConverter(thoughtSubmissionConverter) as Query<ThoughtSubmission> : null,
     [firestore, gameId, game]
   );
-  const { data: submissions, loading: submissionsLoading } = useCollection<InterestSubmission>(submissionsQuery);
+  const { data: submissions, loading: submissionsLoading } = useCollection<ThoughtSubmission>(submissionsQuery);
 
   // Fetch topic cloud result
   const topicsRef = useMemoFirebase(
@@ -84,7 +84,7 @@ export default function InterestCloudGamePage() {
   // Save host session
   useEffect(() => {
     if (game && activity && user) {
-      saveHostSession(gameId, game.gamePin, game.activityId || '', activity.title, user.uid, 'interest-cloud', game.state);
+      saveHostSession(gameId, game.gamePin, game.activityId || '', activity.title, user.uid, 'thoughts-gathering', game.state);
     }
   }, [gameId, game, activity, user, game?.state]);
 

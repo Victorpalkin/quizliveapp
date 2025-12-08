@@ -5,7 +5,17 @@ import {
   FirestoreDataConverter,
   Timestamp,
 } from 'firebase/firestore';
-import { Quiz, Game, Player, QuizShare, InterestCloudActivity, InterestSubmission, RankingActivity, RankingItem, PlayerRatings } from '@/lib/types';
+import {
+  Quiz,
+  Game,
+  Player,
+  QuizShare,
+  ThoughtsGatheringActivity,
+  ThoughtSubmission,
+  EvaluationActivity,
+  EvaluationItem,
+  PlayerRatings,
+} from '@/lib/types';
 import { removeUndefined } from '@/lib/firestore-utils';
 
 /**
@@ -75,9 +85,9 @@ export const gameConverter: FirestoreDataConverter<Game> = {
       // Activity system fields
       activityType: data.activityType,
       activityId: data.activityId,
-      // Interest Cloud specific
+      // Thoughts Gathering specific
       submissionsOpen: data.submissionsOpen,
-      // Ranking specific
+      // Evaluation specific
       itemSubmissionsOpen: data.itemSubmissionsOpen,
     };
   }
@@ -129,8 +139,12 @@ export const quizShareConverter: FirestoreDataConverter<QuizShare> = {
   }
 };
 
-export const interestCloudActivityConverter: FirestoreDataConverter<InterestCloudActivity> = {
-  toFirestore(activity: InterestCloudActivity): DocumentData {
+// ==========================================
+// Thoughts Gathering Activity Converters
+// ==========================================
+
+export const thoughtsGatheringActivityConverter: FirestoreDataConverter<ThoughtsGatheringActivity> = {
+  toFirestore(activity: ThoughtsGatheringActivity): DocumentData {
     const { id, ...data } = activity;
     return removeUndefined({
       ...data,
@@ -141,11 +155,11 @@ export const interestCloudActivityConverter: FirestoreDataConverter<InterestClou
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
     options: SnapshotOptions
-  ): InterestCloudActivity {
+  ): ThoughtsGatheringActivity {
     const data = snapshot.data(options);
     return {
       id: snapshot.id,
-      type: 'interest-cloud',
+      type: 'thoughts-gathering',
       title: data.title,
       description: data.description,
       hostId: data.hostId,
@@ -156,15 +170,15 @@ export const interestCloudActivityConverter: FirestoreDataConverter<InterestClou
   }
 };
 
-export const interestSubmissionConverter: FirestoreDataConverter<InterestSubmission> = {
-  toFirestore(submission: InterestSubmission): DocumentData {
+export const thoughtSubmissionConverter: FirestoreDataConverter<ThoughtSubmission> = {
+  toFirestore(submission: ThoughtSubmission): DocumentData {
     const { id, ...data } = submission;
     return removeUndefined(data);
   },
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
     options: SnapshotOptions
-  ): InterestSubmission {
+  ): ThoughtSubmission {
     const data = snapshot.data(options);
     return {
       id: snapshot.id,
@@ -178,11 +192,11 @@ export const interestSubmissionConverter: FirestoreDataConverter<InterestSubmiss
 };
 
 // ==========================================
-// Ranking Activity Converters
+// Evaluation Activity Converters
 // ==========================================
 
-export const rankingActivityConverter: FirestoreDataConverter<RankingActivity> = {
-  toFirestore(activity: RankingActivity): DocumentData {
+export const evaluationActivityConverter: FirestoreDataConverter<EvaluationActivity> = {
+  toFirestore(activity: EvaluationActivity): DocumentData {
     const { id, ...data } = activity;
     return removeUndefined({
       ...data,
@@ -193,11 +207,11 @@ export const rankingActivityConverter: FirestoreDataConverter<RankingActivity> =
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
     options: SnapshotOptions
-  ): RankingActivity {
+  ): EvaluationActivity {
     const data = snapshot.data(options);
     return {
       id: snapshot.id,
-      type: 'ranking',
+      type: 'evaluation',
       title: data.title,
       description: data.description,
       hostId: data.hostId,
@@ -208,15 +222,15 @@ export const rankingActivityConverter: FirestoreDataConverter<RankingActivity> =
   }
 };
 
-export const rankingItemConverter: FirestoreDataConverter<RankingItem> = {
-  toFirestore(item: RankingItem): DocumentData {
+export const evaluationItemConverter: FirestoreDataConverter<EvaluationItem> = {
+  toFirestore(item: EvaluationItem): DocumentData {
     const { id, ...data } = item;
     return removeUndefined(data);
   },
   fromFirestore(
     snapshot: QueryDocumentSnapshot,
     options: SnapshotOptions
-  ): RankingItem {
+  ): EvaluationItem {
     const data = snapshot.data(options);
     return {
       id: snapshot.id,
@@ -231,6 +245,16 @@ export const rankingItemConverter: FirestoreDataConverter<RankingItem> = {
     };
   }
 };
+
+// Backward compatibility aliases
+/** @deprecated Use thoughtsGatheringActivityConverter instead */
+export const interestCloudActivityConverter = thoughtsGatheringActivityConverter;
+/** @deprecated Use thoughtSubmissionConverter instead */
+export const interestSubmissionConverter = thoughtSubmissionConverter;
+/** @deprecated Use evaluationActivityConverter instead */
+export const rankingActivityConverter = evaluationActivityConverter;
+/** @deprecated Use evaluationItemConverter instead */
+export const rankingItemConverter = evaluationItemConverter;
 
 export const playerRatingsConverter: FirestoreDataConverter<PlayerRatings> = {
   toFirestore(ratings: PlayerRatings): DocumentData {

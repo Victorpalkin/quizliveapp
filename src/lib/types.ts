@@ -145,22 +145,22 @@ export interface CrowdsourceState {
 }
 
 // Activity types for the Activity system
-export type ActivityType = 'quiz' | 'interest-cloud' | 'ranking';
+export type ActivityType = 'quiz' | 'thoughts-gathering' | 'evaluation';
 
 // Quiz game states (existing)
 export type QuizGameState = 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
 
-// Interest Cloud game states
-export type InterestCloudGameState = 'lobby' | 'collecting' | 'processing' | 'display' | 'ended';
+// Thoughts Gathering game states
+export type ThoughtsGatheringGameState = 'lobby' | 'collecting' | 'processing' | 'display' | 'ended';
 
-// Ranking game states
-export type RankingGameState = 'collecting' | 'ranking' | 'analyzing' | 'results' | 'ended';
+// Evaluation game states
+export type EvaluationGameState = 'collecting' | 'rating' | 'analyzing' | 'results' | 'ended';
 
 export interface Game {
     id: string;
     quizId: string;
     hostId: string;
-    state: QuizGameState | InterestCloudGameState | RankingGameState;
+    state: QuizGameState | ThoughtsGatheringGameState | EvaluationGameState;
     currentQuestionIndex: number;
     gamePin: string;
     questionStartTime?: Timestamp; // Firestore server timestamp when current question started (for timer sync)
@@ -171,10 +171,10 @@ export interface Game {
     activityType?: ActivityType;  // Default: 'quiz' for existing games
     activityId?: string;          // Reference to activity document (for non-quiz activities)
 
-    // Interest Cloud specific
+    // Thoughts Gathering specific
     submissionsOpen?: boolean;    // Whether submissions are currently accepted
 
-    // Ranking specific
+    // Evaluation specific
     itemSubmissionsOpen?: boolean;  // Whether item submissions are accepted during collecting phase
 }
 
@@ -333,40 +333,40 @@ export interface LeaderboardWithStats {
 }
 
 // ==========================================
-// Interest Cloud Activity Types
+// Thoughts Gathering Activity Types
 // ==========================================
 
 /**
- * Configuration for Interest Cloud activity
+ * Configuration for Thoughts Gathering activity
  */
-export interface InterestCloudConfig {
+export interface ThoughtsGatheringConfig {
   prompt: string;                    // e.g., "What topics interest you most?"
   maxSubmissionsPerPlayer: number;   // Default: 3
   allowMultipleRounds: boolean;      // Can host reopen for more submissions
 }
 
 /**
- * Interest Cloud activity stored in /activities/{activityId}
+ * Thoughts Gathering activity stored in /activities/{activityId}
  */
-export interface InterestCloudActivity {
+export interface ThoughtsGatheringActivity {
   id: string;
-  type: 'interest-cloud';
+  type: 'thoughts-gathering';
   title: string;
   description?: string;
   hostId: string;
-  config: InterestCloudConfig;
+  config: ThoughtsGatheringConfig;
   createdAt: Date;
   updatedAt: Date;
 }
 
 /**
- * Player interest submission stored in /games/{gameId}/submissions/{submissionId}
+ * Player thought submission stored in /games/{gameId}/submissions/{submissionId}
  */
-export interface InterestSubmission {
+export interface ThoughtSubmission {
   id: string;
   playerId: string;
   playerName: string;
-  rawText: string;              // Free-form text about interests
+  rawText: string;              // Free-form text about thoughts/ideas
   submittedAt: Timestamp;
   extractedTopics?: string[];   // Filled by AI after processing
 }
@@ -391,13 +391,13 @@ export interface TopicCloudResult {
 }
 
 // ==========================================
-// Ranking Activity Types
+// Evaluation Activity Types
 // ==========================================
 
 /**
  * A metric that items are scored on
  */
-export interface RankingMetric {
+export interface EvaluationMetric {
   id: string;
   name: string;                    // e.g., "Impact", "Effort", "Complexity"
   description?: string;            // Help text for participants
@@ -410,7 +410,7 @@ export interface RankingMetric {
 }
 
 /**
- * Configuration for Ranking activity
+ * Configuration for Evaluation activity
  */
 /**
  * A predefined item template stored in activity config
@@ -421,8 +421,8 @@ export interface PredefinedItem {
   description?: string;
 }
 
-export interface RankingConfig {
-  metrics: RankingMetric[];              // 1-5 metrics to rate on
+export interface EvaluationConfig {
+  metrics: EvaluationMetric[];           // 1-5 metrics to rate on
   predefinedItems: PredefinedItem[];     // Items pre-created by host
   allowParticipantItems: boolean;        // Can participants suggest items?
   maxItemsPerParticipant: number;        // If allowed, how many? (default: 3)
@@ -431,23 +431,23 @@ export interface RankingConfig {
 }
 
 /**
- * Ranking activity stored in /activities/{activityId}
+ * Evaluation activity stored in /activities/{activityId}
  */
-export interface RankingActivity {
+export interface EvaluationActivity {
   id: string;
-  type: 'ranking';
+  type: 'evaluation';
   title: string;
   description?: string;
   hostId: string;
-  config: RankingConfig;
+  config: EvaluationConfig;
   createdAt: Date;
   updatedAt: Date;
 }
 
 /**
- * An item to be ranked, stored in /games/{gameId}/items/{itemId}
+ * An item to be evaluated, stored in /games/{gameId}/items/{itemId}
  */
-export interface RankingItem {
+export interface EvaluationItem {
   id: string;
   text: string;                     // Item name/description
   description?: string;             // Optional longer description
@@ -477,9 +477,10 @@ export interface PlayerRatings {
 /**
  * Aggregated results for a single item
  */
-export interface RankingItemResult {
+export interface EvaluationItemResult {
   itemId: string;
   itemText: string;
+  itemDescription?: string;         // Optional item description
   overallScore: number;             // Weighted average across metrics (0-1 normalized)
   rank: number;                     // Final position
   metricScores: {
@@ -496,11 +497,40 @@ export interface RankingItemResult {
 }
 
 /**
- * Aggregated ranking results stored in /games/{gameId}/aggregates/rankings
+ * Aggregated evaluation results stored in /games/{gameId}/aggregates/evaluations
  */
-export interface RankingResults {
-  items: RankingItemResult[];
+export interface EvaluationResults {
+  items: EvaluationItemResult[];
   totalParticipants: number;
   participantsWhoRated: number;
   processedAt: Timestamp;
 }
+
+// ==========================================
+// Type Aliases for Backward Compatibility
+// These can be removed after full migration
+// ==========================================
+
+/** @deprecated Use ThoughtsGatheringConfig instead */
+export type InterestCloudConfig = ThoughtsGatheringConfig;
+/** @deprecated Use ThoughtsGatheringActivity instead */
+export type InterestCloudActivity = ThoughtsGatheringActivity;
+/** @deprecated Use ThoughtSubmission instead */
+export type InterestSubmission = ThoughtSubmission;
+/** @deprecated Use ThoughtsGatheringGameState instead */
+export type InterestCloudGameState = ThoughtsGatheringGameState;
+
+/** @deprecated Use EvaluationMetric instead */
+export type RankingMetric = EvaluationMetric;
+/** @deprecated Use EvaluationConfig instead */
+export type RankingConfig = EvaluationConfig;
+/** @deprecated Use EvaluationActivity instead */
+export type RankingActivity = EvaluationActivity;
+/** @deprecated Use EvaluationItem instead */
+export type RankingItem = EvaluationItem;
+/** @deprecated Use EvaluationItemResult instead */
+export type RankingItemResult = EvaluationItemResult;
+/** @deprecated Use EvaluationResults instead */
+export type RankingResults = EvaluationResults;
+/** @deprecated Use EvaluationGameState instead */
+export type RankingGameState = EvaluationGameState;

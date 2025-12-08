@@ -39,13 +39,13 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { savePlayerSession, getPlayerSession, clearPlayerSession } from '@/lib/player-session';
-import { rankingActivityConverter, rankingItemConverter, playerRatingsConverter } from '@/firebase/converters';
-import type { Game, RankingActivity, RankingItem, RankingMetric, PlayerRatings, Player } from '@/lib/types';
+import { evaluationActivityConverter, evaluationItemConverter, playerRatingsConverter } from '@/firebase/converters';
+import type { Game, EvaluationActivity, EvaluationItem, EvaluationMetric, PlayerRatings, Player } from '@/lib/types';
 import { nanoid } from 'nanoid';
 
 type PlayerState = 'joining' | 'collecting' | 'rating' | 'waiting' | 'results' | 'ended';
 
-export default function PlayerRankingPage() {
+export default function PlayerEvaluationPage() {
   const params = useParams();
   const gamePin = (params.gamePin as string).toUpperCase();
   const { toast } = useToast();
@@ -111,7 +111,7 @@ export default function PlayerRankingPage() {
           // Determine state based on game state
           if (game.state === 'collecting') {
             setPlayerState('collecting');
-          } else if (game.state === 'ranking') {
+          } else if (game.state === 'rating') {
             // Check if already submitted ratings
             const ratingsDoc = await getDocs(
               query(collection(firestore, 'games', game.id, 'ratings'), where('playerId', '==', session.playerId))
@@ -149,7 +149,7 @@ export default function PlayerRankingPage() {
   // Activity document
   const activityRef = useMemoFirebase(
     () => game?.activityId
-      ? doc(firestore, 'activities', game.activityId).withConverter(rankingActivityConverter) as DocumentReference<RankingActivity>
+      ? doc(firestore, 'activities', game.activityId).withConverter(evaluationActivityConverter) as DocumentReference<EvaluationActivity>
       : null,
     [firestore, game?.activityId]
   );
@@ -158,7 +158,7 @@ export default function PlayerRankingPage() {
   // Items collection
   const itemsQuery = useMemoFirebase(
     () => gameId ? query(
-      collection(firestore, 'games', gameId, 'items').withConverter(rankingItemConverter),
+      collection(firestore, 'games', gameId, 'items').withConverter(evaluationItemConverter),
       orderBy('order', 'asc')
     ) : null,
     [firestore, gameId]
@@ -178,7 +178,7 @@ export default function PlayerRankingPage() {
 
     if (game.state === 'collecting' && playerState === 'joining') {
       setPlayerState('collecting');
-    } else if (game.state === 'ranking' && (playerState === 'collecting' || playerState === 'joining')) {
+    } else if (game.state === 'rating' && (playerState === 'collecting' || playerState === 'joining')) {
       setPlayerState('rating');
     } else if (game.state === 'results' && playerState !== 'results') {
       setPlayerState('results');
@@ -210,7 +210,7 @@ export default function PlayerRankingPage() {
       // Determine initial state
       if (game?.state === 'collecting') {
         setPlayerState('collecting');
-      } else if (game?.state === 'ranking') {
+      } else if (game?.state === 'rating') {
         setPlayerState('rating');
       } else if (game?.state === 'results') {
         setPlayerState('results');
@@ -243,7 +243,7 @@ export default function PlayerRankingPage() {
 
     setIsSubmitting(true);
     try {
-      const itemData: Omit<RankingItem, 'id'> = {
+      const itemData: Omit<EvaluationItem, 'id'> = {
         text: newItemText.trim(),
         description: newItemDescription.trim() || undefined,
         submittedBy: playerName,
@@ -255,8 +255,8 @@ export default function PlayerRankingPage() {
       };
 
       await addDoc(
-        collection(firestore, 'games', gameId, 'items').withConverter(rankingItemConverter),
-        itemData as RankingItem
+        collection(firestore, 'games', gameId, 'items').withConverter(evaluationItemConverter),
+        itemData as EvaluationItem
       );
 
       setSubmittedItemCount(prev => prev + 1);

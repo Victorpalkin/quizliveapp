@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { FileQuestion, Cloud, BarChart3, Sparkles, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-type FilterType = 'all' | 'quiz' | 'interest-cloud' | 'ranking';
+type FilterType = 'all' | 'quiz' | 'thoughts-gathering' | 'evaluation';
 
 interface EmptyContentStateProps {
   filterType: FilterType;
@@ -19,18 +19,18 @@ const activityConfig = {
     iconColor: 'text-purple-500',
     aiHref: '/host/quiz/create-ai',
   },
-  'interest-cloud': {
-    title: 'Interest Cloud',
+  'thoughts-gathering': {
+    title: 'Thoughts Gathering',
     icon: Cloud,
-    href: '/host/interest-cloud/create',
+    href: '/host/thoughts-gathering/create',
     gradient: 'from-blue-500 to-cyan-500',
     iconColor: 'text-blue-500',
     aiHref: null,
   },
-  ranking: {
-    title: 'Ranking',
+  evaluation: {
+    title: 'Evaluation',
     icon: BarChart3,
-    href: '/host/ranking/create',
+    href: '/host/evaluation/create',
     gradient: 'from-orange-500 to-red-500',
     iconColor: 'text-orange-500',
     aiHref: null,
