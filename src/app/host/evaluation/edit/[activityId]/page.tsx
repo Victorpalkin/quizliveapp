@@ -15,8 +15,8 @@ import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp, DocumentReference } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import type { RankingActivity, RankingMetric, RankingConfig, PredefinedItem } from '@/lib/types';
-import { rankingActivityConverter } from '@/firebase/converters';
+import type { EvaluationActivity, EvaluationMetric, EvaluationConfig, PredefinedItem } from '@/lib/types';
+import { evaluationActivityConverter } from '@/firebase/converters';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { nanoid } from 'nanoid';
 import {
@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const DEFAULT_METRIC: () => RankingMetric = () => ({
+const DEFAULT_METRIC: () => EvaluationMetric = () => ({
   id: nanoid(8),
   name: '',
   description: '',
@@ -39,7 +39,7 @@ const DEFAULT_METRIC: () => RankingMetric = () => ({
   lowerIsBetter: false,
 });
 
-export default function EditRankingPage() {
+export default function EditEvaluationPage() {
   const params = useParams();
   const activityId = params.activityId as string;
   const router = useRouter();
@@ -49,7 +49,7 @@ export default function EditRankingPage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [metrics, setMetrics] = useState<RankingMetric[]>([]);
+  const [metrics, setMetrics] = useState<EvaluationMetric[]>([]);
   const [predefinedItems, setPredefinedItems] = useState<PredefinedItem[]>([]);
   const [newItemText, setNewItemText] = useState('');
   const [newItemDescription, setNewItemDescription] = useState('');
@@ -61,7 +61,7 @@ export default function EditRankingPage() {
   const [isInitialized, setIsInitialized] = useState(false);
 
   const activityRef = useMemoFirebase(
-    () => doc(firestore, 'activities', activityId).withConverter(rankingActivityConverter) as DocumentReference<RankingActivity>,
+    () => doc(firestore, 'activities', activityId).withConverter(evaluationActivityConverter) as DocumentReference<EvaluationActivity>,
     [firestore, activityId]
   );
   const { data: activity, loading: activityLoading } = useDoc(activityRef);
@@ -105,7 +105,7 @@ export default function EditRankingPage() {
     setMetrics(metrics.filter((_, i) => i !== index));
   };
 
-  const updateMetric = (index: number, updates: Partial<RankingMetric>) => {
+  const updateMetric = (index: number, updates: Partial<EvaluationMetric>) => {
     setMetrics(metrics.map((m, i) => i === index ? { ...m, ...updates } : m));
   };
 
@@ -141,7 +141,7 @@ export default function EditRankingPage() {
       toast({
         variant: "destructive",
         title: "Title required",
-        description: "Please enter a title for your Ranking activity.",
+        description: "Please enter a title for your Evaluation activity.",
       });
       return;
     }
@@ -160,7 +160,7 @@ export default function EditRankingPage() {
     setIsSaving(true);
 
     try {
-      const config: RankingConfig = {
+      const config: EvaluationConfig = {
         metrics,
         predefinedItems,
         allowParticipantItems,
@@ -178,10 +178,10 @@ export default function EditRankingPage() {
 
       toast({
         title: 'Changes Saved!',
-        description: 'Your ranking activity has been updated.',
+        description: 'Your evaluation activity has been updated.',
       });
 
-      router.push(`/host/ranking/${activityId}`);
+      router.push(`/host/evaluation/${activityId}`);
     } catch (error) {
       console.error('Error saving activity:', error);
       toast({
@@ -243,15 +243,15 @@ export default function EditRankingPage() {
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl">
         <div className="mb-8">
           <Button asChild variant="ghost" className="mb-4">
-            <Link href={`/host/ranking/${activityId}`}>
+            <Link href={`/host/evaluation/${activityId}`}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Activity
             </Link>
           </Button>
           <div className="flex items-center gap-3">
             <BarChart3 className="h-10 w-10 text-orange-500" />
             <div>
-              <h1 className="text-4xl font-bold">Edit Ranking Activity</h1>
-              <p className="text-muted-foreground">Update your ranking configuration</p>
+              <h1 className="text-4xl font-bold">Edit Evaluation Activity</h1>
+              <p className="text-muted-foreground">Update your evaluation configuration</p>
             </div>
           </div>
         </div>
@@ -262,7 +262,7 @@ export default function EditRankingPage() {
             <CardHeader>
               <CardTitle>Activity Details</CardTitle>
               <CardDescription>
-                Configure your Ranking session
+                Configure your Evaluation session
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

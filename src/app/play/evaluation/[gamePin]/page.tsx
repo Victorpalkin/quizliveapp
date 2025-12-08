@@ -362,7 +362,7 @@ export default function PlayerEvaluationPage() {
         <div className="text-center pt-4">
           <div className="flex items-center justify-center gap-2 mb-2">
             <BarChart3 className="h-6 w-6 text-orange-500" />
-            <span className="text-lg font-semibold">{activity?.title || 'Ranking'}</span>
+            <span className="text-lg font-semibold">{activity?.title || 'Evaluation'}</span>
           </div>
           {playerId && (
             <Badge variant="secondary">{playerName}</Badge>
@@ -373,7 +373,7 @@ export default function PlayerEvaluationPage() {
         {playerState === 'joining' && (
           <Card className="shadow-lg">
             <CardHeader className="text-center">
-              <CardTitle>Join Ranking Session</CardTitle>
+              <CardTitle>Join Evaluation Session</CardTitle>
               <CardDescription>PIN: {gamePin}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

@@ -14,11 +14,11 @@ import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp, DocumentReference } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import type { InterestCloudConfig, InterestCloudActivity } from '@/lib/types';
-import { interestCloudActivityConverter } from '@/firebase/converters';
+import type { ThoughtsGatheringConfig, ThoughtsGatheringActivity } from '@/lib/types';
+import { thoughtsGatheringActivityConverter } from '@/firebase/converters';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 
-export default function EditInterestCloudPage() {
+export default function EditThoughtsGatheringPage() {
   const params = useParams();
   const activityId = params.activityId as string;
   const router = useRouter();
@@ -36,7 +36,7 @@ export default function EditInterestCloudPage() {
 
   // Fetch existing activity
   const activityRef = useMemoFirebase(
-    () => doc(firestore, 'activities', activityId).withConverter(interestCloudActivityConverter) as DocumentReference<InterestCloudActivity>,
+    () => doc(firestore, 'activities', activityId).withConverter(thoughtsGatheringActivityConverter) as DocumentReference<ThoughtsGatheringActivity>,
     [firestore, activityId]
   );
   const { data: activity, loading: activityLoading } = useDoc(activityRef);
@@ -73,7 +73,7 @@ export default function EditInterestCloudPage() {
       toast({
         variant: "destructive",
         title: "Title required",
-        description: "Please enter a title for your Interest Cloud.",
+        description: "Please enter a title for your Thoughts Gathering activity.",
       });
       return;
     }
@@ -90,7 +90,7 @@ export default function EditInterestCloudPage() {
     setIsSaving(true);
 
     try {
-      const config: InterestCloudConfig = {
+      const config: ThoughtsGatheringConfig = {
         prompt: prompt.trim(),
         maxSubmissionsPerPlayer: maxSubmissions,
         allowMultipleRounds,
@@ -105,10 +105,10 @@ export default function EditInterestCloudPage() {
 
       toast({
         title: 'Changes Saved!',
-        description: 'Your Interest Cloud has been updated.',
+        description: 'Your Thoughts Gathering activity has been updated.',
       });
 
-      router.push(`/host/interest-cloud/${activityId}`);
+      router.push(`/host/thoughts-gathering/${activityId}`);
     } catch (error) {
       console.error('Error updating activity:', error);
       toast({
@@ -170,14 +170,14 @@ export default function EditInterestCloudPage() {
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-2xl">
         <div className="mb-8">
           <Button asChild variant="ghost" className="mb-4">
-            <Link href={`/host/interest-cloud/${activityId}`}>
+            <Link href={`/host/thoughts-gathering/${activityId}`}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Activity
             </Link>
           </Button>
           <div className="flex items-center gap-3">
             <Cloud className="h-10 w-10 text-blue-500" />
             <div>
-              <h1 className="text-4xl font-bold">Edit Interest Cloud</h1>
+              <h1 className="text-4xl font-bold">Edit Thoughts Gathering</h1>
               <p className="text-muted-foreground">Update your activity settings</p>
             </div>
           </div>
@@ -187,7 +187,7 @@ export default function EditInterestCloudPage() {
           <CardHeader>
             <CardTitle>Activity Details</CardTitle>
             <CardDescription>
-              Configure your Interest Cloud session
+              Configure your Thoughts Gathering session
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

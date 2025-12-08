@@ -441,7 +441,7 @@ export default function EvaluationGamePage() {
               <BarChart3 className="h-8 w-8 text-orange-500" />
               <div>
                 <h1 className="text-2xl font-bold">{activity.title}</h1>
-                <p className="text-muted-foreground">Ranking Session</p>
+                <p className="text-muted-foreground">Evaluation Session</p>
               </div>
             </div>
             <Badge variant="outline" className="text-lg px-4 py-2">
@@ -790,7 +790,7 @@ export default function EvaluationGamePage() {
                   ) : evaluationResults?.items && evaluationResults.items.length > 0 ? (
                     <Tabs defaultValue="ranking" className="w-full">
                       <TabsList className={`grid w-full mb-4 ${activity && activity.config.metrics.length >= 2 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                        <TabsTrigger value="ranking">Ranking</TabsTrigger>
+                        <TabsTrigger value="ranking">Results</TabsTrigger>
                         <TabsTrigger value="heatmap">Heatmap</TabsTrigger>
                         {activity && activity.config.metrics.length >= 2 && (
                           <TabsTrigger value="matrix">Matrix</TabsTrigger>
@@ -860,7 +860,7 @@ export default function EvaluationGamePage() {
                   ) : evaluationResults?.items && evaluationResults.items.length > 0 ? (
                     <Tabs defaultValue="ranking" className="w-full">
                       <TabsList className={`grid w-full mb-4 ${activity && activity.config.metrics.length >= 2 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                        <TabsTrigger value="ranking">Ranking</TabsTrigger>
+                        <TabsTrigger value="ranking">Results</TabsTrigger>
                         <TabsTrigger value="heatmap">Heatmap</TabsTrigger>
                         {activity && activity.config.metrics.length >= 2 && (
                           <TabsTrigger value="matrix">Matrix</TabsTrigger>

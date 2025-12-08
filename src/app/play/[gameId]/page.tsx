@@ -6,8 +6,8 @@
  * This is a thin routing layer that looks up the game by PIN and redirects
  * to the appropriate activity-specific player page:
  * - Quiz games → /play/quiz/{PIN}
- * - Interest Cloud → /play/interest-cloud/{PIN}
- * - Ranking → /play/ranking/{PIN}
+ * - Thoughts Gathering → /play/thoughts-gathering/{PIN}
+ * - Evaluation → /play/evaluation/{PIN}
  */
 
 import { useEffect, useState } from 'react';
@@ -82,10 +82,10 @@ export default function PlayRouterPage() {
         const activityType = gameData.activityType || 'quiz';
 
         // Route to appropriate player page
-        if (activityType === 'interest-cloud') {
-          router.replace(`/play/interest-cloud/${gamePin}`);
-        } else if (activityType === 'ranking') {
-          router.replace(`/play/ranking/${gamePin}`);
+        if (activityType === 'thoughts-gathering') {
+          router.replace(`/play/thoughts-gathering/${gamePin}`);
+        } else if (activityType === 'evaluation') {
+          router.replace(`/play/evaluation/${gamePin}`);
         } else {
           router.replace(`/play/quiz/${gamePin}`);
         }

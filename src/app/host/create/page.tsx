@@ -158,12 +158,12 @@ export default function CreateActivityPage() {
             dataTour="quiz-card"
           />
 
-          {/* Interest Cloud */}
+          {/* Thoughts Gathering */}
           <ActivityTypeCard
             icon={<Cloud className="h-8 w-8 text-blue-600" />}
             iconBg="bg-blue-100 dark:bg-blue-900/30"
-            title="Interest Cloud"
-            description="Collect topics and interests from your audience, then visualize them as an interactive word cloud."
+            title="Thoughts Gathering"
+            description="Collect topics and ideas from your audience, then visualize them as an interactive word cloud."
             bestFor={['Workshops', 'Brainstorming', 'Needs assessment', 'Team building']}
             features={[
               'Real-time word cloud',
@@ -171,15 +171,15 @@ export default function CreateActivityPage() {
               'Anonymous or named',
               'Visual engagement',
             ]}
-            href="/host/interest-cloud/create"
-            dataTour="interest-cloud-card"
+            href="/host/thoughts-gathering/create"
+            dataTour="thoughts-gathering-card"
           />
 
-          {/* Ranking */}
+          {/* Evaluation */}
           <ActivityTypeCard
             icon={<BarChart3 className="h-8 w-8 text-orange-600" />}
             iconBg="bg-orange-100 dark:bg-orange-900/30"
-            title="Ranking"
+            title="Evaluation"
             description="Prioritize items with weighted metrics. Perfect for decision-making and gathering structured feedback."
             bestFor={['Feature prioritization', 'Retrospectives', 'Voting', 'Surveys']}
             features={[
@@ -188,8 +188,8 @@ export default function CreateActivityPage() {
               'Participant submissions',
               'Aggregated results',
             ]}
-            href="/host/ranking/create"
-            dataTour="ranking-card"
+            href="/host/evaluation/create"
+            dataTour="evaluation-card"
           />
         </div>
 
@@ -209,8 +209,8 @@ export default function CreateActivityPage() {
                 <h3 className="text-lg font-semibold mb-1">Not sure which to choose?</h3>
                 <p className="text-muted-foreground mb-3">
                   Start with a <strong>Quiz</strong> if you want to test knowledge,
-                  an <strong>Interest Cloud</strong> for open-ended feedback,
-                  or <strong>Ranking</strong> for structured prioritization.
+                  <strong> Thoughts Gathering</strong> for open-ended feedback,
+                  or <strong>Evaluation</strong> for structured prioritization.
                 </p>
                 <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm">
                   <div className="flex items-center gap-2">
@@ -219,11 +219,11 @@ export default function CreateActivityPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-blue-500" />
-                    <span>Cloud = Discovery</span>
+                    <span>Thoughts = Discovery</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-orange-500" />
-                    <span>Ranking = Decisions</span>
+                    <span>Evaluation = Decisions</span>
                   </div>
                 </div>
               </div>

@@ -70,16 +70,16 @@ const createActivityTourSteps: Step[] = [
     title: 'Quiz',
   },
   {
-    target: '[data-tour="interest-cloud-card"]',
-    content: 'Interest Clouds collect topics and ideas from your audience, then display them as an interactive word cloud.',
+    target: '[data-tour="thoughts-gathering-card"]',
+    content: 'Thoughts Gathering collects topics and ideas from your audience, then displays them as an interactive word cloud.',
     placement: 'bottom',
-    title: 'Interest Cloud',
+    title: 'Thoughts Gathering',
   },
   {
-    target: '[data-tour="ranking-card"]',
-    content: 'Rankings let participants rate and prioritize items using custom metrics. Perfect for decision-making and retrospectives.',
+    target: '[data-tour="evaluation-card"]',
+    content: 'Evaluation lets participants rate and prioritize items using custom metrics. Perfect for decision-making and retrospectives.',
     placement: 'bottom',
-    title: 'Ranking',
+    title: 'Evaluation',
   },
 ];
 
@@ -158,7 +158,7 @@ const dashboardTourSteps: Step[] = [
   },
   {
     target: '[data-tour="create-button"]',
-    content: 'Click here to create a new quiz, interest cloud, or ranking activity.',
+    content: 'Click here to create a new quiz, thoughts gathering, or evaluation activity.',
     placement: 'bottom',
     title: 'Create New Content',
   },

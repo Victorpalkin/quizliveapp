@@ -15,8 +15,8 @@ import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import type { InterestCloudConfig, InterestCloudActivity } from '@/lib/types';
-import { interestCloudActivityConverter } from '@/firebase/converters';
+import type { ThoughtsGatheringConfig, ThoughtsGatheringActivity } from '@/lib/types';
+import { thoughtsGatheringActivityConverter } from '@/firebase/converters';
 import { FeatureTooltip } from '@/components/ui/feature-tooltip';
 
 // Example prompts for inspiration
@@ -29,7 +29,7 @@ const EXAMPLE_PROMPTS = [
   { label: 'Expectations', prompt: 'What do you hope to get out of this session?' },
 ];
 
-export default function CreateInterestCloudPage() {
+export default function CreateThoughtsGatheringPage() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -56,7 +56,7 @@ export default function CreateInterestCloudPage() {
       toast({
         variant: "destructive",
         title: "Title required",
-        description: "Please enter a title for your Interest Cloud.",
+        description: "Please enter a title for your Thoughts Gathering activity.",
       });
       return;
     }
@@ -73,33 +73,33 @@ export default function CreateInterestCloudPage() {
     setIsCreating(true);
 
     try {
-      const config: InterestCloudConfig = {
+      const config: ThoughtsGatheringConfig = {
         prompt: prompt.trim(),
         maxSubmissionsPerPlayer: maxSubmissions,
         allowMultipleRounds,
       };
 
       const activityData = {
-        type: 'interest-cloud',
+        type: 'thoughts-gathering',
         title: title.trim(),
         description: description.trim() || undefined,
         hostId: user.uid,
         config,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      } as unknown as InterestCloudActivity;
+      } as unknown as ThoughtsGatheringActivity;
 
       const docRef = await addDoc(
-        collection(firestore, 'activities').withConverter(interestCloudActivityConverter),
+        collection(firestore, 'activities').withConverter(thoughtsGatheringActivityConverter),
         activityData
       );
 
       toast({
-        title: 'Interest Cloud Created!',
+        title: 'Thoughts Gathering Created!',
         description: 'You can now launch a session.',
       });
 
-      router.push(`/host/interest-cloud/${docRef.id}`);
+      router.push(`/host/thoughts-gathering/${docRef.id}`);
     } catch (error) {
       console.error('Error creating activity:', error);
       toast({
@@ -125,8 +125,8 @@ export default function CreateInterestCloudPage() {
           <div className="flex items-center gap-3">
             <Cloud className="h-10 w-10 text-blue-500" />
             <div>
-              <h1 className="text-4xl font-bold">Create Interest Cloud</h1>
-              <p className="text-muted-foreground">Collect topics and interests from your audience</p>
+              <h1 className="text-4xl font-bold">Create Thoughts Gathering</h1>
+              <p className="text-muted-foreground">Collect topics and ideas from your audience</p>
             </div>
           </div>
         </div>
@@ -135,7 +135,7 @@ export default function CreateInterestCloudPage() {
           <CardHeader>
             <CardTitle>Activity Details</CardTitle>
             <CardDescription>
-              Configure your Interest Cloud session
+              Configure your Thoughts Gathering session
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -280,7 +280,7 @@ export default function CreateInterestCloudPage() {
                   </>
                 ) : (
                   <>
-                    <Cloud className="mr-2 h-5 w-5" /> Create Interest Cloud
+                    <Cloud className="mr-2 h-5 w-5" /> Create Thoughts Gathering
                   </>
                 )}
               </Button>

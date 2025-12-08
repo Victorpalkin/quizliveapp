@@ -25,7 +25,7 @@ import { QrCode, Copy, Users, XCircle, FileQuestion, Cloud, BarChart3, Keyboard 
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { cn } from '@/lib/utils';
 
-export type ActivityType = 'quiz' | 'interest-cloud' | 'ranking';
+export type ActivityType = 'quiz' | 'thoughts-gathering' | 'evaluation';
 
 interface GameHeaderProps {
   /** The game PIN to display */
@@ -48,8 +48,8 @@ interface GameHeaderProps {
 
 const activityConfig: Record<ActivityType, { icon: React.ElementType; color: string; label: string }> = {
   'quiz': { icon: FileQuestion, color: 'text-purple-500', label: 'Quiz' },
-  'interest-cloud': { icon: Cloud, color: 'text-blue-500', label: 'Interest Cloud' },
-  'ranking': { icon: BarChart3, color: 'text-orange-500', label: 'Ranking' },
+  'thoughts-gathering': { icon: Cloud, color: 'text-blue-500', label: 'Thoughts Gathering' },
+  'evaluation': { icon: BarChart3, color: 'text-orange-500', label: 'Evaluation' },
 };
 
 /**

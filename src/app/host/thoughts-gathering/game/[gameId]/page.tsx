@@ -401,7 +401,7 @@ export default function ThoughtsGatheringGamePage() {
             {/* Word Cloud */}
             <Card className="border-2 border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-purple-500/5">
               <CardContent className="p-8">
-                <h2 className="text-2xl font-bold text-center mb-6">Interest Cloud</h2>
+                <h2 className="text-2xl font-bold text-center mb-6">Thoughts Cloud</h2>
                 {topicCloud?.topics && topicCloud.topics.length > 0 ? (
                   <WordCloud topics={topicCloud.topics} />
                 ) : (
@@ -562,7 +562,7 @@ export default function ThoughtsGatheringGamePage() {
         <div className="flex items-center gap-3 mb-6">
           <Cloud className="h-8 w-8 text-blue-500" />
           <div>
-            <h1 className="text-3xl font-bold">{activity?.title || 'Interest Cloud'}</h1>
+            <h1 className="text-3xl font-bold">{activity?.title || 'Thoughts Gathering'}</h1>
           </div>
         </div>
 

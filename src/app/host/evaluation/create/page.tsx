@@ -16,8 +16,8 @@ import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import type { RankingActivity, RankingMetric, RankingConfig, PredefinedItem } from '@/lib/types';
-import { rankingActivityConverter } from '@/firebase/converters';
+import type { EvaluationActivity, EvaluationMetric, EvaluationConfig, PredefinedItem } from '@/lib/types';
+import { evaluationActivityConverter } from '@/firebase/converters';
 import { nanoid } from 'nanoid';
 import { removeUndefined } from '@/lib/firestore-utils';
 import {
@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const DEFAULT_METRIC: () => RankingMetric = () => ({
+const DEFAULT_METRIC: () => EvaluationMetric = () => ({
   id: nanoid(8),
   name: '',
   description: '',
@@ -41,15 +41,15 @@ const DEFAULT_METRIC: () => RankingMetric = () => ({
 });
 
 // Pre-built templates for common use cases
-interface RankingTemplate {
+interface EvaluationTemplate {
   id: string;
   name: string;
   description: string;
   icon: React.ReactNode;
-  metrics: Omit<RankingMetric, 'id'>[];
+  metrics: Omit<EvaluationMetric, 'id'>[];
 }
 
-const RANKING_TEMPLATES: RankingTemplate[] = [
+const EVALUATION_TEMPLATES: EvaluationTemplate[] = [
   {
     id: 'impact-effort',
     name: 'Impact/Effort Matrix',
@@ -90,7 +90,7 @@ const RANKING_TEMPLATES: RankingTemplate[] = [
   },
 ];
 
-export default function CreateRankingPage() {
+export default function CreateEvaluationPage() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -98,7 +98,7 @@ export default function CreateRankingPage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [metrics, setMetrics] = useState<RankingMetric[]>([DEFAULT_METRIC()]);
+  const [metrics, setMetrics] = useState<EvaluationMetric[]>([DEFAULT_METRIC()]);
   const [predefinedItems, setPredefinedItems] = useState<PredefinedItem[]>([]);
   const [newItemText, setNewItemText] = useState('');
   const [newItemDescription, setNewItemDescription] = useState('');
@@ -109,7 +109,7 @@ export default function CreateRankingPage() {
   const [isCreating, setIsCreating] = useState(false);
 
   // Apply a template
-  const applyTemplate = (template: RankingTemplate) => {
+  const applyTemplate = (template: EvaluationTemplate) => {
     const metricsWithIds = template.metrics.map(m => ({
       ...m,
       id: nanoid(8),
@@ -145,7 +145,7 @@ export default function CreateRankingPage() {
     setMetrics(metrics.filter((_, i) => i !== index));
   };
 
-  const updateMetric = (index: number, updates: Partial<RankingMetric>) => {
+  const updateMetric = (index: number, updates: Partial<EvaluationMetric>) => {
     setMetrics(metrics.map((m, i) => i === index ? { ...m, ...updates } : m));
   };
 
@@ -192,7 +192,7 @@ export default function CreateRankingPage() {
       toast({
         variant: "destructive",
         title: "Title required",
-        description: "Please enter a title for your Ranking activity.",
+        description: "Please enter a title for your Evaluation activity.",
       });
       return;
     }
@@ -211,7 +211,7 @@ export default function CreateRankingPage() {
     setIsCreating(true);
 
     try {
-      const config: RankingConfig = {
+      const config: EvaluationConfig = {
         metrics: removeUndefined(metrics),
         predefinedItems,
         allowParticipantItems,
@@ -222,7 +222,7 @@ export default function CreateRankingPage() {
 
       // Build activity data - converter handles undefined filtering
       const activityData = {
-        type: 'ranking' as const,
+        type: 'evaluation' as const,
         title: title.trim(),
         description: description.trim() || undefined,
         hostId: user.uid,
@@ -232,16 +232,16 @@ export default function CreateRankingPage() {
       };
 
       const docRef = await addDoc(
-        collection(firestore, 'activities').withConverter(rankingActivityConverter),
-        removeUndefined(activityData) as unknown as RankingActivity
+        collection(firestore, 'activities').withConverter(evaluationActivityConverter),
+        removeUndefined(activityData) as unknown as EvaluationActivity
       );
 
       toast({
-        title: 'Ranking Activity Created!',
+        title: 'Evaluation Activity Created!',
         description: 'You can now launch a session.',
       });
 
-      router.push(`/host/ranking/${docRef.id}`);
+      router.push(`/host/evaluation/${docRef.id}`);
     } catch (error) {
       console.error('Error creating activity:', error);
       toast({
@@ -267,7 +267,7 @@ export default function CreateRankingPage() {
           <div className="flex items-center gap-3">
             <BarChart3 className="h-10 w-10 text-orange-500" />
             <div>
-              <h1 className="text-4xl font-bold">Create Ranking Activity</h1>
+              <h1 className="text-4xl font-bold">Create Evaluation Activity</h1>
               <p className="text-muted-foreground">Collect and prioritize items with your audience</p>
             </div>
           </div>
@@ -279,7 +279,7 @@ export default function CreateRankingPage() {
             <CardHeader>
               <CardTitle>Activity Details</CardTitle>
               <CardDescription>
-                Configure your Ranking session
+                Configure your Evaluation session
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -320,7 +320,7 @@ export default function CreateRankingPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {RANKING_TEMPLATES.map((template) => (
+                {EVALUATION_TEMPLATES.map((template) => (
                   <button
                     key={template.id}
                     type="button"
@@ -693,7 +693,7 @@ export default function CreateRankingPage() {
                 </>
               ) : (
                 <>
-                  <BarChart3 className="mr-2 h-5 w-5" /> Create Ranking Activity
+                  <BarChart3 className="mr-2 h-5 w-5" /> Create Evaluation Activity
                 </>
               )}
             </Button>

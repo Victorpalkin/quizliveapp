@@ -53,19 +53,19 @@ export function CreateDropdown() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer">
-          <Link href="/host/interest-cloud/create" className="flex items-center">
+          <Link href="/host/thoughts-gathering/create" className="flex items-center">
             <Cloud className="mr-2 h-4 w-4 text-blue-500" />
             <div className="flex flex-col">
-              <span>Interest Cloud</span>
+              <span>Thoughts Gathering</span>
               <span className="text-xs text-muted-foreground">Collect & visualize topics</span>
             </div>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer">
-          <Link href="/host/ranking/create" className="flex items-center">
+          <Link href="/host/evaluation/create" className="flex items-center">
             <BarChart3 className="mr-2 h-4 w-4 text-orange-500" />
             <div className="flex flex-col">
-              <span>Ranking</span>
+              <span>Evaluation</span>
               <span className="text-xs text-muted-foreground">Prioritize with metrics</span>
             </div>
           </Link>

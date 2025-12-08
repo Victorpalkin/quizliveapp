@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { Users, AlertTriangle, CheckCircle2, HelpCircle } from 'lucide-react';
-import type { RankingItemResult } from '@/lib/types';
+import type { EvaluationItemResult } from '@/lib/types';
 
 interface ConsensusIndicatorProps {
   level: 'high' | 'medium' | 'low';
@@ -87,7 +87,7 @@ export function ConsensusIndicator({
 }
 
 interface ConsensusListProps {
-  items: RankingItemResult[];
+  items: EvaluationItemResult[];
   className?: string;
 }
 

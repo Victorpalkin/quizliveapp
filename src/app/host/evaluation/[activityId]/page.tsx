@@ -11,12 +11,12 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useState } from 'react';
 import { nanoid } from 'nanoid';
-import { rankingActivityConverter } from '@/firebase/converters';
-import type { RankingActivity } from '@/lib/types';
+import { evaluationActivityConverter } from '@/firebase/converters';
+import type { EvaluationActivity } from '@/lib/types';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { Badge } from '@/components/ui/badge';
 
-export default function RankingDetailPage() {
+export default function EvaluationDetailPage() {
   const params = useParams();
   const activityId = params.activityId as string;
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function RankingDetailPage() {
   const [isLaunching, setIsLaunching] = useState(false);
 
   const activityRef = useMemoFirebase(
-    () => doc(firestore, 'activities', activityId).withConverter(rankingActivityConverter) as DocumentReference<RankingActivity>,
+    () => doc(firestore, 'activities', activityId).withConverter(evaluationActivityConverter) as DocumentReference<EvaluationActivity>,
     [firestore, activityId]
   );
   const { data: activity, loading: activityLoading } = useDoc(activityRef);
@@ -38,7 +38,7 @@ export default function RankingDetailPage() {
 
     try {
       const gameData = {
-        activityType: 'ranking' as const,
+        activityType: 'evaluation' as const,
         activityId: activityId,
         quizId: '', // Empty for non-quiz activities
         hostId: user.uid,
@@ -78,7 +78,7 @@ export default function RankingDetailPage() {
           : 'Add items and invite participants to join.',
       });
 
-      router.push(`/host/ranking/game/${gameDoc.id}`);
+      router.push(`/host/evaluation/game/${gameDoc.id}`);
     } catch (error) {
       console.error('Error launching session:', error);
       toast({
@@ -137,7 +137,7 @@ export default function RankingDetailPage() {
             <BarChart3 className="h-10 w-10 text-orange-500" />
             <div>
               <h1 className="text-4xl font-bold">{activity.title}</h1>
-              <p className="text-muted-foreground">Ranking Activity</p>
+              <p className="text-muted-foreground">Evaluation Activity</p>
             </div>
           </div>
         </div>
@@ -178,7 +178,7 @@ export default function RankingDetailPage() {
                   <CardDescription>Criteria participants will rate items on</CardDescription>
                 </div>
                 <Button asChild variant="outline" size="sm">
-                  <Link href={`/host/ranking/edit/${activityId}`}>
+                  <Link href={`/host/evaluation/edit/${activityId}`}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Link>
                 </Button>
@@ -218,7 +218,7 @@ export default function RankingDetailPage() {
                     <CardDescription>These items will be added when you launch a session</CardDescription>
                   </div>
                   <Button asChild variant="outline" size="sm">
-                    <Link href={`/host/ranking/edit/${activityId}`}>
+                    <Link href={`/host/evaluation/edit/${activityId}`}>
                       <Pencil className="mr-2 h-4 w-4" /> Edit
                     </Link>
                   </Button>

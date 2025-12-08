@@ -61,11 +61,11 @@ export default function Home() {
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Cloud className="h-4 w-4 text-blue-500" />
-                      <span>Interest Clouds</span>
+                      <span>Thoughts Gathering</span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <BarChart3 className="h-4 w-4 text-orange-500" />
-                      <span>Prioritization Rankings</span>
+                      <span>Evaluation</span>
                     </div>
                   </div>
                 </div>

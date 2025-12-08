@@ -6,8 +6,8 @@ import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase
 import { doc, collection, query, where, setDoc, addDoc, serverTimestamp, getDocs, DocumentReference, Query } from 'firebase/firestore';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
-import type { Game, Player, InterestCloudActivity, InterestSubmission, TopicCloudResult } from '@/lib/types';
-import { gameConverter, interestCloudActivityConverter, interestSubmissionConverter } from '@/firebase/converters';
+import type { Game, Player, ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
+import { gameConverter, thoughtsGatheringActivityConverter, thoughtSubmissionConverter } from '@/firebase/converters';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +19,7 @@ import { WordCloud } from '@/components/app/word-cloud';
 
 type PlayerState = 'joining' | 'submitting' | 'waiting' | 'viewing' | 'ended' | 'cancelled';
 
-export default function InterestCloudPlayerPage() {
+export default function ThoughtsGatheringPlayerPage() {
   const params = useParams();
   const gamePin = params.gamePin as string;
   const firestore = useFirestore();
@@ -48,7 +48,7 @@ export default function InterestCloudPlayerPage() {
   // Activity data
   const activityRef = useMemoFirebase(
     () => game?.activityId
-      ? doc(firestore, 'activities', game.activityId).withConverter(interestCloudActivityConverter) as DocumentReference<InterestCloudActivity>
+      ? doc(firestore, 'activities', game.activityId).withConverter(thoughtsGatheringActivityConverter) as DocumentReference<ThoughtsGatheringActivity>
       : null,
     [firestore, game?.activityId]
   );
@@ -64,12 +64,12 @@ export default function InterestCloudPlayerPage() {
   // Player's submissions
   const submissionsQuery = useMemoFirebase(
     () => gameDocId ? query(
-      collection(firestore, 'games', gameDocId, 'submissions').withConverter(interestSubmissionConverter),
+      collection(firestore, 'games', gameDocId, 'submissions').withConverter(thoughtSubmissionConverter),
       where('playerId', '==', playerId)
-    ) as Query<InterestSubmission> : null,
+    ) as Query<ThoughtSubmission> : null,
     [firestore, gameDocId, playerId]
   );
-  const { data: playerSubmissions } = useCollection<InterestSubmission>(submissionsQuery);
+  const { data: playerSubmissions } = useCollection<ThoughtSubmission>(submissionsQuery);
 
   // Keep awake
   const shouldKeepAwake = ['submitting', 'waiting', 'viewing'].includes(state);
@@ -161,7 +161,7 @@ export default function InterestCloudPlayerPage() {
     setIsSubmitting(true);
 
     try {
-      const submission: Omit<InterestSubmission, 'id'> = {
+      const submission: Omit<ThoughtSubmission, 'id'> = {
         playerId,
         playerName: player.name,
         rawText: submissionText.trim(),
@@ -199,7 +199,7 @@ export default function InterestCloudPlayerPage() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-500 text-white">
                 <Cloud className="h-8 w-8" />
               </div>
-              <CardTitle className="text-3xl">Join Interest Cloud</CardTitle>
+              <CardTitle className="text-3xl">Join Thoughts Gathering</CardTitle>
               <CardDescription>Enter your name to participate</CardDescription>
             </CardHeader>
             <CardContent>
@@ -246,16 +246,16 @@ export default function InterestCloudPlayerPage() {
           <div className="w-full max-w-md space-y-6">
             <Card className="shadow-2xl">
               <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Share Your Interests</CardTitle>
+                <CardTitle className="text-2xl">Share Your Thoughts</CardTitle>
                 <CardDescription className="text-lg">
-                  {activity?.config.prompt || 'What topics interest you?'}
+                  {activity?.config.prompt || 'What topics are on your mind?'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea
                   value={submissionText}
                   onChange={(e) => setSubmissionText(e.target.value)}
-                  placeholder="Type your interest here..."
+                  placeholder="Type your thoughts here..."
                   className="min-h-[100px] text-lg"
                   maxLength={1000}
                   disabled={remainingSubmissions <= 0}
@@ -343,7 +343,7 @@ export default function InterestCloudPlayerPage() {
           <div className="w-full max-w-2xl space-y-6">
             <Card className="shadow-2xl">
               <CardContent className="p-8">
-                <h2 className="text-2xl font-bold text-center mb-6">Interest Cloud</h2>
+                <h2 className="text-2xl font-bold text-center mb-6">Thoughts Cloud</h2>
                 {topicCloud?.topics && topicCloud.topics.length > 0 ? (
                   <WordCloud topics={topicCloud.topics} />
                 ) : (

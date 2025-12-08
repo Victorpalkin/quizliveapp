@@ -10,7 +10,7 @@ export interface HostSession {
   quizTitle: string;
   hostId: string;
   timestamp: number; // When session was last updated
-  activityType?: ActivityType; // 'quiz' | 'interest-cloud'
+  activityType?: ActivityType; // 'quiz' | 'thoughts-gathering' | 'evaluation'
   gameState?: string; // Current game state for routing (e.g., 'lobby', 'question', 'collecting')
 }
 
