@@ -170,8 +170,8 @@ service cloud.firestore {
                             request.resource.data.correctAnswerIndex >= 0 &&
                             request.resource.data.correctAnswerIndex <= 3)
                            ||
-                           // Interest Cloud submissions (during collecting state)
-                           (get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'interest-cloud' &&
+                           // Thoughts Gathering submissions (during collecting state)
+                           (get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'thoughts-gathering' &&
                             get(/databases/$(database)/documents/games/$(gameId)).data.state == 'collecting' &&
                             request.resource.data.rawText is string &&
                             request.resource.data.rawText.size() >= 1 &&
@@ -186,9 +186,9 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      // Ranking items subcollection - items to be ranked by participants
+      // Evaluation items subcollection - items to be evaluated by participants
       match /items/{itemId} {
-        // Anyone can read items (for display during ranking)
+        // Anyone can read items (for display during evaluation)
         allow read: if true;
 
         // Host can create items OR players can submit items if allowed (during collecting state)
@@ -198,7 +198,7 @@ service cloud.firestore {
                           request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId)
                          ||
                          // Players can submit items during collecting state (no auth required)
-                         (get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'ranking' &&
+                         (get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'evaluation' &&
                           get(/databases/$(database)/documents/games/$(gameId)).data.state == 'collecting' &&
                           request.resource.data.text is string &&
                           request.resource.data.text.size() >= 1 &&
@@ -216,17 +216,17 @@ service cloud.firestore {
                          request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId;
       }
 
-      // Ranking ratings subcollection - player ratings for items
+      // Evaluation ratings subcollection - player ratings for items
       match /ratings/{ratingId} {
         // Anyone can read ratings (for host to see progress and for results)
         allow read: if true;
 
-        // Players can create/update their own ratings (during ranking state)
+        // Players can create/update their own ratings (during rating state)
         // The ratingId should match the playerId
         allow create, update: if ratingId == request.resource.data.playerId &&
                                  request.resource.data.playerName is string &&
-                                 get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'ranking' &&
-                                 get(/databases/$(database)/documents/games/$(gameId)).data.state == 'ranking';
+                                 get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'evaluation' &&
+                                 get(/databases/$(database)/documents/games/$(gameId)).data.state == 'rating';
 
         // No client-side deletes
         allow delete: if false;
