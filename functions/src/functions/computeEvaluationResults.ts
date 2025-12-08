@@ -1,5 +1,5 @@
 /**
- * Cloud Function to compute ranking results
+ * Cloud Function to compute evaluation results
  *
  * This function aggregates all player ratings and computes:
  * - Per-metric averages, medians, and standard deviations
@@ -107,7 +107,7 @@ function determineConsensusLevel(
   return 'low';
 }
 
-export const computeRankingResults = onCall(
+export const computeEvaluationResults = onCall(
   {
     region: REGION,
     cors: ALLOWED_ORIGINS,
@@ -130,8 +130,8 @@ export const computeRankingResults = onCall(
 
       const gameData = gameDoc.data();
 
-      if (gameData?.activityType !== 'ranking') {
-        return { success: false, message: 'Not a ranking game' };
+      if (gameData?.activityType !== 'evaluation') {
+        return { success: false, message: 'Not an evaluation game' };
       }
 
       // Fetch activity for metrics configuration
@@ -307,7 +307,7 @@ export const computeRankingResults = onCall(
         .collection('games')
         .doc(gameId)
         .collection('aggregates')
-        .doc('rankings')
+        .doc('evaluations')
         .set(results);
 
       // Update game state to 'results'
@@ -317,14 +317,14 @@ export const computeRankingResults = onCall(
 
       return {
         success: true,
-        message: 'Ranking results computed successfully',
+        message: 'Evaluation results computed successfully',
         results: {
           totalItems: itemResults.length,
           totalParticipants: participantsWhoRated,
         },
       };
     } catch (error) {
-      console.error('Error computing ranking results:', error);
+      console.error('Error computing evaluation results:', error);
       return {
         success: false,
         message: `Error computing results: ${

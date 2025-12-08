@@ -142,9 +142,9 @@ export const extractTopics = onCall(
       throw new HttpsError('permission-denied', 'Only the game host can process submissions');
     }
 
-    // Verify this is an Interest Cloud game
-    if (gameData?.activityType !== 'interest-cloud') {
-      throw new HttpsError('failed-precondition', 'This game is not an Interest Cloud activity');
+    // Verify this is a Thoughts Gathering game
+    if (gameData?.activityType !== 'thoughts-gathering') {
+      throw new HttpsError('failed-precondition', 'This game is not a Thoughts Gathering activity');
     }
 
     // Get all submissions for this game

@@ -297,7 +297,7 @@ export interface RankingConfig {
  */
 export interface RankingActivity {
   id: string;
-  type: 'ranking';
+  type: 'evaluation';
   title: string;
   description?: string;
   hostId: string;
