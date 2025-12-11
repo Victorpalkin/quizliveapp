@@ -52,15 +52,15 @@ export default function Home() {
               </div>
 
               <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
-                Engage Your Audience.{' '}
+                Run{' '}
                 <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  Close More Deals.
+                  Live Interactive Sessions
                 </span>
               </h1>
 
               <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                Transform your presales activities with interactive sessions that capture insights,
-                drive engagement, and accelerate decisions.
+                Host real-time quizzes, gather thoughts from your audience, and run collaborative
+                evaluation sessions — all synchronized across every device.
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
@@ -95,10 +95,10 @@ export default function Home() {
           <div className="container mx-auto px-6">
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Built for Presales Success
+                Three Activity Types
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Three powerful activity types designed for every stage of your customer engagement
+                Choose the right format for your live session
               </p>
             </div>
 
@@ -360,98 +360,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-24">
-          <div className="container mx-auto px-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-              {/* Host Card */}
-              <Card className="border-card-border hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden">
-                <CardContent className="p-10">
-                  <div className="flex flex-col items-center gap-6 text-center">
-                    <div className="rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 p-6 group-hover:from-primary/30 group-hover:to-accent/30 transition-colors">
-                      <Zap className="h-14 w-14 text-primary" />
-                    </div>
-
-                    <div className="space-y-3">
-                      <h2 className="text-3xl font-bold">Host Activities</h2>
-                      <p className="text-muted-foreground text-lg leading-relaxed">
-                        Create interactive sessions for your customers and prospects
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col gap-2 text-left w-full pt-2">
-                      <div className="flex items-center gap-3 text-muted-foreground">
-                        <BrainCircuit className="h-5 w-5 text-primary flex-shrink-0" />
-                        <span>Live Quizzes & Polls</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-muted-foreground">
-                        <Cloud className="h-5 w-5 text-blue-500 flex-shrink-0" />
-                        <span>Thoughts Gathering</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-muted-foreground">
-                        <BarChart3 className="h-5 w-5 text-orange-500 flex-shrink-0" />
-                        <span>Evaluation & Ranking</span>
-                      </div>
-                    </div>
-
-                    <Button
-                      asChild
-                      size="lg"
-                      className="w-full mt-4 py-6 text-lg bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
-                    >
-                      <Link href="/host">
-                        Get Started
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Join Card */}
-              <Card className="border-card-border hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden">
-                <CardContent className="p-10">
-                  <div className="flex flex-col items-center gap-6 text-center">
-                    <div className="rounded-2xl bg-accent/10 p-6 group-hover:bg-accent/20 transition-colors">
-                      <Play className="h-14 w-14 text-accent" />
-                    </div>
-
-                    <div className="space-y-3">
-                      <h2 className="text-3xl font-bold">Join a Session</h2>
-                      <p className="text-muted-foreground text-lg leading-relaxed">
-                        Enter your session PIN to participate in a live activity
-                      </p>
-                    </div>
-
-                    <div className="flex-1 flex items-center justify-center py-8">
-                      <div className="text-center">
-                        <div className="text-6xl font-mono font-bold text-muted-foreground/30 tracking-widest">
-                          ????????
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-2">
-                          8-character session code
-                        </p>
-                      </div>
-                    </div>
-
-                    <Button
-                      asChild
-                      size="lg"
-                      variant="outline"
-                      className="w-full mt-4 py-6 text-lg hover:bg-accent/10 transition-colors"
-                    >
-                      <Link href="/join">
-                        Enter PIN
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
-
         {/* Footer */}
         <footer className="py-12 border-t border-border">
           <div className="container mx-auto px-6 text-center">
@@ -462,7 +370,7 @@ export default function Home() {
               <span className="text-xl font-semibold">Zivo</span>
             </div>
             <p className="text-muted-foreground">
-              Real-time audience engagement for presales success
+              Real-time interactive sessions for teams and audiences
             </p>
           </div>
         </footer>
