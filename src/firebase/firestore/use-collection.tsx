@@ -10,7 +10,13 @@ import {
 } from 'firebase/firestore';
 import { useFirestore } from '../provider';
 import { errorEmitter } from '../error-emitter';
-import { FirestorePermissionError } from '../errors';
+import {
+  FirestorePermissionError,
+  FirestoreIndexError,
+  isFirestorePermissionError,
+  isFirestoreIndexError,
+  extractIndexUrl,
+} from '../errors';
 
 // Internal Firebase query type for accessing path information
 interface FirebaseQueryInternal {
@@ -55,14 +61,30 @@ export function useCollection<T extends DocumentData>(
         }));
         setState({ data, loading: false, error: null });
       },
-      async (err) => {
+      (err) => {
         console.error(err);
-        const permissionError = new FirestorePermissionError({
-          path: getQueryPath(query),
-          operation: 'list',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        setState({ data: null, loading: false, error: permissionError });
+        const path = getQueryPath(query);
+
+        // Classify the error based on its type
+        if (isFirestoreIndexError(err)) {
+          const indexError = new FirestoreIndexError(
+            { path, operation: 'list', indexUrl: extractIndexUrl(err) },
+            err.message
+          );
+          errorEmitter.emit('index-error', indexError);
+          setState({ data: null, loading: false, error: indexError });
+        } else if (isFirestorePermissionError(err)) {
+          const permissionError = new FirestorePermissionError({
+            path,
+            operation: 'list',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+          setState({ data: null, loading: false, error: permissionError });
+        } else {
+          // For other Firestore errors, emit a generic error event
+          errorEmitter.emit('firestore-error', err);
+          setState({ data: null, loading: false, error: err });
+        }
       }
     );
 
