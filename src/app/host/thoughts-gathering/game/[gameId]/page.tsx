@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
-import { Cloud, StopCircle, Loader2, RefreshCw, Home, MessageSquare, Users, QrCode, Copy, PlayCircle, PauseCircle, XCircle, BarChart3 } from 'lucide-react';
+import { Cloud, StopCircle, Loader2, RefreshCw, Home, MessageSquare, Users, QrCode, Copy, PlayCircle, PauseCircle, XCircle, BarChart3, LayoutGrid } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, collection, updateDoc, DocumentReference, Query } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +16,7 @@ import { gameConverter, thoughtsGatheringActivityConverter, thoughtSubmissionCon
 import { clearHostSession, saveHostSession } from '@/lib/host-session';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { WordCloud } from '@/components/app/word-cloud';
+import { ThoughtsGroupedView } from '@/components/app/thoughts-grouped-view';
 import { useState, useEffect, useCallback } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
@@ -37,6 +38,7 @@ export default function ThoughtsGatheringGamePage() {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [joinUrl, setJoinUrl] = useState('');
+  const [resultsView, setResultsView] = useState<'grouped' | 'cloud'>('grouped');
 
   // Typed ref for reading with converter
   const gameRef = useMemoFirebase(
@@ -398,12 +400,42 @@ export default function ThoughtsGatheringGamePage() {
       case 'display':
         return (
           <div className="space-y-6">
-            {/* Word Cloud */}
+            {/* Results Display */}
             <Card className="border-2 border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-purple-500/5">
               <CardContent className="p-8">
-                <h2 className="text-2xl font-bold text-center mb-6">Thoughts Cloud</h2>
+                {/* Header with toggle */}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold">Collected Thoughts</h2>
+                  <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+                    <Button
+                      variant={resultsView === 'grouped' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setResultsView('grouped')}
+                      className="h-8"
+                    >
+                      <LayoutGrid className="h-4 w-4 mr-1.5" />
+                      Groups
+                    </Button>
+                    <Button
+                      variant={resultsView === 'cloud' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setResultsView('cloud')}
+                      className="h-8"
+                    >
+                      <Cloud className="h-4 w-4 mr-1.5" />
+                      Cloud
+                    </Button>
+                  </div>
+                </div>
                 {topicCloud?.topics && topicCloud.topics.length > 0 ? (
-                  <WordCloud topics={topicCloud.topics} />
+                  resultsView === 'grouped' ? (
+                    <ThoughtsGroupedView
+                      topics={topicCloud.topics}
+                      submissions={submissions || []}
+                    />
+                  ) : (
+                    <WordCloud topics={topicCloud.topics} />
+                  )
                 ) : (
                   <p className="text-center text-muted-foreground py-12">
                     No topics extracted
@@ -491,9 +523,39 @@ export default function ThoughtsGatheringGamePage() {
             {/* Final Results */}
             <Card className="border-2 border-green-500/20 bg-gradient-to-br from-green-500/5 to-blue-500/5">
               <CardContent className="p-8">
-                <h2 className="text-2xl font-bold text-center mb-6">Session Complete!</h2>
+                {/* Header with toggle */}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold">Session Complete!</h2>
+                  <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+                    <Button
+                      variant={resultsView === 'grouped' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setResultsView('grouped')}
+                      className="h-8"
+                    >
+                      <LayoutGrid className="h-4 w-4 mr-1.5" />
+                      Groups
+                    </Button>
+                    <Button
+                      variant={resultsView === 'cloud' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setResultsView('cloud')}
+                      className="h-8"
+                    >
+                      <Cloud className="h-4 w-4 mr-1.5" />
+                      Cloud
+                    </Button>
+                  </div>
+                </div>
                 {topicCloud?.topics && topicCloud.topics.length > 0 ? (
-                  <WordCloud topics={topicCloud.topics} />
+                  resultsView === 'grouped' ? (
+                    <ThoughtsGroupedView
+                      topics={topicCloud.topics}
+                      submissions={submissions || []}
+                    />
+                  ) : (
+                    <WordCloud topics={topicCloud.topics} />
+                  )
                 ) : (
                   <p className="text-center text-muted-foreground py-12">No topics collected</p>
                 )}

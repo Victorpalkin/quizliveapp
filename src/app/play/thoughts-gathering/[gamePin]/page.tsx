@@ -13,9 +13,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Cloud, Loader2, Send, CheckCircle, Home, PauseCircle } from 'lucide-react';
+import { Cloud, Loader2, Send, CheckCircle, Home, PauseCircle, LayoutGrid } from 'lucide-react';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { WordCloud } from '@/components/app/word-cloud';
+import { ThoughtsGroupedView } from '@/components/app/thoughts-grouped-view';
 
 type PlayerState = 'joining' | 'submitting' | 'waiting' | 'viewing' | 'ended' | 'cancelled';
 
@@ -37,6 +38,9 @@ export default function ThoughtsGatheringPlayerPage() {
   const [submissionText, setSubmissionText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionCount, setSubmissionCount] = useState(0);
+
+  // View toggle state
+  const [resultsView, setResultsView] = useState<'grouped' | 'cloud'>('grouped');
 
   // Game data
   const gameRef = useMemoFirebase(
@@ -70,6 +74,15 @@ export default function ThoughtsGatheringPlayerPage() {
     [firestore, gameDocId, playerId]
   );
   const { data: playerSubmissions } = useCollection<ThoughtSubmission>(submissionsQuery);
+
+  // All submissions (for grouped view when viewing results)
+  const allSubmissionsQuery = useMemoFirebase(
+    () => (gameDocId && (state === 'viewing' || state === 'ended'))
+      ? collection(firestore, 'games', gameDocId, 'submissions').withConverter(thoughtSubmissionConverter) as Query<ThoughtSubmission>
+      : null,
+    [firestore, gameDocId, state]
+  );
+  const { data: allSubmissions } = useCollection<ThoughtSubmission>(allSubmissionsQuery);
 
   // Keep awake
   const shouldKeepAwake = ['submitting', 'waiting', 'viewing'].includes(state);
@@ -343,9 +356,39 @@ export default function ThoughtsGatheringPlayerPage() {
           <div className="w-full max-w-2xl space-y-6">
             <Card className="shadow-2xl">
               <CardContent className="p-8">
-                <h2 className="text-2xl font-bold text-center mb-6">Thoughts Cloud</h2>
+                {/* Header with toggle */}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold">Collected Thoughts</h2>
+                  <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+                    <Button
+                      variant={resultsView === 'grouped' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setResultsView('grouped')}
+                      className="h-8"
+                    >
+                      <LayoutGrid className="h-4 w-4 mr-1.5" />
+                      Groups
+                    </Button>
+                    <Button
+                      variant={resultsView === 'cloud' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setResultsView('cloud')}
+                      className="h-8"
+                    >
+                      <Cloud className="h-4 w-4 mr-1.5" />
+                      Cloud
+                    </Button>
+                  </div>
+                </div>
                 {topicCloud?.topics && topicCloud.topics.length > 0 ? (
-                  <WordCloud topics={topicCloud.topics} />
+                  resultsView === 'grouped' ? (
+                    <ThoughtsGroupedView
+                      topics={topicCloud.topics}
+                      submissions={allSubmissions || []}
+                    />
+                  ) : (
+                    <WordCloud topics={topicCloud.topics} />
+                  )
                 ) : (
                   <p className="text-center text-muted-foreground py-12">
                     Results will appear here...
