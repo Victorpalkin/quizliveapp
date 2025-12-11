@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, DocumentReference, Query } from 'firebase/firestore';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
 import type { Quiz, Player, Game, GameLeaderboard, QuestionSubmission } from '@/lib/types';
-import { getEffectiveQuestions } from '@/lib/utils/game-utils';
 
 // Hooks
 import { useSessionManager } from './hooks/use-session-manager';
@@ -85,23 +84,19 @@ export default function QuizPlayerPage() {
   );
   const { data: playerSubmissions } = useCollection<QuestionSubmission>(submissionsQuery);
 
-  // Quiz caching (quiz is immutable during game)
-  const [cachedQuiz, setCachedQuiz] = useState<Quiz | null>(null);
+  // Quiz metadata for lobby only (crowdsource settings)
+  // Note: We no longer fetch the full quiz - questions are in game.questions (sanitized, no correct answers)
+  // This prevents players from seeing correct answers in browser dev tools
   const quizRef = useMemoFirebase(
-    () => (!cachedQuiz && game && game.quizId) ? doc(firestore, 'quizzes', game.quizId) : null,
-    [firestore, game, cachedQuiz]
+    () => (game && game.quizId) ? doc(firestore, 'quizzes', game.quizId) : null,
+    [firestore, game]
   );
   const { data: quizData, loading: quizLoading } = useDoc(quizRef);
+  const quiz = quizData as Quiz | null;
 
-  useEffect(() => {
-    if (quizData && !cachedQuiz) {
-      setCachedQuiz(quizData as Quiz);
-    }
-  }, [quizData, cachedQuiz]);
-
-  const quiz = cachedQuiz || (quizData as Quiz | null);
-  // Use effective questions (game.questions if crowdsourced, otherwise quiz.questions)
-  const effectiveQuestions = getEffectiveQuestions(game, quiz);
+  // Use questions from game.questions (sanitized, no correct answers)
+  // This is populated by the host when starting the game
+  const effectiveQuestions = game?.questions || [];
   const question = effectiveQuestions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;
 
@@ -110,7 +105,7 @@ export default function QuizPlayerPage() {
     gamePin,
     sessionManager.hasValidSession(),
     game,
-    quiz,
+    effectiveQuestions.length,
     gameLoading
   );
 
@@ -265,8 +260,8 @@ export default function QuizPlayerPage() {
         return (
           <QuestionScreen
             question={question!}
-            quiz={quiz!}
             game={game!}
+            totalQuestions={effectiveQuestions.length}
             time={time}
             timeLimit={timeLimit}
             answerSelected={answerState.answerSelected}

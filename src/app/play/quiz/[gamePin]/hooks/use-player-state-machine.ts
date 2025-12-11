@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Game, Quiz } from '@/lib/types';
+import type { Game } from '@/lib/types';
 import { isLastQuestion as checkIsLastQuestion } from '@/lib/utils/game-utils';
 
 export type PlayerState = 'joining' | 'lobby' | 'preparing' | 'question' | 'waiting' | 'result' | 'ended' | 'cancelled' | 'reconnecting' | 'session-invalid';
@@ -8,7 +8,7 @@ export function usePlayerStateMachine(
   gamePin: string,
   hasValidSession: boolean,
   game: Game | null,
-  quiz: Quiz | null,
+  totalQuestions: number,
   gameLoading: boolean
 ) {
   // Initialize state from session if available
@@ -23,7 +23,7 @@ export function usePlayerStateMachine(
   const lastQuestionIndexRef = useRef<number>(-1);
 
   // Calculate if this is the last question
-  const isLastQuestion = checkIsLastQuestion(game, quiz);
+  const isLastQuestion = checkIsLastQuestion(game, totalQuestions);
 
   // Main state synchronization effect
   useEffect(() => {

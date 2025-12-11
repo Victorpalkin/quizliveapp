@@ -9,14 +9,12 @@ import type {
   SingleChoiceQuestion,
   MultipleChoiceQuestion,
   SliderQuestion,
-  SlideQuestion,
   FreeResponseQuestion,
   PollSingleQuestion,
   PollMultipleQuestion,
   SubmitAnswerResponse,
   Question,
 } from '@/lib/types';
-import { calculateTimeBasedScore, calculateProportionalScore, calculateSliderScore } from '@/lib/scoring';
 import type { AnswerResult } from '../types';
 
 type QuestionType = Question['type'];
@@ -95,6 +93,7 @@ export function useAnswerSubmission(
   const { toast } = useToast();
 
   // Submit single choice answer
+  // Note: Correct answer is no longer available client-side - we wait for server response
   const submitSingleChoice = useCallback(async (
     answerIndex: number,
     question: SingleChoiceQuestion,
@@ -110,28 +109,25 @@ export function useAnswerSubmission(
       has_time_bonus: timeRemaining > 0,
     });
 
-    const isCorrect = answerIndex === question.correctAnswerIndex;
-    const estimatedPoints = calculateTimeBasedScore(isCorrect, timeRemaining, timeLimit);
-
-    // Optimistic UI
+    // Optimistic UI - show "waiting for server" state
+    // Since we don't have the correct answer, we can't calculate score locally
     setLastAnswer({
       selected: answerIndex,
-      correct: [question.correctAnswerIndex],
-      points: estimatedPoints,
+      correct: [], // Will be updated by server
+      points: 0, // Will be updated by server
       wasTimeout: false
     });
 
     const optimisticAnswer = createOptimisticAnswer(
       currentQuestionIndex,
       'single-choice',
-      estimatedPoints,
-      isCorrect,
+      0, // Will be updated by server
+      false, // Will be updated by server
       { answerIndex }
     );
 
     setPlayer(p => p ? {
       ...p,
-      score: p.score + estimatedPoints,
       answers: [...(p.answers || []), optimisticAnswer]
     } : null);
 
@@ -146,30 +142,31 @@ export function useAnswerSubmission(
         timeRemaining,
         questionType: 'single-choice',
         questionTimeLimit: question.timeLimit,
-        correctAnswerIndex: question.correctAnswerIndex,
       });
 
-      const { points: actualPoints, newScore } = result.data;
+      const { points: actualPoints, newScore, isCorrect } = result.data;
 
-      if (actualPoints !== estimatedPoints) {
-        setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
-        setPlayer(p => {
-          if (!p) return null;
-          const updatedAnswers = p.answers.map(a =>
-            a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints } : a
-          );
-          return { ...p, score: newScore, answers: updatedAnswers };
-        });
-      } else {
-        setPlayer(p => p ? { ...p, score: newScore } : null);
-      }
-      // Note: currentStreak is now computed in computeQuestionResults and read from aggregate
+      // Update with server values
+      setLastAnswer(prev => prev ? {
+        ...prev,
+        points: actualPoints,
+        correct: isCorrect ? [answerIndex] : [] // If correct, our answer was the correct one
+      } : null);
+
+      setPlayer(p => {
+        if (!p) return null;
+        const updatedAnswers = p.answers.map(a =>
+          a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints, isCorrect } : a
+        );
+        return { ...p, score: newScore, answers: updatedAnswers };
+      });
     } catch (error: any) {
       handleSubmissionError(error, toast);
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
   // Submit multiple choice answer
+  // Note: Correct answers are no longer available client-side - we wait for server response
   const submitMultipleChoice = useCallback(async (
     answerIndices: number[],
     question: MultipleChoiceQuestion,
@@ -185,37 +182,25 @@ export function useAnswerSubmission(
       has_time_bonus: timeRemaining > 0,
     });
 
-    const correctAnswerIndices = question.correctAnswerIndices;
-    const correctSelected = answerIndices.filter(i => correctAnswerIndices.includes(i)).length;
-    const wrongSelected = answerIndices.filter(i => !correctAnswerIndices.includes(i)).length;
-    const totalCorrect = correctAnswerIndices.length;
-
-    const estimatedPoints = calculateProportionalScore(
-      correctSelected, wrongSelected, totalCorrect, timeRemaining, timeLimit
-    );
-    const isCorrect = correctSelected === totalCorrect && wrongSelected === 0;
-    const isPartiallyCorrect = !isCorrect && estimatedPoints > 0;
-
-    // Optimistic UI
+    // Optimistic UI - show "waiting for server" state
     setLastAnswer({
-      selected: isCorrect ? 1 : 0,
+      selected: 0, // Will be updated by server
       correct: [1],
-      points: estimatedPoints,
+      points: 0, // Will be updated by server
       wasTimeout: false,
-      isPartiallyCorrect
+      isPartiallyCorrect: false
     });
 
     const optimisticAnswer = createOptimisticAnswer(
       currentQuestionIndex,
       'multiple-choice',
-      estimatedPoints,
-      isCorrect,
+      0, // Will be updated by server
+      false, // Will be updated by server
       { answerIndices }
     );
 
     setPlayer(p => p ? {
       ...p,
-      score: p.score + estimatedPoints,
       answers: [...(p.answers || []), optimisticAnswer]
     } : null);
 
@@ -230,30 +215,32 @@ export function useAnswerSubmission(
         timeRemaining,
         questionType: 'multiple-choice',
         questionTimeLimit: question.timeLimit,
-        correctAnswerIndices: question.correctAnswerIndices,
       });
 
-      const { points: actualPoints, newScore, isPartiallyCorrect: serverPartiallyCorrect } = result.data;
+      const { points: actualPoints, newScore, isCorrect, isPartiallyCorrect: serverPartiallyCorrect } = result.data;
 
-      if (actualPoints !== estimatedPoints || serverPartiallyCorrect !== isPartiallyCorrect) {
-        setLastAnswer(prev => prev ? { ...prev, points: actualPoints, isPartiallyCorrect: serverPartiallyCorrect } : null);
-        setPlayer(p => {
-          if (!p) return null;
-          const updatedAnswers = p.answers.map(a =>
-            a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints } : a
-          );
-          return { ...p, score: newScore, answers: updatedAnswers };
-        });
-      } else {
-        setPlayer(p => p ? { ...p, score: newScore } : null);
-      }
-      // Note: currentStreak is now computed in computeQuestionResults and read from aggregate
+      // Update with server values
+      setLastAnswer(prev => prev ? {
+        ...prev,
+        points: actualPoints,
+        selected: isCorrect ? 1 : 0,
+        isPartiallyCorrect: serverPartiallyCorrect
+      } : null);
+
+      setPlayer(p => {
+        if (!p) return null;
+        const updatedAnswers = p.answers.map(a =>
+          a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints, isCorrect } : a
+        );
+        return { ...p, score: newScore, answers: updatedAnswers };
+      });
     } catch (error: any) {
       handleSubmissionError(error, toast);
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
   // Submit slider answer
+  // Note: Correct value is no longer available client-side - we wait for server response
   const submitSlider = useCallback(async (
     sliderValue: number,
     question: SliderQuestion,
@@ -268,35 +255,24 @@ export function useAnswerSubmission(
       has_time_bonus: timeRemaining > 0,
     });
 
-    const { points: estimatedPoints, isCorrect } = calculateSliderScore(
-      sliderValue,
-      question.correctValue,
-      question.minValue,
-      question.maxValue,
-      timeRemaining,
-      question.timeLimit || 20,
-      question.acceptableError
-    );
-
-    // Optimistic UI
+    // Optimistic UI - show "waiting for server" state
     setLastAnswer({
-      selected: isCorrect ? 1 : 0,
+      selected: 0, // Will be updated by server
       correct: [1],
-      points: estimatedPoints,
+      points: 0, // Will be updated by server
       wasTimeout: false
     });
 
     const optimisticAnswer = createOptimisticAnswer(
       currentQuestionIndex,
       'slider',
-      estimatedPoints,
-      isCorrect,
+      0, // Will be updated by server
+      false, // Will be updated by server
       { sliderValue }
     );
 
     setPlayer(p => p ? {
       ...p,
-      score: p.score + estimatedPoints,
       answers: [...(p.answers || []), optimisticAnswer]
     } : null);
 
@@ -311,33 +287,31 @@ export function useAnswerSubmission(
         timeRemaining,
         questionType: 'slider',
         questionTimeLimit: question.timeLimit,
-        correctValue: question.correctValue,
-        minValue: question.minValue,
-        maxValue: question.maxValue,
-        acceptableError: question.acceptableError,
       });
 
-      const { points: actualPoints, newScore } = result.data;
+      const { points: actualPoints, newScore, isCorrect } = result.data;
 
-      if (actualPoints !== estimatedPoints) {
-        setLastAnswer(prev => prev ? { ...prev, points: actualPoints } : null);
-        setPlayer(p => {
-          if (!p) return null;
-          const updatedAnswers = p.answers.map(a =>
-            a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints } : a
-          );
-          return { ...p, score: newScore, answers: updatedAnswers };
-        });
-      } else {
-        setPlayer(p => p ? { ...p, score: newScore } : null);
-      }
-      // Note: currentStreak is now computed in computeQuestionResults and read from aggregate
+      // Update with server values
+      setLastAnswer(prev => prev ? {
+        ...prev,
+        points: actualPoints,
+        selected: isCorrect ? 1 : 0
+      } : null);
+
+      setPlayer(p => {
+        if (!p) return null;
+        const updatedAnswers = p.answers.map(a =>
+          a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints, isCorrect } : a
+        );
+        return { ...p, score: newScore, answers: updatedAnswers };
+      });
     } catch (error: any) {
       handleSubmissionError(error, toast);
     }
   }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
 
   // Submit free-response answer
+  // Note: Correct answer is no longer available client-side - we wait for server response
   const submitFreeResponse = useCallback(async (
     textAnswer: string,
     question: FreeResponseQuestion,
@@ -353,28 +327,24 @@ export function useAnswerSubmission(
       has_time_bonus: timeRemaining > 0,
     });
 
-    // Optimistic estimate: assume correct if non-empty (server validates)
-    const estimatedPoints = textAnswer.trim() ? calculateTimeBasedScore(true, timeRemaining, timeLimit) : 0;
-
-    // Optimistic UI
+    // Optimistic UI - show "waiting for server" state
     setLastAnswer({
-      selected: textAnswer.trim() ? 1 : 0,
+      selected: 0, // Will be updated by server
       correct: [1],
-      points: estimatedPoints,
+      points: 0, // Will be updated by server
       wasTimeout: false
     });
 
     const optimisticAnswer = createOptimisticAnswer(
       currentQuestionIndex,
       'free-response',
-      estimatedPoints,
-      true, // Optimistic - server will correct
+      0, // Will be updated by server
+      false, // Will be updated by server
       { textAnswer }
     );
 
     setPlayer(p => p ? {
       ...p,
-      score: p.score + estimatedPoints,
       answers: [...(p.answers || []), optimisticAnswer]
     } : null);
 
@@ -389,15 +359,11 @@ export function useAnswerSubmission(
         timeRemaining,
         questionType: 'free-response',
         questionTimeLimit: question.timeLimit,
-        correctAnswer: question.correctAnswer,
-        alternativeAnswers: question.alternativeAnswers,
-        caseSensitive: question.caseSensitive,
-        allowTypos: question.allowTypos,
       });
 
       const { points: actualPoints, newScore, isCorrect } = result.data;
 
-      // Always update with server values for free-response (fuzzy matching)
+      // Update with server values
       setLastAnswer(prev => prev ? {
         ...prev,
         points: actualPoints,
@@ -413,7 +379,6 @@ export function useAnswerSubmission(
         );
         return { ...p, score: newScore, answers: updatedAnswers };
       });
-      // Note: currentStreak is now computed in computeQuestionResults and read from aggregate
     } catch (error: any) {
       handleSubmissionError(error, toast);
     }

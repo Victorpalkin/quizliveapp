@@ -59,19 +59,16 @@ export function validateTimeRemaining(
 
 /**
  * Validate single-choice question data
+ * Note: correctAnswerIndex is now fetched from server-side answer key, not client request
  *
  * @param data - The submit answer request data
  * @throws HttpsError if validation fails
  */
 export function validateSingleChoice(data: SubmitAnswerRequest): void {
-  const { answerIndex, correctAnswerIndex } = data;
+  const { answerIndex } = data;
 
   if (answerIndex === undefined) {
     throw new HttpsError('invalid-argument', 'Single choice question requires answerIndex');
-  }
-
-  if (correctAnswerIndex === undefined) {
-    throw new HttpsError('invalid-argument', 'correctAnswerIndex is required for single-choice');
   }
 
   // -1 means no answer/timeout - minimal validation only
@@ -82,19 +79,16 @@ export function validateSingleChoice(data: SubmitAnswerRequest): void {
 
 /**
  * Validate multiple-choice question data
+ * Note: correctAnswerIndices is now fetched from server-side answer key, not client request
  *
  * @param data - The submit answer request data
  * @throws HttpsError if validation fails
  */
 export function validateMultipleChoice(data: SubmitAnswerRequest): void {
-  const { answerIndices, correctAnswerIndices } = data;
+  const { answerIndices } = data;
 
   if (!answerIndices) {
     throw new HttpsError('invalid-argument', 'Multiple choice question requires answerIndices');
-  }
-
-  if (!correctAnswerIndices || correctAnswerIndices.length === 0) {
-    throw new HttpsError('invalid-argument', 'correctAnswerIndices is required for multiple-choice');
   }
 
   // Minimal validation - check indices aren't negative
@@ -107,26 +101,21 @@ export function validateMultipleChoice(data: SubmitAnswerRequest): void {
 
 /**
  * Validate slider question data
+ * Note: correctValue, minValue, maxValue are now fetched from server-side answer key
+ * We can only validate that sliderValue is a number here
  *
  * @param data - The submit answer request data
  * @throws HttpsError if validation fails
  */
 export function validateSlider(data: SubmitAnswerRequest): void {
-  const { sliderValue, correctValue, minValue, maxValue } = data;
+  const { sliderValue } = data;
 
   if (sliderValue === undefined) {
     throw new HttpsError('invalid-argument', 'Slider question requires sliderValue');
   }
 
-  if (correctValue === undefined || minValue === undefined || maxValue === undefined) {
-    throw new HttpsError('invalid-argument', 'Slider metadata (correctValue, minValue, maxValue) is required');
-  }
-
-  if (sliderValue < minValue || sliderValue > maxValue) {
-    throw new HttpsError(
-      'invalid-argument',
-      `Slider value ${sliderValue} out of range [${minValue}, ${maxValue}]`
-    );
+  if (typeof sliderValue !== 'number' || isNaN(sliderValue)) {
+    throw new HttpsError('invalid-argument', 'sliderValue must be a valid number');
   }
 }
 
@@ -171,19 +160,16 @@ export function validatePollMultiple(data: SubmitAnswerRequest): void {
 
 /**
  * Validate free-response question data
+ * Note: correctAnswer and alternativeAnswers are now fetched from server-side answer key
  *
  * @param data - The submit answer request data
  * @throws HttpsError if validation fails
  */
 export function validateFreeResponse(data: SubmitAnswerRequest): void {
-  const { textAnswer, correctAnswer } = data;
+  const { textAnswer } = data;
 
   if (textAnswer === undefined) {
     throw new HttpsError('invalid-argument', 'Free-response question requires textAnswer');
-  }
-
-  if (correctAnswer === undefined || correctAnswer.length === 0) {
-    throw new HttpsError('invalid-argument', 'correctAnswer is required for free-response');
   }
 
   // Validate textAnswer is a string and not too long

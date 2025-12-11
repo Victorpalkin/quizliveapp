@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
-import { SubmitAnswerRequest, Player, PlayerAnswer, SubmitAnswerResult } from '../types';
-import { ALLOWED_ORIGINS, REGION, DEFAULT_QUESTION_TIME_LIMIT } from '../config';
+import { SubmitAnswerRequest, Player, PlayerAnswer, SubmitAnswerResult, AnswerKey, AnswerKeyEntry } from '../types';
+import { ALLOWED_ORIGINS, REGION } from '../config';
 import { validateOrigin } from '../utils/cors';
 import { verifyAppCheck } from '../utils/appCheck';
 import {
@@ -9,7 +9,7 @@ import {
   validateTimeRemaining,
   validateQuestionData
 } from '../utils/validation';
-import { calculateScore } from '../utils/scoring';
+import { calculateScoreFromAnswerKey } from '../utils/scoring';
 
 /**
  * Cloud Function to validate and score player answers
@@ -56,16 +56,33 @@ export const submitAnswer = onCall(
     const db = admin.firestore();
 
     try {
-      // Fetch player document only - game fetch removed for performance
-      // Security: Transaction handles duplicate answer prevention
-      const playerRef = db.collection('games').doc(gameId).collection('players').doc(playerId);
-      const playerDoc = await playerRef.get();
+      // Fetch answer key and player document in parallel for performance
+      const [answerKeyDoc, playerDoc] = await Promise.all([
+        db.collection('games').doc(gameId).collection('aggregates').doc('answerKey').get(),
+        db.collection('games').doc(gameId).collection('players').doc(playerId).get()
+      ]);
 
+      // Validate answer key exists
+      if (!answerKeyDoc.exists) {
+        throw new HttpsError('not-found', 'Answer key not found - game may not be started');
+      }
+
+      const answerKey = answerKeyDoc.data() as AnswerKey;
+
+      // Validate question index is valid
+      if (questionIndex < 0 || questionIndex >= answerKey.questions.length) {
+        throw new HttpsError('invalid-argument', 'Invalid question index');
+      }
+
+      const answerKeyEntry = answerKey.questions[questionIndex] as AnswerKeyEntry;
+
+      // Validate player exists
       if (!playerDoc.exists) {
         throw new HttpsError('not-found', 'Player not found');
       }
 
       const player = playerDoc.data() as Player;
+      const playerRef = db.collection('games').doc(gameId).collection('players').doc(playerId);
 
       // Check if player already answered this question (early validation)
       const answers = player.answers || [];
@@ -77,15 +94,15 @@ export const submitAnswer = onCall(
         );
       }
 
-      // Validate question-specific data
+      // Validate question-specific data (player's answer data only)
       validateQuestionData(data);
 
       // Validate time remaining is within bounds
-      validateTimeRemaining(timeRemaining, questionTimeLimit);
+      const timeLimit = answerKeyEntry.timeLimit || questionTimeLimit || 20;
+      validateTimeRemaining(timeRemaining, timeLimit);
 
-      // Calculate score based on question type
-      const timeLimit = questionTimeLimit || DEFAULT_QUESTION_TIME_LIMIT;
-      const { points, isCorrect, isPartiallyCorrect } = calculateScore(data, timeLimit);
+      // Calculate score using server-side answer key (secure - no client-provided correct answers)
+      const { points, isCorrect, isPartiallyCorrect } = calculateScoreFromAnswerKey(data, answerKeyEntry);
 
       const newScore = player.score + points;
 

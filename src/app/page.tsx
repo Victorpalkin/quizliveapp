@@ -103,85 +103,112 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {/* Customer Discovery */}
+              {/* Thoughts Gathering */}
               <Card className="border-card-border hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden">
                 <CardContent className="p-8">
                   <div className="rounded-2xl bg-blue-500/10 p-4 w-fit mb-6 group-hover:bg-blue-500/20 transition-colors">
                     <Cloud className="h-10 w-10 text-blue-500" />
                   </div>
-                  <h3 className="text-2xl font-semibold mb-3">Customer Discovery</h3>
+                  <h3 className="text-2xl font-semibold mb-3">Thoughts Gathering</h3>
                   <p className="text-muted-foreground mb-6 leading-relaxed">
-                    Collect customer needs, pain points, and interests in real-time.
-                    AI-powered topic clustering reveals what matters most.
+                    Collect ideas, feedback, and insights from your audience.
+                    AI-powered clustering reveals themes and priorities.
                   </p>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-3 text-sm">
+                    <p className="text-xs font-medium text-blue-500 uppercase tracking-wide">Use cases</p>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle className="h-4 w-4 text-blue-500" />
-                      <span>Open-ended submissions</span>
+                      <CheckCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      <span>Brainstorming sessions</span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle className="h-4 w-4 text-blue-500" />
-                      <span>AI topic extraction</span>
+                      <CheckCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      <span>Customer discovery & needs analysis</span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle className="h-4 w-4 text-blue-500" />
-                      <span>Visual word clouds</span>
+                      <CheckCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      <span>Q&A and feedback collection</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <CheckCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      <span>Pain point identification</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <CheckCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      <span>Workshop retrospectives</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Interactive Demos */}
+              {/* Quizzes & Polls */}
               <Card className="border-card-border hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden">
                 <CardContent className="p-8">
                   <div className="rounded-2xl bg-primary/10 p-4 w-fit mb-6 group-hover:bg-primary/20 transition-colors">
                     <BrainCircuit className="h-10 w-10 text-primary" />
                   </div>
-                  <h3 className="text-2xl font-semibold mb-3">Interactive Demos</h3>
+                  <h3 className="text-2xl font-semibold mb-3">Quizzes & Polls</h3>
                   <p className="text-muted-foreground mb-6 leading-relaxed">
-                    Engage prospects with quizzes and polls during presentations.
-                    Track participation and measure understanding instantly.
+                    Engage your audience with interactive questions.
+                    Real-time results keep energy high and capture opinions.
                   </p>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-3 text-sm">
+                    <p className="text-xs font-medium text-primary uppercase tracking-wide">Use cases</p>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle className="h-4 w-4 text-primary" />
-                      <span>Multiple question types</span>
+                      <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>Live polling during presentations</span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle className="h-4 w-4 text-primary" />
-                      <span>Real-time leaderboards</span>
+                      <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>Knowledge checks & training</span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle className="h-4 w-4 text-primary" />
-                      <span>AI-generated quizzes</span>
+                      <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>Product demo engagement</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>Quick voting on options</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span>Icebreakers & team building</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Prioritization Workshops */}
+              {/* Evaluation */}
               <Card className="border-card-border hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden">
                 <CardContent className="p-8">
                   <div className="rounded-2xl bg-orange-500/10 p-4 w-fit mb-6 group-hover:bg-orange-500/20 transition-colors">
                     <BarChart3 className="h-10 w-10 text-orange-500" />
                   </div>
-                  <h3 className="text-2xl font-semibold mb-3">Prioritization Workshops</h3>
+                  <h3 className="text-2xl font-semibold mb-3">Evaluation</h3>
                   <p className="text-muted-foreground mb-6 leading-relaxed">
-                    Help customers evaluate and rank features or solutions.
-                    Weighted scoring across multiple criteria drives consensus.
+                    Rate and rank items across custom criteria.
+                    Weighted scoring and consensus analysis drive decisions.
                   </p>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-3 text-sm">
+                    <p className="text-xs font-medium text-orange-500 uppercase tracking-wide">Use cases</p>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle className="h-4 w-4 text-orange-500" />
-                      <span>Custom metrics & weights</span>
+                      <CheckCircle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                      <span>Feature prioritization workshops</span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle className="h-4 w-4 text-orange-500" />
-                      <span>Consensus analysis</span>
+                      <CheckCircle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                      <span>Vendor or solution comparison</span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle className="h-4 w-4 text-orange-500" />
-                      <span>Visual heatmaps</span>
+                      <CheckCircle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                      <span>Requirements scoring (MoSCoW, RICE)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <CheckCircle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                      <span>Risk or impact assessment</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <CheckCircle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                      <span>Team decision-making</span>
                     </div>
                   </div>
                 </CardContent>

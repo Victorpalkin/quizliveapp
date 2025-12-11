@@ -24,21 +24,9 @@ interface UseAnswerStateReturn {
   answerSubmittedRef: React.MutableRefObject<boolean>;
 }
 
-/**
- * Extracts correct answer indices from a question based on its type.
- */
-function getCorrectAnswers(question: Question): number[] {
-  switch (question.type) {
-    case 'single-choice':
-      return [question.correctAnswerIndex];
-    case 'multiple-choice':
-      return question.correctAnswerIndices;
-    case 'slider':
-      return [1]; // Placeholder for slider correctness
-    default:
-      return []; // Poll types have no correct answers
-  }
-}
+// Note: Correct answers are no longer available client-side (security improvement).
+// For timeout/no-answer scenarios, we just use an empty array since the result
+// screen only checks `wasTimeout` to determine what to display.
 
 /**
  * Manages answer state and handles timeout/forced result scenarios.
@@ -116,11 +104,9 @@ export function useAnswerState({
 
       // Set local state immediately for question types that need answers
       // This shows "No answer" with 0 points on the result screen
-      const correctAnswers = getCorrectAnswers(question);
-
       setLastAnswer({
         selected: -1,
-        correct: correctAnswers,
+        correct: [], // Not available client-side for security
         points: 0,
         wasTimeout: true
       });
@@ -160,11 +146,9 @@ export function useAnswerState({
       setTimedOut(true);
 
       // Set "No answer" result - this shows on the result screen
-      const correctAnswers = getCorrectAnswers(question);
-
       setLastAnswer({
         selected: -1,
-        correct: correctAnswers,
+        correct: [], // Not available client-side for security
         points: 0,
         wasTimeout: true
       });

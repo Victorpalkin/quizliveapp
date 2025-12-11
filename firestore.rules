@@ -110,12 +110,16 @@ service cloud.firestore {
       // Only the host can update or delete the game
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.hostId;
 
-      // Leaderboard and analytics aggregates subcollection
+      // Leaderboard, analytics, and answer key aggregates subcollection
       match /aggregates/{aggId} {
-        // Leaderboard readable by all (for gameplay), analytics only by host
-        allow read: if aggId != 'analytics' ||
-                      (request.auth != null &&
-                       request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId);
+        // answerKey is NEVER readable by clients - only Cloud Functions (admin SDK)
+        // This prevents players from seeing correct answers
+        // Leaderboard readable by all (for gameplay)
+        // Analytics only by host
+        allow read: if aggId != 'answerKey' &&
+                      (aggId != 'analytics' ||
+                        (request.auth != null &&
+                         request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId));
 
         // Only the host can create/update aggregates (initialization from lobby)
         // Cloud Functions also update this using admin SDK
