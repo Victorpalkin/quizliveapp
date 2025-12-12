@@ -44,7 +44,7 @@ export default function HostGamePage() {
 
   // Game state (now uses aggregate document for leaderboard data)
   const {
-    game, gameRef, quiz, answerKey,
+    game, gameRef, quiz,
     topPlayers, totalPlayers, totalAnswered, answerCounts,
     gameLoading, quizLoading
   } = useGameState(gameId);
@@ -90,20 +90,20 @@ export default function HostGamePage() {
   }, [gameRef, router]);
 
   // Build answer distribution from pre-computed answerCounts
-  // Use answerKey for correct answer info (it has data for all questions including crowdsourced)
+  // Use quiz.questions for correct answer info (host has full quiz data)
   const questionIndex = game?.currentQuestionIndex || 0;
-  const answerKeyEntry = answerKey?.questions?.[questionIndex];
+  const quizQuestion = quiz?.questions?.[questionIndex];
   const answerDistribution = question && 'answers' in question
     ? question.answers.map((ans, index) => {
-        // Determine if this answer is correct based on answer key
+        // Determine if this answer is correct based on quiz question data
         let isCorrect = false;
-        if (answerKeyEntry) {
-          if (answerKeyEntry.type === 'single-choice') {
-            isCorrect = answerKeyEntry.correctAnswerIndex === index;
-          } else if (answerKeyEntry.type === 'multiple-choice') {
-            isCorrect = answerKeyEntry.correctAnswerIndices?.includes(index) || false;
+        if (quizQuestion) {
+          if (quizQuestion.type === 'single-choice') {
+            isCorrect = quizQuestion.correctAnswerIndex === index;
+          } else if (quizQuestion.type === 'multiple-choice') {
+            isCorrect = quizQuestion.correctAnswerIndices.includes(index);
           }
-          // Polls don't have correct answers
+          // Polls and crowdsourced questions (index >= quiz.questions.length) don't show correct answers
         }
         return {
           name: ans.text,
