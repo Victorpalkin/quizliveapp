@@ -412,7 +412,7 @@ export default function HostDashboardPage() {
         <div className="mb-12">
             <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-5xl font-semibold">My Content</h1>
+                    <h1 className="text-3xl font-semibold">My Content</h1>
                     {!quizzesLoading && !activitiesLoading && (quizzes?.length || 0) + (activities?.length || 0) > 0 && (
                         <span className="px-3 py-1 text-sm font-medium bg-muted text-muted-foreground rounded-full">
                             {(quizzes?.length || 0) + (activities?.length || 0)}
@@ -431,13 +431,13 @@ export default function HostDashboardPage() {
             </div>
 
             {/* Filter and Sort Controls */}
-            <div className="flex flex-wrap items-center gap-4 mb-6">
-                {/* Filter Tabs */}
-                <div className="flex items-center gap-1 bg-muted p-1.5 rounded-xl">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-4 mb-6">
+                {/* Filter Tabs - 2x2 grid on mobile, horizontal on desktop */}
+                <div className="grid grid-cols-2 sm:flex items-center gap-1 bg-muted p-1.5 rounded-xl w-full sm:w-auto">
                     {[
                         { value: 'all', label: 'All', icon: null },
                         { value: 'quiz', label: 'Quizzes', icon: FileQuestion },
-                        { value: 'thoughts-gathering', label: 'Thoughts Gatherings', icon: Cloud },
+                        { value: 'thoughts-gathering', label: 'Thoughts', icon: Cloud },
                         { value: 'evaluation', label: 'Evaluations', icon: BarChart3 },
                     ].map(({ value, label, icon: Icon }) => (
                         <Button
@@ -445,7 +445,7 @@ export default function HostDashboardPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => setFilterType(value as FilterType)}
-                            className={`rounded-lg transition-all duration-200 ${
+                            className={`rounded-lg transition-all duration-200 justify-center ${
                                 filterType === value
                                     ? 'bg-background shadow-sm text-foreground font-medium'
                                     : 'text-muted-foreground hover:text-foreground'
@@ -457,9 +457,9 @@ export default function HostDashboardPage() {
                     ))}
                 </div>
 
-                {/* Sort Dropdown */}
+                {/* Sort Dropdown - full width on mobile */}
                 <Select value={sortType} onValueChange={(value) => setSortType(value as SortType)}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                         <ArrowUpDown className="h-4 w-4 mr-2" />
                         <SelectValue placeholder="Sort by" />
                     </SelectTrigger>

@@ -241,9 +241,13 @@ export function SharedQuizzes() {
 
   return (
     <div className="mb-12">
-      <div className="flex items-center gap-2 mb-6">
-        <Share2 className="h-6 w-6 text-primary" />
-        <h2 className="text-2xl font-bold">Shared With Me</h2>
+      <div className="flex items-center gap-3 mb-6">
+        <h2 className="text-3xl font-semibold">Shared With Me</h2>
+        {shares && shares.length > 0 && (
+          <span className="px-2.5 py-0.5 text-sm font-medium bg-muted text-muted-foreground rounded-full">
+            {shares.length}
+          </span>
+        )}
       </div>
 
       {loading ? (
@@ -338,13 +342,10 @@ export function SharedQuizzes() {
           ))}
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-12 text-center text-muted-foreground">
-            <Share2 className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p>No quizzes have been shared with you yet</p>
-            <p className="text-sm mt-2">Ask other hosts to share their quizzes with your email: {user.email}</p>
-          </CardContent>
-        </Card>
+        <div className="flex items-center gap-3 py-4 px-4 bg-muted/50 rounded-lg text-muted-foreground">
+          <Share2 className="h-5 w-5 opacity-50 flex-shrink-0" />
+          <p className="text-sm">No quizzes shared with you yet. Other hosts can share quizzes with <span className="font-medium">{user.email}</span></p>
+        </div>
       )}
 
       {/* Preview Dialog */}
