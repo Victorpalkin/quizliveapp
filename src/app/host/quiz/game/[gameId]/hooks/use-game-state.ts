@@ -4,6 +4,26 @@ import type { Game, Quiz } from '@/lib/types';
 import { useLeaderboard } from './use-leaderboard';
 
 /**
+ * Answer key entry for a question (server-side scoring data)
+ */
+interface AnswerKeyEntry {
+  type: string;
+  timeLimit: number;
+  correctAnswerIndex?: number;      // For single-choice
+  correctAnswerIndices?: number[];  // For multiple-choice
+  correctValue?: number;            // For slider
+  correctAnswer?: string;           // For free-response
+  alternativeAnswers?: string[];    // For free-response
+}
+
+/**
+ * Answer key document structure
+ */
+interface AnswerKey {
+  questions: AnswerKeyEntry[];
+}
+
+/**
  * Host game state hook.
  *
  * Uses aggregate document for leaderboard data instead of subscribing to
@@ -28,6 +48,13 @@ export function useGameState(gameId: string) {
   const { data: quizData, loading: quizLoading } = useDoc(quizRef);
   const quiz = quizData as Quiz | null;
 
+  // Answer key document (contains correct answers for all questions, including crowdsourced)
+  const answerKeyRef = useMemoFirebase(
+    () => doc(firestore, 'games', gameId, 'aggregates', 'answerKey') as DocumentReference<AnswerKey>,
+    [firestore, gameId]
+  );
+  const { data: answerKey } = useDoc(answerKeyRef);
+
   // Leaderboard aggregate (top 20 + answer counts + totals)
   // Replaces the expensive useCollection subscription to all players
   const { topPlayers, totalPlayers, totalAnswered, answerCounts, loading: leaderboardLoading } = useLeaderboard(gameId);
@@ -36,6 +63,7 @@ export function useGameState(gameId: string) {
     game,
     gameRef,
     quiz,
+    answerKey,          // Answer key for determining correct answers
     // Leaderboard data from aggregate (O(1) instead of O(n))
     topPlayers,        // Top 20 players (show 10 during game, 20 at end)
     totalPlayers,      // Total player count

@@ -44,7 +44,7 @@ export default function HostGamePage() {
 
   // Game state (now uses aggregate document for leaderboard data)
   const {
-    game, gameRef, quiz,
+    game, gameRef, quiz, answerKey,
     topPlayers, totalPlayers, totalAnswered, answerCounts,
     gameLoading, quizLoading
   } = useGameState(gameId);
@@ -90,16 +90,27 @@ export default function HostGamePage() {
   }, [gameRef, router]);
 
   // Build answer distribution from pre-computed answerCounts
+  // Use answerKey for correct answer info (it has data for all questions including crowdsourced)
+  const questionIndex = game?.currentQuestionIndex || 0;
+  const answerKeyEntry = answerKey?.questions?.[questionIndex];
   const answerDistribution = question && 'answers' in question
-    ? question.answers.map((ans, index) => ({
-        name: ans.text,
-        total: answerCounts[index] || 0,
-        isCorrect: question.type === 'single-choice'
-          ? question.correctAnswerIndex === index
-          : question.type === 'multiple-choice'
-          ? question.correctAnswerIndices.includes(index)
-          : false, // Polls don't have correct answers
-      }))
+    ? question.answers.map((ans, index) => {
+        // Determine if this answer is correct based on answer key
+        let isCorrect = false;
+        if (answerKeyEntry) {
+          if (answerKeyEntry.type === 'single-choice') {
+            isCorrect = answerKeyEntry.correctAnswerIndex === index;
+          } else if (answerKeyEntry.type === 'multiple-choice') {
+            isCorrect = answerKeyEntry.correctAnswerIndices?.includes(index) || false;
+          }
+          // Polls don't have correct answers
+        }
+        return {
+          name: ans.text,
+          total: answerCounts[index] || 0,
+          isCorrect,
+        };
+      })
     : [];
 
   // Auto-transition from preparing to question
