@@ -28,8 +28,8 @@ export const createHostAccount = onCall(
     memory: '512MiB',
     maxInstances: 5,
     concurrency: 40,
-    // Enable App Check enforcement when ready
-    enforceAppCheck: false, // Set to true after client-side App Check is configured
+    // App Check enabled - verifies requests come from genuine app instances
+    enforceAppCheck: true,
   },
   async (request): Promise<CreateHostAccountResult> => {
     // Verify App Check token (currently in monitoring mode)

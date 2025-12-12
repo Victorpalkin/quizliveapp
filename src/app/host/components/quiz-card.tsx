@@ -31,13 +31,13 @@ export function QuizCard({ quiz, onHost, onPreview, onShare, onDelete }: QuizCar
 
   return (
     <Card variant="interactive" className="flex flex-col">
-      <CardHeader className="flex flex-row items-start justify-between p-6">
+      <CardHeader className="flex flex-row items-start justify-between p-4 pb-3">
         <div className='flex-grow'>
-          <div className="flex items-center gap-2 mb-2">
-            <FileQuestion className="h-5 w-5 text-purple-500" />
-            <CardTitle className="text-2xl font-semibold">{quiz.title}</CardTitle>
+          <div className="flex items-center gap-2 mb-1">
+            <FileQuestion className="h-4 w-4 text-purple-500" />
+            <CardTitle className="text-lg font-semibold">{quiz.title}</CardTitle>
           </div>
-          <CardDescription className="text-base">
+          <CardDescription className="text-sm">
             {quiz.questions.length} questions
             {dateDisplay && <span className="text-muted-foreground"> · {dateDisplay}</span>}
           </CardDescription>
@@ -48,19 +48,19 @@ export function QuizCard({ quiz, onHost, onPreview, onShare, onDelete }: QuizCar
             size="icon"
             onClick={() => onShare({ id: quiz.id, title: quiz.title })}
             title="Share quiz"
-            className="hover:bg-muted rounded-lg"
+            className="h-8 w-8 hover:bg-muted rounded-lg"
           >
-            <Share2 className="h-5 w-5 text-muted-foreground" />
+            <Share2 className="h-4 w-4 text-muted-foreground" />
           </Button>
-          <Button asChild variant="ghost" size="icon" title="Edit quiz" className="hover:bg-muted rounded-lg">
+          <Button asChild variant="ghost" size="icon" title="Edit quiz" className="h-8 w-8 hover:bg-muted rounded-lg">
             <Link href={`/host/quiz/${quiz.id}`}>
-              <Edit className="h-5 w-5 text-muted-foreground" />
+              <Edit className="h-4 w-4 text-muted-foreground" />
             </Link>
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" title="Delete quiz" className="hover:bg-muted rounded-lg">
-                <Trash2 className="h-5 w-5 text-destructive" />
+              <Button variant="ghost" size="icon" title="Delete quiz" className="h-8 w-8 hover:bg-muted rounded-lg">
+                <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-2xl shadow-xl">
@@ -80,16 +80,15 @@ export function QuizCard({ quiz, onHost, onPreview, onShare, onDelete }: QuizCar
           </AlertDialog>
         </div>
       </CardHeader>
-      <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
+      <CardContent className="flex-grow flex flex-col justify-end gap-2 p-4 pt-0">
         <Button
           variant="gradient"
-          size="xl"
           className="w-full"
           onClick={() => onHost(quiz.id)}
         >
           <Gamepad2 className="mr-2 h-4 w-4" /> Host Game
         </Button>
-        <Button size="xl" className="w-full" variant="outline" onClick={() => onPreview(quiz)}>
+        <Button className="w-full" variant="outline" onClick={() => onPreview(quiz)}>
           <Eye className="mr-2 h-4 w-4" /> Preview Quiz
         </Button>
       </CardContent>

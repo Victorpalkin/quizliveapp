@@ -4,6 +4,7 @@ import { SubmitAnswerRequest, Player, PlayerAnswer, SubmitAnswerResult, AnswerKe
 import { ALLOWED_ORIGINS, REGION } from '../config';
 import { validateOrigin } from '../utils/cors';
 import { verifyAppCheck } from '../utils/appCheck';
+import { enforceRateLimitInMemory } from '../utils/rateLimit';
 import {
   validateBasicFields,
   validateTimeRemaining,
@@ -23,8 +24,7 @@ import { calculateScoreFromAnswerKey } from '../utils/scoring';
  * - "Already answered" check: Prevents duplicate submissions
  * - Transaction safety: Uses Firestore transactions to prevent race conditions
  *
- * Note: Rate limiting removed - App Check + validation provides sufficient protection
- * for quiz gameplay where players submit ~1 answer per 10-60 seconds.
+ * - Rate limiting: Per-player rate limiting prevents abuse (60 requests/minute)
  */
 export const submitAnswer = onCall(
   {
@@ -35,8 +35,8 @@ export const submitAnswer = onCall(
     minInstances: 1, // Keep 1 instance warm to eliminate cold starts (~$5-10/month)
     maxInstances: 10,
     concurrency: 80,
-    // Enable App Check enforcement when ready
-    enforceAppCheck: false, // Set to true after client-side App Check is configured
+    // App Check enabled - verifies requests come from genuine app instances
+    enforceAppCheck: true,
   },
   async (request): Promise<SubmitAnswerResult> => {
     // Verify App Check token (currently in monitoring mode)
@@ -52,6 +52,10 @@ export const submitAnswer = onCall(
     validateBasicFields(data);
 
     const { gameId, playerId, questionIndex, timeRemaining, questionType, questionTimeLimit } = data;
+
+    // Rate limiting: 60 requests per minute per player
+    // Uses playerId as key since players are identified by their player document
+    enforceRateLimitInMemory(`submit:${playerId}`, 60, 60);
 
     const db = admin.firestore();
 

@@ -268,13 +268,13 @@ export function SharedQuizzes() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {shares.map((share) => (
             <Card key={share.id} className="flex flex-col">
-              <CardHeader>
-                <CardTitle>{share.quizTitle}</CardTitle>
-                <CardDescription>
+              <CardHeader className="p-4 pb-3">
+                <CardTitle className="text-lg">{share.quizTitle}</CardTitle>
+                <CardDescription className="text-sm">
                   Shared by {share.sharedByEmail}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex-grow flex flex-col justify-end gap-2">
+              <CardContent className="flex-grow flex flex-col justify-end gap-2 p-4 pt-0">
                 <Button
                   className="w-full"
                   onClick={() => handleHostGame(share)}
@@ -290,6 +290,7 @@ export function SharedQuizzes() {
                 <Button
                   className="w-full"
                   variant="outline"
+                  size="sm"
                   onClick={() => handlePreviewQuiz(share)}
                   disabled={loadingPreview}
                 >
@@ -303,6 +304,7 @@ export function SharedQuizzes() {
                 <Button
                   className="w-full"
                   variant="secondary"
+                  size="sm"
                   onClick={() => handleCopyQuiz(share)}
                   disabled={copying === share.id}
                 >
@@ -315,7 +317,7 @@ export function SharedQuizzes() {
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button className="w-full" variant="ghost">
+                    <Button className="w-full" variant="ghost" size="sm">
                       <Trash2 className="mr-2 h-4 w-4" /> Remove
                     </Button>
                   </AlertDialogTrigger>
