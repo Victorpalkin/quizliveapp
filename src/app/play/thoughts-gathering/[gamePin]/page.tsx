@@ -231,6 +231,8 @@ export default function ThoughtsGatheringPlayerPage() {
                   maxLength={20}
                   minLength={2}
                   required
+                  autoComplete="name"
+                  autoCapitalize="words"
                 />
                 <Button
                   type="submit"
@@ -280,7 +282,7 @@ export default function ThoughtsGatheringPlayerPage() {
                   <Button
                     onClick={handleSubmitInterest}
                     disabled={isSubmitting || !submissionText.trim() || remainingSubmissions <= 0}
-                    className="bg-gradient-to-r from-blue-500 to-purple-500"
+                    className="bg-gradient-to-r from-blue-500 to-purple-500 active:scale-95 transition-transform"
                   >
                     {isSubmitting ? (
                       <Loader2 className="h-5 w-5 animate-spin" />

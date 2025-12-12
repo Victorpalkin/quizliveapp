@@ -2,12 +2,11 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { CopyButton } from '@/components/ui/copy-button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Header } from '@/components/app/header';
-import { Cloud, StopCircle, Loader2, RefreshCw, Home, MessageSquare, Users, QrCode, Copy, PlayCircle, PauseCircle, XCircle, BarChart3, LayoutGrid } from 'lucide-react';
+import { Cloud, StopCircle, Loader2, RefreshCw, Home, MessageSquare, Users, PlayCircle, PauseCircle, XCircle, BarChart3, LayoutGrid } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc, collection, updateDoc, DocumentReference, Query } from 'firebase/firestore';
+import { doc, collection, updateDoc, deleteDoc, DocumentReference, Query } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -20,14 +19,8 @@ import { ThoughtsGroupedView } from '@/components/app/thoughts-grouped-view';
 import { useState, useEffect, useCallback } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
-import { QRCodeSVG } from 'qrcode.react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { KeyboardShortcutsHint } from '@/components/app/game-header';
-import { HostActionHint } from '@/components/app/host-action-hint';
+import { GameHeader, KeyboardShortcutsHint } from '@/components/app/game-header';
+import { HostActionHint, ReadinessChecklist } from '@/components/app/host-action-hint';
 
 export default function ThoughtsGatheringGamePage() {
   const params = useParams();
@@ -37,7 +30,6 @@ export default function ThoughtsGatheringGamePage() {
   const { user, loading: userLoading } = useUser();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [joinUrl, setJoinUrl] = useState('');
   const [resultsView, setResultsView] = useState<'grouped' | 'cloud'>('grouped');
 
   // Typed ref for reading with converter
@@ -90,12 +82,14 @@ export default function ThoughtsGatheringGamePage() {
     }
   }, [gameId, game, activity, user, game?.state]);
 
-  // Set join URL
-  useEffect(() => {
-    if (game?.gamePin) {
-      setJoinUrl(`${window.location.origin}/play/${game.gamePin}`);
-    }
-  }, [game?.gamePin]);
+  // Cancel game handler for GameHeader
+  const handleCancelGame = useCallback(() => {
+    if (!gameDocRef) return;
+    clearHostSession();
+    deleteDoc(gameDocRef)
+      .then(() => router.push('/host'))
+      .catch(error => console.error('Error deleting game:', error));
+  }, [gameDocRef, router]);
 
   const handleToggleSubmissions = async () => {
     if (!gameDocRef || !game) return;
@@ -199,70 +193,6 @@ export default function ThoughtsGatheringGamePage() {
   if (userLoading || gameLoading) {
     return <FullPageLoader />;
   }
-
-  // PIN/QR Section (always visible when session is active)
-  const renderJoinSection = () => {
-    if (game?.state === 'ended') return null;
-
-    return (
-      <Card className="border border-card-border shadow-sm mb-6">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* PIN Section */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground uppercase tracking-wide">PIN</span>
-              <div className="flex items-center gap-2">
-                <span className="text-3xl font-mono font-bold tracking-widest">{game?.gamePin}</span>
-                {game?.gamePin && <CopyButton text={game.gamePin} />}
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="hidden sm:block h-8 w-px bg-border" />
-
-            {/* Participants */}
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-muted-foreground" />
-              <span className="text-lg font-semibold">{players?.length || 0} joined</span>
-            </div>
-
-            {/* Divider */}
-            <div className="hidden sm:block h-8 w-px bg-border" />
-
-            {/* QR & Link Actions */}
-            <div className="flex items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <QrCode className="h-4 w-4 mr-2" />
-                    QR Code
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-4" align="end">
-                  <div className="flex flex-col items-center gap-3">
-                    <p className="text-sm font-medium">Scan to join</p>
-                    {joinUrl && (
-                      <div className="bg-white p-3 rounded-lg">
-                        <QRCodeSVG value={joinUrl} size={160} level="M" />
-                      </div>
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigator.clipboard.writeText(joinUrl)}
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Link
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
 
   const renderContent = () => {
     switch (game?.state) {
@@ -617,19 +547,50 @@ export default function ThoughtsGatheringGamePage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Header />
-      <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl">
-        {/* Title */}
-        <div className="flex items-center gap-3 mb-6">
-          <Cloud className="h-8 w-8 text-blue-500" />
-          <div>
-            <h1 className="text-3xl font-bold">{activity?.title || 'Thoughts Gathering'}</h1>
-          </div>
-        </div>
+    <div className="min-h-screen bg-background">
+      <main className="container mx-auto p-4 md:p-8 max-w-3xl">
+        {/* Game Header (hidden when ended) */}
+        {game?.state !== 'ended' && (
+          <GameHeader
+            gamePin={game?.gamePin || ''}
+            playerCount={players?.length || 0}
+            activityType="thoughts-gathering"
+            title={activity?.title}
+            onCancel={handleCancelGame}
+            isLive={game?.state !== 'collecting'}
+            showKeyboardHint={true}
+          />
+        )}
 
-        {/* PIN/QR Section - always visible */}
-        {renderJoinSection()}
+        {/* State Badge and Host Action Hint (not shown when ended) */}
+        {game?.state !== 'ended' && (
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+            <Badge variant="outline" className="text-sm px-3 py-1">
+              {game?.state === 'collecting' && (game.submissionsOpen ? 'Collecting Responses' : 'Submissions Paused')}
+              {game?.state === 'processing' && 'Analyzing...'}
+              {game?.state === 'display' && 'Viewing Results'}
+            </Badge>
+            <HostActionHint
+              gameState={game?.state || 'collecting'}
+              activityType="thoughts-gathering"
+              totalPlayers={players?.length || 0}
+              submissionsCount={submissions?.length || 0}
+              allowMultipleRounds={activity?.config.allowMultipleRounds}
+            />
+          </div>
+        )}
+
+        {/* Readiness Checklist (only during collecting) */}
+        {game?.state === 'collecting' && (
+          <div className="mb-6">
+            <ReadinessChecklist
+              items={[
+                { label: 'Participants joined', isReady: (players?.length || 0) > 0, detail: `${players?.length || 0}` },
+                { label: 'Submissions received', isReady: (submissions?.length || 0) > 0, detail: `${submissions?.length || 0}` },
+              ]}
+            />
+          </div>
+        )}
 
         {renderContent()}
 

@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { Header } from '@/components/app/header';
 import { QuizForm, type QuizFormData } from '@/components/app/quiz-form';
+import { Button } from '@/components/ui/button';
+import { Sparkles } from 'lucide-react';
+import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useStorage, trackEvent } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -158,6 +161,26 @@ export default function CreateQuizPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8">
+        {/* AI Feature Discovery Banner */}
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-6 max-w-4xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white dark:bg-gray-800 rounded-full">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-sm">Want AI to help?</p>
+              <p className="text-xs text-muted-foreground">
+                Generate quiz questions automatically with AI
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/host/quiz/create-ai">
+                Try AI Generation
+              </Link>
+            </Button>
+          </div>
+        </div>
+
         <QuizForm
           mode="create"
           onSubmit={handleSubmit}

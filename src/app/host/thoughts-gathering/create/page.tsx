@@ -14,6 +14,7 @@ import { Cloud, ArrowLeft, Loader2, Lightbulb, Eye } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { useUnsavedChangesWarning } from '@/hooks/use-unsaved-changes-warning';
 import Link from 'next/link';
 import type { ThoughtsGatheringConfig, ThoughtsGatheringActivity } from '@/lib/types';
 import { thoughtsGatheringActivityConverter } from '@/firebase/converters';
@@ -41,6 +42,10 @@ export default function CreateThoughtsGatheringPage() {
   const [maxSubmissions, setMaxSubmissions] = useState(3);
   const [allowMultipleRounds, setAllowMultipleRounds] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Track if form has been modified
+  const hasUnsavedChanges = title.trim() !== '' || description.trim() !== '' || prompt !== 'What topics interest you most?';
+  useUnsavedChangesWarning(hasUnsavedChanges && !isCreating);
 
   const handleCreate = async () => {
     if (!user) {

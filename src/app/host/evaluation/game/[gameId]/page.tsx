@@ -7,15 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Header } from '@/components/app/header';
-import { CopyButton } from '@/components/ui/copy-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
   BarChart3,
-  Users,
-  QrCode,
-  Copy,
   Play,
   Plus,
   Trash2,
@@ -23,17 +18,11 @@ import {
   X,
   Loader2,
   ChevronRight,
-  XCircle,
   CheckCircle,
   Clock,
   RotateCcw,
   RefreshCw,
 } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,7 +34,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { QRCodeSVG } from 'qrcode.react';
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase, useFunctions } from '@/firebase';
 import { httpsCallable } from 'firebase/functions';
 import {
@@ -73,7 +61,8 @@ import { EvaluationHeatmap } from '@/components/app/evaluation-heatmap';
 import { EvaluationMatrix } from '@/components/app/evaluation-matrix';
 import { ConsensusList } from '@/components/app/consensus-indicator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { KeyboardShortcutsHint } from '@/components/app/game-header';
+import { GameHeader, KeyboardShortcutsHint } from '@/components/app/game-header';
+import { HostActionHint, ReadinessChecklist } from '@/components/app/host-action-hint';
 
 export default function EvaluationGamePage() {
   const params = useParams();
@@ -84,7 +73,6 @@ export default function EvaluationGamePage() {
   const functions = useFunctions();
   const { user, loading: userLoading } = useUser();
 
-  const [joinUrl, setJoinUrl] = useState<string>('');
   const [newItemText, setNewItemText] = useState('');
   const [newItemDescription, setNewItemDescription] = useState('');
   const [isAddingItem, setIsAddingItem] = useState(false);
@@ -138,13 +126,6 @@ export default function EvaluationGamePage() {
     [firestore, gameId, game?.state]
   );
   const { data: evaluationResults, loading: resultsLoading } = useDoc(resultsRef);
-
-  // Set join URL
-  useEffect(() => {
-    if (game?.gamePin) {
-      setJoinUrl(`${window.location.origin}/play/evaluation/${game.gamePin}`);
-    }
-  }, [game?.gamePin]);
 
   // Save host session
   useEffect(() => {
@@ -410,17 +391,14 @@ export default function EvaluationGamePage() {
 
   if (!game || !activity) {
     return (
-      <div className="flex min-h-screen flex-col bg-background">
-        <Header />
-        <main className="flex-1 container mx-auto p-4 md:p-8 flex items-center justify-center">
-          <Card className="text-center p-8">
-            <CardTitle className="text-2xl mb-4">Session Not Found</CardTitle>
-            <CardDescription className="mb-6">
-              This session may have ended or been deleted.
-            </CardDescription>
-            <Button onClick={() => router.push('/host')}>Back to Dashboard</Button>
-          </Card>
-        </main>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="text-center p-8">
+          <CardTitle className="text-2xl mb-4">Session Not Found</CardTitle>
+          <CardDescription className="mb-6">
+            This session may have ended or been deleted.
+          </CardDescription>
+          <Button onClick={() => router.push('/host')}>Back to Dashboard</Button>
+        </Card>
       </div>
     );
   }
@@ -431,80 +409,47 @@ export default function EvaluationGamePage() {
   const playersCount = players?.length || 0;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Header />
-      <main className="flex-1 container mx-auto p-4 md:p-8">
+    <div className="min-h-screen bg-background">
+      <main className="container mx-auto p-4 md:p-8">
         <div className="w-full max-w-4xl mx-auto space-y-6">
-          {/* Title & State Badge */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="h-8 w-8 text-orange-500" />
-              <div>
-                <h1 className="text-2xl font-bold">{activity.title}</h1>
-                <p className="text-muted-foreground">Evaluation Session</p>
-              </div>
-            </div>
-            <Badge variant="outline" className="text-lg px-4 py-2">
+          {/* Game Header */}
+          <GameHeader
+            gamePin={game.gamePin}
+            playerCount={playersCount}
+            activityType="evaluation"
+            title={activity.title}
+            onCancel={handleCancelGame}
+            isLive={game.state !== 'collecting'}
+            showKeyboardHint={true}
+          />
+
+          {/* State Badge and Host Action Hint */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Badge variant="outline" className="text-sm px-3 py-1">
               {game.state === 'collecting' && 'Collecting Items'}
               {game.state === 'rating' && 'Rating in Progress'}
               {game.state === 'analyzing' && 'Analyzing Results'}
               {game.state === 'results' && 'Results Ready'}
               {game.state === 'ended' && 'Session Ended'}
             </Badge>
+            <HostActionHint
+              gameState={game.state}
+              activityType="evaluation"
+              totalPlayers={playersCount}
+              itemsCount={approvedItems.length}
+              ratingsCount={ratingsCount}
+            />
           </div>
 
-          {/* Join Bar */}
-          <Card className="border border-card-border shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-muted-foreground uppercase tracking-wide">PIN</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-3xl font-mono font-bold tracking-widest">{game.gamePin}</span>
-                    <CopyButton text={game.gamePin} />
-                  </div>
-                </div>
-
-                <div className="hidden sm:block h-8 w-px bg-border" />
-
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-lg font-semibold">{playersCount}</span>
-                    <span className="text-muted-foreground">joined</span>
-                  </div>
-
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <QrCode className="h-4 w-4 mr-2" />
-                        QR Code
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-4" align="end">
-                      <div className="flex flex-col items-center gap-3">
-                        <p className="text-sm font-medium">Scan to join</p>
-                        {joinUrl && (
-                          <div className="bg-white p-3 rounded-lg">
-                            <QRCodeSVG value={joinUrl} size={160} level="M" />
-                          </div>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigator.clipboard.writeText(joinUrl)}
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy Link
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Readiness Checklist (only during collecting) */}
+          {game.state === 'collecting' && (
+            <ReadinessChecklist
+              items={[
+                { label: 'Items added', isReady: approvedItems.length > 0, detail: `${approvedItems.length}` },
+                { label: 'Participants joined', isReady: playersCount > 0, detail: `${playersCount}` },
+              ]}
+            />
+          )}
 
           {/* Collecting State */}
           {game.state === 'collecting' && (
@@ -981,36 +926,6 @@ export default function EvaluationGamePage() {
             />
           )}
 
-          {/* Cancel Game */}
-          {game.state !== 'ended' && game.state !== 'results' && (
-            <div className="pt-4 border-t border-border flex justify-center">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Cancel Session
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Cancel this session?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will end the session and remove all data. This cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Back</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleCancelGame}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Yes, Cancel Session
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          )}
         </div>
       </main>
     </div>

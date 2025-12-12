@@ -386,12 +386,14 @@ export default function PlayerEvaluationPage() {
                   placeholder="Enter your name"
                   onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
                   autoFocus
+                  autoComplete="name"
+                  autoCapitalize="words"
                 />
               </div>
               <Button
                 onClick={handleJoin}
                 disabled={!playerName.trim() || isJoining}
-                className="w-full bg-gradient-to-r from-orange-500 to-red-500"
+                className="w-full bg-gradient-to-r from-orange-500 to-red-500 active:scale-95 transition-transform"
               >
                 {isJoining ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -530,7 +532,7 @@ export default function PlayerEvaluationPage() {
                               <button
                                 key={value}
                                 onClick={() => handleRateMetric(currentItem.id, metric.id, value)}
-                                className="p-1 transition-transform hover:scale-110"
+                                className="p-2 transition-transform hover:scale-110 active:scale-95"
                               >
                                 <Star
                                   className={`h-8 w-8 ${
@@ -555,7 +557,7 @@ export default function PlayerEvaluationPage() {
                               <button
                                 key={value}
                                 onClick={() => handleRateMetric(currentItem.id, metric.id, value)}
-                                className={`w-10 h-10 rounded-full border-2 font-medium transition-all ${
+                                className={`w-12 h-12 rounded-full border-2 text-lg font-medium transition-all active:scale-95 ${
                                   isSelected
                                     ? 'bg-primary text-primary-foreground border-primary'
                                     : 'border-muted-foreground/30 hover:border-primary'
@@ -578,7 +580,7 @@ export default function PlayerEvaluationPage() {
                               <button
                                 key={value}
                                 onClick={() => handleRateMetric(currentItem.id, metric.id, value)}
-                                className={`px-4 py-2 rounded-full border-2 font-medium transition-all ${
+                                className={`px-4 py-3 rounded-full border-2 font-medium transition-all active:scale-95 ${
                                   isSelected
                                     ? 'bg-primary text-primary-foreground border-primary'
                                     : 'border-muted-foreground/30 hover:border-primary'
@@ -614,7 +616,7 @@ export default function PlayerEvaluationPage() {
                       <Button
                         onClick={handleSubmitRatings}
                         disabled={isSubmitting || currentRatingsCount === 0}
-                        className="flex-1 bg-gradient-to-r from-orange-500 to-red-500"
+                        className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 active:scale-95 transition-transform"
                       >
                         {isSubmitting ? (
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />

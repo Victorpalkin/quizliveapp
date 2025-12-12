@@ -18,6 +18,7 @@ import { nanoid } from 'nanoid';
 import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, FreeResponseQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import { useQuestionOperations } from './quiz-form/hooks/use-question-operations';
 import { useImageUpload } from './quiz-form/hooks/use-image-upload';
+import { useUnsavedChangesWarning } from '@/hooks/use-unsaved-changes-warning';
 import { QuestionCard } from './quiz-form/question-card';
 import { DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -199,6 +200,9 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     },
   });
 
+  // Warn users when leaving with unsaved changes
+  useUnsavedChangesWarning(form.formState.isDirty && !isSubmitting);
+
   // Stable IDs for questions (for React key and DND)
   const [questionIds, setQuestionIds] = useState<string[]>([]);
 
@@ -219,6 +223,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     addAnswer,
     removeAnswer,
     convertQuestionType,
+    duplicateQuestion,
     reorderQuestion,
   } = questionOps;
 
@@ -294,6 +299,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     control: form.control,
     updateQuestion,
     removeQuestion,
+    duplicateQuestion,
     convertType: convertQuestionType,
     addAnswer,
     removeAnswer,
@@ -304,7 +310,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     toggleCollapse,
     quizId,
     tempId,
-  }), [form.control, updateQuestion, removeQuestion, convertQuestionType, addAnswer, removeAnswer, questions.length, collapsedQuestions, quizId, tempId]);
+  }), [form.control, updateQuestion, removeQuestion, duplicateQuestion, convertQuestionType, addAnswer, removeAnswer, questions.length, collapsedQuestions, quizId, tempId]);
 
   const handleSubmit = async (data: QuizFormData) => {
     await onSubmit(data, imageFiles.current, imagesToDelete.current);

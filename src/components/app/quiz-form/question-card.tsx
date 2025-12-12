@@ -5,7 +5,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, GripVertical, ChevronDown, ChevronRight, CheckCircle2, ListChecks, SlidersHorizontal, FileText, MessageSquare, Vote, ListTodo } from 'lucide-react';
+import { Trash2, GripVertical, ChevronDown, ChevronRight, CheckCircle2, ListChecks, SlidersHorizontal, FileText, MessageSquare, Vote, ListTodo, Copy } from 'lucide-react';
 import { QuestionTypeTooltip } from '@/components/ui/feature-tooltip';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -49,6 +49,7 @@ export function QuestionCard({
     control,
     updateQuestion: onUpdateQuestion,
     removeQuestion: onRemoveQuestion,
+    duplicateQuestion: onDuplicateQuestion,
     convertType: onConvertType,
     addAnswer: onAddAnswer,
     removeAnswer: onRemoveAnswer,
@@ -111,11 +112,22 @@ export function QuestionCard({
               </span>
             )}
           </div>
-          {totalQuestions > 1 && (
-            <Button variant="ghost" size="icon" onClick={() => onRemoveQuestion(questionIndex)} type="button">
-              <Trash2 className="h-4 w-4 text-destructive" />
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDuplicateQuestion(questionIndex)}
+              type="button"
+              title="Duplicate question"
+            >
+              <Copy className="h-4 w-4 text-muted-foreground" />
             </Button>
-          )}
+            {totalQuestions > 1 && (
+              <Button variant="ghost" size="icon" onClick={() => onRemoveQuestion(questionIndex)} type="button">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CollapsibleContent>
           <CardContent className="space-y-4">

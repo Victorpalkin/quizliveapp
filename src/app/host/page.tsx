@@ -47,7 +47,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { HostReconnectBanner } from '@/components/app/host-reconnect-banner';
-import { CreationTour } from '@/components/app/creation-tour';
 
 function GameStateBadge({ state }: { state: Game['state'] }) {
     let text;
@@ -344,9 +343,6 @@ export default function HostDashboardPage() {
       <Header />
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-7xl">
 
-        {/* Dashboard Tour for new users */}
-        <CreationTour tourType="dashboard" />
-
         {/* Host Reconnection Banner */}
         <HostReconnectBanner />
 
@@ -423,7 +419,7 @@ export default function HostDashboardPage() {
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-3" data-tour="create-button">
+                <div className="flex items-center gap-3">
                     <Button asChild variant="outline">
                         <Link href="/host/create">
                             <Sparkles className="mr-2 h-4 w-4 text-amber-500" />
@@ -435,7 +431,7 @@ export default function HostDashboardPage() {
             </div>
 
             {/* Filter and Sort Controls */}
-            <div className="flex flex-wrap items-center gap-4 mb-6" data-tour="content-filters">
+            <div className="flex flex-wrap items-center gap-4 mb-6">
                 {/* Filter Tabs */}
                 <div className="flex items-center gap-1 bg-muted p-1.5 rounded-xl">
                     {[
@@ -549,7 +545,7 @@ export default function HostDashboardPage() {
                 }
 
                 return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="content-grid">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {sortedItems.map(item => {
                             if (item.type === 'quiz') {
                                 const quiz = item.data as Quiz;

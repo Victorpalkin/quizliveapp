@@ -1,4 +1,4 @@
-import { PartyPopper, Frown, Clock, Award, Flame } from 'lucide-react';
+import { PartyPopper, Frown, Clock, Award, Flame, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
@@ -14,6 +14,7 @@ interface ResultScreenProps {
   isLastQuestion: boolean;
   currentStreak?: number;
   playerRank?: number;
+  previousRank?: number;
   totalPlayers?: number;
 }
 
@@ -24,7 +25,7 @@ function getOrdinalSuffix(n: number): string {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-export function ResultScreen({ lastAnswer, playerScore, isLastQuestion, currentStreak, playerRank, totalPlayers }: ResultScreenProps) {
+export function ResultScreen({ lastAnswer, playerScore, isLastQuestion, currentStreak, playerRank, previousRank, totalPlayers }: ResultScreenProps) {
   const isCorrect = lastAnswer ? lastAnswer.correct.includes(lastAnswer.selected) : false;
   const wasTimeout = lastAnswer?.wasTimeout || false;
   const isPartiallyCorrect = lastAnswer?.isPartiallyCorrect || false;
@@ -107,9 +108,29 @@ export function ResultScreen({ lastAnswer, playerScore, isLastQuestion, currentS
               <div className="flex items-center justify-center gap-2">
                 <div className="bg-gradient-to-r from-primary to-accent px-4 py-2 rounded-xl">
                   <span className="text-lg font-semibold text-white">
-                    #{getOrdinalSuffix(playerRank)}
+                    {getOrdinalSuffix(playerRank)}
                   </span>
                 </div>
+
+                {/* Rank movement indicator */}
+                {previousRank && previousRank !== playerRank && (
+                  <div className={`flex items-center gap-1 text-sm font-medium animate-pulse ${
+                    playerRank < previousRank ? 'text-green-500' : 'text-red-500'
+                  }`}>
+                    {playerRank < previousRank ? (
+                      <>
+                        <ArrowUp className="h-4 w-4" />
+                        <span>+{previousRank - playerRank}</span>
+                      </>
+                    ) : (
+                      <>
+                        <ArrowDown className="h-4 w-4" />
+                        <span>-{playerRank - previousRank}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 <span className="text-lg text-muted-foreground">of {totalPlayers} players</span>
               </div>
             </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, DocumentReference, Query } from 'firebase/firestore';
@@ -73,6 +73,20 @@ export default function QuizPlayerPage() {
     if (!leaderboard?.playerStreaks || !playerId) return 0;
     return leaderboard.playerStreaks[playerId] || 0;
   }, [leaderboard, playerId]);
+
+  // Track previous rank for movement indicator
+  const previousRankRef = useRef<number | null>(null);
+  const [previousRank, setPreviousRank] = useState<number | null>(null);
+
+  // Update previous rank when current rank changes
+  useEffect(() => {
+    if (rankInfo?.rank && previousRankRef.current !== null && previousRankRef.current !== rankInfo.rank) {
+      setPreviousRank(previousRankRef.current);
+    }
+    if (rankInfo?.rank) {
+      previousRankRef.current = rankInfo.rank;
+    }
+  }, [rankInfo?.rank]);
 
   // Subscribe to player's question submissions (for crowdsourced questions)
   const submissionsQuery = useMemoFirebase(
@@ -290,6 +304,7 @@ export default function QuizPlayerPage() {
             isLastQuestion={isLastQuestion}
             currentStreak={currentStreak}
             playerRank={rankInfo?.rank}
+            previousRank={previousRank ?? undefined}
             totalPlayers={rankInfo?.totalPlayers}
           />
         );

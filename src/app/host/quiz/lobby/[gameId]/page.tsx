@@ -1,22 +1,13 @@
 
 'use client';
 
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { CopyButton } from '@/components/ui/copy-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Copy, XCircle, QrCode, Play, Lightbulb } from 'lucide-react';
+import { Users, Play } from 'lucide-react';
 import { ReadinessChecklist, TipBanner } from '@/components/app/host-action-hint';
-import { CreationTour } from '@/components/app/creation-tour';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Header } from '@/components/app/header';
-import { QRCodeSVG } from 'qrcode.react';
+import { GameHeader } from '@/components/app/game-header';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, updateDoc, DocumentReference, deleteDoc, setDoc, serverTimestamp, query, where, Query, getDocs } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -88,17 +79,6 @@ function sanitizeQuestionForPlayer(q: Question): Question {
       return q;
   }
 }
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 
 
 export default function HostLobbyPage() {
@@ -107,7 +87,6 @@ export default function HostLobbyPage() {
   const router = useRouter();
   const firestore = useFirestore();
   const { user } = useUser();
-  const [joinUrl, setJoinUrl] = useState<string>('');
 
   const gameRef = useMemoFirebase(() => doc(firestore, 'games', gameId) as DocumentReference<Game>, [firestore, gameId]);
   const { data: game, loading: gameLoading } = useDoc(gameRef);
@@ -130,12 +109,6 @@ export default function HostLobbyPage() {
     }
   }, [gameId, game, quiz, user]);
 
-  useEffect(() => {
-    if (game?.gamePin) {
-      setJoinUrl(`${window.location.origin}/play/${game.gamePin}`);
-    }
-  }, [game?.gamePin]);
-  
   const handleStartGame = async () => {
     if (!gameRef || !quiz) return;
 
@@ -241,63 +214,18 @@ export default function HostLobbyPage() {
 
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Header />
-      <CreationTour tourType="lobby" />
-      <main className="flex-1 container mx-auto p-4 md:p-8">
+    <div className="min-h-screen bg-background">
+      <main className="container mx-auto p-4 md:p-8">
         <div className="w-full max-w-4xl mx-auto space-y-6">
-          {/* Compact Join Bar */}
-          <Card className="border border-card-border shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                {/* PIN Section */}
-                <div className="flex items-center gap-3" data-tour="game-pin">
-                  <span className="text-sm font-medium text-muted-foreground uppercase tracking-wide">PIN</span>
-                  {gameLoading ? (
-                    <Skeleton className="h-10 w-32" />
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-3xl font-mono font-bold tracking-widest">{game?.gamePin}</span>
-                      {game?.gamePin && <CopyButton text={game.gamePin} />}
-                    </div>
-                  )}
-                </div>
-
-                {/* Divider */}
-                <div className="hidden sm:block h-8 w-px bg-border" />
-
-                {/* QR & Link Actions */}
-                <div className="flex items-center gap-2" data-tour="qr-code">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <QrCode className="h-4 w-4 mr-2" />
-                        QR Code
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-4" align="end">
-                      <div className="flex flex-col items-center gap-3">
-                        <p className="text-sm font-medium">Scan to join</p>
-                        {joinUrl && (
-                          <div className="bg-white p-3 rounded-lg">
-                            <QRCodeSVG value={joinUrl} size={160} level="M" />
-                          </div>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigator.clipboard.writeText(joinUrl)}
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy Link
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Game Header with PIN, QR, and Cancel */}
+          <GameHeader
+            gamePin={game?.gamePin || ''}
+            playerCount={players?.length || 0}
+            activityType="quiz"
+            title={quiz?.title}
+            onCancel={handleCancelGame}
+            isLive={false}
+          />
 
           {/* Tips and Readiness */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -323,7 +251,7 @@ export default function HostLobbyPage() {
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Players List - Takes 2 columns */}
-            <Card className="lg:col-span-2 border border-card-border shadow-sm" data-tour="players-list">
+            <Card className="lg:col-span-2 border border-card-border shadow-sm">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -362,7 +290,7 @@ export default function HostLobbyPage() {
             </Card>
 
             {/* Start Game Card */}
-            <Card className="border-2 border-primary/20 shadow-sm bg-gradient-to-br from-primary/5 to-accent/5" data-tour="start-game">
+            <Card className="border-2 border-primary/20 shadow-sm bg-gradient-to-br from-primary/5 to-accent/5">
               <CardContent className="p-6 flex flex-col items-center justify-center h-full text-center gap-4">
                 <div>
                   <CardTitle className="text-xl mb-2">Ready to Start?</CardTitle>
@@ -386,35 +314,6 @@ export default function HostLobbyPage() {
           {game && quiz && (
             <SubmissionsPanel gameId={gameId} game={game} quiz={quiz} />
           )}
-
-          {/* Cancel Game - Subtle footer action */}
-          <div className="pt-4 border-t border-border flex justify-center">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Cancel Game
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel this game?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will remove all players and cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Back</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleCancelGame}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Yes, Cancel Game
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
         </div>
       </main>
     </div>

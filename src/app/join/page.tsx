@@ -40,9 +40,11 @@ export default function JoinGamePage() {
                 value={gamePin}
                 onChange={(e) => setGamePin(e.target.value)}
                 placeholder="GAME PIN"
-                className="h-14 text-center text-2xl font-bold tracking-widest"
+                className="h-14 text-center text-2xl font-bold tracking-widest uppercase"
                 maxLength={8}
                 required
+                autoComplete="off"
+                autoCapitalize="characters"
               />
               <Button type="submit" size="lg" className="w-full bg-accent hover:bg-accent/90 text-lg">
                 Enter

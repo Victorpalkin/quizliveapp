@@ -1,13 +1,23 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Lightbulb, ArrowRight, CheckCircle, Users, Clock } from 'lucide-react';
+import { Lightbulb, ArrowRight, CheckCircle, Users, Clock, Cloud, BarChart3, Star } from 'lucide-react';
 
-type GameState = 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
+// Quiz states
+type QuizState = 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
+// Thoughts Gathering states
+type ThoughtsGatheringState = 'lobby' | 'collecting' | 'processing' | 'display' | 'ended';
+// Evaluation states
+type EvaluationState = 'collecting' | 'rating' | 'analyzing' | 'results' | 'ended';
+
+type GameState = QuizState | ThoughtsGatheringState | EvaluationState;
+type ActivityType = 'quiz' | 'thoughts-gathering' | 'evaluation';
 
 interface HostActionHintProps {
   /** Current game state */
   gameState: GameState;
+  /** Activity type to determine appropriate hints */
+  activityType?: ActivityType;
   /** Number of players who have answered (for question state) */
   answeredCount?: number;
   /** Total number of players */
@@ -16,6 +26,14 @@ interface HostActionHintProps {
   isLastQuestion?: boolean;
   /** Whether crowdsourcing is enabled (for lobby state) */
   hasCrowdsourcing?: boolean;
+  /** Number of submissions received (for thoughts-gathering) */
+  submissionsCount?: number;
+  /** Number of items (for evaluation) */
+  itemsCount?: number;
+  /** Number of ratings completed (for evaluation) */
+  ratingsCount?: number;
+  /** Whether multiple rounds are allowed (for thoughts-gathering) */
+  allowMultipleRounds?: boolean;
   /** Optional className */
   className?: string;
 }
@@ -30,17 +48,22 @@ interface HintConfig {
 /**
  * HostActionHint - Contextual guidance for the host
  *
- * Shows what action the host should take next based on game state
+ * Shows what action the host should take next based on game state and activity type
  */
 export function HostActionHint({
   gameState,
+  activityType = 'quiz',
   answeredCount = 0,
   totalPlayers = 0,
   isLastQuestion = false,
   hasCrowdsourcing = false,
+  submissionsCount = 0,
+  itemsCount = 0,
+  ratingsCount = 0,
+  allowMultipleRounds = false,
   className,
 }: HostActionHintProps) {
-  const getHintConfig = (): HintConfig => {
+  const getQuizHint = (): HintConfig => {
     switch (gameState) {
       case 'lobby':
         if (totalPlayers === 0) {
@@ -106,6 +129,163 @@ export function HostActionHint({
           icon: <Lightbulb className="h-5 w-5" />,
           text: 'Ready to go!',
         };
+    }
+  };
+
+  const getThoughtsGatheringHint = (): HintConfig => {
+    switch (gameState) {
+      case 'collecting':
+        if (totalPlayers === 0) {
+          return {
+            icon: <Users className="h-5 w-5" />,
+            text: 'Waiting for participants to join...',
+            subtext: 'Share the PIN to get started',
+          };
+        }
+        if (submissionsCount === 0) {
+          return {
+            icon: <Cloud className="h-5 w-5" />,
+            text: 'Waiting for submissions...',
+            subtext: `${totalPlayers} participant${totalPlayers !== 1 ? 's' : ''} joined`,
+          };
+        }
+        return {
+          icon: <ArrowRight className="h-5 w-5" />,
+          text: 'Click "Show Results" when you have enough responses',
+          subtext: `${submissionsCount} submission${submissionsCount !== 1 ? 's' : ''} from ${totalPlayers} participant${totalPlayers !== 1 ? 's' : ''}`,
+          actionKey: 'Enter',
+        };
+
+      case 'processing':
+        return {
+          icon: <Clock className="h-5 w-5 animate-spin" />,
+          text: 'Analyzing submissions...',
+          subtext: 'Please wait while we generate the word cloud',
+        };
+
+      case 'display':
+        if (allowMultipleRounds) {
+          return {
+            icon: <Cloud className="h-5 w-5" />,
+            text: 'Viewing results. Click "Continue Collecting" for more rounds, or "End Session"',
+            subtext: `${submissionsCount} total submission${submissionsCount !== 1 ? 's' : ''}`,
+            actionKey: 'Space',
+          };
+        }
+        return {
+          icon: <CheckCircle className="h-5 w-5" />,
+          text: 'Results displayed! Click "End Session" when done',
+          subtext: `${submissionsCount} submission${submissionsCount !== 1 ? 's' : ''} collected`,
+          actionKey: 'Enter',
+        };
+
+      case 'lobby':
+        if (totalPlayers === 0) {
+          return {
+            icon: <Users className="h-5 w-5" />,
+            text: 'Waiting for participants to join...',
+            subtext: 'Share the PIN to get started',
+          };
+        }
+        return {
+          icon: <ArrowRight className="h-5 w-5" />,
+          text: 'Click "Start" when ready to begin collecting',
+          subtext: `${totalPlayers} participant${totalPlayers !== 1 ? 's' : ''} joined`,
+          actionKey: 'Start',
+        };
+
+      case 'ended':
+        return {
+          icon: <CheckCircle className="h-5 w-5" />,
+          text: 'Session complete! View the word cloud or return to dashboard.',
+        };
+
+      default:
+        return {
+          icon: <Lightbulb className="h-5 w-5" />,
+          text: 'Ready to collect thoughts!',
+        };
+    }
+  };
+
+  const getEvaluationHint = (): HintConfig => {
+    switch (gameState) {
+      case 'collecting':
+        if (totalPlayers === 0) {
+          return {
+            icon: <Users className="h-5 w-5" />,
+            text: 'Waiting for participants to join...',
+            subtext: 'Share the PIN to get started',
+          };
+        }
+        if (itemsCount === 0) {
+          return {
+            icon: <BarChart3 className="h-5 w-5" />,
+            text: 'Add items for participants to rate',
+            subtext: `${totalPlayers} participant${totalPlayers !== 1 ? 's' : ''} joined`,
+          };
+        }
+        return {
+          icon: <ArrowRight className="h-5 w-5" />,
+          text: 'Click "Start Rating" when ready',
+          subtext: `${itemsCount} item${itemsCount !== 1 ? 's' : ''} to rate, ${totalPlayers} participant${totalPlayers !== 1 ? 's' : ''}`,
+          actionKey: 'Enter',
+        };
+
+      case 'rating':
+        const allRated = ratingsCount >= totalPlayers && totalPlayers > 0;
+        if (allRated) {
+          return {
+            icon: <CheckCircle className="h-5 w-5 text-green-500" />,
+            text: 'All participants have rated! Click "Show Results"',
+            actionKey: 'Enter',
+          };
+        }
+        return {
+          icon: <Star className="h-5 w-5" />,
+          text: 'Participants are rating items...',
+          subtext: `${ratingsCount}/${totalPlayers} completed`,
+          actionKey: 'Enter',
+        };
+
+      case 'analyzing':
+        return {
+          icon: <Clock className="h-5 w-5 animate-spin" />,
+          text: 'Analyzing results...',
+          subtext: 'Please wait while we calculate the rankings',
+        };
+
+      case 'results':
+        return {
+          icon: <BarChart3 className="h-5 w-5" />,
+          text: 'Results ready! Review rankings or end the session',
+          subtext: 'Switch between visualization views below',
+          actionKey: 'Enter',
+        };
+
+      case 'ended':
+        return {
+          icon: <CheckCircle className="h-5 w-5" />,
+          text: 'Evaluation complete! View results or return to dashboard.',
+        };
+
+      default:
+        return {
+          icon: <Lightbulb className="h-5 w-5" />,
+          text: 'Ready to evaluate!',
+        };
+    }
+  };
+
+  const getHintConfig = (): HintConfig => {
+    switch (activityType) {
+      case 'thoughts-gathering':
+        return getThoughtsGatheringHint();
+      case 'evaluation':
+        return getEvaluationHint();
+      case 'quiz':
+      default:
+        return getQuizHint();
     }
   };
 

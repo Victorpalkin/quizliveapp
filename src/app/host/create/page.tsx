@@ -19,8 +19,6 @@ import {
   TrendingUp,
   ArrowLeft,
 } from 'lucide-react';
-import { CreationTour } from '@/components/app/creation-tour';
-
 interface ActivityTypeCardProps {
   icon: React.ReactNode;
   iconBg: string;
@@ -30,7 +28,6 @@ interface ActivityTypeCardProps {
   features: string[];
   href: string;
   aiOption?: { href: string; label: string };
-  dataTour?: string;
 }
 
 function ActivityTypeCard({
@@ -42,12 +39,10 @@ function ActivityTypeCard({
   features,
   href,
   aiOption,
-  dataTour,
 }: ActivityTypeCardProps) {
   return (
     <Card
       className="group relative overflow-hidden border-2 border-transparent hover:border-primary/20 transition-all duration-300 hover:shadow-xl"
-      data-tour={dataTour}
     >
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
@@ -155,7 +150,6 @@ export default function CreateActivityPage() {
               href: '/host/quiz/create-ai',
               label: 'Generate with AI',
             }}
-            dataTour="quiz-card"
           />
 
           {/* Thoughts Gathering */}
@@ -172,7 +166,6 @@ export default function CreateActivityPage() {
               'Visual engagement',
             ]}
             href="/host/thoughts-gathering/create"
-            dataTour="thoughts-gathering-card"
           />
 
           {/* Evaluation */}
@@ -189,12 +182,8 @@ export default function CreateActivityPage() {
               'Aggregated results',
             ]}
             href="/host/evaluation/create"
-            dataTour="evaluation-card"
           />
         </div>
-
-        {/* Creation Tour */}
-        <CreationTour tourType="create-activity" />
 
         {/* Help Section */}
         <Card className="bg-muted/30 border-dashed">

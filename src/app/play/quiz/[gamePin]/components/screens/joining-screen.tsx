@@ -23,6 +23,8 @@ export function JoiningScreen({ nickname, setNickname, onJoinGame, isLoading }: 
           minLength={2}
           required
           disabled={isLoading}
+          autoComplete="name"
+          autoCapitalize="words"
         />
         <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
           {isLoading ? (

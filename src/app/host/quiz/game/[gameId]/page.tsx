@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { deleteDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,10 +12,10 @@ import { Home, CheckCircle, Users, XCircle, Loader2, AlertCircle, BarChart3 } fr
 import { Skeleton } from '@/components/ui/skeleton';
 import { CircularTimer } from '@/components/app/circular-timer';
 import { AnswerButton } from '@/components/app/answer-button';
-import { ThemeToggle } from '@/components/app/theme-toggle';
 import { QuestionCounter } from '@/components/app/question-counter';
 import { QuestionTypeBadges } from '@/components/app/question-type-badges';
-import { KeyboardShortcutsHint } from '@/components/app/game-header';
+import { GameHeader, KeyboardShortcutsHint } from '@/components/app/game-header';
+import { HostActionHint } from '@/components/app/host-action-hint';
 import { saveHostSession, clearHostSession } from '@/lib/host-session';
 import { useUser } from '@/firebase';
 import { getEffectiveQuestions } from '@/lib/utils/game-utils';
@@ -25,7 +26,6 @@ import { useQuestionTimer } from './hooks/use-question-timer';
 import { useGameControls } from './hooks/use-game-controls';
 
 // Components
-import { CancelGameButton } from './components/controls/cancel-game-button';
 import { DeleteGameButton } from './components/controls/delete-game-button';
 import { LeaderboardView } from './components/visualizations/leaderboard-view';
 import { FinalLeaderboardView } from './components/visualizations/final-leaderboard-view';
@@ -39,6 +39,7 @@ const indexToLetter = (index: number): string => String.fromCharCode(65 + index)
 export default function HostGamePage() {
   const params = useParams();
   const gameId = params.gameId as string;
+  const router = useRouter();
   const { user } = useUser();
 
   // Game state (now uses aggregate document for leaderboard data)
@@ -78,6 +79,15 @@ export default function HostGamePage() {
 
   // Timer (now uses totalAnswered from aggregate)
   const { time } = useQuestionTimer(game, totalPlayers, timeLimit, finishQuestion, totalAnswered);
+
+  // Cancel game handler for GameHeader
+  const handleCancelGame = useCallback(() => {
+    if (!gameRef) return;
+    clearHostSession();
+    deleteDoc(gameRef)
+      .then(() => router.push('/host'))
+      .catch(error => console.error('Error deleting game:', error));
+  }, [gameRef, router]);
 
   // Build answer distribution from pre-computed answerCounts
   const answerDistribution = question && 'answers' in question
@@ -181,16 +191,31 @@ export default function HostGamePage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground p-8">
       {/* Header */}
-      <header className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold">Zivo</h1>
-          <div className="text-2xl font-mono bg-muted text-muted-foreground px-4 py-1 rounded-md">{game?.gamePin}</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <CancelGameButton gameRef={gameRef} />
-        </div>
-      </header>
+      <GameHeader
+        gamePin={game?.gamePin || ''}
+        playerCount={totalPlayers}
+        activityType="quiz"
+        title={quiz?.title}
+        onCancel={handleCancelGame}
+        isLive={true}
+        showKeyboardHint={true}
+      />
+
+      {/* State Badge and Host Action Hint */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+        <Badge variant="outline" className="text-sm px-3 py-1">
+          {game?.state === 'preparing' && 'Get Ready...'}
+          {game?.state === 'question' && `Question ${(game?.currentQuestionIndex || 0) + 1} of ${effectiveQuestions.length}`}
+          {game?.state === 'leaderboard' && 'Showing Results'}
+        </Badge>
+        <HostActionHint
+          gameState={game?.state || 'preparing'}
+          activityType="quiz"
+          answeredCount={totalAnswered}
+          totalPlayers={totalPlayers}
+          isLastQuestion={isLastQuestion}
+        />
+      </div>
 
       {/* Preparing State */}
       {game?.state === 'preparing' && (

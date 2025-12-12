@@ -15,6 +15,7 @@ import { FeatureTooltip } from '@/components/ui/feature-tooltip';
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { useUnsavedChangesWarning } from '@/hooks/use-unsaved-changes-warning';
 import Link from 'next/link';
 import type { EvaluationActivity, EvaluationMetric, EvaluationConfig, PredefinedItem } from '@/lib/types';
 import { evaluationActivityConverter } from '@/firebase/converters';
@@ -107,6 +108,14 @@ export default function CreateEvaluationPage() {
   const [requireApproval, setRequireApproval] = useState(true);
   const [showItemSubmitter, setShowItemSubmitter] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Track if form has been modified
+  const hasUnsavedChanges = title.trim() !== '' ||
+    description.trim() !== '' ||
+    metrics.length > 1 ||
+    (metrics.length === 1 && metrics[0].name.trim() !== '') ||
+    predefinedItems.length > 0;
+  useUnsavedChangesWarning(hasUnsavedChanges && !isCreating);
 
   // Apply a template
   const applyTemplate = (template: EvaluationTemplate) => {
@@ -274,6 +283,44 @@ export default function CreateEvaluationPage() {
         </div>
 
         <div className="space-y-6">
+          {/* Quick Start Templates - First! */}
+          <Card className="shadow-lg rounded-2xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <CardTitle>Quick Start Templates</CardTitle>
+              </div>
+              <CardDescription>
+                Choose a template to pre-configure your metrics, or define your own below
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {EVALUATION_TEMPLATES.map((template) => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => applyTemplate(template)}
+                    className="flex items-start gap-3 p-3 rounded-lg border bg-background hover:border-primary/50 hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <div className="mt-0.5">{template.icon}</div>
+                    <div>
+                      <p className="font-medium">{template.name}</p>
+                      <p className="text-sm text-muted-foreground">{template.description}</p>
+                      <div className="flex gap-1 mt-1">
+                        {template.metrics.map((m, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">
+                            {m.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Basic Info */}
           <Card className="shadow-lg rounded-2xl border border-card-border">
             <CardHeader>
@@ -303,44 +350,6 @@ export default function CreateEvaluationPage() {
                   placeholder="Add context for participants..."
                   rows={2}
                 />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Start Templates */}
-          <Card className="shadow-lg rounded-2xl border border-card-border bg-gradient-to-br from-primary/5 to-transparent">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <CardTitle>Quick Start Templates</CardTitle>
-              </div>
-              <CardDescription>
-                Choose a template to pre-configure your metrics, or start from scratch below
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {EVALUATION_TEMPLATES.map((template) => (
-                  <button
-                    key={template.id}
-                    type="button"
-                    onClick={() => applyTemplate(template)}
-                    className="flex items-start gap-3 p-3 rounded-lg border bg-background hover:border-primary/50 hover:bg-muted/50 transition-colors text-left"
-                  >
-                    <div className="mt-0.5">{template.icon}</div>
-                    <div>
-                      <p className="font-medium">{template.name}</p>
-                      <p className="text-sm text-muted-foreground">{template.description}</p>
-                      <div className="flex gap-1 mt-1">
-                        {template.metrics.map((m, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">
-                            {m.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </button>
-                ))}
               </div>
             </CardContent>
           </Card>
