@@ -26,8 +26,9 @@ export interface SingleChoiceQuestion extends BaseQuestion {
 export interface MultipleChoiceQuestion extends BaseQuestion {
   type: 'multiple-choice';
   answers: Answer[];
-  correctAnswerIndices: number[]; // Multiple indices for correct answers
+  correctAnswerIndices: number[]; // Multiple indices for correct answers (removed in sanitized version)
   showAnswerCount?: boolean; // Default: true, show how many answers to select
+  expectedAnswerCount?: number; // Always present in sanitized version (replaces correctAnswerIndices.length)
 }
 
 // Slider question
@@ -87,6 +88,8 @@ export interface Quiz {
   questions: Question[];
   hostId: string;
   crowdsource?: CrowdsourceSettings;  // Optional crowdsource configuration
+  createdAt?: Date;   // Optional for backward compatibility with existing quizzes
+  updatedAt?: Date;   // Optional for backward compatibility
 }
 
 export interface QuizShare {
@@ -142,16 +145,39 @@ export interface CrowdsourceState {
   selectedCount: number;         // How many questions selected
 }
 
+// Activity types for the Activity system
+export type ActivityType = 'quiz' | 'thoughts-gathering' | 'evaluation';
+
+// Quiz game states (existing)
+export type QuizGameState = 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
+
+// Thoughts Gathering game states
+export type ThoughtsGatheringGameState = 'lobby' | 'collecting' | 'processing' | 'display' | 'ended';
+
+// Evaluation game states
+export type EvaluationGameState = 'collecting' | 'rating' | 'analyzing' | 'results' | 'ended';
+
 export interface Game {
     id: string;
     quizId: string;
     hostId: string;
-    state: 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
+    state: QuizGameState | ThoughtsGatheringGameState | EvaluationGameState;
     currentQuestionIndex: number;
     gamePin: string;
     questionStartTime?: Timestamp; // Firestore server timestamp when current question started (for timer sync)
     crowdsourceState?: CrowdsourceState;  // Runtime state for crowdsourced questions
     questions?: Question[];  // Override questions (used when crowdsourced questions are integrated)
+    createdAt?: Date;  // When the game was created
+
+    // Activity system fields (optional for backward compatibility)
+    activityType?: ActivityType;  // Default: 'quiz' for existing games
+    activityId?: string;          // Reference to activity document (for non-quiz activities)
+
+    // Thoughts Gathering specific
+    submissionsOpen?: boolean;    // Whether submissions are currently accepted
+
+    // Evaluation specific
+    itemSubmissionsOpen?: boolean;  // Whether item submissions are accepted during collecting phase
 }
 
 // Cloud Function response interface for submitAnswer
@@ -307,3 +333,210 @@ export interface LeaderboardWithStats {
   accuracy: number;         // Percentage 0-100
   avgResponseTime: number;  // In seconds
 }
+
+// ==========================================
+// Thoughts Gathering Activity Types
+// ==========================================
+
+/**
+ * Configuration for Thoughts Gathering activity
+ */
+export interface ThoughtsGatheringConfig {
+  prompt: string;                    // e.g., "What topics interest you most?"
+  maxSubmissionsPerPlayer: number;   // Default: 3
+  allowMultipleRounds: boolean;      // Can host reopen for more submissions
+}
+
+/**
+ * Thoughts Gathering activity stored in /activities/{activityId}
+ */
+export interface ThoughtsGatheringActivity {
+  id: string;
+  type: 'thoughts-gathering';
+  title: string;
+  description?: string;
+  hostId: string;
+  config: ThoughtsGatheringConfig;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Player thought submission stored in /games/{gameId}/submissions/{submissionId}
+ */
+export interface ThoughtSubmission {
+  id: string;
+  playerId: string;
+  playerName: string;
+  rawText: string;              // Free-form text about thoughts/ideas
+  submittedAt: Timestamp;
+  extractedTopics?: string[];   // Filled by AI after processing
+}
+
+/**
+ * A single topic in the aggregated word cloud
+ */
+export interface TopicEntry {
+  topic: string;                // Normalized topic name
+  count: number;                // How many times mentioned
+  variations: string[];         // Original phrasings that mapped to this topic
+  submissionIds: string[];      // Which submissions contained this topic
+}
+
+/**
+ * Aggregated topic cloud result stored in /games/{gameId}/aggregates/topics
+ */
+export interface TopicCloudResult {
+  topics: TopicEntry[];
+  totalSubmissions: number;
+  processedAt: Timestamp;
+}
+
+// ==========================================
+// Evaluation Activity Types
+// ==========================================
+
+/**
+ * A metric that items are scored on
+ */
+export interface EvaluationMetric {
+  id: string;
+  name: string;                    // e.g., "Impact", "Effort", "Complexity"
+  description?: string;            // Help text for participants
+  scaleType: 'stars' | 'numeric' | 'labels';
+  scaleMin: number;                // e.g., 1
+  scaleMax: number;                // e.g., 5 or 10
+  scaleLabels?: string[];          // For 'labels' type: ["Low", "Medium", "High"]
+  weight: number;                  // Weight for aggregate calculation (default: 1)
+  lowerIsBetter: boolean;          // true for metrics like "Complexity", "Effort", "Risk"
+}
+
+/**
+ * Configuration for Evaluation activity
+ */
+/**
+ * A predefined item template stored in activity config
+ */
+export interface PredefinedItem {
+  id: string;
+  text: string;
+  description?: string;
+}
+
+export interface EvaluationConfig {
+  metrics: EvaluationMetric[];           // 1-5 metrics to rate on
+  predefinedItems: PredefinedItem[];     // Items pre-created by host
+  allowParticipantItems: boolean;        // Can participants suggest items?
+  maxItemsPerParticipant: number;        // If allowed, how many? (default: 3)
+  requireApproval: boolean;              // Must host approve participant items?
+  showItemSubmitter: boolean;            // Show who submitted each item?
+}
+
+/**
+ * Evaluation activity stored in /activities/{activityId}
+ */
+export interface EvaluationActivity {
+  id: string;
+  type: 'evaluation';
+  title: string;
+  description?: string;
+  hostId: string;
+  config: EvaluationConfig;
+  createdAt: Date;
+  updatedAt: Date;
+  // Optional source tracking for evaluations created from other activities
+  sourceActivityId?: string;  // ID of source thoughts gathering activity
+  sourceGameId?: string;      // ID of source game (for topics/submissions)
+  sourceType?: 'thoughts-gathering'; // Type of source activity
+}
+
+/**
+ * An item to be evaluated, stored in /games/{gameId}/items/{itemId}
+ */
+export interface EvaluationItem {
+  id: string;
+  text: string;                     // Item name/description
+  description?: string;             // Optional longer description
+  submittedBy?: string;             // Player name (if participant-submitted)
+  submittedByPlayerId?: string;     // Player ID
+  isHostItem: boolean;              // true if added by host
+  approved: boolean;                // For participant items requiring approval
+  order: number;                    // Display order
+  createdAt: Timestamp;
+}
+
+/**
+ * A player's ratings for all items, stored in /games/{gameId}/ratings/{playerId}
+ */
+export interface PlayerRatings {
+  playerId: string;
+  playerName: string;
+  ratings: {
+    [itemId: string]: {
+      [metricId: string]: number;   // The score given
+    };
+  };
+  submittedAt: Timestamp;
+  isComplete: boolean;              // Rated all items on all metrics
+}
+
+/**
+ * Aggregated results for a single item
+ */
+export interface EvaluationItemResult {
+  itemId: string;
+  itemText: string;
+  itemDescription?: string;         // Optional item description
+  overallScore: number;             // Weighted average across metrics (0-1 normalized)
+  rank: number;                     // Final position
+  metricScores: {
+    [metricId: string]: {
+      rawAverage: number;           // Original scale average (e.g., 3.5 on 1-5 scale)
+      normalizedAverage: number;    // 0-1 normalized (accounts for lowerIsBetter)
+      median: number;
+      stdDev: number;               // For consensus calculation
+      distribution: number[];       // Count per score value
+      responseCount: number;
+    };
+  };
+  consensusLevel: 'high' | 'medium' | 'low';  // Based on stdDev
+}
+
+/**
+ * Aggregated evaluation results stored in /games/{gameId}/aggregates/evaluations
+ */
+export interface EvaluationResults {
+  items: EvaluationItemResult[];
+  totalParticipants: number;
+  participantsWhoRated: number;
+  processedAt: Timestamp;
+}
+
+// ==========================================
+// Type Aliases for Backward Compatibility
+// These can be removed after full migration
+// ==========================================
+
+/** @deprecated Use ThoughtsGatheringConfig instead */
+export type InterestCloudConfig = ThoughtsGatheringConfig;
+/** @deprecated Use ThoughtsGatheringActivity instead */
+export type InterestCloudActivity = ThoughtsGatheringActivity;
+/** @deprecated Use ThoughtSubmission instead */
+export type InterestSubmission = ThoughtSubmission;
+/** @deprecated Use ThoughtsGatheringGameState instead */
+export type InterestCloudGameState = ThoughtsGatheringGameState;
+
+/** @deprecated Use EvaluationMetric instead */
+export type RankingMetric = EvaluationMetric;
+/** @deprecated Use EvaluationConfig instead */
+export type RankingConfig = EvaluationConfig;
+/** @deprecated Use EvaluationActivity instead */
+export type RankingActivity = EvaluationActivity;
+/** @deprecated Use EvaluationItem instead */
+export type RankingItem = EvaluationItem;
+/** @deprecated Use EvaluationItemResult instead */
+export type RankingItemResult = EvaluationItemResult;
+/** @deprecated Use EvaluationResults instead */
+export type RankingResults = EvaluationResults;
+/** @deprecated Use EvaluationGameState instead */
+export type RankingGameState = EvaluationGameState;

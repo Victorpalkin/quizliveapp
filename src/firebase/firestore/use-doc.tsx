@@ -10,7 +10,10 @@ import {
 } from 'firebase/firestore';
 import { useFirestore } from '../provider';
 import { errorEmitter } from '../error-emitter';
-import { FirestorePermissionError } from '../errors';
+import {
+  FirestorePermissionError,
+  isFirestorePermissionError,
+} from '../errors';
 
 interface DocState<T> {
   data: T | null;
@@ -44,14 +47,22 @@ export function useDoc<T extends DocumentData>(
           error: null,
         });
       },
-      async (err) => {
+      (err) => {
         console.error(err);
-        const permissionError = new FirestorePermissionError({
-          path: ref.path,
-          operation: 'get',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        setState({ data: null, loading: false, error: permissionError });
+
+        // Classify the error based on its type
+        if (isFirestorePermissionError(err)) {
+          const permissionError = new FirestorePermissionError({
+            path: ref.path,
+            operation: 'get',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+          setState({ data: null, loading: false, error: permissionError });
+        } else {
+          // For other Firestore errors, emit a generic error event
+          errorEmitter.emit('firestore-error', err);
+          setState({ data: null, loading: false, error: err });
+        }
       }
     );
 

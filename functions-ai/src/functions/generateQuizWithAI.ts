@@ -248,8 +248,8 @@ export const generateQuizWithAI = onCall(
     concurrency: 10,
     // Use custom service account with Vertex AI permissions
     serviceAccount: AI_SERVICE_ACCOUNT,
-    // Enable App Check enforcement when ready (currently in monitoring mode)
-    enforceAppCheck: false,
+    // App Check enabled - verifies requests come from genuine app instances
+    enforceAppCheck: true,
   },
   async (request): Promise<GenerateQuizResponse> => {
     // Verify App Check token (monitoring mode - allows requests without token)

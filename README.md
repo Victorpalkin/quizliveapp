@@ -1,6 +1,6 @@
-# gQuiz
+# Zivo
 
-gQuiz is an interactive, real-time quiz application that allows users to host live quiz games and have players join and compete from their own devices. Built with Next.js, Firebase, and TypeScript.
+Zivo is an interactive, real-time audience engagement platform that allows users to host live sessions including quizzes, interest clouds, and prioritization rankings. Players join and participate from their own devices. Built with Next.js, Firebase, and TypeScript.
 
 ## Features
 

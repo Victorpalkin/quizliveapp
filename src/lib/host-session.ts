@@ -1,6 +1,8 @@
 // Host session management for automatic reconnection
 // Stores host session data in localStorage to survive page refreshes and connection loss
 
+import type { ActivityType } from './types';
+
 export interface HostSession {
   gameId: string;
   gamePin: string;
@@ -8,6 +10,8 @@ export interface HostSession {
   quizTitle: string;
   hostId: string;
   timestamp: number; // When session was last updated
+  activityType?: ActivityType; // 'quiz' | 'thoughts-gathering' | 'evaluation'
+  gameState?: string; // Current game state for routing (e.g., 'lobby', 'question', 'collecting')
 }
 
 const SESSION_KEY = 'gquiz_host_session';
@@ -24,7 +28,9 @@ export function saveHostSession(
   gamePin: string,
   quizId: string,
   quizTitle: string,
-  hostId: string
+  hostId: string,
+  activityType: ActivityType = 'quiz',
+  gameState?: string
 ): void {
   if (!isBrowser) return;
   try {
@@ -35,6 +41,8 @@ export function saveHostSession(
       quizTitle,
       hostId,
       timestamp: Date.now(),
+      activityType,
+      gameState,
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } catch (error) {
@@ -99,7 +107,9 @@ export function refreshHostSessionTimestamp(): void {
       session.gamePin,
       session.quizId,
       session.quizTitle,
-      session.hostId
+      session.hostId,
+      session.activityType || 'quiz',
+      session.gameState
     );
   }
 }

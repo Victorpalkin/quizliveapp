@@ -278,6 +278,31 @@ export function useQuestionOperations(
     updateQuestion(qIndex, convertedQuestion);
   }, [questions, updateQuestion]);
 
+  const duplicateQuestion = useCallback((index: number) => {
+    const questionToDuplicate = questions[index];
+
+    // Deep clone the question (excluding imageUrl - images are not duplicated)
+    const duplicatedQuestion: Question = {
+      ...JSON.parse(JSON.stringify(questionToDuplicate)),
+      imageUrl: undefined,
+    };
+
+    // Insert after the original question
+    const newQuestions = [
+      ...questions.slice(0, index + 1),
+      duplicatedQuestion,
+      ...questions.slice(index + 1),
+    ];
+
+    setQuestions(newQuestions);
+    setValue('questions', newQuestions, { shouldValidate: true });
+
+    toast({
+      title: 'Question Duplicated',
+      description: 'A copy has been added below the original.',
+    });
+  }, [questions, setValue, toast]);
+
   const reorderQuestion = useCallback((fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) return;
 
@@ -326,6 +351,7 @@ export function useQuestionOperations(
     addAnswer,
     removeAnswer,
     convertQuestionType,
+    duplicateQuestion,
     reorderQuestion,
   };
 }

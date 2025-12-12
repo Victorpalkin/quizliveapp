@@ -28,7 +28,8 @@ export const generateQuestionImage = onCall(
     maxInstances: 5,
     concurrency: 5,
     serviceAccount: AI_SERVICE_ACCOUNT,
-    enforceAppCheck: false, // Monitoring mode - App Check not enforced yet
+    // App Check enabled - verifies requests come from genuine app instances
+    enforceAppCheck: true,
   },
   async (request): Promise<GenerateImageResponse> => {
     // Verify App Check token (monitoring mode)

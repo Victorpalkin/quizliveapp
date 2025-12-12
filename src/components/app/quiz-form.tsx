@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { PlusCircle, Loader2, Save, Users, HelpCircle } from 'lucide-react';
+import { PlusCircle, Loader2, Save, Users, HelpCircle, ChevronDown, Settings2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -17,6 +18,7 @@ import { nanoid } from 'nanoid';
 import type { SingleChoiceQuestion, MultipleChoiceQuestion, SliderQuestion, SlideQuestion, FreeResponseQuestion, PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import { useQuestionOperations } from './quiz-form/hooks/use-question-operations';
 import { useImageUpload } from './quiz-form/hooks/use-image-upload';
+import { useUnsavedChangesWarning } from '@/hooks/use-unsaved-changes-warning';
 import { QuestionCard } from './quiz-form/question-card';
 import { DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -198,6 +200,9 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     },
   });
 
+  // Warn users when leaving with unsaved changes
+  useUnsavedChangesWarning(form.formState.isDirty && !isSubmitting);
+
   // Stable IDs for questions (for React key and DND)
   const [questionIds, setQuestionIds] = useState<string[]>([]);
 
@@ -218,6 +223,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     addAnswer,
     removeAnswer,
     convertQuestionType,
+    duplicateQuestion,
     reorderQuestion,
   } = questionOps;
 
@@ -293,6 +299,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     control: form.control,
     updateQuestion,
     removeQuestion,
+    duplicateQuestion,
     convertType: convertQuestionType,
     addAnswer,
     removeAnswer,
@@ -303,7 +310,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
     toggleCollapse,
     quizId,
     tempId,
-  }), [form.control, updateQuestion, removeQuestion, convertQuestionType, addAnswer, removeAnswer, questions.length, collapsedQuestions, quizId, tempId]);
+  }), [form.control, updateQuestion, removeQuestion, duplicateQuestion, convertQuestionType, addAnswer, removeAnswer, questions.length, collapsedQuestions, quizId, tempId]);
 
   const handleSubmit = async (data: QuizFormData) => {
     await onSubmit(data, imageFiles.current, imagesToDelete.current);
@@ -373,144 +380,6 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
           </CardContent>
         </Card>
 
-        {/* Crowdsource Settings */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-primary" />
-                <CardTitle>Crowdsourced Questions</CardTitle>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>When enabled, players can submit their own questions in the lobby before the game starts. AI will evaluate and rank submissions based on your topic, and you can review and select which ones to include.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <FormField
-                control={form.control}
-                name="crowdsource.enabled"
-                render={({ field }) => (
-                  <FormItem className="flex items-center gap-2">
-                    <FormControl>
-                      <Switch
-                        checked={field.value || false}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
-            <CardDescription>
-              Allow players to submit questions during the lobby phase. AI will evaluate submissions and help you select the best ones.
-            </CardDescription>
-          </CardHeader>
-          {form.watch('crowdsource.enabled') && (
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="crowdsource.topicPrompt"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Topic Prompt</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g., European geography, 90s pop culture, Famous scientists"
-                        {...field}
-                        value={field.value || ''}
-                        maxLength={200}
-                      />
-                    </FormControl>
-                    <p className="text-xs text-muted-foreground">AI will use this to evaluate if submitted questions match your desired topic</p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="crowdsource.questionsNeeded"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Questions to Select</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={50}
-                          {...field}
-                          value={field.value || 10}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 10)}
-                        />
-                      </FormControl>
-                      <p className="text-xs text-muted-foreground">How many crowdsourced questions to include</p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="crowdsource.maxSubmissionsPerPlayer"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Max Submissions per Player</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={10}
-                          {...field}
-                          value={field.value || 3}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 3)}
-                        />
-                      </FormControl>
-                      <p className="text-xs text-muted-foreground">Limit how many questions each player can submit</p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="crowdsource.integrationMode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Integration Mode</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || 'append'}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select how to integrate crowdsourced questions" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="append">Append - Add after your questions</SelectItem>
-                        <SelectItem value="prepend">Prepend - Add before your questions</SelectItem>
-                        <SelectItem value="replace">Replace - Use only crowdsourced questions</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      {field.value === 'replace'
-                        ? 'Only crowdsourced questions will be used (your pre-made questions are ignored)'
-                        : field.value === 'prepend'
-                        ? 'Crowdsourced questions will appear first, followed by your pre-made questions'
-                        : 'Your pre-made questions will appear first, followed by crowdsourced questions'}
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          )}
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle>Questions</CardTitle>
@@ -544,6 +413,166 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
             <FormMessage>{form.formState.errors.questions?.message}</FormMessage>
           </CardContent>
         </Card>
+
+        {/* Advanced Settings - Collapsible */}
+        <Collapsible defaultOpen={form.watch('crowdsource.enabled')}>
+          <Card className="border-dashed">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Settings2 className="h-5 w-5 text-muted-foreground" />
+                    <CardTitle className="text-lg">Advanced Settings</CardTitle>
+                  </div>
+                  <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform [&[data-state=open]]:rotate-180" />
+                </div>
+                <CardDescription>
+                  Optional features like crowdsourced questions from players
+                </CardDescription>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-6 pt-0">
+                {/* Crowdsource Settings */}
+                <div className="rounded-lg border p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-primary" />
+                      <div>
+                        <h4 className="font-medium">Crowdsourced Questions</h4>
+                        <p className="text-sm text-muted-foreground">Let players submit questions before the game starts</p>
+                      </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p>When enabled, players can submit their own questions in the lobby before the game starts. AI will evaluate and rank submissions based on your topic, and you can review and select which ones to include.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="crowdsource.enabled"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center gap-2">
+                          <FormControl>
+                            <Switch
+                              checked={field.value || false}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {form.watch('crowdsource.enabled') && (
+                    <div className="space-y-4 pt-4 border-t">
+                      <FormField
+                        control={form.control}
+                        name="crowdsource.topicPrompt"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Topic Prompt</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g., European geography, 90s pop culture, Famous scientists"
+                                {...field}
+                                value={field.value || ''}
+                                maxLength={200}
+                              />
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground">AI will use this to evaluate if submitted questions match your desired topic</p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="crowdsource.questionsNeeded"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Questions to Select</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={50}
+                                  {...field}
+                                  value={field.value || 10}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 10)}
+                                />
+                              </FormControl>
+                              <p className="text-xs text-muted-foreground">How many crowdsourced questions to include</p>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="crowdsource.maxSubmissionsPerPlayer"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Max Submissions per Player</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={10}
+                                  {...field}
+                                  value={field.value || 3}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 3)}
+                                />
+                              </FormControl>
+                              <p className="text-xs text-muted-foreground">Limit how many questions each player can submit</p>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="crowdsource.integrationMode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Integration Mode</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || 'append'}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select how to integrate crowdsourced questions" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="append">Append - Add after your questions</SelectItem>
+                                <SelectItem value="prepend">Prepend - Add before your questions</SelectItem>
+                                <SelectItem value="replace">Replace - Use only crowdsourced questions</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              {field.value === 'replace'
+                                ? 'Only crowdsourced questions will be used (your pre-made questions are ignored)'
+                                : field.value === 'prepend'
+                                ? 'Crowdsourced questions will appear first, followed by your pre-made questions'
+                                : 'Your pre-made questions will appear first, followed by crowdsourced questions'}
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         {additionalContent}
 

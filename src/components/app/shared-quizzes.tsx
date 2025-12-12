@@ -178,7 +178,7 @@ export function SharedQuizzes() {
         has_images: copiedImageCount > 0,
       });
 
-      router.push(`/host/edit/${newQuizId}`);
+      router.push(`/host/quiz/${newQuizId}`);
     } catch (error) {
       console.error('Error copying quiz:', error);
       toast({
@@ -206,7 +206,7 @@ export function SharedQuizzes() {
         createdAt: serverTimestamp(),
       });
 
-      router.push(`/host/lobby/${gameDoc.id}`);
+      router.push(`/host/quiz/lobby/${gameDoc.id}`);
     } catch (error) {
       console.error('Error creating game:', error);
       toast({
@@ -241,9 +241,13 @@ export function SharedQuizzes() {
 
   return (
     <div className="mb-12">
-      <div className="flex items-center gap-2 mb-6">
-        <Share2 className="h-6 w-6 text-primary" />
-        <h2 className="text-2xl font-bold">Shared With Me</h2>
+      <div className="flex items-center gap-3 mb-6">
+        <h2 className="text-3xl font-semibold">Shared With Me</h2>
+        {shares && shares.length > 0 && (
+          <span className="px-2.5 py-0.5 text-sm font-medium bg-muted text-muted-foreground rounded-full">
+            {shares.length}
+          </span>
+        )}
       </div>
 
       {loading ? (
@@ -264,13 +268,13 @@ export function SharedQuizzes() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {shares.map((share) => (
             <Card key={share.id} className="flex flex-col">
-              <CardHeader>
-                <CardTitle>{share.quizTitle}</CardTitle>
-                <CardDescription>
+              <CardHeader className="p-4 pb-3">
+                <CardTitle className="text-lg">{share.quizTitle}</CardTitle>
+                <CardDescription className="text-sm">
                   Shared by {share.sharedByEmail}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex-grow flex flex-col justify-end gap-2">
+              <CardContent className="flex-grow flex flex-col justify-end gap-2 p-4 pt-0">
                 <Button
                   className="w-full"
                   onClick={() => handleHostGame(share)}
@@ -286,6 +290,7 @@ export function SharedQuizzes() {
                 <Button
                   className="w-full"
                   variant="outline"
+                  size="sm"
                   onClick={() => handlePreviewQuiz(share)}
                   disabled={loadingPreview}
                 >
@@ -299,6 +304,7 @@ export function SharedQuizzes() {
                 <Button
                   className="w-full"
                   variant="secondary"
+                  size="sm"
                   onClick={() => handleCopyQuiz(share)}
                   disabled={copying === share.id}
                 >
@@ -311,7 +317,7 @@ export function SharedQuizzes() {
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button className="w-full" variant="ghost">
+                    <Button className="w-full" variant="ghost" size="sm">
                       <Trash2 className="mr-2 h-4 w-4" /> Remove
                     </Button>
                   </AlertDialogTrigger>
@@ -338,13 +344,10 @@ export function SharedQuizzes() {
           ))}
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-12 text-center text-muted-foreground">
-            <Share2 className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p>No quizzes have been shared with you yet</p>
-            <p className="text-sm mt-2">Ask other hosts to share their quizzes with your email: {user.email}</p>
-          </CardContent>
-        </Card>
+        <div className="flex items-center gap-3 py-4 px-4 bg-muted/50 rounded-lg text-muted-foreground">
+          <Share2 className="h-5 w-5 opacity-50 flex-shrink-0" />
+          <p className="text-sm">No quizzes shared with you yet. Other hosts can share quizzes with <span className="font-medium">{user.email}</span></p>
+        </div>
       )}
 
       {/* Preview Dialog */}

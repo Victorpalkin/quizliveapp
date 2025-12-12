@@ -1,187 +1,224 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FullPageLoader } from '@/components/ui/full-page-loader';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/app/header';
-import { QuizForm, type QuizFormData } from '@/components/app/quiz-form';
-import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, useStorage, trackEvent } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
-import { nanoid } from 'nanoid';
-
-// Helper function to remove undefined values from objects
-function removeUndefined<T>(obj: T): T {
-  if (obj === null || obj === undefined) return obj;
-  if (Array.isArray(obj)) {
-    return obj.map(removeUndefined) as T;
-  }
-  if (typeof obj === 'object') {
-    const cleaned: any = {};
-    for (const [key, value] of Object.entries(obj)) {
-      if (value !== undefined) {
-        cleaned[key] = removeUndefined(value);
-      }
-    }
-    return cleaned;
-  }
-  return obj;
+import {
+  FileQuestion,
+  Cloud,
+  BarChart3,
+  Sparkles,
+  ArrowRight,
+  Users,
+  Trophy,
+  Zap,
+  MessageSquare,
+  TrendingUp,
+  ArrowLeft,
+} from 'lucide-react';
+interface ActivityTypeCardProps {
+  icon: React.ReactNode;
+  iconBg: string;
+  title: string;
+  description: string;
+  bestFor: string[];
+  features: string[];
+  href: string;
+  aiOption?: { href: string; label: string };
 }
 
-export default function CreateQuizPage() {
+function ActivityTypeCard({
+  icon,
+  iconBg,
+  title,
+  description,
+  bestFor,
+  features,
+  href,
+  aiOption,
+}: ActivityTypeCardProps) {
+  return (
+    <Card
+      className="group relative overflow-hidden border-2 border-transparent hover:border-primary/20 transition-all duration-300 hover:shadow-xl"
+    >
+      <CardHeader className="pb-4">
+        <div className="flex items-start justify-between">
+          <div
+            className={`p-3 rounded-xl ${iconBg} mb-3`}
+          >
+            {icon}
+          </div>
+          {aiOption && (
+            <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 dark:from-purple-900/30 dark:to-pink-900/30 dark:text-purple-300">
+              <Sparkles className="w-3 h-3 mr-1" />
+              AI Available
+            </Badge>
+          )}
+        </div>
+        <CardTitle className="text-2xl">{title}</CardTitle>
+        <CardDescription className="text-base">{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Best For */}
+        <div>
+          <p className="text-sm font-medium text-muted-foreground mb-2">Best for:</p>
+          <div className="flex flex-wrap gap-2">
+            {bestFor.map((item) => (
+              <Badge key={item} variant="outline" className="text-xs">
+                {item}
+              </Badge>
+            ))}
+          </div>
+        </div>
+
+        {/* Features */}
+        <div className="space-y-2">
+          {features.map((feature) => (
+            <div key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+              {feature}
+            </div>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div className="pt-4 space-y-2">
+          <Button asChild className="w-full group-hover:bg-primary">
+            <Link href={href}>
+              Create {title}
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </Button>
+          {aiOption && (
+            <Button asChild variant="outline" className="w-full">
+              <Link href={aiOption.href}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                {aiOption.label}
+              </Link>
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function CreateActivityPage() {
   const router = useRouter();
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const storage = useStorage();
-  const { user, loading: userLoading } = useUser();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Generate stable tempId for AI image generation (used before quiz has an ID)
-  const tempIdRef = useRef<string>(nanoid());
-  const tempId = tempIdRef.current;
-
-  useEffect(() => {
-    if (!userLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, userLoading, router]);
-
-  const handleSubmit = async (data: QuizFormData, imageFiles: Record<number, File>, imagesToDelete: string[]) => {
-    if (!user) {
-      toast({
-        variant: "destructive",
-        title: "You must be signed in",
-        description: "Please sign in to create a quiz.",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const quizDataForUpload = { ...data, questions: [...data.questions] };
-
-      // Upload images and update URLs
-      for (const qIndex in imageFiles) {
-        const file = imageFiles[Number(qIndex)];
-        if (file) {
-          const imageRef = ref(storage, `quiz-images/${user.uid}/${nanoid()}`);
-          await uploadBytes(imageRef, file);
-          const downloadURL = await getDownloadURL(imageRef);
-          quizDataForUpload.questions[Number(qIndex)].imageUrl = downloadURL;
-        }
-      }
-
-      // Final quiz data for Firestore
-      const finalQuizData = {
-        ...quizDataForUpload,
-        hostId: user.uid,
-        createdAt: serverTimestamp(),
-      };
-
-      // Remove undefined values to prevent Firestore errors
-      const cleanedQuizData = removeUndefined(finalQuizData);
-
-      const docRef = await addDoc(collection(firestore, 'quizzes'), cleanedQuizData);
-      const quizId = docRef.id;
-
-      // Track quiz creation
-      trackEvent('quiz_created', {
-        question_count: data.questions.length,
-        has_images: Object.keys(imageFiles).length > 0,
-      });
-
-      // Move temp AI images to final quiz path
-      try {
-        const tempFolderRef = ref(storage, `temp/${tempId}/questions`);
-        const tempContents = await listAll(tempFolderRef);
-
-        for (const folderRef of tempContents.prefixes) {
-          // Each folder is a question index folder
-          const questionFiles = await listAll(folderRef);
-          for (const fileRef of questionFiles.items) {
-            // Get the file name (e.g., "image.png")
-            const fileName = fileRef.name;
-            const questionIndex = folderRef.name;
-
-            // Download the temp file
-            const tempUrl = await getDownloadURL(fileRef);
-            const response = await fetch(tempUrl);
-            const blob = await response.blob();
-
-            // Upload to final path
-            const finalPath = `quizzes/${quizId}/questions/${questionIndex}/${fileName}`;
-            const finalRef = ref(storage, finalPath);
-            await uploadBytes(finalRef, blob);
-            const finalUrl = await getDownloadURL(finalRef);
-
-            // Update the question imageUrl if it matches the temp URL
-            const qIdx = parseInt(questionIndex, 10);
-            if (quizDataForUpload.questions[qIdx]?.imageUrl?.includes(`temp/${tempId}`)) {
-              // Update the document with the new URL
-              // Note: The image URL was already saved with the temp URL
-              // We need to update it in Firestore
-              await import('firebase/firestore').then(async ({ updateDoc }) => {
-                const updatedQuestions = [...quizDataForUpload.questions];
-                updatedQuestions[qIdx] = { ...updatedQuestions[qIdx], imageUrl: finalUrl };
-                await updateDoc(docRef, { questions: updatedQuestions.map(q => removeUndefined(q)) });
-              });
-            }
-
-            // Delete the temp file
-            await deleteObject(fileRef);
-          }
-        }
-      } catch (error) {
-        // Temp folder might not exist if no AI images were generated
-        console.log('No temp images to move or error moving:', error);
-      }
-
-      // Clean up deleted images from storage
-      for (const url of imagesToDelete) {
-        try {
-          const imageRef = ref(storage, url);
-          await deleteObject(imageRef);
-        } catch (error: any) {
-          if (error.code !== 'storage/object-not-found') {
-            console.error("Failed to delete image:", error);
-          }
-        }
-      }
-
-      toast({
-        title: 'Quiz Saved!',
-        description: 'Your new quiz has been saved to your dashboard.',
-      });
-      router.push(`/host`);
-    } catch (error) {
-      console.error("Error creating quiz: ", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Could not save the quiz. Please try again.",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (userLoading || !user) {
-    return <FullPageLoader />;
-  }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
-      <main className="flex-1 container mx-auto p-4 md:p-8">
-        <QuizForm
-          mode="create"
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-          userId={user.uid}
-          tempId={tempId}
-        />
+      <main className="flex-1 container mx-auto p-4 md:p-8 max-w-6xl">
+        {/* Back Button */}
+        <Button asChild variant="ghost" className="mb-6">
+          <Link href="/host">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+          </Link>
+        </Button>
+
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            What would you like to create?
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Choose an activity type to engage your audience. Each type offers unique ways to interact and gather insights.
+          </p>
+        </div>
+
+        {/* Activity Type Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          {/* Quiz */}
+          <ActivityTypeCard
+            icon={<FileQuestion className="h-8 w-8 text-purple-600" />}
+            iconBg="bg-purple-100 dark:bg-purple-900/30"
+            title="Quiz"
+            description="Competitive trivia with real-time scoring and leaderboards. Test knowledge and spark friendly competition."
+            bestFor={['Training sessions', 'Classrooms', 'Team events', 'Icebreakers']}
+            features={[
+              'Multiple question types',
+              'Time-based scoring',
+              'Live leaderboard',
+              'Detailed analytics',
+            ]}
+            href="/host/quiz/create"
+            aiOption={{
+              href: '/host/quiz/create-ai',
+              label: 'Generate with AI',
+            }}
+          />
+
+          {/* Thoughts Gathering */}
+          <ActivityTypeCard
+            icon={<Cloud className="h-8 w-8 text-blue-600" />}
+            iconBg="bg-blue-100 dark:bg-blue-900/30"
+            title="Thoughts Gathering"
+            description="Collect topics and ideas from your audience, then visualize them as an interactive word cloud."
+            bestFor={['Workshops', 'Brainstorming', 'Needs assessment', 'Team building']}
+            features={[
+              'Real-time word cloud',
+              'Multiple submissions per person',
+              'Anonymous or named',
+              'Visual engagement',
+            ]}
+            href="/host/thoughts-gathering/create"
+          />
+
+          {/* Evaluation */}
+          <ActivityTypeCard
+            icon={<BarChart3 className="h-8 w-8 text-orange-600" />}
+            iconBg="bg-orange-100 dark:bg-orange-900/30"
+            title="Evaluation"
+            description="Prioritize items with weighted metrics. Perfect for decision-making and gathering structured feedback."
+            bestFor={['Feature prioritization', 'Retrospectives', 'Voting', 'Surveys']}
+            features={[
+              'Custom metrics (1-5)',
+              'Weighted scoring',
+              'Participant submissions',
+              'Aggregated results',
+            ]}
+            href="/host/evaluation/create"
+          />
+        </div>
+
+        {/* Help Section */}
+        <Card className="bg-muted/30 border-dashed">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="flex-shrink-0">
+                <div className="p-4 rounded-full bg-primary/10">
+                  <MessageSquare className="h-8 w-8 text-primary" />
+                </div>
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="text-lg font-semibold mb-1">Not sure which to choose?</h3>
+                <p className="text-muted-foreground mb-3">
+                  Start with a <strong>Quiz</strong> if you want to test knowledge,
+                  <strong> Thoughts Gathering</strong> for open-ended feedback,
+                  or <strong>Evaluation</strong> for structured prioritization.
+                </p>
+                <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-4 w-4 text-purple-500" />
+                    <span>Quiz = Competition</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-blue-500" />
+                    <span>Thoughts = Discovery</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-orange-500" />
+                    <span>Evaluation = Decisions</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

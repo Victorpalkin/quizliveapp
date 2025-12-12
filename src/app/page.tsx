@@ -2,7 +2,20 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/app/theme-toggle';
-import { BrainCircuit, Play, Sparkles } from 'lucide-react';
+import {
+  Zap,
+  Play,
+  Sparkles,
+  BrainCircuit,
+  Cloud,
+  BarChart3,
+  Users,
+  Timer,
+  ArrowRight,
+  Smartphone,
+  LineChart,
+  MessageSquare,
+} from 'lucide-react';
 import { HostReconnectOverlay } from '@/components/app/host-reconnect-banner';
 
 export default function Home() {
@@ -11,98 +24,242 @@ export default function Home() {
       {/* Host Reconnection Overlay */}
       <HostReconnectOverlay />
 
-      {/* Theme Toggle - Top Right */}
-      <div className="absolute top-6 right-6 z-20">
-        <ThemeToggle />
-      </div>
-
-      <main className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
-        {/* Hero Section */}
-        <div className="mb-12 space-y-6 max-w-3xl">
-          {/* Logo and Title on same line */}
-          <div className="flex items-center justify-center gap-4">
-            <div className="rounded-2xl bg-gradient-to-br from-primary to-accent p-4">
-              <BrainCircuit className="h-12 w-12 text-white" />
+      {/* Minimal Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
+        <div className="container mx-auto px-6 py-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="rounded-lg bg-gradient-to-br from-primary to-accent p-1.5">
+              <Zap className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-6xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent leading-tight py-2">
-              gQuiz
-            </h1>
-          </div>
-
-          <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Create engaging quizzes and play live with friends, students, or colleagues
-          </p>
-
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Sparkles className="h-4 w-4" />
-            <span>Simple, elegant, and fun</span>
-          </div>
+            <span className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Zivo
+            </span>
+          </Link>
+          <ThemeToggle />
         </div>
+      </header>
 
-        {/* Action Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
-          {/* Host Card */}
-          <Card className="border-card-border hover:shadow-lg transition-all duration-300 hover:scale-[1.02] group">
-            <CardContent className="p-10">
-              <div className="flex flex-col items-center gap-6">
-                <div className="rounded-2xl bg-primary/10 p-6 group-hover:bg-primary/20 transition-colors">
-                  <BrainCircuit className="h-12 w-12 text-primary" />
-                </div>
+      <main className="pt-16">
+        {/* Hero Section */}
+        <section className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+          <div className="container mx-auto px-6 py-16 md:py-20 text-center relative">
+            <div className="max-w-3xl mx-auto space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                <Sparkles className="h-4 w-4" />
+                Real-time Audience Engagement
+              </div>
 
-                <div className="space-y-3">
-                  <h2 className="text-2xl font-semibold">Host a Quiz</h2>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Create custom quizzes and host live game sessions with real-time scoring
-                  </p>
-                </div>
+              <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+                Run{' '}
+                <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  Live Interactive Sessions
+                </span>
+              </h1>
 
+              <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+                Host real-time quizzes, gather thoughts from your audience, and run collaborative
+                evaluation sessions — all synchronized across every device.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                 <Button
                   asChild
                   size="lg"
-                  className="w-full mt-2 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
+                  className="w-full sm:w-auto px-6 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
                 >
                   <Link href="/host">
-                    Get Started
+                    <Zap className="mr-2 h-4 w-4" />
+                    Host Activities
                   </Link>
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Player Card */}
-          <Card className="border-card-border hover:shadow-lg transition-all duration-300 hover:scale-[1.02] group">
-            <CardContent className="p-10">
-              <div className="flex flex-col items-center gap-6">
-                <div className="rounded-2xl bg-accent/10 p-6 group-hover:bg-accent/20 transition-colors">
-                  <Play className="h-12 w-12 text-accent" />
-                </div>
-
-                <div className="space-y-3">
-                  <h2 className="text-2xl font-semibold">Join a Game</h2>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Enter a game PIN and compete against others in real-time quiz battles
-                  </p>
-                </div>
-
                 <Button
                   asChild
                   size="lg"
                   variant="outline"
-                  className="w-full mt-2 hover:bg-accent/10 transition-colors"
+                  className="w-full sm:w-auto px-6 hover:bg-accent/10 transition-colors"
                 >
                   <Link href="/join">
-                    Enter PIN
+                    <Play className="mr-2 h-4 w-4" />
+                    Join Session
                   </Link>
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </div>
+        </section>
 
-        {/* Subtle Footer */}
-        <div className="mt-16 text-sm text-muted-foreground">
-          <p>Powered by real-time technology</p>
-        </div>
+        {/* Activity Types Section */}
+        <section className="py-12 bg-muted/30">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">
+                Three Activity Types
+              </h2>
+              <p className="text-muted-foreground">
+                Choose the right format for your live session
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              {/* Thoughts Gathering */}
+              <Card className="border-card-border hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="rounded-xl bg-blue-500/10 p-3 w-fit mb-4">
+                    <Cloud className="h-8 w-8 text-blue-500" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Thoughts Gathering</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Collect ideas and feedback. AI-powered clustering reveals themes.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Brainstorming, Q&A, retrospectives, pain point discovery
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Quizzes & Polls */}
+              <Card className="border-card-border hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="rounded-xl bg-primary/10 p-3 w-fit mb-4">
+                    <BrainCircuit className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Quizzes & Polls</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Interactive questions with real-time results and leaderboards.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Live polling, knowledge checks, icebreakers, voting
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Evaluation */}
+              <Card className="border-card-border hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="rounded-xl bg-orange-500/10 p-3 w-fit mb-4">
+                    <BarChart3 className="h-8 w-8 text-orange-500" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Evaluation</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Rate and rank items across custom criteria with weighted scoring.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Prioritization, comparison, requirements scoring, assessments
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section className="py-12">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">
+                Key Features
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border">
+                <Timer className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium">Real-time Sync</span>
+              </div>
+
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border">
+                <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium">AI-Powered</span>
+              </div>
+
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border">
+                <MessageSquare className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium">Multiple Question Types</span>
+              </div>
+
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border">
+                <LineChart className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium">Instant Analytics</span>
+              </div>
+
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border">
+                <Users className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium">Easy PIN Joining</span>
+              </div>
+
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border">
+                <Smartphone className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium">Works Everywhere</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works Section */}
+        <section className="py-12 bg-muted/30">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">
+                How It Works
+              </h2>
+            </div>
+
+            <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-4 max-w-3xl mx-auto">
+              {/* Step 1 */}
+              <div className="flex flex-col items-center text-center flex-1">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-lg font-bold mb-3">
+                  1
+                </div>
+                <h3 className="font-semibold mb-1">Create Activity</h3>
+                <p className="text-sm text-muted-foreground">
+                  Choose quiz, thoughts, or evaluation
+                </p>
+              </div>
+
+              <ArrowRight className="hidden md:block h-6 w-6 text-muted-foreground/50 flex-shrink-0" />
+
+              {/* Step 2 */}
+              <div className="flex flex-col items-center text-center flex-1">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-lg font-bold mb-3">
+                  2
+                </div>
+                <h3 className="font-semibold mb-1">Share the PIN</h3>
+                <p className="text-sm text-muted-foreground">
+                  Participants join with a code
+                </p>
+              </div>
+
+              <ArrowRight className="hidden md:block h-6 w-6 text-muted-foreground/50 flex-shrink-0" />
+
+              {/* Step 3 */}
+              <div className="flex flex-col items-center text-center flex-1">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-lg font-bold mb-3">
+                  3
+                </div>
+                <h3 className="font-semibold mb-1">Run & Analyze</h3>
+                <p className="text-sm text-muted-foreground">
+                  Get real-time results
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="py-8 border-t border-border">
+          <div className="container mx-auto px-6 text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="rounded-lg bg-gradient-to-br from-primary to-accent p-1.5">
+                <Zap className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-lg font-semibold">Zivo</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Real-time interactive sessions for teams and audiences
+            </p>
+          </div>
+        </footer>
       </main>
     </div>
   );

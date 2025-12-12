@@ -1,14 +1,14 @@
-# gQuiz Differentiation Features
+# Zivo Differentiation Features
 
 **Last Updated:** 2025-11-19
 **Status:** Brainstorming & Planning
-**Goal:** Differentiate gQuiz from Kahoot with innovative core gameplay features
+**Goal:** Differentiate Zivo from Kahoot with innovative core gameplay features
 
 ---
 
 ## Executive Summary
 
-This document outlines innovative features that would position gQuiz as a next-generation quiz platform, distinct from Kahoot. All features focus on **core quiz gameplay** rather than peripheral elements (themes, avatars, etc.).
+This document outlines innovative features that would position Zivo as a next-generation audience engagement platform, distinct from Kahoot. All features focus on **core gameplay** rather than peripheral elements (themes, avatars, etc.).
 
 **Key Differentiation Strategies:**
 1. **Strategic Depth** - Add game theory, risk/reward decisions
@@ -18,7 +18,7 @@ This document outlines innovative features that would position gQuiz as a next-g
 
 ---
 
-## Current State of gQuiz
+## Current State of Zivo
 
 ### Implemented Features
 
@@ -698,7 +698,7 @@ Combine multiple features for maximum differentiation:
 - ✅ Power-Ups (earned through performance)
 - ✅ Adaptive Difficulty (personalized challenges)
 
-**Result:** Strategic depth rivals board games. Players manage points as resources, unlock abilities through streaks, make risk/reward decisions. Could become gQuiz's signature feature.
+**Result:** Strategic depth rivals board games. Players manage points as resources, unlock abilities through streaks, make risk/reward decisions. Could become Zivo's signature feature.
 
 ---
 
@@ -794,7 +794,7 @@ All features compatible with current Firebase architecture:
 
 ## Competitive Analysis
 
-| Feature | gQuiz | Kahoot | Quizlet Live | Gimkit | Blooket |
+| Feature | Zivo | Kahoot | Quizlet Live | Gimkit | Blooket |
 |---------|-------|--------|--------------|--------|---------|
 | Confidence Wagering | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Combo Chains | ✅ | ❌ | ❌ | ✅ (different) | ❌ |

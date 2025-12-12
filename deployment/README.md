@@ -1,6 +1,6 @@
 # Deployment Resources
 
-This directory contains all deployment-related scripts and configuration files for the gQuiz application.
+This directory contains all deployment-related scripts and configuration files for the Zivo application.
 
 ## 📁 Directory Structure
 

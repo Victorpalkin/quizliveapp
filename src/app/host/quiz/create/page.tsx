@@ -1,0 +1,194 @@
+'use client';
+
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { FullPageLoader } from '@/components/ui/full-page-loader';
+import { Header } from '@/components/app/header';
+import { QuizForm, type QuizFormData } from '@/components/app/quiz-form';
+import { Button } from '@/components/ui/button';
+import { Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
+import { useFirestore, useUser, useStorage, trackEvent } from '@/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
+import { nanoid } from 'nanoid';
+import { removeUndefined } from '@/lib/firestore-utils';
+
+export default function CreateQuizPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const firestore = useFirestore();
+  const storage = useStorage();
+  const { user, loading: userLoading } = useUser();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Generate stable tempId for AI image generation (used before quiz has an ID)
+  const tempIdRef = useRef<string>(nanoid());
+  const tempId = tempIdRef.current;
+
+  useEffect(() => {
+    if (!userLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, userLoading, router]);
+
+  const handleSubmit = async (data: QuizFormData, imageFiles: Record<number, File>, imagesToDelete: string[]) => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "You must be signed in",
+        description: "Please sign in to create a quiz.",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const quizDataForUpload = { ...data, questions: [...data.questions] };
+
+      // Upload images and update URLs
+      for (const qIndex in imageFiles) {
+        const file = imageFiles[Number(qIndex)];
+        if (file) {
+          const imageRef = ref(storage, `quiz-images/${user.uid}/${nanoid()}`);
+          await uploadBytes(imageRef, file);
+          const downloadURL = await getDownloadURL(imageRef);
+          quizDataForUpload.questions[Number(qIndex)].imageUrl = downloadURL;
+        }
+      }
+
+      // Final quiz data for Firestore
+      const finalQuizData = {
+        ...quizDataForUpload,
+        hostId: user.uid,
+        createdAt: serverTimestamp(),
+      };
+
+      // Remove undefined values to prevent Firestore errors
+      const cleanedQuizData = removeUndefined(finalQuizData);
+
+      const docRef = await addDoc(collection(firestore, 'quizzes'), cleanedQuizData);
+      const quizId = docRef.id;
+
+      // Track quiz creation
+      trackEvent('quiz_created', {
+        question_count: data.questions.length,
+        has_images: Object.keys(imageFiles).length > 0,
+      });
+
+      // Move temp AI images to final quiz path
+      try {
+        const tempFolderRef = ref(storage, `temp/${tempId}/questions`);
+        const tempContents = await listAll(tempFolderRef);
+
+        for (const folderRef of tempContents.prefixes) {
+          // Each folder is a question index folder
+          const questionFiles = await listAll(folderRef);
+          for (const fileRef of questionFiles.items) {
+            // Get the file name (e.g., "image.png")
+            const fileName = fileRef.name;
+            const questionIndex = folderRef.name;
+
+            // Download the temp file
+            const tempUrl = await getDownloadURL(fileRef);
+            const response = await fetch(tempUrl);
+            const blob = await response.blob();
+
+            // Upload to final path
+            const finalPath = `quizzes/${quizId}/questions/${questionIndex}/${fileName}`;
+            const finalRef = ref(storage, finalPath);
+            await uploadBytes(finalRef, blob);
+            const finalUrl = await getDownloadURL(finalRef);
+
+            // Update the question imageUrl if it matches the temp URL
+            const qIdx = parseInt(questionIndex, 10);
+            if (quizDataForUpload.questions[qIdx]?.imageUrl?.includes(`temp/${tempId}`)) {
+              // Update the document with the new URL
+              // Note: The image URL was already saved with the temp URL
+              // We need to update it in Firestore
+              await import('firebase/firestore').then(async ({ updateDoc }) => {
+                const updatedQuestions = [...quizDataForUpload.questions];
+                updatedQuestions[qIdx] = { ...updatedQuestions[qIdx], imageUrl: finalUrl };
+                await updateDoc(docRef, { questions: updatedQuestions.map(q => removeUndefined(q)) });
+              });
+            }
+
+            // Delete the temp file
+            await deleteObject(fileRef);
+          }
+        }
+      } catch (error) {
+        // Temp folder might not exist if no AI images were generated
+        console.log('No temp images to move or error moving:', error);
+      }
+
+      // Clean up deleted images from storage
+      for (const url of imagesToDelete) {
+        try {
+          const imageRef = ref(storage, url);
+          await deleteObject(imageRef);
+        } catch (error: any) {
+          if (error.code !== 'storage/object-not-found') {
+            console.error("Failed to delete image:", error);
+          }
+        }
+      }
+
+      toast({
+        title: 'Quiz Saved!',
+        description: 'Your new quiz has been saved to your dashboard.',
+      });
+      router.push(`/host`);
+    } catch (error) {
+      console.error("Error creating quiz: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not save the quiz. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (userLoading || !user) {
+    return <FullPageLoader />;
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="flex-1 container mx-auto p-4 md:p-8">
+        {/* AI Feature Discovery Banner */}
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-6 max-w-4xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white dark:bg-gray-800 rounded-full">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-sm">Want AI to help?</p>
+              <p className="text-xs text-muted-foreground">
+                Generate quiz questions automatically with AI
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/host/quiz/create-ai">
+                Try AI Generation
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        <QuizForm
+          mode="create"
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          userId={user.uid}
+          tempId={tempId}
+        />
+      </main>
+    </div>
+  );
+}

@@ -4,12 +4,8 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   output: 'standalone', // Required for Cloud Run deployment
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // TypeScript and ESLint errors are now enforced during builds
+  // This ensures type safety and code quality in production
   images: {
     remotePatterns: [
       {

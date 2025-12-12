@@ -6,8 +6,8 @@ import { FirebaseClientProvider } from '@/firebase';
 import { EnvironmentBadge } from '@/components/app/environment-badge';
 
 export const metadata: Metadata = {
-  title: 'gQuiz',
-  description: 'An interactive quiz app for engaging live game sessions.',
+  title: 'Zivo',
+  description: 'Interactive audience engagement platform for quizzes, polls, and collaborative activities.',
 };
 
 export default function RootLayout({

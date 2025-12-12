@@ -118,7 +118,8 @@ export const evaluateSubmissions = onCall(
     maxInstances: 5,
     concurrency: 5,
     serviceAccount: AI_SERVICE_ACCOUNT,
-    enforceAppCheck: false,
+    // App Check enabled - verifies requests come from genuine app instances
+    enforceAppCheck: true,
   },
   async (request): Promise<EvaluateSubmissionsResponse> => {
     verifyAppCheck(request);

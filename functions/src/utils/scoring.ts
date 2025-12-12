@@ -1,4 +1,4 @@
-import { SubmitAnswerRequest } from '../types';
+import { SubmitAnswerRequest, AnswerKeyEntry } from '../types';
 import { checkFreeResponseAnswer } from './fuzzyMatch';
 
 /**
@@ -185,24 +185,30 @@ export function scoreFreeResponse(
   return { points: 0, isCorrect: false, isPartiallyCorrect: false };
 }
 
+// Note: The old calculateScore function was removed because it relied on
+// client-provided correct answers. Use calculateScoreFromAnswerKey instead,
+// which takes the correct answers from the server-side answer key.
+
 /**
- * Calculate score based on question type
+ * Calculate score using the answer key entry fetched from server
+ * This is the secure version that doesn't rely on client-provided correct answers
  *
- * @param request - The submit answer request data
- * @param timeLimit - Total time limit for the question
+ * @param request - The submit answer request data (without correct answer fields)
+ * @param answerKey - The answer key entry from server-side storage
  * @returns Scoring result with points and correctness
  */
-export function calculateScore(
+export function calculateScoreFromAnswerKey(
   request: SubmitAnswerRequest,
-  timeLimit: number
+  answerKey: AnswerKeyEntry
 ): ScoringResult {
   const { questionType, timeRemaining } = request;
+  const timeLimit = answerKey.timeLimit || request.questionTimeLimit || 20;
 
   switch (questionType) {
     case 'single-choice':
       return scoreSingleChoice(
         request.answerIndex,
-        request.correctAnswerIndex!,
+        answerKey.correctAnswerIndex!,
         timeRemaining,
         timeLimit
       );
@@ -210,7 +216,7 @@ export function calculateScore(
     case 'multiple-choice':
       return scoreMultipleChoice(
         request.answerIndices!,
-        request.correctAnswerIndices!,
+        answerKey.correctAnswerIndices!,
         timeRemaining,
         timeLimit
       );
@@ -218,21 +224,21 @@ export function calculateScore(
     case 'slider':
       return scoreSlider(
         request.sliderValue!,
-        request.correctValue!,
-        request.minValue!,
-        request.maxValue!,
+        answerKey.correctValue!,
+        answerKey.minValue!,
+        answerKey.maxValue!,
         timeRemaining,
         timeLimit,
-        request.acceptableError
+        answerKey.acceptableError
       );
 
     case 'free-response':
       return scoreFreeResponse(
         request.textAnswer || '',
-        request.correctAnswer!,
-        request.alternativeAnswers || [],
-        request.caseSensitive ?? false,
-        request.allowTypos ?? true,
+        answerKey.correctAnswer!,
+        answerKey.alternativeAnswers || [],
+        answerKey.caseSensitive ?? false,
+        answerKey.allowTypos ?? true,
         timeRemaining,
         timeLimit
       );

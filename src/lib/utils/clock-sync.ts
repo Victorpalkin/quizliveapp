@@ -2,7 +2,7 @@ import { doc, getDoc, serverTimestamp, setDoc, deleteDoc } from 'firebase/firest
 import type { Firestore } from 'firebase/firestore';
 
 /**
- * Clock Synchronization Utility for gQuiz
+ * Clock Synchronization Utility for Zivo
  *
  * Implements NTP-like clock synchronization between client and Firestore server.
  * Used to ensure all players see synchronized countdown timers regardless of device clock accuracy.

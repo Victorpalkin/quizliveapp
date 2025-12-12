@@ -1,4 +1,4 @@
-# gQuiz Feature Backlog
+# Zivo Feature Backlog
 
 ## Summary of Implemented Features
 

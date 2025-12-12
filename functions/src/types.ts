@@ -2,6 +2,8 @@ import * as admin from 'firebase-admin';
 
 /**
  * Request interface for submitAnswer Cloud Function
+ * Note: Correct answer data is now fetched server-side from the answer key document
+ * to prevent players from seeing correct answers in browser dev tools.
  */
 export interface SubmitAnswerRequest {
   gameId: string;
@@ -15,11 +17,21 @@ export interface SubmitAnswerRequest {
   sliderValue?: number;        // For slider questions
   textAnswer?: string;         // For free-response questions
 
-  // Question metadata (passed from client to avoid quiz fetch)
+  // Question metadata
   questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'free-response' | 'poll-single' | 'poll-multiple';
   questionTimeLimit?: number;
+}
 
-  // Type-specific metadata
+/**
+ * Answer key entry stored in games/{gameId}/aggregates/answerKey
+ * Contains correct answers for server-side scoring.
+ * Players cannot read this document (blocked by Firestore rules).
+ */
+export interface AnswerKeyEntry {
+  type: 'single-choice' | 'multiple-choice' | 'slider' | 'free-response' | 'poll-single' | 'poll-multiple' | 'slide';
+  timeLimit: number;
+
+  // Type-specific answer data
   correctAnswerIndex?: number;       // For single-choice
   correctAnswerIndices?: number[];   // For multiple-choice
   correctValue?: number;             // For slider
@@ -30,6 +42,13 @@ export interface SubmitAnswerRequest {
   alternativeAnswers?: string[];     // For free-response - alternative accepted answers
   caseSensitive?: boolean;           // For free-response - default false
   allowTypos?: boolean;              // For free-response - default true
+}
+
+/**
+ * Answer key document stored in games/{gameId}/aggregates/answerKey
+ */
+export interface AnswerKey {
+  questions: AnswerKeyEntry[];
 }
 
 /**
@@ -249,5 +268,142 @@ export interface ComputeGameAnalyticsResult {
   analytics?: {
     totalPlayers: number;
     totalQuestions: number;
+  };
+}
+
+// ==========================================
+// Ranking Activity Types
+// ==========================================
+
+/**
+ * Metric configuration for ranking activity
+ */
+export interface RankingMetric {
+  id: string;
+  name: string;
+  description?: string;
+  scaleType: 'stars' | 'numeric' | 'labels';
+  scaleMin: number;
+  scaleMax: number;
+  scaleLabels?: string[];
+  weight: number;
+  lowerIsBetter: boolean;
+}
+
+/**
+ * A predefined item template stored in activity config
+ */
+export interface PredefinedItem {
+  id: string;
+  text: string;
+  description?: string;
+}
+
+/**
+ * Ranking activity configuration
+ */
+export interface RankingConfig {
+  metrics: RankingMetric[];
+  predefinedItems: PredefinedItem[];
+  allowParticipantItems: boolean;
+  maxItemsPerParticipant: number;
+  requireApproval: boolean;
+  showItemSubmitter: boolean;
+}
+
+/**
+ * Ranking activity document
+ */
+export interface RankingActivity {
+  id: string;
+  type: 'evaluation';
+  title: string;
+  description?: string;
+  hostId: string;
+  config: RankingConfig;
+}
+
+/**
+ * Ranking item to be rated
+ */
+export interface RankingItem {
+  id: string;
+  text: string;
+  description?: string;
+  submittedBy?: string;
+  submittedByPlayerId?: string;
+  isHostItem: boolean;
+  approved: boolean;
+  order: number;
+}
+
+/**
+ * Player's ratings for items
+ */
+export interface PlayerRatings {
+  playerId: string;
+  playerName: string;
+  ratings: {
+    [itemId: string]: {
+      [metricId: string]: number;
+    };
+  };
+  isComplete: boolean;
+}
+
+/**
+ * Metric score details for an item
+ */
+export interface MetricScoreDetails {
+  rawAverage: number;
+  normalizedAverage: number;
+  median: number;
+  stdDev: number;
+  distribution: number[];
+  responseCount: number;
+}
+
+/**
+ * Individual item result with scores
+ */
+export interface RankingItemResult {
+  itemId: string;
+  itemText: string;
+  itemDescription?: string;
+  overallScore: number;
+  rank: number;
+  metricScores: {
+    [metricId: string]: MetricScoreDetails;
+  };
+  consensusLevel: 'high' | 'medium' | 'low';
+}
+
+/**
+ * Complete ranking results document
+ * Stored at: games/{gameId}/aggregates/rankings
+ */
+export interface RankingResults {
+  items: RankingItemResult[];
+  totalParticipants: number;
+  participantsWhoRated: number;
+  processedAt: admin.firestore.FieldValue;
+}
+
+/**
+ * Request interface for computeRankingResults Cloud Function
+ */
+export interface ComputeRankingResultsRequest {
+  gameId: string;
+}
+
+/**
+ * Result returned from computeRankingResults function
+ */
+export interface ComputeRankingResultsResult {
+  success: boolean;
+  message: string;
+  results?: {
+    totalItems: number;
+    totalParticipants: number;
   };
 }
