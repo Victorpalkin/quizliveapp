@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import type { EvaluationActivity, EvaluationMetric, EvaluationConfig, PredefinedItem } from '@/lib/types';
 import { evaluationActivityConverter } from '@/firebase/converters';
+import { removeUndefined } from '@/lib/firestore-utils';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { nanoid } from 'nanoid';
 import {
@@ -112,11 +113,16 @@ export default function EditEvaluationPage() {
   const addPredefinedItem = () => {
     if (!newItemText.trim()) return;
 
+    // Build item without undefined values (Firestore rejects undefined)
     const newItem: PredefinedItem = {
       id: nanoid(8),
       text: newItemText.trim(),
-      description: newItemDescription.trim() || undefined,
     };
+
+    // Only add description if it has content
+    if (newItemDescription.trim()) {
+      newItem.description = newItemDescription.trim();
+    }
 
     setPredefinedItems([...predefinedItems, newItem]);
     setNewItemText('');
@@ -161,7 +167,7 @@ export default function EditEvaluationPage() {
 
     try {
       const config: EvaluationConfig = {
-        metrics,
+        metrics: removeUndefined(metrics),
         predefinedItems,
         allowParticipantItems,
         maxItemsPerParticipant,
@@ -169,12 +175,12 @@ export default function EditEvaluationPage() {
         showItemSubmitter,
       };
 
-      await updateDoc(activityRef, {
+      await updateDoc(activityRef, removeUndefined({
         title: title.trim(),
         description: description.trim() || null,
         config,
         updatedAt: serverTimestamp(),
-      });
+      }));
 
       toast({
         title: 'Changes Saved!',

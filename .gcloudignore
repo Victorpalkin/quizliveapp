@@ -62,6 +62,7 @@ storage.rules
 
 # Cloud Functions (deployed separately to Firebase)
 functions/
+functions-ai/
 
 # Deployment configurations
 Dockerfile

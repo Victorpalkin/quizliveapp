@@ -55,6 +55,7 @@ storage.rules
 
 # Cloud Functions (not needed in client build)
 functions/
+functions-ai/
 
 # Documentation
 docs
