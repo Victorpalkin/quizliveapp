@@ -25,10 +25,12 @@ export function QuestionTypeBadges({ question }: QuestionTypeBadgesProps) {
       );
 
     case 'multiple-choice':
+      // For sanitized questions, use expectedAnswerCount (added during sanitization)
+      // This field is always present when correctAnswerIndices is removed
       return (
         <div className="flex gap-2">
           <Badge variant="secondary" className="text-sm">
-            Multiple Answers ({question.correctAnswerIndices.length})
+            Multiple Answers ({question.expectedAnswerCount})
           </Badge>
           <Badge variant="default" className="text-sm">
             Proportional Scoring

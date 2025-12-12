@@ -26,8 +26,9 @@ export interface SingleChoiceQuestion extends BaseQuestion {
 export interface MultipleChoiceQuestion extends BaseQuestion {
   type: 'multiple-choice';
   answers: Answer[];
-  correctAnswerIndices: number[]; // Multiple indices for correct answers
+  correctAnswerIndices: number[]; // Multiple indices for correct answers (removed in sanitized version)
   showAnswerCount?: boolean; // Default: true, show how many answers to select
+  expectedAnswerCount?: number; // Always present in sanitized version (replaces correctAnswerIndices.length)
 }
 
 // Slider question
