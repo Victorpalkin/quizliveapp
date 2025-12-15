@@ -298,6 +298,7 @@ export function EvaluationMatrix({ items, metrics, className }: EvaluationMatrix
               type="number"
               dataKey="x"
               domain={xDomain}
+              allowDataOverflow={true}
               tickFormatter={(value) => value.toFixed(1)}
               axisLine={{ stroke: '#e5e7eb' }}
               tickLine={false}
@@ -315,6 +316,7 @@ export function EvaluationMatrix({ items, metrics, className }: EvaluationMatrix
               type="number"
               dataKey="y"
               domain={yDomain}
+              allowDataOverflow={true}
               tickFormatter={(value) => value.toFixed(1)}
               axisLine={{ stroke: '#e5e7eb' }}
               tickLine={false}
