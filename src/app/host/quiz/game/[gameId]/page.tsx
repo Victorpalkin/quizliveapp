@@ -370,18 +370,18 @@ export default function HostGamePage() {
                 </div>
               </CardContent>
             </Card>
-          ) : question?.type === 'slider' ? (
+          ) : question?.type === 'slider' && quizQuestion?.type === 'slider' ? (
             <SliderResultsView
-              correctValue={question.correctValue}
-              minValue={question.minValue}
-              maxValue={question.maxValue}
-              unit={question.unit}
+              correctValue={quizQuestion.correctValue}
+              minValue={quizQuestion.minValue}
+              maxValue={quizQuestion.maxValue}
+              unit={quizQuestion.unit}
               totalAnswered={totalAnswered}
             />
-          ) : question?.type === 'free-response' ? (
+          ) : question?.type === 'free-response' && quizQuestion?.type === 'free-response' ? (
             <FreeResponseResultsView
-              correctAnswer={question.correctAnswer}
-              alternativeAnswers={question.alternativeAnswers}
+              correctAnswer={quizQuestion.correctAnswer}
+              alternativeAnswers={quizQuestion.alternativeAnswers}
               totalAnswered={totalAnswered}
             />
           ) : (
