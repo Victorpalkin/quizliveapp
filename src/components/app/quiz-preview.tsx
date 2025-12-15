@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Clock, Gauge, Users, MessageSquarePlus } from 'lucide-react';
+import { CheckCircle, Clock, Gauge, Users, MessageSquarePlus, Type } from 'lucide-react';
 import Image from 'next/image';
 import type { Quiz } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -94,6 +94,7 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
                        question.type === 'slide' ? 'Slide' :
                        question.type === 'single-choice' ? 'Single Choice' :
                        question.type === 'multiple-choice' ? 'Multiple Choice' :
+                       question.type === 'free-response' ? 'Free Response' :
                        question.type === 'poll-single' ? 'Poll' :
                        'Poll (Multiple)'}
                     </Badge>
@@ -272,6 +273,56 @@ export function QuizPreview({ quiz, showCorrectAnswers = true }: QuizPreviewProp
 
                   <p className="text-sm text-muted-foreground">
                     Players view and click Continue • No points awarded
+                  </p>
+                </div>
+              )}
+
+              {/* Free Response Question */}
+              {question.type === 'free-response' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Type className="h-5 w-5" />
+                    <p className="text-sm font-medium">Text Answer</p>
+                  </div>
+
+                  <div className="bg-muted/50 p-6 rounded-xl space-y-4">
+                    {showCorrectAnswers && (
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground font-medium">Correct Answer</p>
+                          <p className="text-xl font-semibold text-green-600 dark:text-green-500">
+                            {question.correctAnswer}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {showCorrectAnswers && question.alternativeAnswers && question.alternativeAnswers.length > 0 && (
+                      <div className="pt-3 border-t border-border">
+                        <p className="text-xs text-muted-foreground font-medium mb-2">Also Accepted</p>
+                        <div className="flex flex-wrap gap-2">
+                          {question.alternativeAnswers.map((alt, i) => (
+                            <Badge key={i} variant="outline" className="rounded-full">
+                              {alt}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <Badge variant="secondary" className="rounded-full text-xs">
+                        {question.caseSensitive ? 'Case sensitive' : 'Case insensitive'}
+                      </Badge>
+                      <Badge variant="secondary" className="rounded-full text-xs">
+                        {question.allowTypos !== false ? 'Typos allowed' : 'Exact match'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    Players type their answer • Scored based on correctness and speed
                   </p>
                 </div>
               )}
