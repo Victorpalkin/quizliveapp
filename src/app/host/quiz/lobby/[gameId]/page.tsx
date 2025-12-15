@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import type { Game, Quiz, QuestionSubmission, SingleChoiceQuestion, Question, MultipleChoiceQuestion, SliderQuestion, FreeResponseQuestion } from '@/lib/types';
+import { removeUndefined } from '@/lib/firestore-utils';
 import { saveHostSession, clearHostSession } from '@/lib/host-session';
 import { SubmissionsPanel } from './components/submissions-panel';
 
@@ -169,9 +170,9 @@ export default function HostLobbyPage() {
       // Create answer key document (server-side only, players cannot read)
       // This contains the correct answers for scoring, not visible to players
       const answerKeyRef = doc(firestore, 'games', gameId, 'aggregates', 'answerKey');
-      await setDoc(answerKeyRef, {
+      await setDoc(answerKeyRef, removeUndefined({
         questions: finalQuestions.map(extractAnswerKeyEntry),
-      });
+      }));
 
       // Create sanitized questions for players (correct answers removed)
       const sanitizedQuestions = finalQuestions.map(sanitizeQuestionForPlayer);
