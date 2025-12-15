@@ -32,9 +32,11 @@ export function removeUndefined<T>(obj: T): T {
     return obj;
   }
 
-  // Handle arrays - recursively clean each element
+  // Handle arrays - recursively clean each element and filter out undefined/null
   if (Array.isArray(obj)) {
-    return obj.map(item => removeUndefined(item)) as T;
+    return obj
+      .filter(item => item !== undefined)
+      .map(item => removeUndefined(item)) as T;
   }
 
   // Handle objects (but not Date, which is an object but should be preserved)

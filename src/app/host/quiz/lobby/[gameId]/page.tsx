@@ -126,7 +126,8 @@ export default function HostLobbyPage() {
       });
 
       // Determine the final questions to use (including crowdsourced if enabled)
-      let finalQuestions: Question[] = quiz.questions || [];
+      // Filter out any undefined/null questions (defensive against corrupted data)
+      let finalQuestions: Question[] = (quiz.questions || []).filter(q => q != null);
 
       if (quiz.crowdsource?.enabled) {
         // Get selected submissions
@@ -149,7 +150,7 @@ export default function HostLobbyPage() {
           });
 
           // Integrate based on mode
-          const originalQuestions = quiz.questions || [];
+          const originalQuestions = (quiz.questions || []).filter(q => q != null);
           const integrationMode = quiz.crowdsource.integrationMode || 'append';
 
           switch (integrationMode) {
