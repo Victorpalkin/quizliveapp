@@ -17,7 +17,6 @@ interface ExtractTopicsResponse {
 interface TopicEntry {
   topic: string;
   count: number;
-  variations: string[];
   submissionIds: string[];
 }
 
@@ -34,23 +33,18 @@ const EXTRACTION_PROMPT = `You are analyzing free-form text submissions from par
 Your task is to:
 1. Extract distinct topics/interests from the submissions
 2. Normalize similar phrases into canonical topic names (e.g., "ML", "machine learning", "AI/ML" -> "Machine Learning")
-3. Count how many submissions mention each topic
-4. Track which submissions contain each topic
+3. Group submissions by topic and return their submissionId values
 
 Respond ONLY with valid JSON in this exact format:
 {
   "topics": [
     {
       "topic": "Machine Learning",
-      "count": 5,
-      "variations": ["ML", "machine learning", "AI/ML", "deep learning"],
-      "submissionIds": ["id1", "id2", "id3", "id4", "id5"]
+      "submissionIds": ["abc123", "def456"]
     },
     {
       "topic": "Web Development",
-      "count": 3,
-      "variations": ["web dev", "frontend", "React"],
-      "submissionIds": ["id2", "id6", "id7"]
+      "submissionIds": ["ghi789"]
     }
   ]
 }
@@ -59,10 +53,11 @@ Guidelines:
 - Create meaningful, descriptive topic names (Title Case)
 - Merge very similar topics (don't create both "JavaScript" and "JS")
 - Keep the topic list focused - aim for 5-20 distinct topics
-- A single submission can contribute to multiple topics
-- Order topics by count (highest first)
+- Order topics by expected popularity
 - Ignore very generic terms like "technology", "stuff", "things"
-- Be inclusive - even if only one person mentions a topic, include it`;
+- Be inclusive - even if only one person mentions a topic, include it
+- Each submission should be assigned to exactly one topic (the best match)
+- Use the exact submissionId values provided in the input`;
 
 /**
  * Parse the AI topic extraction response
@@ -88,11 +83,10 @@ function parseExtractionResponse(responseText: string): TopicEntry[] {
       throw new Error('Invalid topics structure');
     }
 
-    return parsed.topics.map((t: TopicEntry) => ({
+    return parsed.topics.map((t: { topic: string; submissionIds?: string[] }) => ({
       topic: t.topic,
-      count: t.count || 1,
-      variations: t.variations || [t.topic],
       submissionIds: t.submissionIds || [],
+      count: (t.submissionIds || []).length,
     }));
   } catch (error) {
     console.error('Failed to parse extraction response:', responseText);
@@ -210,7 +204,7 @@ Identify the main topics/interests mentioned, normalize similar phrases, and cou
           systemInstruction: EXTRACTION_PROMPT,
           temperature: 0.3,
           topP: 0.8,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 65536,
         },
       });
 
