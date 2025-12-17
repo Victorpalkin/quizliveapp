@@ -58,7 +58,8 @@ Respond ONLY with valid JSON in this exact format:
 Guidelines:
 - Create meaningful, descriptive topic names (Title Case)
 - Merge very similar topics (don't create both "JavaScript" and "JS")
-- Keep the topic list focused - aim for 5-20 distinct topics
+- Keep the topic list focused - aim for 5-15 distinct topics
+- Limit number of variations by 5 maximum
 - A single submission can contribute to multiple topics
 - Order topics by count (highest first)
 - Ignore very generic terms like "technology", "stuff", "things"
@@ -210,7 +211,7 @@ Identify the main topics/interests mentioned, normalize similar phrases, and cou
           systemInstruction: EXTRACTION_PROMPT,
           temperature: 0.3,
           topP: 0.8,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 65536,
         },
       });
 
