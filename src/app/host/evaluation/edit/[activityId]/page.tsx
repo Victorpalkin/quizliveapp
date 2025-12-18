@@ -349,9 +349,21 @@ export default function EditEvaluationPage() {
                       <Label>Scale Type</Label>
                       <Select
                         value={metric.scaleType}
-                        onValueChange={(value: 'stars' | 'numeric' | 'labels') =>
-                          updateMetric(index, { scaleType: value })
-                        }
+                        onValueChange={(value: 'stars' | 'numeric' | 'labels') => {
+                          const updates: Partial<EvaluationMetric> = { scaleType: value };
+
+                          // Reset scale values to defaults when switching type
+                          if (value === 'stars') {
+                            updates.scaleMin = 1;
+                            updates.scaleMax = 5;
+                          } else if (value === 'numeric') {
+                            updates.scaleMin = 1;
+                            updates.scaleMax = 10;
+                          }
+                          // For 'labels', keep current values (will be updated by labels input)
+
+                          updateMetric(index, updates);
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -403,8 +415,9 @@ export default function EditEvaluationPage() {
                     <div className="space-y-2">
                       <Label>Labels (comma-separated)</Label>
                       <Input
-                        value={metric.scaleLabels?.join(', ') || ''}
-                        onChange={(e) => {
+                        key={metric.id}
+                        defaultValue={metric.scaleLabels?.join(', ') || ''}
+                        onBlur={(e) => {
                           const labels = e.target.value.split(',').map(l => l.trim()).filter(Boolean);
                           updateMetric(index, {
                             scaleLabels: labels,
