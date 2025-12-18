@@ -374,13 +374,14 @@ export interface ThoughtSubmission {
 }
 
 /**
- * A single topic in the aggregated word cloud
+ * A single topic group in the aggregated results
  */
 export interface TopicEntry {
-  topic: string;                // Normalized topic name
-  count: number;                // How many times mentioned
-  variations: string[];         // Original phrasings that mapped to this topic
-  submissionIds: string[];      // Which submissions contained this topic
+  topic: string;                // Short title for the group (e.g., "State Management Approaches")
+  description: string;          // Summary paragraph explaining what the grouped thoughts have in common
+  count: number;                // How many submissions are in this group
+  variations: string[];         // Representative excerpts from grouped submissions
+  submissionIds: string[];      // Which submissions are in this group
 }
 
 /**

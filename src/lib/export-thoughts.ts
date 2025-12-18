@@ -30,21 +30,26 @@ export function exportThoughtsToMarkdown(
 
 **Session:** ${activityTitle}
 **Date:** ${formattedDate}
-**Participants:** ${playerCount} | **Submissions:** ${submissions.length} | **Topics:** ${topics.length}
+**Participants:** ${playerCount} | **Submissions:** ${submissions.length} | **Groups:** ${topics.length}
 
 ---
 
-## Extracted Topics
+## Grouped Submissions
 
 `;
 
-  // Add each topic
+  // Add each topic group
   sortedTopics.forEach((topic, index) => {
-    md += `### ${index + 1}. ${topic.topic} (${topic.count} ${topic.count === 1 ? 'mention' : 'mentions'})\n\n`;
+    md += `### ${index + 1}. ${topic.topic} (${topic.count} ${topic.count === 1 ? 'submission' : 'submissions'})\n\n`;
 
-    // Add variations if more than one
-    if (topic.variations.length > 1) {
-      md += `**Variations:** ${topic.variations.join(', ')}\n\n`;
+    // Add description/summary
+    if (topic.description) {
+      md += `**Summary:** ${topic.description}\n\n`;
+    }
+
+    // Add key themes/variations
+    if (topic.variations && topic.variations.length > 0) {
+      md += `**Key themes:** ${topic.variations.slice(0, 5).map(v => `"${v}"`).join(', ')}\n\n`;
     }
 
     // Add linked submissions

@@ -13,9 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Cloud, Loader2, Send, CheckCircle, Home, PauseCircle, LayoutGrid } from 'lucide-react';
+import { Loader2, Send, CheckCircle, Home, PauseCircle, MessageSquare } from 'lucide-react';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
-import { WordCloud } from '@/components/app/word-cloud';
 import { ThoughtsGroupedView } from '@/components/app/thoughts-grouped-view';
 
 type PlayerState = 'joining' | 'submitting' | 'waiting' | 'viewing' | 'ended' | 'cancelled';
@@ -38,9 +37,6 @@ export default function ThoughtsGatheringPlayerPage() {
   const [submissionText, setSubmissionText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionCount, setSubmissionCount] = useState(0);
-
-  // View toggle state
-  const [resultsView, setResultsView] = useState<'grouped' | 'cloud'>('grouped');
 
   // Game data
   const gameRef = useMemoFirebase(
@@ -210,7 +206,7 @@ export default function ThoughtsGatheringPlayerPage() {
           <Card className="w-full max-w-md shadow-2xl">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-500 text-white">
-                <Cloud className="h-8 w-8" />
+                <MessageSquare className="h-8 w-8" />
               </div>
               <CardTitle className="text-3xl">Join Thoughts Gathering</CardTitle>
               <CardDescription>Enter your name to participate</CardDescription>
@@ -358,39 +354,12 @@ export default function ThoughtsGatheringPlayerPage() {
           <div className="w-full max-w-2xl space-y-6">
             <Card className="shadow-2xl">
               <CardContent className="p-8">
-                {/* Header with toggle */}
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">Collected Thoughts</h2>
-                  <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
-                    <Button
-                      variant={resultsView === 'grouped' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setResultsView('grouped')}
-                      className="h-8"
-                    >
-                      <LayoutGrid className="h-4 w-4 mr-1.5" />
-                      Groups
-                    </Button>
-                    <Button
-                      variant={resultsView === 'cloud' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setResultsView('cloud')}
-                      className="h-8"
-                    >
-                      <Cloud className="h-4 w-4 mr-1.5" />
-                      Cloud
-                    </Button>
-                  </div>
-                </div>
+                <h2 className="text-2xl font-bold mb-6">Grouped Submissions</h2>
                 {topicCloud?.topics && topicCloud.topics.length > 0 ? (
-                  resultsView === 'grouped' ? (
-                    <ThoughtsGroupedView
-                      topics={topicCloud.topics}
-                      submissions={allSubmissions || []}
-                    />
-                  ) : (
-                    <WordCloud topics={topicCloud.topics} />
-                  )
+                  <ThoughtsGroupedView
+                    topics={topicCloud.topics}
+                    submissions={allSubmissions || []}
+                  />
                 ) : (
                   <p className="text-center text-muted-foreground py-12">
                     Results will appear here...

@@ -16,10 +16,15 @@ interface ExtractTopicsResponse {
 
 interface TopicEntry {
   topic: string;
+  description: string;
   count: number;
   variations: string[];
   submissionIds: string[];
 }
+
+// Submission limits for quality grouping
+const SUBMISSION_SOFT_LIMIT = 150;  // Warn above this
+const SUBMISSION_HARD_LIMIT = 300;  // Process with disclaimer
 
 interface InterestSubmission {
   id: string;
@@ -28,42 +33,51 @@ interface InterestSubmission {
   rawText: string;
 }
 
-// System prompt for extracting topics from interest submissions
-const EXTRACTION_PROMPT = `You are analyzing free-form text submissions from participants sharing their interests.
+// System prompt for grouping similar submissions
+const EXTRACTION_PROMPT = `You are analyzing free-form text submissions from participants. Your task is to GROUP SEMANTICALLY SIMILAR submissions together and provide a summary for each group.
 
-Your task is to:
-1. Extract distinct topics/interests from the submissions
-2. Normalize similar phrases into canonical topic names (e.g., "ML", "machine learning", "AI/ML" -> "Machine Learning")
-3. Count how many submissions mention each topic
-4. Track which submissions contain each topic
+IMPORTANT: Focus on the MEANING and INTENT of submissions, not just keywords. Group submissions that:
+- Ask about the same thing (even if worded differently)
+- Express similar ideas or concepts
+- Share common concerns or themes
+- Would naturally belong together in a discussion
+
+Auto-detect the type of content (questions, ideas, feedback, concerns, suggestions, etc.) and adapt your grouping accordingly.
 
 Respond ONLY with valid JSON in this exact format:
 {
   "topics": [
     {
-      "topic": "Machine Learning",
+      "topic": "State Management Best Practices",
+      "description": "Several participants are asking about the best approaches to handle application state, including when to use different state management solutions and how to avoid common pitfalls.",
       "count": 5,
-      "variations": ["ML", "machine learning", "AI/ML", "deep learning"],
+      "variations": ["How do you handle state?", "Best way to manage app state", "Redux vs Context - which is better?"],
       "submissionIds": ["id1", "id2", "id3", "id4", "id5"]
     },
     {
-      "topic": "Web Development",
+      "topic": "Team Communication Improvements",
+      "description": "Multiple submissions suggest ways to improve how the team communicates, with focus on async communication and reducing unnecessary meetings.",
       "count": 3,
-      "variations": ["web dev", "frontend", "React"],
-      "submissionIds": ["id2", "id6", "id7"]
+      "variations": ["We need fewer meetings", "More Slack, less Zoom", "Async updates would help"],
+      "submissionIds": ["id6", "id7", "id8"]
     }
   ]
 }
 
 Guidelines:
-- Create meaningful, descriptive topic names (Title Case)
-- Merge very similar topics (don't create both "JavaScript" and "JS")
-- Keep the topic list focused - aim for 5-15 distinct topics
-- Limit number of variations by 5 maximum
-- A single submission can contribute to multiple topics
-- Order topics by count (highest first)
-- Ignore very generic terms like "technology", "stuff", "things"
-- Be inclusive - even if only one person mentions a topic, include it`;
+- **topic**: A short, descriptive title (3-8 words, Title Case) summarizing the group
+- **description**: A 1-2 sentence summary explaining what the grouped submissions have in common and their key themes
+- **count**: Number of submissions in this group
+- **variations**: 2-5 representative excerpts or paraphrases from the submissions (not keywords)
+- **submissionIds**: IDs of all submissions in this group
+
+Grouping rules:
+- Each submission should belong to exactly ONE group (no overlap)
+- Create 3-15 groups depending on content diversity
+- Similar submissions MUST be grouped together even if only 2-3 items
+- Unique submissions that don't fit elsewhere should form their own small groups
+- Order groups by count (highest first)
+- If a submission is truly unique, it can be a group of 1`;
 
 /**
  * Parse the AI topic extraction response
@@ -91,6 +105,7 @@ function parseExtractionResponse(responseText: string): TopicEntry[] {
 
     return parsed.topics.map((t: TopicEntry) => ({
       topic: t.topic,
+      description: t.description || '',
       count: t.count || 1,
       variations: t.variations || [t.topic],
       submissionIds: t.submissionIds || [],
@@ -197,11 +212,11 @@ export const extractTopics = onCall(
       });
 
       // Build the prompt
-      const userPrompt = `Extract and organize topics from these ${submissions.length} interest submissions:
+      const userPrompt = `Group these ${submissions.length} submissions by semantic similarity. Each submission should belong to exactly one group.
 
 ${JSON.stringify(submissionsForAI, null, 2)}
 
-Identify the main topics/interests mentioned, normalize similar phrases, and count occurrences.`;
+Create meaningful groups based on shared themes, questions, or ideas. Provide a short title and summary description for each group.`;
 
       // Call Gemini
       const response = await client.models.generateContent({

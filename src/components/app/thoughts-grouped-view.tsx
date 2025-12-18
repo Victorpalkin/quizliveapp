@@ -78,22 +78,29 @@ export function ThoughtsGroupedView({ topics, submissions, className = '' }: Tho
           >
             <div className={`rounded-lg border ${colorScheme.border} ${colorScheme.bg} overflow-hidden`}>
               <CollapsibleTrigger asChild>
-                <button className="w-full p-4 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                  <div className="flex items-center gap-3">
-                    {isExpanded ? (
-                      <ChevronDown className={`h-5 w-5 ${colorScheme.text}`} />
-                    ) : (
-                      <ChevronRight className={`h-5 w-5 ${colorScheme.text}`} />
-                    )}
-                    <span className={`font-semibold text-lg ${colorScheme.text}`}>
-                      {topic.topic}
-                    </span>
+                <button className="w-full p-4 flex flex-col items-start hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left">
+                  <div className="w-full flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {isExpanded ? (
+                        <ChevronDown className={`h-5 w-5 ${colorScheme.text} flex-shrink-0`} />
+                      ) : (
+                        <ChevronRight className={`h-5 w-5 ${colorScheme.text} flex-shrink-0`} />
+                      )}
+                      <span className={`font-semibold text-lg ${colorScheme.text}`}>
+                        {topic.topic}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`px-2.5 py-1 rounded-full text-sm font-medium ${colorScheme.bg} ${colorScheme.text} border ${colorScheme.border}`}>
+                        {topic.count} {topic.count === 1 ? 'submission' : 'submissions'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2.5 py-1 rounded-full text-sm font-medium ${colorScheme.bg} ${colorScheme.text} border ${colorScheme.border}`}>
-                      {topic.count} {topic.count === 1 ? 'mention' : 'mentions'}
-                    </span>
-                  </div>
+                  {topic.description && (
+                    <p className="mt-2 ml-8 text-sm text-muted-foreground line-clamp-2">
+                      {topic.description}
+                    </p>
+                  )}
                 </button>
               </CollapsibleTrigger>
 
@@ -119,11 +126,16 @@ export function ThoughtsGroupedView({ topics, submissions, className = '' }: Tho
                         <span className="text-sm">Original submissions not available</span>
                       </div>
                     )}
-                    {topic.variations.length > 1 && (
+                    {topic.variations && topic.variations.length > 0 && (
                       <div className="pt-2 border-t border-border/30 mt-3">
                         <p className="text-xs text-muted-foreground">
-                          <span className="font-medium">Variations:</span>{' '}
-                          {topic.variations.join(', ')}
+                          <span className="font-medium">Key themes:</span>{' '}
+                          {topic.variations.slice(0, 3).map((v, i) => (
+                            <span key={i}>
+                              "{v}"{i < Math.min(topic.variations.length, 3) - 1 ? ', ' : ''}
+                            </span>
+                          ))}
+                          {topic.variations.length > 3 && <span> +{topic.variations.length - 3} more</span>}
                         </p>
                       </div>
                     )}
