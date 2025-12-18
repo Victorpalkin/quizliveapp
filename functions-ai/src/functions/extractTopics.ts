@@ -22,10 +22,6 @@ interface TopicEntry {
   submissionIds: string[];
 }
 
-// Submission limits for quality grouping
-const SUBMISSION_SOFT_LIMIT = 150;  // Warn above this
-const SUBMISSION_HARD_LIMIT = 300;  // Process with disclaimer
-
 interface InterestSubmission {
   id: string;
   playerId: string;
