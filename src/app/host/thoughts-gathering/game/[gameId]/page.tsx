@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Cloud, StopCircle, Loader2, RefreshCw, Home, MessageSquare, Users, PlayCircle, PauseCircle, XCircle, BarChart3, LayoutGrid } from 'lucide-react';
+import { Cloud, StopCircle, Loader2, RefreshCw, Home, MessageSquare, Users, PlayCircle, PauseCircle, XCircle, BarChart3, LayoutGrid, Download } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, collection, updateDoc, deleteDoc, DocumentReference, Query } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,6 +21,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { GameHeader, KeyboardShortcutsHint } from '@/components/app/game-header';
 import { HostActionHint, ReadinessChecklist } from '@/components/app/host-action-hint';
+import { exportThoughtsToMarkdown, downloadMarkdown, generateExportFilename } from '@/lib/export-thoughts';
 
 export default function ThoughtsGatheringGamePage() {
   const params = useParams();
@@ -156,6 +157,21 @@ export default function ThoughtsGatheringGamePage() {
     clearHostSession();
     router.push('/host');
   };
+
+  const handleExportResults = useCallback(() => {
+    if (!topicCloud?.topics || !submissions || !activity) return;
+
+    const markdown = exportThoughtsToMarkdown(
+      activity.title,
+      topicCloud.topics,
+      submissions,
+      players?.length || 0,
+      topicCloud.processedAt?.toDate?.()
+    );
+
+    const filename = generateExportFilename(activity.title);
+    downloadMarkdown(markdown, filename);
+  }, [topicCloud, submissions, activity, players?.length]);
 
   // Keyboard shortcuts handler
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -336,24 +352,36 @@ export default function ThoughtsGatheringGamePage() {
                 {/* Header with toggle */}
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold">Collected Thoughts</h2>
-                  <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+                      <Button
+                        variant={resultsView === 'grouped' ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setResultsView('grouped')}
+                        className="h-8"
+                      >
+                        <LayoutGrid className="h-4 w-4 mr-1.5" />
+                        Groups
+                      </Button>
+                      <Button
+                        variant={resultsView === 'cloud' ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setResultsView('cloud')}
+                        className="h-8"
+                      >
+                        <Cloud className="h-4 w-4 mr-1.5" />
+                        Cloud
+                      </Button>
+                    </div>
                     <Button
-                      variant={resultsView === 'grouped' ? 'default' : 'ghost'}
+                      variant="outline"
                       size="sm"
-                      onClick={() => setResultsView('grouped')}
+                      onClick={handleExportResults}
                       className="h-8"
+                      disabled={!topicCloud?.topics?.length}
                     >
-                      <LayoutGrid className="h-4 w-4 mr-1.5" />
-                      Groups
-                    </Button>
-                    <Button
-                      variant={resultsView === 'cloud' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setResultsView('cloud')}
-                      className="h-8"
-                    >
-                      <Cloud className="h-4 w-4 mr-1.5" />
-                      Cloud
+                      <Download className="h-4 w-4 mr-1.5" />
+                      Export
                     </Button>
                   </div>
                 </div>
@@ -456,24 +484,36 @@ export default function ThoughtsGatheringGamePage() {
                 {/* Header with toggle */}
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold">Session Complete!</h2>
-                  <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+                      <Button
+                        variant={resultsView === 'grouped' ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setResultsView('grouped')}
+                        className="h-8"
+                      >
+                        <LayoutGrid className="h-4 w-4 mr-1.5" />
+                        Groups
+                      </Button>
+                      <Button
+                        variant={resultsView === 'cloud' ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setResultsView('cloud')}
+                        className="h-8"
+                      >
+                        <Cloud className="h-4 w-4 mr-1.5" />
+                        Cloud
+                      </Button>
+                    </div>
                     <Button
-                      variant={resultsView === 'grouped' ? 'default' : 'ghost'}
+                      variant="outline"
                       size="sm"
-                      onClick={() => setResultsView('grouped')}
+                      onClick={handleExportResults}
                       className="h-8"
+                      disabled={!topicCloud?.topics?.length}
                     >
-                      <LayoutGrid className="h-4 w-4 mr-1.5" />
-                      Groups
-                    </Button>
-                    <Button
-                      variant={resultsView === 'cloud' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setResultsView('cloud')}
-                      className="h-8"
-                    >
-                      <Cloud className="h-4 w-4 mr-1.5" />
-                      Cloud
+                      <Download className="h-4 w-4 mr-1.5" />
+                      Export
                     </Button>
                   </div>
                 </div>
