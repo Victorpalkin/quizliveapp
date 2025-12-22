@@ -12,6 +12,10 @@ interface AnswerButtonProps {
   onClick?: () => void;
   className?: string;
   colorIndex?: number;
+  // Live results display (host view)
+  showLiveCount?: boolean;
+  count?: number;
+  totalCount?: number;
 }
 
 // 8 subtle color gradients for answer options
@@ -83,8 +87,14 @@ export function AnswerButton({
   onClick,
   className,
   colorIndex = 0,
+  showLiveCount = false,
+  count = 0,
+  totalCount = 0,
 }: AnswerButtonProps) {
   const colors = colorGradients[colorIndex % colorGradients.length];
+
+  // Calculate percentage for progress bar
+  const percentage = showLiveCount && totalCount > 0 ? (count / totalCount) * 100 : 0;
 
   return (
     <button
@@ -100,9 +110,12 @@ export function AnswerButton({
         colors.border,
         'border',
 
+        // Relative positioning for progress bar overlay
+        showLiveCount && 'relative overflow-hidden',
+
         // Interactive states
         !disabled && 'hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] cursor-pointer',
-        disabled && !selected && 'opacity-50 cursor-not-allowed',
+        disabled && !selected && !showLiveCount && 'opacity-50 cursor-not-allowed',
 
         // Selected state - gradient left border with pop animation
         selected && [
@@ -123,7 +136,24 @@ export function AnswerButton({
         animation: 'confirmPop 0.3s ease-out',
       } : undefined}
     >
-      <div className="flex items-center gap-4">
+      {/* Live Results Progress Bar - absolute positioned background */}
+      {showLiveCount && (
+        <div
+          className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none"
+          aria-hidden="true"
+        >
+          <div
+            className={cn(
+              'h-full transition-all duration-300 ease-out',
+              `bg-gradient-to-r ${colors.badge}`,
+              'opacity-20'
+            )}
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+      )}
+
+      <div className="flex items-center gap-4 relative z-10">
         {/* Letter Badge - shows checkmark when selected for single-choice */}
         <div className={cn(
           'flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center',
@@ -146,6 +176,18 @@ export function AnswerButton({
         )}>
           {text}
         </div>
+
+        {/* Live Count Display */}
+        {showLiveCount && (
+          <div className="flex-shrink-0 min-w-[3rem] text-right">
+            <span className={cn(
+              'text-2xl font-bold tabular-nums transition-all duration-300',
+              count > 0 ? 'text-foreground' : 'text-muted-foreground'
+            )}>
+              {count}
+            </span>
+          </div>
+        )}
 
         {/* Checkmark for multiple-choice selected */}
         {showCheck && selected && (

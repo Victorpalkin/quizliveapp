@@ -36,6 +36,7 @@ const singleChoiceQuestionSchema = z.object({
   answers: z.array(answerSchema).min(2, 'Each question must have at least 2 answers.').max(8, 'Each question can have at most 8 answers.'),
   correctAnswerIndex: z.number().min(0, 'Must select a correct answer.'),
   timeLimit: z.number().optional(),
+  showLiveResults: z.boolean().optional(),
 });
 
 // Multiple choice question schema - multiple correct answers with proportional scoring
@@ -47,6 +48,7 @@ const multipleChoiceQuestionSchema = z.object({
   correctAnswerIndices: z.array(z.number()).min(2, 'Multiple choice questions must have at least 2 correct answers.'),
   showAnswerCount: z.boolean().optional(),
   timeLimit: z.number().optional(),
+  showLiveResults: z.boolean().optional(),
 });
 
 // Slider question schema
@@ -91,6 +93,7 @@ const pollSingleQuestionSchema = z.object({
   imageUrl: z.string().url().optional(),
   answers: z.array(answerSchema).min(2, 'Each question must have at least 2 answers.').max(8, 'Each question can have at most 8 answers.'),
   timeLimit: z.number().optional(),
+  showLiveResults: z.boolean().optional(),
 });
 
 // Poll multiple choice question schema - no correct answer, no scoring
@@ -100,6 +103,7 @@ const pollMultipleQuestionSchema = z.object({
   imageUrl: z.string().url().optional(),
   answers: z.array(answerSchema).min(2, 'Each question must have at least 2 answers.').max(8, 'Each question can have at most 8 answers.'),
   timeLimit: z.number().optional(),
+  showLiveResults: z.boolean().optional(),
 });
 
 // Discriminated union for question types

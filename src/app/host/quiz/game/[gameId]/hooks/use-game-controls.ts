@@ -27,7 +27,7 @@ export function useGameControls(
     );
   }, [gameRef]);
 
-  // Reset leaderboard aggregate for new question (clear answerCounts and totalAnswered)
+  // Reset leaderboard aggregate for new question (clear answerCounts, liveAnswerCounts, and totalAnswered)
   const resetLeaderboardForNewQuestion = useCallback(async () => {
     if (!gameRef) return;
     const firestore = getFirestore();
@@ -35,6 +35,7 @@ export function useGameControls(
     try {
       await updateDoc(leaderboardRef, {
         answerCounts: [],
+        liveAnswerCounts: {},  // Clear real-time answer counts for new question
         totalAnswered: 0,
       });
     } catch (error) {

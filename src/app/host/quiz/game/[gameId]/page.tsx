@@ -328,6 +328,9 @@ export default function HostGamePage() {
                   text={ans.text}
                   disabled={true}
                   colorIndex={i}
+                  showLiveCount={question.showLiveResults}
+                  count={answerCounts[i] || 0}
+                  totalCount={totalAnswered}
                 />
               ))}
             </div>

@@ -13,6 +13,7 @@ interface BaseQuestion {
   timeLimit?: number; // in seconds
   imageUrl?: string;
   submittedBy?: string; // Player name for crowdsourced questions
+  showLiveResults?: boolean; // Show live answer distribution during question (choice-based questions only)
 }
 
 // Single choice question - exactly one correct answer
@@ -211,7 +212,8 @@ export interface GameLeaderboard {
   topPlayers: LeaderboardEntry[];
   totalPlayers: number;
   totalAnswered: number;
-  answerCounts: number[];  // Per-answer distribution for current question
+  answerCounts: number[];  // Per-answer distribution for current question (set by computeQuestionResults)
+  liveAnswerCounts?: Record<string, number>;  // Real-time answer counts during question (atomic increments)
   playerRanks: Record<string, PlayerRankInfo>;  // Map of playerId -> rank info
   playerStreaks: Record<string, number>;  // Map of playerId -> streak count
   lastUpdated: Timestamp | null;
