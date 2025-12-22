@@ -147,7 +147,7 @@ export interface CrowdsourceState {
 }
 
 // Activity types for the Activity system
-export type ActivityType = 'quiz' | 'thoughts-gathering' | 'evaluation';
+export type ActivityType = 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation';
 
 // Quiz game states (existing)
 export type QuizGameState = 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
@@ -513,6 +513,138 @@ export interface EvaluationResults {
   totalParticipants: number;
   participantsWhoRated: number;
   processedAt: Timestamp;
+}
+
+// ==========================================
+// Presentation Mode Types
+// ==========================================
+
+/**
+ * Slide types for hybrid presentations
+ */
+export type PresentationSlideType =
+  | 'content'           // Imported slide (image) or text content
+  | 'quiz'              // Quiz question (scored)
+  | 'poll'              // Poll question (no scoring)
+  | 'thoughts-collect'  // Thoughts gathering: collection prompt
+  | 'thoughts-results'  // Thoughts gathering: word cloud display
+  | 'rating-describe'   // Rating: item description (presenter explains)
+  | 'rating-input'      // Rating: players submit their rating
+  | 'rating-results';   // Rating: show aggregate results (optional)
+
+/**
+ * Rating metric configuration for rating slides
+ */
+export interface PresentationRatingMetric {
+  type: 'stars' | 'numeric' | 'labels';
+  min: number;
+  max: number;
+  labels?: string[];         // For 'labels' type
+  question?: string;         // e.g., "How important is this?"
+}
+
+/**
+ * Rating item configuration for rating-describe slides
+ */
+export interface PresentationRatingItem {
+  title: string;             // Item name
+  description?: string;      // Item description (shown to players)
+  imageUrl?: string;         // Optional item image
+}
+
+/**
+ * A single slide in a presentation
+ */
+export interface PresentationSlide {
+  id: string;
+  type: PresentationSlideType;
+  order: number;
+
+  // For 'content' type
+  imageUrl?: string;           // Firebase Storage URL (imported or uploaded)
+  googleSlideId?: string;      // Google Slides page ID (for re-import)
+  title?: string;              // Optional text content
+  description?: string;        // Optional text content
+
+  // For 'quiz' and 'poll' types
+  question?: Question;         // Reuse existing Question type
+
+  // For 'thoughts-collect' type - word cloud collection
+  thoughtsPrompt?: string;     // e.g., "What challenges do you face?"
+  thoughtsMaxPerPlayer?: number; // Default: 3
+  thoughtsTimeLimit?: number;  // Optional time limit in seconds
+
+  // For 'rating-describe' type - item description
+  ratingItem?: PresentationRatingItem;
+
+  // For 'rating-input' type - rating input
+  ratingInputSlideId?: string; // Links to the 'rating-describe' slide it belongs to
+  ratingMetric?: PresentationRatingMetric;
+
+  // For 'thoughts-results' and 'rating-results' types
+  sourceSlideId?: string;      // Which collection/input slide this shows results for
+}
+
+/**
+ * Presentation activity stored in /presentations/{presentationId}
+ */
+export interface Presentation {
+  id: string;
+  title: string;
+  description?: string;
+  hostId: string;
+  slides: PresentationSlide[];
+
+  // Google Slides import tracking
+  googleSlidesId?: string;     // Source presentation ID
+  lastImportedAt?: Date;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Presentation game states
+ */
+export type PresentationGameState =
+  | 'lobby'      // Players joining
+  | 'presenting' // Active presentation (content or activity slide)
+  | 'ended';     // Presentation finished
+
+/**
+ * Extended Game type for presentations
+ */
+export interface PresentationGame {
+  id: string;
+  hostId: string;
+  gamePin: string;
+  activityType: 'presentation';
+  presentationId: string;
+  state: PresentationGameState;
+  currentSlideIndex: number;
+  createdAt?: Date;
+}
+
+/**
+ * Player response for a presentation slide
+ */
+export interface PresentationSlideResponse {
+  id: string;
+  slideId: string;
+  playerId: string;
+  playerName: string;
+  slideType: PresentationSlideType;
+  submittedAt: Timestamp;
+
+  // For quiz/poll slides
+  answerIndex?: number;
+  answerIndices?: number[];
+
+  // For thoughts-collect slides
+  thoughts?: string[];
+
+  // For rating-input slides
+  rating?: number;
 }
 
 // ==========================================
