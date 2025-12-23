@@ -3,10 +3,9 @@
 import { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlideResultsProps } from '../types';
-import { SingleChoiceQuestion } from '@/lib/types';
+import { PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 
 // 8 subtle color gradients matching app design system
 const colorGradients = [
@@ -60,27 +59,42 @@ const colorGradients = [
   },
 ];
 
-export function QuizResults({ slide, responses }: SlideResultsProps) {
-  const question = slide.question as SingleChoiceQuestion | undefined;
+type PollQuestion = PollSingleQuestion | PollMultipleQuestion;
+
+export function PollResults({ slide, responses }: SlideResultsProps) {
+  const question = slide.question as PollQuestion | undefined;
+  const isMultiple = question?.type === 'poll-multiple';
 
   const distribution = useMemo(() => {
     if (!question) return [];
 
     const counts = question.answers.map(() => 0);
+
     responses.forEach((response) => {
-      if (response.answerIndex !== undefined && response.answerIndex < counts.length) {
+      if (isMultiple && response.answerIndices) {
+        // Multiple choice - count each selected option
+        response.answerIndices.forEach((idx) => {
+          if (idx < counts.length) {
+            counts[idx]++;
+          }
+        });
+      } else if (response.answerIndex !== undefined && response.answerIndex < counts.length) {
+        // Single choice
         counts[response.answerIndex]++;
       }
     });
 
-    const total = responses.length;
+    // For multiple choice, total votes can exceed number of responses
+    const totalVotes = counts.reduce((sum, c) => sum + c, 0);
+    const maxCount = Math.max(...counts, 1);
+
     return question.answers.map((answer, index) => ({
       text: answer.text,
       count: counts[index],
-      percentage: total > 0 ? (counts[index] / total) * 100 : 0,
-      isCorrect: index === question.correctAnswerIndex,
+      percentage: totalVotes > 0 ? (counts[index] / totalVotes) * 100 : 0,
+      relativeWidth: (counts[index] / maxCount) * 100,
     }));
-  }, [question, responses]);
+  }, [question, responses, isMultiple]);
 
   if (!question) {
     return (
@@ -89,8 +103,6 @@ export function QuizResults({ slide, responses }: SlideResultsProps) {
       </div>
     );
   }
-
-  const maxCount = Math.max(...distribution.map((d) => d.count), 1);
 
   return (
     <motion.div
@@ -129,9 +141,6 @@ export function QuizResults({ slide, responses }: SlideResultsProps) {
                     {String.fromCharCode(65 + index)}
                   </div>
                   <span className="font-medium truncate">{item.text}</span>
-                  {item.isCorrect && (
-                    <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
-                  )}
                 </div>
 
                 {/* Bar */}
@@ -140,7 +149,6 @@ export function QuizResults({ slide, responses }: SlideResultsProps) {
                   `bg-gradient-to-r ${colors.bg}`,
                   colors.border,
                   'border',
-                  item.isCorrect && 'ring-2 ring-green-400',
                 )}>
                   <motion.div
                     className={cn(
@@ -148,7 +156,7 @@ export function QuizResults({ slide, responses }: SlideResultsProps) {
                       `bg-gradient-to-r ${colors.bar}`,
                     )}
                     initial={{ width: 0 }}
-                    animate={{ width: `${(item.count / maxCount) * 100}%` }}
+                    animate={{ width: `${item.relativeWidth}%` }}
                     transition={{
                       delay: 0.3 + index * 0.15,
                       type: 'spring',
@@ -175,7 +183,12 @@ export function QuizResults({ slide, responses }: SlideResultsProps) {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8 }}
       >
-        {responses.length} responses
+        {responses.length} {responses.length === 1 ? 'response' : 'responses'}
+        {isMultiple && distribution.reduce((sum, d) => sum + d.count, 0) > responses.length && (
+          <span className="ml-2">
+            ({distribution.reduce((sum, d) => sum + d.count, 0)} total votes)
+          </span>
+        )}
       </motion.p>
     </motion.div>
   );

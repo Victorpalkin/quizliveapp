@@ -2,10 +2,11 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Button } from '@/components/ui/button';
 import { Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlidePlayerProps } from '../types';
-import { SingleChoiceQuestion } from '@/lib/types';
+import { PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 
 // 8 subtle color gradients matching app design system
 const colorGradients = [
@@ -59,28 +60,59 @@ const colorGradients = [
   },
 ];
 
-export function QuizPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) {
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const question = slide.question as SingleChoiceQuestion | undefined;
+type PollQuestion = PollSingleQuestion | PollMultipleQuestion;
 
-  const handleSelect = useCallback(async (index: number) => {
+export function PollPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) {
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const question = slide.question as PollQuestion | undefined;
+  const isMultiple = question?.type === 'poll-multiple';
+
+  const handleSingleSelect = useCallback(async (index: number) => {
     if (hasResponded || isSubmitting) return;
 
-    setSelectedIndex(index);
+    setSelectedIndices([index]);
     setIsSubmitting(true);
 
     try {
       await onSubmit({
         slideId: slide.id,
-        playerId: '',  // Will be filled by parent
-        playerName: '', // Will be filled by parent
+        playerId: '',
+        playerName: '',
         answerIndex: index,
       });
     } finally {
       setIsSubmitting(false);
     }
   }, [slide.id, hasResponded, isSubmitting, onSubmit]);
+
+  const handleMultipleToggle = useCallback((index: number) => {
+    if (hasResponded || isSubmitting) return;
+
+    setSelectedIndices((prev) => {
+      if (prev.includes(index)) {
+        return prev.filter((i) => i !== index);
+      }
+      return [...prev, index];
+    });
+  }, [hasResponded, isSubmitting]);
+
+  const handleMultipleSubmit = useCallback(async () => {
+    if (hasResponded || isSubmitting || selectedIndices.length === 0) return;
+
+    setIsSubmitting(true);
+
+    try {
+      await onSubmit({
+        slideId: slide.id,
+        playerId: '',
+        playerName: '',
+        answerIndices: selectedIndices,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [slide.id, hasResponded, isSubmitting, selectedIndices, onSubmit]);
 
   if (!question) {
     return (
@@ -106,7 +138,7 @@ export function QuizPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) 
         >
           <Check className="h-10 w-10 text-white" />
         </motion.div>
-        <h2 className="text-2xl font-semibold">Answer submitted!</h2>
+        <h2 className="text-2xl font-semibold">Vote submitted!</h2>
         <p className="text-muted-foreground mt-2">Waiting for results...</p>
       </motion.div>
     );
@@ -122,6 +154,9 @@ export function QuizPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) 
       {/* Question */}
       <div className="text-center mb-4">
         <h1 className="text-2xl font-bold">{question.text}</h1>
+        {isMultiple && (
+          <p className="text-muted-foreground mt-1">Select all that apply</p>
+        )}
       </div>
 
       {/* Answers - responsive grid */}
@@ -129,12 +164,12 @@ export function QuizPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) 
         <AnimatePresence mode="wait">
           {question.answers.map((answer, index) => {
             const colors = colorGradients[index % colorGradients.length];
-            const isSelected = selectedIndex === index;
+            const isSelected = selectedIndices.includes(index);
 
             return (
               <motion.button
                 key={index}
-                onClick={() => handleSelect(index)}
+                onClick={() => isMultiple ? handleMultipleToggle(index) : handleSingleSelect(index)}
                 disabled={isSubmitting || hasResponded}
                 className={cn(
                   // Base styles
@@ -186,8 +221,8 @@ export function QuizPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) 
                     {answer.text}
                   </span>
 
-                  {/* Loading indicator */}
-                  {isSelected && isSubmitting && (
+                  {/* Loading indicator for single choice */}
+                  {!isMultiple && isSelected && isSubmitting && (
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   )}
                 </div>
@@ -196,6 +231,39 @@ export function QuizPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) 
           })}
         </AnimatePresence>
       </div>
+
+      {/* Submit button for multiple choice */}
+      {isMultiple && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mt-4"
+        >
+          <Button
+            onClick={handleMultipleSubmit}
+            disabled={isSubmitting || selectedIndices.length === 0}
+            className="w-full h-14 text-lg"
+            size="lg"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                Submit Vote
+                {selectedIndices.length > 0 && (
+                  <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-sm">
+                    {selectedIndices.length} selected
+                  </span>
+                )}
+              </>
+            )}
+          </Button>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

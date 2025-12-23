@@ -16,6 +16,9 @@ import { ContentEditor, ContentHost, ContentPlayer } from './content';
 // Quiz slide type
 import { QuizEditor, QuizHost, QuizPlayer, QuizResults } from './quiz';
 
+// Poll slide type
+import { PollEditor, PollHost, PollPlayer, PollResults } from './poll';
+
 // Helper to generate unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
@@ -75,11 +78,10 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
     label: 'Poll',
     description: 'Gather opinions (no scoring)',
     icon: 'BarChart3',
-    // TODO: Create poll-specific components (reuses quiz structure without correct answer)
-    EditorComponent: QuizEditor,
-    HostComponent: QuizHost,
-    PlayerComponent: QuizPlayer,
-    ResultsComponent: QuizResults,
+    EditorComponent: PollEditor,
+    HostComponent: PollHost,
+    PlayerComponent: PollPlayer,
+    ResultsComponent: PollResults,
     isInteractive: true,
     createDefaultSlide: (id, order) => ({
       id,

@@ -86,6 +86,8 @@ export const gameConverter: FirestoreDataConverter<Game> = {
       // Activity system fields
       activityType: data.activityType,
       activityId: data.activityId,
+      // Presentation specific
+      presentationId: data.presentationId,
       // Thoughts Gathering specific
       submissionsOpen: data.submissionsOpen,
       // Evaluation specific

@@ -179,6 +179,9 @@ export interface Game {
 
     // Evaluation specific
     itemSubmissionsOpen?: boolean;  // Whether item submissions are accepted during collecting phase
+
+    // Presentation specific
+    presentationId?: string;  // Reference to presentation document (for presentation games)
 }
 
 // Cloud Function response interface for submitAnswer

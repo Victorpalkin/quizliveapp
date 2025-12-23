@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlideHostProps } from '../types';
-import { SingleChoiceQuestion } from '@/lib/types';
+import { PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 
 // 8 subtle color gradients matching app design system
 const colorGradients = [
@@ -52,8 +52,11 @@ const colorGradients = [
   },
 ];
 
-export function QuizHost({ slide, responseCount, playerCount }: SlideHostProps) {
-  const question = slide.question as SingleChoiceQuestion | undefined;
+type PollQuestion = PollSingleQuestion | PollMultipleQuestion;
+
+export function PollHost({ slide, responseCount, playerCount }: SlideHostProps) {
+  const question = slide.question as PollQuestion | undefined;
+  const isMultiple = question?.type === 'poll-multiple';
 
   if (!question) {
     return (
@@ -81,6 +84,11 @@ export function QuizHost({ slide, responseCount, playerCount }: SlideHostProps) 
         <Card className="bg-card/95 backdrop-blur">
           <CardContent className="p-8 text-center">
             <h1 className="text-4xl font-bold">{question.text}</h1>
+            {isMultiple && (
+              <p className="text-lg text-muted-foreground mt-2">
+                Select all that apply
+              </p>
+            )}
           </CardContent>
         </Card>
       </motion.div>
@@ -132,7 +140,7 @@ export function QuizHost({ slide, responseCount, playerCount }: SlideHostProps) 
       >
         <Badge variant="secondary" className="text-lg px-4 py-2">
           <Users className="h-5 w-5 mr-2" />
-          {responseCount} / {playerCount} answered
+          {responseCount} / {playerCount} voted
         </Badge>
       </motion.div>
     </motion.div>
