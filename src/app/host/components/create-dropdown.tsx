@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PlusCircle, Sparkles, FileText, Cloud, ChevronDown, BarChart3, LayoutGrid } from 'lucide-react';
+import { PlusCircle, Sparkles, FileText, Cloud, ChevronDown, BarChart3, LayoutGrid, Presentation } from 'lucide-react';
 
 export function CreateDropdown() {
   return (
@@ -67,6 +67,15 @@ export function CreateDropdown() {
             <div className="flex flex-col">
               <span>Evaluation</span>
               <span className="text-xs text-muted-foreground">Prioritize with metrics</span>
+            </div>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/host/presentation/create" className="flex items-center">
+            <Presentation className="mr-2 h-4 w-4 text-indigo-500" />
+            <div className="flex flex-col">
+              <span>Presentation</span>
+              <span className="text-xs text-muted-foreground">Interactive slides</span>
             </div>
           </Link>
         </DropdownMenuItem>

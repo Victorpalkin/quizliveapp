@@ -1,5 +1,7 @@
 # Hybrid Presentation Mode - Implementation Plan
 
+---
+
 ## Overview
 Build a Mentimeter-style presentation mode for Zivo that allows users to create unified presentations combining:
 - **Content slides** (imported from Google Slides)
@@ -7,16 +9,52 @@ Build a Mentimeter-style presentation mode for Zivo that allows users to create 
 
 **UX Goal:** Every slide feels the same - smooth, linear flow. Activity slides are just another type of slide, not a separate experience.
 
+---
+
+## Implementation Status
+
+### Milestone 1: Foundation (MVP) - COMPLETED
+| Task | Status | Files Created |
+|------|--------|---------------|
+| Data model types | ✅ Done | `src/lib/types.ts` |
+| Presentation CRUD hooks | ✅ Done | `src/firebase/presentation/` |
+| Content slide type | ✅ Done | `src/components/app/presentation/slide-types/content/` |
+| Quiz slide type | ✅ Done | `src/components/app/presentation/slide-types/quiz/` |
+| Core dispatch components | ✅ Done | `src/components/app/presentation/core/` |
+| Editor with drag-and-drop | ✅ Done | `src/components/app/presentation/editor/` |
+| Host presentation view | ✅ Done | `src/components/app/presentation/host/` |
+| Player view with waiting | ✅ Done | `src/components/app/presentation/player/` |
+| Routes (create, edit, lobby, present) | ✅ Done | `src/app/host/presentation/` |
+| Player route | ✅ Done | `src/app/play/presentation/[gamePin]/` |
+| Dashboard integration | ✅ Done | `src/app/host/components/presentation-card.tsx` |
+
+### What's Working Now
+- Create/edit presentations with content and quiz slides
+- Drag-and-drop slide reordering in editor
+- Full-screen host presentation view with auto-hiding controls
+- Player join flow with waiting screen for non-interactive slides
+- Keyboard navigation (arrows, space, enter) during presentation
+- Presentations visible on host dashboard with filtering
+
+### What's NOT Implemented Yet
+- [ ] Google Slides import (OAuth, Cloud Function)
+- [ ] Poll slides (placeholder components exist)
+- [ ] Thoughts gathering slides (placeholder components exist)
+- [ ] Rating slides (placeholder components exist)
+- [ ] Firestore security rules for presentations
+- [ ] Storage rules for presentation images
+- [ ] Cloud Functions for answer submission
+
 ## User Experience Flow
 
 ### Editor Experience
 - Slide-based editor (like Google Slides or Keynote)
 - Add slides via "+" button with slide type picker:
-  - Content - import from Google Slides or upload image/text
-  - Quiz Question - scored question with correct answer
-  - Poll - gather opinions (no scoring)
-  - Thoughts Gathering - adds two slides: collect -> results (word cloud)
-  - Item Rating - adds two slides: describe -> rate
+  - 📄 **Content** - import from Google Slides or upload image/text
+  - ❓ **Quiz Question** - scored question with correct answer
+  - 📊 **Poll** - gather opinions (no scoring)
+  - 💡 **Thoughts Gathering** - adds two slides: collect → results (word cloud)
+  - ⭐ **Item Rating** - adds two slides: describe → rate
 - Drag-and-drop to reorder any slides freely
 - Results slides can be moved anywhere (not locked after their source)
 - Each slide type has its own editor panel
@@ -24,21 +62,21 @@ Build a Mentimeter-style presentation mode for Zivo that allows users to create 
 ### Slide Patterns in Detail
 
 **Thoughts Gathering Pattern:**
-1. Add "Thoughts Gathering" -> creates 2 slides:
+1. Add "Thoughts Gathering" → creates 2 slides:
    - `thoughts-collect`: Prompt shown, players submit ideas
    - `thoughts-results`: Word cloud visualization
 2. User can drag `thoughts-results` to show results later
 3. Can even add content slides between collect and results
 
 **Item Rating Pattern:**
-1. Add "Item Rating" -> creates 2 slides:
+1. Add "Item Rating" → creates 2 slides:
    - `rating-describe`: Item title, description, image (presenter explains)
    - `rating-input`: Players submit star/numeric rating
 2. Optionally add `rating-results` slide to show aggregate
 3. Can rate multiple items, then show all results together at end
 
 ### Presenter Experience
-- Linear progression: slide 1 -> slide 2 -> ... -> end
+- Linear progression: slide 1 → slide 2 → ... → end
 - Content slides: just advance
 - Activity slides: wait for participation, then advance
 - Keyboard: Space/Enter to advance, see live responses
@@ -48,18 +86,18 @@ Build a Mentimeter-style presentation mode for Zivo that allows users to create 
 
 **Layout:**
 ```
-+-----------------------------------------------------+
-|  [PIN: ABC123]          [5/12]          [users 42]  |  <- Minimal top bar (semi-transparent overlay)
-|                                                     |
-|                                                     |
-|                                                     |
-|                   SLIDE CONTENT                     |  <- Full-bleed slide (95%+ of screen)
-|                   (maximum size)                    |
-|                                                     |
-|                                                     |
-|                                                     |
-|                        [Next ->]                    |  <- Floating control button (bottom right)
-+-----------------------------------------------------+
+┌─────────────────────────────────────────────────────┐
+│  [PIN: ABC123]          [5/12]          [👥 42]     │  ← Minimal top bar (semi-transparent overlay)
+│                                                     │
+│                                                     │
+│                                                     │
+│                   SLIDE CONTENT                     │  ← Full-bleed slide (95%+ of screen)
+│                   (maximum size)                    │
+│                                                     │
+│                                                     │
+│                                                     │
+│                        [Next →]                     │  ← Floating control button (bottom right)
+└─────────────────────────────────────────────────────┘
 ```
 
 **Behaviors:**
@@ -330,7 +368,7 @@ export interface PresentationGame extends Omit<Game, 'quizId'> {
 
 **Flow:**
 1. User clicks "Import from Google Slides"
-2. OAuth popup -> user grants access
+2. OAuth popup → user grants access
 3. Store refresh token in Firestore (encrypted)
 4. List user's presentations for selection
 
@@ -372,7 +410,7 @@ Features:
 ### 2.3 Google Slides Import Flow
 
 1. User clicks "Import from Google Slides"
-2. If not connected -> OAuth flow
+2. If not connected → OAuth flow
 3. Show picker with user's presentations
 4. User selects presentation
 5. Cloud Function exports each slide as PNG (1600px width)
@@ -387,8 +425,8 @@ Features:
 ### 3.1 State Machine
 
 ```
-lobby -> slide <-> activity -> slide -> ... -> ended
-          |                    |
+lobby → slide ↔ activity → slide → ... → ended
+          ↓                    ↓
        (content)         (interactive)
 ```
 
@@ -430,8 +468,8 @@ src/app/play/presentation/[gamePin]/
 ### 4.2 Player State Machine
 
 ```
-joining -> lobby -> waiting/participating -> ended
-                      |
+joining → lobby → waiting/participating → ended
+                      ↓
           (waiting during content, active during activities)
 ```
 
@@ -457,45 +495,144 @@ joining -> lobby -> waiting/participating -> ended
 
 ---
 
-## Implementation Order
+## Implementation Order (Updated)
 
-### Milestone 1: Foundation (MVP)
-1. Data model types
-2. Basic presentation CRUD (no Google import yet)
-3. Simple content slides (upload images)
-4. Quiz question slides
-5. Basic host presentation view
-6. Basic player view
+### Milestone 1: Foundation (MVP) ✅ COMPLETE (pending bug fixes)
+1. ✅ Data model types
+2. ✅ Basic presentation CRUD
+3. ✅ Content slides (image upload)
+4. ✅ Quiz question slides
+5. ✅ Host presentation view
+6. ✅ Player view
+7. ✅ Dashboard integration
 
-### Milestone 2: Google Integration
-7. Google OAuth setup
-8. Google Slides import Cloud Function
-9. Import UI in editor
-10. Re-import/sync capability
+**Known bugs to fix:**
+- [ ] (To be identified during testing)
 
-### Milestone 3: Full Activity Support
-11. Poll slides
-12. Thoughts gathering slides
-13. Evaluation slides
-14. Results visualization for each type
+### Milestone 2: Full Activity Support ← CURRENT FOCUS
+**Goal:** Complete all slide types before polishing.
 
-### Milestone 4: Polish
-15. Presenter notes
-16. Audience pacing (wait for %)
-17. Slide transitions/animations
-18. Export results
+| # | Task | Description |
+|---|------|-------------|
+| 8 | Poll slides | Reuse quiz UI without correct answer marking |
+| 9 | Thoughts gathering | `thoughts-collect` for input, `thoughts-results` for word cloud |
+| 10 | Rating slides | `rating-describe`, `rating-input`, `rating-results` |
+| 11 | Results visualization | Charts, word clouds, aggregate displays |
+
+### Milestone 3: Google Integration
+| # | Task | Description |
+|---|------|-------------|
+| 12 | Google OAuth setup | OAuth flow, token storage |
+| 13 | Import Cloud Function | Export slides as images via Drive API |
+| 14 | Import UI | Picker UI in editor |
+| 15 | Re-import/sync | Update existing presentation from source |
+
+### Milestone 4: Advanced Features
+| # | Task | Description |
+|---|------|-------------|
+| 16 | Presenter notes | Collapsible notes visible only to host |
+| 17 | Audience pacing | Wait for % before advancing |
+| 18 | Export results | Download responses as CSV/PDF |
+| 19 | Presentation templates | Pre-built starter templates |
+
+### Milestone 5: Usability & Polish (Final)
+**Goal:** Make the feature intuitive and delightful after all features are built.
+
+#### 5.1 Host Guidance
+| Task | Priority | Description |
+|------|----------|-------------|
+| Empty presentation state | High | Helpful empty state with "Add your first slide" CTA |
+| Keyboard shortcuts help | Medium | `?` key shows shortcuts overlay (Space, arrows, F, Esc) |
+| Preview mode | Medium | "Preview" button to test without creating game |
+| Auto-save indicator | Low | Show "Saved" / "Saving..." status |
+
+#### 5.2 Presentation Flow UX
+| Task | Priority | Description |
+|------|----------|-------------|
+| Slide thumbnails in presenter | High | Small navigation strip at bottom |
+| Response counter animation | High | Animate count updates on interactive slides |
+| "End presentation" confirmation | High | Prevent accidental end |
+| Slide progress bar | Medium | Thin progress bar showing position |
+
+#### 5.3 Player Experience Polish
+| Task | Priority | Description |
+|------|----------|-------------|
+| Join confirmation animation | High | Celebrate successful join |
+| Submission feedback | High | Clear "Answer submitted!" feedback |
+| Connection status | High | Show reconnecting indicator |
+| Late join welcome | Medium | "You joined during slide X of Y" |
+| Vibration feedback (mobile) | Low | Haptic feedback on tap |
+
+#### 5.4 Error Handling & Edge Cases
+| Task | Priority | Description |
+|------|----------|-------------|
+| Empty slides warning | High | Warn before presenting if slides empty |
+| Network error recovery | High | Auto-retry with message |
+| Game not found state | High | Clear invalid PIN message |
+| Browser back button | Medium | Confirm exit on back |
+| Session persistence | Medium | Rejoin after page refresh |
+
+#### 5.5 Accessibility
+| Task | Priority | Description |
+|------|----------|-------------|
+| Reduced motion support | High | Respect `prefers-reduced-motion` |
+| Keyboard navigation | High | Full editor keyboard accessible |
+| Focus management | Medium | Proper focus on transitions |
+| ARIA labels | Medium | Screen reader support |
+| Color contrast check | Low | WCAG AA compliance |
+
+#### 5.6 Testing Checklist
+Before release, verify these scenarios:
+
+**Host Flow:**
+- [ ] Create presentation, add slides, reorder, launch, present, end
+
+**Player Flow:**
+- [ ] Join, wait during content, answer quiz, see confirmation, refresh/rejoin, see end
+
+**Edge Cases:**
+- [ ] Empty presentation warning
+- [ ] Single slide presentation
+- [ ] Player late join
+- [ ] Host/player reconnection
 
 ---
 
-## Key Files to Modify
+## Key Files for Usability Phase (Milestone 5)
+
+### Files to Modify
+| File | Changes |
+|------|---------|
+| `src/components/app/presentation/editor/PresentationEditor.tsx` | Add empty state, auto-save indicator |
+| `src/components/app/presentation/host/PresentationHost.tsx` | Add keyboard shortcuts overlay, confirmation dialogs |
+| `src/components/app/presentation/host/HostOverlay.tsx` | Add progress bar, response counter animation |
+| `src/components/app/presentation/player/PresentationPlayer.tsx` | Add submission feedback, connection status |
+| `src/app/play/presentation/[gamePin]/page.tsx` | Add join animation, session persistence |
+| `src/app/host/presentation/lobby/[gameId]/page.tsx` | Add validation warnings |
+
+### New Files to Create
+| File | Purpose |
+|------|---------|
+| `src/components/app/presentation/editor/KeyboardShortcutsHelp.tsx` | `?` key overlay |
+| `src/components/app/presentation/editor/EmptyPresentationState.tsx` | Empty state with guidance |
+| `src/components/app/presentation/player/ConnectionStatus.tsx` | Network status indicator |
+| `src/components/app/presentation/player/SubmissionFeedback.tsx` | Animated success feedback |
+| `src/hooks/use-reduced-motion.ts` | Accessibility hook for motion preferences |
+
+### Existing Patterns to Reuse
+- Motion animations - Already using `motion/react` throughout
+- Toast notifications - Using `@/hooks/use-toast` for feedback
+- Session management - `@/lib/player-session.ts` pattern
+
+---
+
+## Pending Infrastructure (Before Production)
 
 | File | Changes |
 |------|---------|
-| `src/lib/types.ts` | Add Presentation types |
-| `src/app/host/page.tsx` | Add Presentations section |
-| `firebase.json` | Add new functions |
 | `firestore.rules` | Add presentation access rules |
 | `storage.rules` | Add presentation image rules |
+| `functions/src/functions/` | Add `submitPresentationAnswer.ts` |
 
 ---
 
@@ -537,9 +674,7 @@ Players can join mid-presentation:
 4. No leaderboard penalty for late joiners (scored only on participated slides)
 
 ### Animation Implementation
-**New dependency**: `npm install framer-motion`
-
-Use Framer Motion for smooth transitions:
+Uses `motion/react` (Framer Motion) for smooth transitions:
 - `AnimatePresence` for slide transitions (mount/unmount animations)
 - `motion.div` for element animations
 - Stagger animations for lists (leaderboard, word cloud)
@@ -556,17 +691,25 @@ Use Framer Motion for smooth transitions:
 
 ---
 
-## Estimated Scope
+## Progress Summary
 
-- **New files**: ~25-30 components/pages
-- **Modified files**: ~10
-- **New Cloud Functions**: 2-3
-- **Complexity**: High - this is a major feature
+### Completed (Milestone 1)
+- **New files created**: ~25 components/pages
+- **Types added**: `PresentationSlide`, `Presentation`, `PresentationGame`, `PresentationGameState`
+- **Routes created**: 5 (create, edit, lobby, present, play)
+
+### Next Up (Milestone 2: Full Activity Support)
+- **New slide types**: 4 (poll, thoughts-collect, thoughts-results, rating)
+- **Components needed**: ~12 (Editor, Host, Player for each type)
+
+### Future (Milestones 3-5)
+- **Google OAuth**: High complexity
+- **Cloud Functions**: 2-3
+- **Usability polish**: Final milestone after features complete
 
 ---
 
 ## Sources
 
 - [Google Slides API Node.js Quickstart](https://developers.google.com/slides/api/quickstart/nodejs)
-- [Google Workspace Codelab for Slides](https://codelabs.developers.google.com/codelabs/slides-api)
-- [Convert Google Slides to Images](https://www.labnol.org/code/20673-google-slides-image-thumbnails)
+- [Motion (Framer Motion) Docs](https://motion.dev/docs)

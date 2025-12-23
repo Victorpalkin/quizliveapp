@@ -79,6 +79,26 @@ service cloud.firestore {
                               request.auth.uid == resource.data.hostId;
     }
 
+    // Presentations collection (for hybrid presentations with interactive slides)
+    match /presentations/{presentationId} {
+      // Anyone can read presentation details (needed for players during game)
+      allow read: if true;
+
+      // Only authenticated hosts can create presentations
+      allow create: if request.auth != null &&
+                      request.auth.uid == request.resource.data.hostId;
+
+      // Only the presentation owner can update or delete
+      allow update, delete: if request.auth != null &&
+                              request.auth.uid == resource.data.hostId;
+    }
+
+    // Helper function to check if user owns a presentation
+    function ownsPresentation(presentationId) {
+      return request.auth != null &&
+             request.auth.uid == get(/databases/$(database)/documents/presentations/$(presentationId)).data.hostId;
+    }
+
     // Helper function to check if user owns an activity
     function ownsActivity(activityId) {
       return request.auth != null &&
@@ -93,6 +113,7 @@ service cloud.firestore {
       // Authenticated hosts can create games:
       // - For quiz games: must own the quiz OR have shared access
       // - For activity games: must own the activity
+      // - For presentation games: must own the presentation
       allow create: if request.auth != null &&
                       request.auth.uid == request.resource.data.hostId &&
                       (
@@ -101,10 +122,15 @@ service cloud.firestore {
                          (request.auth.uid == get(/databases/$(database)/documents/quizzes/$(request.resource.data.quizId)).data.hostId ||
                           hasQuizAccess(request.resource.data.quizId)))
                         ||
-                        // Activity-based games (Interest Cloud, etc.)
-                        (request.resource.data.activityType != 'quiz' &&
+                        // Activity-based games (Interest Cloud, Evaluation, etc.)
+                        (request.resource.data.activityType in ['thoughts-gathering', 'evaluation'] &&
                          request.resource.data.activityId != null &&
                          ownsActivity(request.resource.data.activityId))
+                        ||
+                        // Presentation-based games
+                        (request.resource.data.activityType == 'presentation' &&
+                         request.resource.data.presentationId != null &&
+                         ownsPresentation(request.resource.data.presentationId))
                       );
 
       // Only the host can update or delete the game

@@ -18,6 +18,7 @@ import {
   MessageSquare,
   TrendingUp,
   ArrowLeft,
+  Presentation,
 } from 'lucide-react';
 interface ActivityTypeCardProps {
   icon: React.ReactNode;
@@ -182,6 +183,22 @@ export default function CreateActivityPage() {
               'Aggregated results',
             ]}
             href="/host/evaluation/create"
+          />
+
+          {/* Presentation */}
+          <ActivityTypeCard
+            icon={<Presentation className="h-8 w-8 text-indigo-600" />}
+            iconBg="bg-indigo-100 dark:bg-indigo-900/30"
+            title="Presentation"
+            description="Interactive slides with embedded quizzes, polls, and live feedback. Keep your audience engaged throughout."
+            bestFor={['Conferences', 'Lectures', 'All-hands meetings', 'Webinars']}
+            features={[
+              'Mix content & activities',
+              'Import from Google Slides',
+              'Live participant responses',
+              'Smooth transitions',
+            ]}
+            href="/host/presentation/create"
           />
         </div>
 
