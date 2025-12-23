@@ -9,11 +9,12 @@ import { Header } from '@/components/app/header';
 import { SharedQuizzes } from '@/components/app/shared-quizzes';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
-import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion, Gamepad2, ArrowUpDown, Sparkles, RotateCcw } from 'lucide-react';
+import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion, Gamepad2, ArrowUpDown, Sparkles, RotateCcw, Presentation } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateDropdown } from './components/create-dropdown';
 import { QuizCard } from './components/quiz-card';
 import { ActivityCard } from './components/activity-card';
+import { PresentationCard } from './components/presentation-card';
 import { EmptyContentState } from './components/empty-content-state';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { useCollection, useFirestore, useUser, useMemoFirebase, useStorage } from '@/firebase';
@@ -21,7 +22,8 @@ import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getD
 import { ref, deleteObject } from 'firebase/storage';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
-import type { Quiz, Game, ThoughtsGatheringActivity, EvaluationActivity } from '@/lib/types';
+import type { Quiz, Game, ThoughtsGatheringActivity, EvaluationActivity, Presentation as PresentationType } from '@/lib/types';
+import { usePresentations, usePresentationMutations, useCreatePresentationGame } from '@/firebase/presentation';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -88,10 +90,15 @@ export default function HostDashboardPage() {
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
 
   // Filter and sort state
-  type FilterType = 'all' | 'quiz' | 'thoughts-gathering' | 'evaluation';
+  type FilterType = 'all' | 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation';
   type SortType = 'recent' | 'alphabetical' | 'created';
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [sortType, setSortType] = useState<SortType>('recent');
+
+  // Presentations
+  const { presentations, loading: presentationsLoading } = usePresentations();
+  const { deletePresentation } = usePresentationMutations();
+  const { createGame: createPresentationGame } = useCreatePresentationGame();
 
   const quizzesQuery = useMemoFirebase(() =>
     user ? query(collection(firestore, 'quizzes').withConverter(quizConverter), where('hostId', '==', user.uid)) as Query<Quiz> : null
@@ -147,20 +154,21 @@ export default function HostDashboardPage() {
   // Only redirect once data has fully loaded and confirmed empty
   useEffect(() => {
     // Wait for all data to finish loading
-    if (quizzesLoading || activitiesLoading || !user) return;
+    if (quizzesLoading || activitiesLoading || presentationsLoading || !user) return;
 
-    // quizzes/activities will be null/undefined while loading, then an array when loaded
+    // quizzes/activities/presentations will be null/undefined while loading, then an array when loaded
     // Only redirect if we have confirmed empty arrays (not null/undefined)
     const quizzesLoaded = Array.isArray(quizzes);
     const activitiesLoaded = Array.isArray(activities);
+    const presentationsLoaded = Array.isArray(presentations);
 
-    if (!quizzesLoaded || !activitiesLoaded) return;
+    if (!quizzesLoaded || !activitiesLoaded || !presentationsLoaded) return;
 
-    const hasNoContent = quizzes.length === 0 && activities.length === 0;
+    const hasNoContent = quizzes.length === 0 && activities.length === 0 && presentations.length === 0;
     if (hasNoContent) {
       router.push('/host/create');
     }
-  }, [quizzes, activities, quizzesLoading, activitiesLoading, user, router]);
+  }, [quizzes, activities, presentations, quizzesLoading, activitiesLoading, presentationsLoading, user, router]);
 
   const handleHostGame = async (quizId: string) => {
     if (!user) return;
@@ -319,6 +327,38 @@ export default function HostDashboardPage() {
       });
   }
 
+  const handleHostPresentation = async (presentationId: string) => {
+    if (!user) return;
+    try {
+      const gameId = await createPresentationGame(presentationId, user.uid);
+      router.push(`/host/presentation/lobby/${gameId}`);
+    } catch (error) {
+      console.error('Error creating presentation game:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not start the presentation. Please try again.',
+      });
+    }
+  };
+
+  const handleDeletePresentation = async (presentationId: string) => {
+    try {
+      await deletePresentation(presentationId);
+      toast({
+        title: 'Presentation Deleted',
+        description: 'The presentation has been successfully removed.',
+      });
+    } catch (error) {
+      console.error('Error deleting presentation:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not delete the presentation. Please try again.',
+      });
+    }
+  };
+
 
   if (userLoading || !user) {
     return <FullPageLoader />;
@@ -413,9 +453,9 @@ export default function HostDashboardPage() {
             <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <h1 className="text-3xl font-semibold">My Content</h1>
-                    {!quizzesLoading && !activitiesLoading && (quizzes?.length || 0) + (activities?.length || 0) > 0 && (
+                    {!quizzesLoading && !activitiesLoading && !presentationsLoading && (quizzes?.length || 0) + (activities?.length || 0) + (presentations?.length || 0) > 0 && (
                         <span className="px-3 py-1 text-sm font-medium bg-muted text-muted-foreground rounded-full">
-                            {(quizzes?.length || 0) + (activities?.length || 0)}
+                            {(quizzes?.length || 0) + (activities?.length || 0) + (presentations?.length || 0)}
                         </span>
                     )}
                 </div>
@@ -437,6 +477,7 @@ export default function HostDashboardPage() {
                     {[
                         { value: 'all', label: 'All', icon: null },
                         { value: 'quiz', label: 'Quizzes', icon: FileQuestion },
+                        { value: 'presentation', label: 'Presentations', icon: Presentation },
                         { value: 'thoughts-gathering', label: 'Thoughts', icon: Cloud },
                         { value: 'evaluation', label: 'Evaluations', icon: BarChart3 },
                     ].map(({ value, label, icon: Icon }) => (
@@ -471,7 +512,7 @@ export default function HostDashboardPage() {
                 </Select>
             </div>
 
-            {(quizzesLoading || activitiesLoading) ? (
+            {(quizzesLoading || activitiesLoading || presentationsLoading) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[...Array(3)].map((_, i) => (
                         <Card key={i}>
@@ -488,8 +529,8 @@ export default function HostDashboardPage() {
             ) : (() => {
                 // Build unified list of items for filtering and sorting
                 type ContentItem = {
-                    type: 'quiz' | 'thoughts-gathering' | 'evaluation';
-                    data: Quiz | Activity;
+                    type: 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation';
+                    data: Quiz | Activity | PresentationType;
                     title: string;
                     updatedAt?: Date;
                     createdAt?: Date;
@@ -509,6 +550,13 @@ export default function HostDashboardPage() {
                         title: a.title,
                         updatedAt: a.updatedAt,
                         createdAt: a.createdAt,
+                    })) || []),
+                    ...(presentations?.map(p => ({
+                        type: 'presentation' as const,
+                        data: p,
+                        title: p.title || 'Untitled Presentation',
+                        updatedAt: p.updatedAt,
+                        createdAt: p.createdAt,
                     })) || []),
                 ];
 
@@ -557,6 +605,17 @@ export default function HostDashboardPage() {
                                         onPreview={setPreviewQuiz}
                                         onShare={setShareDialogQuiz}
                                         onDelete={handleDeleteQuiz}
+                                    />
+                                );
+                            }
+                            if (item.type === 'presentation') {
+                                const presentation = item.data as PresentationType;
+                                return (
+                                    <PresentationCard
+                                        key={presentation.id}
+                                        presentation={presentation}
+                                        onHost={handleHostPresentation}
+                                        onDelete={handleDeletePresentation}
                                     />
                                 );
                             }
