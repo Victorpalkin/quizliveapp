@@ -313,8 +313,9 @@ service cloud.firestore {
                            request.resource.data.rating == null
                          );
 
-        // Players can update their own response
-        allow update: if request.resource.data.playerId == resource.data.playerId;
+        // Players can update their own response (only during active presentation)
+        allow update: if request.resource.data.playerId == resource.data.playerId &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'presenting';
 
         // No client-side deletes
         allow delete: if false;

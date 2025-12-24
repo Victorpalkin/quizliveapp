@@ -12,7 +12,6 @@ import {
 } from 'firebase/firestore';
 import {
   usePresentationGameByPin,
-  usePresentationPlayers,
   usePresentation,
 } from '@/firebase/presentation';
 import { PresentationPlayer, WaitingScreen } from '@/components/app/presentation';
@@ -49,7 +48,6 @@ export default function PresentationPlayerPage() {
   const { presentation, loading: presentationLoading } = usePresentation(
     game?.presentationId || ''
   );
-  const { players } = usePresentationPlayers(game?.id || '');
 
   // Check for existing session
   const hasValidSession = useMemo(() => {
