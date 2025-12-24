@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { motion } from 'motion/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +39,16 @@ export function QuizHost({ slide, responseCount, playerCount }: SlideHostProps) 
         <Card className="bg-card/95 backdrop-blur">
           <CardContent className="p-8 text-center">
             <h1 className="text-4xl font-bold">{question.text}</h1>
+            {slide.imageUrl && (
+              <div className="relative w-full aspect-video mt-6 rounded-lg overflow-hidden">
+                <Image
+                  src={slide.imageUrl}
+                  alt="Question image"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

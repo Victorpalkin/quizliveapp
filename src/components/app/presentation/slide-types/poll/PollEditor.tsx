@@ -10,12 +10,13 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2 } from 'lucide-react';
 import { SlideEditorProps } from '../types';
 import { PollSingleQuestion, PollMultipleQuestion, Answer } from '@/lib/types';
+import { SlideImageUpload } from '../../editor/SlideImageUpload';
 
 const TIME_LIMITS = [10, 20, 30, 60];
 
 type PollQuestion = PollSingleQuestion | PollMultipleQuestion;
 
-export function PollEditor({ slide, onSlideChange }: SlideEditorProps) {
+export function PollEditor({ slide, presentation, onSlideChange }: SlideEditorProps) {
   const question = slide.question as PollQuestion | undefined;
   const answers = question?.answers || [];
   const isMultiple = question?.type === 'poll-multiple';
@@ -96,6 +97,15 @@ export function PollEditor({ slide, onSlideChange }: SlideEditorProps) {
           className="text-lg"
         />
       </div>
+
+      {/* Image Upload */}
+      <SlideImageUpload
+        imageUrl={slide.imageUrl}
+        presentationId={presentation.id}
+        slideId={slide.id}
+        promptContext={question?.text || 'poll question'}
+        onImageChange={(url) => onSlideChange({ ...slide, imageUrl: url })}
+      />
 
       {/* Poll Type Toggle */}
       <div className="flex items-center justify-between">

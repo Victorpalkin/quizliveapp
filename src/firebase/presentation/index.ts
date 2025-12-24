@@ -27,6 +27,11 @@ export {
 } from './use-slide-ratings';
 
 export {
+  useQuizPollResponses,
+  useQuizPollAggregates,
+} from './use-quiz-poll-responses';
+
+export {
   useUserTemplates,
   useTemplateMutations,
 } from './use-templates';

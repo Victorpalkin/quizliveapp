@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { motion } from 'motion/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +46,16 @@ export function PollHost({ slide, responseCount, playerCount }: SlideHostProps) 
               <p className="text-lg text-muted-foreground mt-2">
                 Select all that apply
               </p>
+            )}
+            {slide.imageUrl && (
+              <div className="relative w-full aspect-video mt-6 rounded-lg overflow-hidden">
+                <Image
+                  src={slide.imageUrl}
+                  alt="Poll image"
+                  fill
+                  className="object-contain"
+                />
+              </div>
             )}
           </CardContent>
         </Card>

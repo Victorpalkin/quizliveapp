@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { ref, deleteObject } from 'firebase/storage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,7 @@ import { createSlide } from '../slide-types';
 import { useToast } from '@/hooks/use-toast';
 import { INTERACTIVE_SLIDE_TYPES } from '@/hooks/presentation/use-pacing-status';
 import { useTemplateMutations } from '@/firebase/presentation';
+import { useStorage } from '@/firebase';
 
 interface PresentationEditorProps {
   presentation: Presentation;
@@ -56,6 +58,7 @@ export function PresentationEditor({
   const router = useRouter();
   const { toast } = useToast();
   const { saveAsTemplate } = useTemplateMutations();
+  const storage = useStorage();
 
   // Local state for editing
   const [title, setTitle] = useState(presentation.title);
@@ -156,7 +159,21 @@ export function PresentationEditor({
 
   // Handle delete slide
   const handleDeleteSlide = useCallback(
-    (slideId: string) => {
+    async (slideId: string) => {
+      // Find the slide to delete
+      const slideToDelete = slides.find((s) => s.id === slideId);
+
+      // Delete image from storage if exists
+      if (slideToDelete?.imageUrl?.includes('firebasestorage.googleapis.com') && storage) {
+        try {
+          const imageRef = ref(storage, slideToDelete.imageUrl);
+          await deleteObject(imageRef);
+        } catch (error) {
+          console.error('Failed to delete slide image:', error);
+          // Continue with slide deletion even if image cleanup fails
+        }
+      }
+
       setSlides((prev) => {
         const newSlides = prev.filter((s) => s.id !== slideId);
 
@@ -174,7 +191,7 @@ export function PresentationEditor({
 
       markChanged();
     },
-    [slides, selectedSlideId, markChanged]
+    [slides, selectedSlideId, markChanged, storage]
   );
 
   // Handle pacing mode change

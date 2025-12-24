@@ -12,6 +12,7 @@ export { computeEvaluationResults } from './functions/computeEvaluationResults';
 
 // Export Cleanup Triggers
 export { onGameDeleted } from './functions/cleanupSubmissions';
+export { onPresentationDeleted } from './functions/cleanupPresentations';
 
 // Export Scheduled Cleanup Functions
 export { cleanupOldGames } from './functions/cleanupOldGames';

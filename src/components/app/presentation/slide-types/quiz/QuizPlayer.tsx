@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { motion } from 'motion/react';
 import { Check, Loader2 } from 'lucide-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -146,6 +147,18 @@ export function QuizPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
           </div>
         )}
       </div>
+
+      {/* Image if present */}
+      {slide.imageUrl && (
+        <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-4 max-h-48 md:max-h-64">
+          <Image
+            src={slide.imageUrl}
+            alt="Question image"
+            fill
+            className="object-contain"
+          />
+        </div>
+      )}
 
       {/* Answers - responsive grid using AnswerButton */}
       <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4">

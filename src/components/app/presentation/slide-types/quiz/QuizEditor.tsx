@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Trash2, Check } from 'lucide-react';
 import { SlideEditorProps } from '../types';
 import { SingleChoiceQuestion, Answer } from '@/lib/types';
+import { SlideImageUpload } from '../../editor/SlideImageUpload';
 
 const TIME_LIMITS = [10, 20, 30, 60];
 
-export function QuizEditor({ slide, onSlideChange }: SlideEditorProps) {
+export function QuizEditor({ slide, presentation, onSlideChange }: SlideEditorProps) {
   const question = slide.question as SingleChoiceQuestion | undefined;
   const answers = question?.answers || [];
   const correctIndex = question?.correctAnswerIndex ?? 0;
@@ -84,6 +85,15 @@ export function QuizEditor({ slide, onSlideChange }: SlideEditorProps) {
           className="text-lg"
         />
       </div>
+
+      {/* Image Upload */}
+      <SlideImageUpload
+        imageUrl={slide.imageUrl}
+        presentationId={presentation.id}
+        slideId={slide.id}
+        promptContext={question?.text || 'quiz question'}
+        onImageChange={(url) => onSlideChange({ ...slide, imageUrl: url })}
+      />
 
       {/* Time Limit */}
       <div className="space-y-2">

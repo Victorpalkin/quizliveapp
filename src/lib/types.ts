@@ -529,6 +529,8 @@ export type PresentationSlideType =
   | 'content'           // Imported slide (image) or text content
   | 'quiz'              // Quiz question (scored)
   | 'poll'              // Poll question (no scoring)
+  | 'quiz-results'      // Quiz: show results from one or more quiz slides
+  | 'poll-results'      // Poll: show results from one or more poll slides
   | 'thoughts-collect'  // Thoughts gathering: collection prompt
   | 'thoughts-results'  // Thoughts gathering: word cloud display
   | 'rating-describe'   // Rating: item description (presenter explains)
@@ -610,6 +612,13 @@ export interface PresentationSlide {
   // 'podium' - Final leaderboard with podium styling (top 20)
   leaderboardMaxDisplay?: number; // How many players to show (default: 10 for standard, 20 for podium)
   leaderboardTitle?: string;      // Custom title (default: "Leaderboard")
+
+  // For 'quiz-results' and 'poll-results' types
+  sourceSlideIds?: string[];      // Array of quiz/poll slide IDs to show results for
+  resultsTitle?: string;          // Optional custom title
+  resultsDisplayMode?: 'individual' | 'combined';
+  // 'individual' - Show each question's results separately (default)
+  // 'combined' - Aggregate view with all questions in compact grid
 
   // Audience pacing settings (per-slide, overrides presentation defaults)
   pacingMode?: 'none' | 'threshold' | 'all';

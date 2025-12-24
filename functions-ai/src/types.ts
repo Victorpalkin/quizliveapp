@@ -83,9 +83,13 @@ export interface GenerateQuizResponse {
 // Request to generate question image
 export interface GenerateImageRequest {
   prompt: string;
+  // For quiz images
   quizId?: string;     // For existing quizzes
   tempId?: string;     // For new quizzes (temp storage)
-  questionIndex: number;
+  questionIndex?: number;
+  // For presentation slide images
+  presentationId?: string;
+  slideId?: string;
 }
 
 // Response from generate image

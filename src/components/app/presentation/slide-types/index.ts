@@ -52,6 +52,20 @@ import {
   LeaderboardPlayer,
 } from './leaderboard';
 
+// Quiz Results slide type
+import {
+  QuizResultsEditor,
+  QuizResultsHost,
+  QuizResultsPlayer,
+} from './quiz-results';
+
+// Poll Results slide type
+import {
+  PollResultsEditor,
+  PollResultsHost,
+  PollResultsPlayer,
+} from './poll-results';
+
 // Helper to generate unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
@@ -131,6 +145,44 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
         ],
         timeLimit: 30,
       },
+    }),
+  },
+
+  'quiz-results': {
+    type: 'quiz-results',
+    label: 'Quiz Results',
+    description: 'Show results from quiz questions',
+    icon: 'CheckCircle',
+    EditorComponent: QuizResultsEditor,
+    HostComponent: QuizResultsHost,
+    PlayerComponent: QuizResultsPlayer,
+    isInteractive: false,
+    createDefaultSlide: (id, order) => ({
+      id,
+      type: 'quiz-results',
+      order,
+      sourceSlideIds: [],
+      resultsTitle: 'Quiz Results',
+      resultsDisplayMode: 'individual',
+    }),
+  },
+
+  'poll-results': {
+    type: 'poll-results',
+    label: 'Poll Results',
+    description: 'Show results from poll questions',
+    icon: 'PieChart',
+    EditorComponent: PollResultsEditor,
+    HostComponent: PollResultsHost,
+    PlayerComponent: PollResultsPlayer,
+    isInteractive: false,
+    createDefaultSlide: (id, order) => ({
+      id,
+      type: 'poll-results',
+      order,
+      sourceSlideIds: [],
+      resultsTitle: 'Poll Results',
+      resultsDisplayMode: 'individual',
     }),
   },
 
