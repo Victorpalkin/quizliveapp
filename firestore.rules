@@ -93,6 +93,27 @@ service cloud.firestore {
                               request.auth.uid == resource.data.hostId;
     }
 
+    // Templates collection (for user-created presentation templates)
+    match /templates/{templateId} {
+      // Users can read their own templates
+      allow read: if request.auth != null &&
+                    resource.data.createdBy == request.auth.uid;
+
+      // Users can create templates with their own UID
+      allow create: if request.auth != null &&
+                      request.resource.data.createdBy == request.auth.uid &&
+                      request.resource.data.isBuiltIn == false;
+
+      // Users can update their own templates
+      allow update: if request.auth != null &&
+                      resource.data.createdBy == request.auth.uid &&
+                      request.resource.data.createdBy == request.auth.uid;
+
+      // Users can delete their own templates
+      allow delete: if request.auth != null &&
+                      resource.data.createdBy == request.auth.uid;
+    }
+
     // Helper function to check if user owns a presentation
     function ownsPresentation(presentationId) {
       return request.auth != null &&

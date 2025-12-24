@@ -601,6 +601,13 @@ export interface PresentationSlide {
   // 'podium' - Final leaderboard with podium styling (top 20)
   leaderboardMaxDisplay?: number; // How many players to show (default: 10 for standard, 20 for podium)
   leaderboardTitle?: string;      // Custom title (default: "Leaderboard")
+
+  // Audience pacing settings (per-slide, overrides presentation defaults)
+  pacingMode?: 'none' | 'threshold' | 'all';
+  // 'none' - Host can advance anytime (default)
+  // 'threshold' - Wait for X% of players to respond
+  // 'all' - Wait for all players to respond
+  pacingThreshold?: number; // 0-100, percentage of players required (for 'threshold' mode)
 }
 
 /**
@@ -616,6 +623,10 @@ export interface Presentation {
   // Google Slides import tracking
   googleSlidesId?: string;     // Source presentation ID
   lastImportedAt?: Date;
+
+  // Default pacing settings (applies to all interactive slides unless overridden)
+  defaultPacingMode?: 'none' | 'threshold' | 'all';
+  defaultPacingThreshold?: number; // 0-100, default: 80
 
   createdAt: Date;
   updatedAt: Date;
@@ -663,6 +674,36 @@ export interface PresentationSlideResponse {
 
   // For rating-input slides
   rating?: number;
+}
+
+// ==========================================
+// Presentation Templates
+// ==========================================
+
+/**
+ * Template category for organization
+ */
+export type PresentationTemplateCategory =
+  | 'workshop'
+  | 'training'
+  | 'feedback'
+  | 'meeting'
+  | 'custom';
+
+/**
+ * Presentation template for quick starts
+ */
+export interface PresentationTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: PresentationTemplateCategory;
+  thumbnail?: string;              // Preview image URL
+  slides: PresentationSlide[];     // Template slides
+  isBuiltIn: boolean;              // System template vs user-created
+  createdBy?: string;              // hostId for user templates
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // ==========================================

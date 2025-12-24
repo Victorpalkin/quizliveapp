@@ -25,3 +25,8 @@ export {
   useSubmitSlideRating,
   useRatingAggregates,
 } from './use-slide-ratings';
+
+export {
+  useUserTemplates,
+  useTemplateMutations,
+} from './use-templates';

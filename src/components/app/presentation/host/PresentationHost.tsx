@@ -5,22 +5,27 @@ import { motion, AnimatePresence } from 'motion/react';
 import { SlideRenderer } from '../core';
 import { HostOverlay } from './HostOverlay';
 import { HostControls } from './HostControls';
-import { PresentationSlide } from '@/lib/types';
+import { PresentationSlide, Presentation } from '@/lib/types';
+import { usePacingStatus } from '@/hooks/presentation/use-pacing-status';
 
 interface PresentationHostProps {
+  gameId: string;
   gamePin: string;
   slides: PresentationSlide[];
   currentSlideIndex: number;
   playerCount: number;
+  presentation: Presentation;
   onSlideChange: (index: number) => void;
   onCancel?: () => void;
 }
 
 export function PresentationHost({
+  gameId,
   gamePin,
   slides,
   currentSlideIndex,
   playerCount,
+  presentation,
   onSlideChange,
   onCancel,
 }: PresentationHostProps) {
@@ -28,6 +33,21 @@ export function PresentationHost({
   const [lastMouseMove, setLastMouseMove] = useState(Date.now());
 
   const currentSlide = slides[currentSlideIndex];
+
+  // Pacing status for current slide
+  const pacingStatus = usePacingStatus(
+    gameId,
+    currentSlide?.id,
+    currentSlide,
+    presentation,
+    playerCount
+  );
+
+  // Determine if pacing blocks navigation
+  const isPacingBlocked =
+    pacingStatus.isInteractiveSlide &&
+    pacingStatus.pacingMode !== 'none' &&
+    !pacingStatus.thresholdMet;
 
   // Auto-hide controls after inactivity
   useEffect(() => {
@@ -40,10 +60,11 @@ export function PresentationHost({
       setLastMouseMove(Date.now());
       setIsControlsVisible(true);
 
-      // Keyboard navigation
+      // Keyboard navigation (respects pacing for forward navigation)
       if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
-        if (currentSlideIndex < slides.length - 1) {
+        // Block forward navigation if pacing threshold not met
+        if (!isPacingBlocked && currentSlideIndex < slides.length - 1) {
           onSlideChange(currentSlideIndex + 1);
         }
       } else if (e.key === 'ArrowLeft') {
@@ -61,7 +82,7 @@ export function PresentationHost({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentSlideIndex, slides.length, onSlideChange]);
+  }, [currentSlideIndex, slides.length, onSlideChange, isPacingBlocked]);
 
   // Hide controls after 3 seconds of no activity
   useEffect(() => {
@@ -117,6 +138,7 @@ export function PresentationHost({
         totalSlides={slides.length}
         playerCount={playerCount}
         onCancel={onCancel}
+        pacingStatus={pacingStatus}
       />
 
       {/* Floating navigation controls */}
@@ -126,6 +148,7 @@ export function PresentationHost({
         onPrevious={handlePrevious}
         onNext={handleNext}
         isVisible={isControlsVisible}
+        pacingStatus={pacingStatus}
       />
     </div>
   );

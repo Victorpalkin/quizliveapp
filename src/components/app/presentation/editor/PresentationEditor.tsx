@@ -7,13 +7,38 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Save, Play, ArrowLeft, Loader2 } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Save, Play, ArrowLeft, Loader2, Users, MoreVertical, Copy } from 'lucide-react';
 import { Presentation, PresentationSlide, PresentationSlideType } from '@/lib/types';
 import { SlideList } from './SlideList';
 import { SlideTypeSelector } from './SlideTypeSelector';
 import { SlideEditorRenderer } from '../core';
 import { createSlide } from '../slide-types';
 import { useToast } from '@/hooks/use-toast';
+import { INTERACTIVE_SLIDE_TYPES } from '@/hooks/presentation/use-pacing-status';
+import { useTemplateMutations } from '@/firebase/presentation';
 
 interface PresentationEditorProps {
   presentation: Presentation;
@@ -30,6 +55,7 @@ export function PresentationEditor({
 }: PresentationEditorProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { saveAsTemplate } = useTemplateMutations();
 
   // Local state for editing
   const [title, setTitle] = useState(presentation.title);
@@ -41,10 +67,30 @@ export function PresentationEditor({
   const [showSlideTypeSelector, setShowSlideTypeSelector] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Save as Template state
+  const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [templateDescription, setTemplateDescription] = useState('');
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+
+  // Pacing settings
+  const [defaultPacingMode, setDefaultPacingMode] = useState<'none' | 'threshold' | 'all'>(
+    presentation.defaultPacingMode || 'none'
+  );
+  const [defaultPacingThreshold, setDefaultPacingThreshold] = useState<number>(
+    presentation.defaultPacingThreshold ?? 80
+  );
+
   // Get selected slide
   const selectedSlide = useMemo(
     () => slides.find((s) => s.id === selectedSlideId) || null,
     [slides, selectedSlideId]
+  );
+
+  // Count interactive slides
+  const interactiveSlideCount = useMemo(
+    () => slides.filter((s) => INTERACTIVE_SLIDE_TYPES.includes(s.type)).length,
+    [slides]
   );
 
   // Mark as changed
@@ -131,6 +177,24 @@ export function PresentationEditor({
     [slides, selectedSlideId, markChanged]
   );
 
+  // Handle pacing mode change
+  const handleDefaultPacingModeChange = useCallback(
+    (value: string) => {
+      setDefaultPacingMode(value as 'none' | 'threshold' | 'all');
+      markChanged();
+    },
+    [markChanged]
+  );
+
+  // Handle pacing threshold change
+  const handleDefaultPacingThresholdChange = useCallback(
+    (value: number[]) => {
+      setDefaultPacingThreshold(value[0]);
+      markChanged();
+    },
+    [markChanged]
+  );
+
   // Handle save
   const handleSave = useCallback(async () => {
     try {
@@ -138,6 +202,8 @@ export function PresentationEditor({
         title,
         description,
         slides,
+        defaultPacingMode,
+        defaultPacingThreshold,
       });
       setHasUnsavedChanges(false);
       toast({
@@ -151,7 +217,7 @@ export function PresentationEditor({
         description: 'Failed to save presentation.',
       });
     }
-  }, [title, description, slides, onSave, toast]);
+  }, [title, description, slides, defaultPacingMode, defaultPacingThreshold, onSave, toast]);
 
   // Handle launch
   const handleLaunch = useCallback(async () => {
@@ -160,6 +226,52 @@ export function PresentationEditor({
     }
     onLaunch();
   }, [hasUnsavedChanges, handleSave, onLaunch]);
+
+  // Handle save as template
+  const handleOpenSaveTemplateDialog = useCallback(() => {
+    setTemplateName(title || 'My Template');
+    setTemplateDescription('');
+    setShowSaveTemplateDialog(true);
+  }, [title]);
+
+  const handleSaveAsTemplate = useCallback(async () => {
+    if (!templateName.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please enter a template name.',
+      });
+      return;
+    }
+
+    if (slides.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Cannot save an empty presentation as a template.',
+      });
+      return;
+    }
+
+    setIsSavingTemplate(true);
+    try {
+      await saveAsTemplate(templateName.trim(), templateDescription.trim(), slides);
+      setShowSaveTemplateDialog(false);
+      toast({
+        title: 'Template Saved',
+        description: 'Your presentation has been saved as a template.',
+      });
+    } catch (error) {
+      console.error('Failed to save template:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to save template.',
+      });
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  }, [templateName, templateDescription, slides, saveAsTemplate, toast]);
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -196,6 +308,24 @@ export function PresentationEditor({
             )}
             Save
           </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={handleOpenSaveTemplateDialog}
+                disabled={slides.length === 0}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Save as Template
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button onClick={handleLaunch} disabled={slides.length === 0}>
             <Play className="h-4 w-4 mr-2" />
             Present
@@ -255,9 +385,9 @@ export function PresentationEditor({
         </div>
 
         {/* Properties Panel (optional) */}
-        <div className="w-72 flex-shrink-0 border-l p-4 bg-muted/20 hidden lg:block">
+        <div className="w-72 flex-shrink-0 border-l p-4 bg-muted/20 hidden lg:block overflow-y-auto">
           <h3 className="font-medium mb-4">Presentation Settings</h3>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea
@@ -267,7 +397,74 @@ export function PresentationEditor({
                 rows={3}
               />
             </div>
-            <div className="text-sm text-muted-foreground">
+
+            {/* Audience Pacing Settings */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">Audience Pacing</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Control when you can advance past interactive slides
+                {interactiveSlideCount > 0 && (
+                  <span className="font-medium"> ({interactiveSlideCount} interactive slide{interactiveSlideCount !== 1 ? 's' : ''})</span>
+                )}
+              </p>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Default Pacing Mode</Label>
+                <Select
+                  value={defaultPacingMode}
+                  onValueChange={handleDefaultPacingModeChange}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      <div className="flex flex-col items-start">
+                        <span>No requirement</span>
+                        <span className="text-xs text-muted-foreground">Advance anytime</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="threshold">
+                      <div className="flex flex-col items-start">
+                        <span>Wait for percentage</span>
+                        <span className="text-xs text-muted-foreground">Wait for X% to respond</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="all">
+                      <div className="flex flex-col items-start">
+                        <span>Wait for all</span>
+                        <span className="text-xs text-muted-foreground">Wait for 100% response</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {defaultPacingMode === 'threshold' && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Response Threshold</Label>
+                    <span className="text-sm font-medium">{defaultPacingThreshold}%</span>
+                  </div>
+                  <Slider
+                    value={[defaultPacingThreshold]}
+                    onValueChange={handleDefaultPacingThresholdChange}
+                    min={10}
+                    max={100}
+                    step={5}
+                    className="py-2"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    You can advance when {defaultPacingThreshold}% of players have responded
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="text-sm text-muted-foreground pt-2 border-t">
               {slides.length} slide{slides.length !== 1 ? 's' : ''}
             </div>
           </div>
@@ -280,6 +477,64 @@ export function PresentationEditor({
         onOpenChange={setShowSlideTypeSelector}
         onSelect={handleAddSlide}
       />
+
+      {/* Save as Template Dialog */}
+      <Dialog open={showSaveTemplateDialog} onOpenChange={setShowSaveTemplateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save as Template</DialogTitle>
+            <DialogDescription>
+              Save this presentation as a reusable template for future use.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="template-name">Template Name</Label>
+              <Input
+                id="template-name"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder="My Template"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="template-description">Description (optional)</Label>
+              <Textarea
+                id="template-description"
+                value={templateDescription}
+                onChange={(e) => setTemplateDescription(e.target.value)}
+                placeholder="Describe what this template is for..."
+                rows={3}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              This template will include {slides.length} slide{slides.length !== 1 ? 's' : ''}.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowSaveTemplateDialog(false)}
+              disabled={isSavingTemplate}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveAsTemplate} disabled={isSavingTemplate}>
+              {isSavingTemplate ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Save Template
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

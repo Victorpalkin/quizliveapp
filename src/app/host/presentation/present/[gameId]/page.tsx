@@ -96,10 +96,12 @@ export default function PresentationPresentPage() {
 
   return (
     <PresentationHost
+      gameId={gameId}
       gamePin={game.gamePin}
       slides={presentation.slides}
       currentSlideIndex={game.currentSlideIndex}
       playerCount={players.length}
+      presentation={presentation}
       onSlideChange={handleSlideChange}
       onCancel={handleCancel}
     />

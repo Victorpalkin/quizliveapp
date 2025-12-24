@@ -5,13 +5,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
+import { Progress } from '@/components/ui/progress';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { QRCodeSVG } from 'qrcode.react';
-import { Users, Maximize, Minimize, X, QrCode, Copy } from 'lucide-react';
+import { Users, Maximize, Minimize, X, QrCode, Copy, CheckCircle2 } from 'lucide-react';
+import { PacingStatus } from '@/hooks/presentation/use-pacing-status';
 
 interface HostOverlayProps {
   gamePin: string;
@@ -19,6 +21,7 @@ interface HostOverlayProps {
   totalSlides: number;
   playerCount: number;
   onCancel?: () => void;
+  pacingStatus?: PacingStatus;
 }
 
 export function HostOverlay({
@@ -27,6 +30,7 @@ export function HostOverlay({
   totalSlides,
   playerCount,
   onCancel,
+  pacingStatus,
 }: HostOverlayProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -139,13 +143,39 @@ export function HostOverlay({
               </Button>
             </div>
 
-            {/* Center: Slide Counter */}
-            <Badge
-              variant="secondary"
-              className="text-sm bg-white/20 text-white border-0"
-            >
-              {currentSlide} / {totalSlides}
-            </Badge>
+            {/* Center: Slide Counter + Pacing Status */}
+            <div className="flex items-center gap-4">
+              <Badge
+                variant="secondary"
+                className="text-sm bg-white/20 text-white border-0"
+              >
+                {currentSlide} / {totalSlides}
+              </Badge>
+
+              {/* Pacing Progress (only for interactive slides with pacing enabled) */}
+              {pacingStatus && pacingStatus.isInteractiveSlide && pacingStatus.pacingMode !== 'none' && (
+                <div className="flex items-center gap-2">
+                  <div className="w-32">
+                    <Progress
+                      value={pacingStatus.percentage}
+                      className="h-2 bg-white/20"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm text-white/90 font-medium">
+                      {pacingStatus.responseCount}/{pacingStatus.playerCount}
+                    </span>
+                    {pacingStatus.thresholdMet ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-400" />
+                    ) : (
+                      <span className="text-xs text-white/70">
+                        ({pacingStatus.requiredThreshold}% needed)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Right: Controls */}
             <div className="flex items-center gap-2">
