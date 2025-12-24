@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Presentation, Play, Pencil, Trash2, MoreVertical, Image as ImageIcon } from 'lucide-react';
+import { Presentation, Play, Pencil, Trash2, MoreVertical, Image as ImageIcon, Eye } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,10 +26,11 @@ import type { Presentation as PresentationType } from '@/lib/types';
 interface PresentationCardProps {
   presentation: PresentationType;
   onHost: (presentationId: string) => void;
+  onPreview?: (presentation: PresentationType) => void;
   onDelete: (presentationId: string) => void;
 }
 
-export function PresentationCard({ presentation, onHost, onDelete }: PresentationCardProps) {
+export function PresentationCard({ presentation, onHost, onPreview, onDelete }: PresentationCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const slideCount = presentation.slides?.length || 0;
@@ -110,12 +111,16 @@ export function PresentationCard({ presentation, onHost, onDelete }: Presentatio
             <Play className="mr-2 h-4 w-4" />
             Present
           </Button>
-          <Button asChild variant="outline" size="sm" className="w-full">
-            <Link href={`/host/presentation/edit/${presentation.id}`}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Link>
-          </Button>
+          {onPreview && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => onPreview(presentation)}
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              Preview Presentation
+            </Button>
+          )}
         </CardContent>
       </Card>
 

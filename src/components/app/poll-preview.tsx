@@ -4,32 +4,12 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, MessageSquare, ListChecks, AlignLeft, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
+import type { PollActivity } from '@/lib/types';
 
 // Poll question types for AI-generated polls
 interface PollAnswer {
   text: string;
-}
-
-interface BasePollQuestion {
-  text: string;
-  timeLimit?: number;
-  showLiveResults?: boolean;
-}
-
-interface PollSingleQuestion extends BasePollQuestion {
-  type: 'poll-single';
-  answers: PollAnswer[];
-}
-
-interface PollMultipleQuestion extends BasePollQuestion {
-  type: 'poll-multiple';
-  answers: PollAnswer[];
-}
-
-interface PollFreeTextQuestion extends BasePollQuestion {
-  type: 'poll-free-text';
-  placeholder?: string;
-  maxLength?: number;
 }
 
 // Generic poll question that accepts any of the poll types
@@ -41,15 +21,22 @@ interface GenericPollQuestion {
   maxLength?: number;
   timeLimit?: number;
   showLiveResults?: boolean;
+  imageUrl?: string;
 }
 
+// Accept either PollActivity or the AI-generated format
 interface PollPreviewProps {
-  poll: {
+  poll: PollActivity | {
     title: string;
     description?: string;
     questions: GenericPollQuestion[];
     allowAnonymous?: boolean;
   };
+}
+
+// Helper to check if poll is PollActivity
+function isPollActivity(poll: PollPreviewProps['poll']): poll is PollActivity {
+  return 'config' in poll;
 }
 
 const colorGradients = [
@@ -66,6 +53,10 @@ const indexToLetter = (index: number): string => {
 };
 
 export function PollPreview({ poll }: PollPreviewProps) {
+  // Normalize to consistent format
+  const allowAnonymous = isPollActivity(poll) ? poll.config?.allowAnonymous : poll.allowAnonymous;
+  const questions = poll.questions as GenericPollQuestion[];
+
   return (
     <div className="space-y-8">
       {/* Poll Header */}
@@ -76,9 +67,9 @@ export function PollPreview({ poll }: PollPreviewProps) {
         )}
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary" className="rounded-full">
-            {poll.questions.length} {poll.questions.length === 1 ? 'Question' : 'Questions'}
+            {questions.length} {questions.length === 1 ? 'Question' : 'Questions'}
           </Badge>
-          {poll.allowAnonymous && (
+          {allowAnonymous && (
             <Badge variant="outline" className="rounded-full">
               Anonymous allowed
             </Badge>
@@ -88,7 +79,7 @@ export function PollPreview({ poll }: PollPreviewProps) {
 
       {/* Questions */}
       <div className="space-y-6">
-        {poll.questions.map((question, qIndex) => (
+        {questions.map((question, qIndex) => (
           <Card key={qIndex} className="rounded-2xl shadow-md border-card-border">
             <CardHeader className="space-y-4">
               {/* Question Header */}
@@ -139,6 +130,18 @@ export function PollPreview({ poll }: PollPreviewProps) {
                   <span className="text-sm font-medium">{question.timeLimit || 30}s</span>
                 </div>
               </div>
+
+              {/* Question Image */}
+              {question.imageUrl && (
+                <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-muted">
+                  <Image
+                    src={question.imageUrl}
+                    alt={`Question ${qIndex + 1} image`}
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              )}
             </CardHeader>
 
             <CardContent className="space-y-4">

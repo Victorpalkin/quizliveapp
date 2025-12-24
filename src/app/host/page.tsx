@@ -9,10 +9,13 @@ import { Header } from '@/components/app/header';
 import { SharedQuizzes } from '@/components/app/shared-quizzes';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
+import { PollPreview } from '@/components/app/poll-preview';
+import { PresentationPreview } from '@/components/app/presentation-preview';
 import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion, Gamepad2, ArrowUpDown, Sparkles, RotateCcw, Presentation, Vote } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateDropdown } from './components/create-dropdown';
 import { QuizCard } from './components/quiz-card';
+import { PollCard } from './components/poll-card';
 import { ActivityCard } from './components/activity-card';
 import { PresentationCard } from './components/presentation-card';
 import { EmptyContentState } from './components/empty-content-state';
@@ -86,8 +89,10 @@ export default function HostDashboardPage() {
   // State for share dialog
   const [shareDialogQuiz, setShareDialogQuiz] = useState<{ id: string; title: string } | null>(null);
 
-  // State for preview dialog
+  // State for preview dialogs
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
+  const [previewPoll, setPreviewPoll] = useState<PollActivity | null>(null);
+  const [previewPresentation, setPreviewPresentation] = useState<PresentationType | null>(null);
 
   // Filter and sort state
   type FilterType = 'all' | 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation' | 'poll';
@@ -317,6 +322,10 @@ export default function HostDashboardPage() {
         }
     }
   }
+
+  const handleHostActivity = (activityId: string) => {
+    router.push(`/host/poll/${activityId}`);
+  };
 
   const handleDeleteActivity = async (activityId: string) => {
     if (!firestore) return;
@@ -635,10 +644,24 @@ export default function HostDashboardPage() {
                                         key={presentation.id}
                                         presentation={presentation}
                                         onHost={handleHostPresentation}
+                                        onPreview={setPreviewPresentation}
                                         onDelete={handleDeletePresentation}
                                     />
                                 );
                             }
+                            if (item.type === 'poll') {
+                                const poll = item.data as PollActivity;
+                                return (
+                                    <PollCard
+                                        key={poll.id}
+                                        poll={poll}
+                                        onHost={handleHostActivity}
+                                        onPreview={setPreviewPoll}
+                                        onDelete={handleDeleteActivity}
+                                    />
+                                );
+                            }
+                            // ThoughtsGathering and Evaluation activities
                             const activity = item.data as Activity;
                             return (
                                 <ActivityCard
@@ -794,6 +817,26 @@ export default function HostDashboardPage() {
               <DialogTitle className="text-2xl font-semibold">Quiz Preview</DialogTitle>
             </DialogHeader>
             {previewQuiz && <QuizPreview quiz={previewQuiz} showCorrectAnswers={true} />}
+          </DialogContent>
+        </Dialog>
+
+        {/* Preview Poll Dialog */}
+        <Dialog open={!!previewPoll} onOpenChange={(open) => !open && setPreviewPoll(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-semibold">Poll Preview</DialogTitle>
+            </DialogHeader>
+            {previewPoll && <PollPreview poll={previewPoll} />}
+          </DialogContent>
+        </Dialog>
+
+        {/* Preview Presentation Dialog */}
+        <Dialog open={!!previewPresentation} onOpenChange={(open) => !open && setPreviewPresentation(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-semibold">Presentation Preview</DialogTitle>
+            </DialogHeader>
+            {previewPresentation && <PresentationPreview presentation={previewPresentation} />}
           </DialogContent>
         </Dialog>
 
