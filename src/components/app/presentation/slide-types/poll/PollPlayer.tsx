@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { FirebaseError } from 'firebase/app';
 import { Button } from '@/components/ui/button';
 import { Check, Loader2 } from 'lucide-react';
 import { AnswerButton } from '@/components/app/answer-button';
@@ -10,11 +11,13 @@ import { CircularTimer } from '@/components/app/circular-timer';
 import { SlidePlayerProps } from '../types';
 import { PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import { useFirebaseApp } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 type PollQuestion = PollSingleQuestion | PollMultipleQuestion;
 
 export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slideIndex }: SlidePlayerProps) {
   const app = useFirebaseApp();
+  const { toast } = useToast();
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const question = slide.question as PollQuestion | undefined;
@@ -62,6 +65,30 @@ export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
       });
     } catch (error) {
       console.error('Failed to submit poll answer:', error);
+
+      // Show error toast with specific message based on error type
+      const firebaseError = error as FirebaseError;
+      const errorCode = firebaseError.code?.replace('functions/', '');
+      if (errorCode === 'deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Response Too Late',
+          description: 'Your vote was submitted after the time limit.',
+        });
+      } else if (errorCode === 'failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Vote Not Accepted',
+          description: firebaseError.message || 'The game state changed.',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit vote. Please try again.',
+        });
+      }
+
       // Still mark as submitted to prevent retries
       await onSubmit({
         slideId: slide.id,
@@ -71,7 +98,7 @@ export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
         answerIndices,
       });
     }
-  }, [app, game.id, playerId, slideIndex, slide.id, question?.type, timeLimit, onSubmit]);
+  }, [app, game.id, playerId, slideIndex, slide.id, question?.type, timeLimit, onSubmit, toast]);
 
   const handleSingleSelect = useCallback(async (index: number) => {
     if (hasResponded || isSubmitting) return;

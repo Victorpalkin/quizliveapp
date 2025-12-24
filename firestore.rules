@@ -178,9 +178,10 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      // Submissions subcollection - used for both:
+      // Submissions subcollection - used for:
       // 1. Quiz crowdsource questions (questionText, answers, correctAnswerIndex)
-      // 2. Interest Cloud submissions (rawText)
+      // 2. Standalone Thoughts Gathering submissions (rawText)
+      // 3. Presentation Thoughts slides (rawText + slideId)
       match /submissions/{submissionId} {
         // Anyone can read submissions (for display in lobby)
         allow read: if true;
@@ -200,12 +201,20 @@ service cloud.firestore {
                             request.resource.data.correctAnswerIndex >= 0 &&
                             request.resource.data.correctAnswerIndex <= 3)
                            ||
-                           // Thoughts Gathering submissions (during collecting state)
+                           // Standalone Thoughts Gathering submissions (during collecting state)
                            (get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'thoughts-gathering' &&
                             get(/databases/$(database)/documents/games/$(gameId)).data.state == 'collecting' &&
                             request.resource.data.rawText is string &&
                             request.resource.data.rawText.size() >= 1 &&
                             request.resource.data.rawText.size() <= 1000)
+                           ||
+                           // Presentation thoughts slides (with slideId)
+                           (get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
+                            get(/databases/$(database)/documents/games/$(gameId)).data.state == 'presenting' &&
+                            request.resource.data.rawText is string &&
+                            request.resource.data.rawText.size() >= 1 &&
+                            request.resource.data.rawText.size() <= 1000 &&
+                            request.resource.data.slideId is string)
                          );
 
         // Only host can update submissions (for AI evaluation results)
@@ -257,6 +266,34 @@ service cloud.firestore {
                                  request.resource.data.playerName is string &&
                                  get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'evaluation' &&
                                  get(/databases/$(database)/documents/games/$(gameId)).data.state == 'rating';
+
+        // No client-side deletes
+        allow delete: if false;
+      }
+
+      // Slide responses subcollection - for presentation rating/poll submissions
+      // Document ID format: {slideId}_{playerId}
+      match /slideResponses/{responseId} {
+        // Anyone can read (for host to see results, players to see their own)
+        allow read: if true;
+
+        // Players can create their own responses during presentation
+        allow create: if get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'presenting' &&
+                         request.resource.data.playerId is string &&
+                         request.resource.data.slideId is string &&
+                         (
+                           // Rating submissions (rating field present)
+                           (request.resource.data.rating is number &&
+                            request.resource.data.rating >= 1 &&
+                            request.resource.data.rating <= 10)
+                           ||
+                           // Poll/other submissions (no rating field required)
+                           request.resource.data.rating == null
+                         );
+
+        // Players can update their own response
+        allow update: if request.resource.data.playerId == resource.data.playerId;
 
         // No client-side deletes
         allow delete: if false;

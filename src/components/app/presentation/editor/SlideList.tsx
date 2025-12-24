@@ -5,7 +5,7 @@ import { motion, Reorder } from 'motion/react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, GripVertical, Image, HelpCircle, BarChart3, MessageSquare, Star } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Image, HelpCircle, BarChart3, MessageSquare, Star, Trophy } from 'lucide-react';
 import { PresentationSlide, PresentationSlideType } from '@/lib/types';
 import { getSlideType } from '../slide-types';
 
@@ -18,6 +18,7 @@ const SLIDE_TYPE_ICONS: Record<PresentationSlideType, React.ReactNode> = {
   'rating-describe': <Star className="h-4 w-4" />,
   'rating-input': <Star className="h-4 w-4" />,
   'rating-results': <BarChart3 className="h-4 w-4" />,
+  'leaderboard': <Trophy className="h-4 w-4" />,
 };
 
 interface SlideListProps {

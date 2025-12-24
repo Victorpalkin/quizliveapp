@@ -5,25 +5,39 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { Check, Send, MessageSquare, Loader2 } from 'lucide-react';
+import { Check, Send, MessageSquare, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlidePlayerProps } from '../types';
 import { useFirestore } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+
+const MAX_THOUGHT_LENGTH = 500;
 
 export function ThoughtsCollectPlayer({ slide, game, playerId, playerName, hasResponded, onSubmit }: SlidePlayerProps) {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [thoughts, setThoughts] = useState<string[]>([]);
   const [currentThought, setCurrentThought] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const prompt = slide.thoughtsPrompt || 'Share your thoughts...';
   const maxThoughts = slide.thoughtsMaxPerPlayer || 3;
   const canAddMore = thoughts.length < maxThoughts;
 
   const handleAddThought = useCallback(() => {
-    if (!currentThought.trim() || !canAddMore) return;
-    setThoughts((prev) => [...prev, currentThought.trim()]);
+    const trimmed = currentThought.trim();
+    if (!trimmed || !canAddMore) return;
+
+    // Validate length
+    if (trimmed.length > MAX_THOUGHT_LENGTH) {
+      setError(`Thought must be ${MAX_THOUGHT_LENGTH} characters or less`);
+      return;
+    }
+
+    setError(null);
+    setThoughts((prev) => [...prev, trimmed]);
     setCurrentThought('');
   }, [currentThought, canAddMore]);
 
@@ -35,6 +49,8 @@ export function ThoughtsCollectPlayer({ slide, game, playerId, playerName, hasRe
     if (thoughts.length === 0 || isSubmitting || !game.id) return;
 
     setIsSubmitting(true);
+    setError(null);
+
     try {
       // Write to submissions collection (unified with standalone thoughts-gathering)
       // Each thought is a separate document with rawText field
@@ -57,10 +73,18 @@ export function ThoughtsCollectPlayer({ slide, game, playerId, playerName, hasRe
         playerName: '',
         thoughts: thoughts,
       });
+    } catch (err) {
+      console.error('Failed to submit thoughts:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Submission Failed',
+        description: 'Could not submit your thoughts. Please try again.',
+      });
+      setError('Failed to submit. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [firestore, game.id, slide.id, thoughts, playerId, playerName, isSubmitting, onSubmit]);
+  }, [firestore, game.id, slide.id, thoughts, playerId, playerName, isSubmitting, onSubmit, toast]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -148,17 +172,38 @@ export function ThoughtsCollectPlayer({ slide, game, playerId, playerName, hasRe
           animate={{ opacity: 1 }}
           className="space-y-3"
         >
-          <Textarea
-            value={currentThought}
-            onChange={(e) => setCurrentThought(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your thought here..."
-            className="min-h-[80px] text-lg"
-            disabled={isSubmitting}
-          />
+          <div className="relative">
+            <Textarea
+              value={currentThought}
+              onChange={(e) => {
+                setCurrentThought(e.target.value);
+                if (error) setError(null);
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your thought here..."
+              className={cn(
+                "min-h-[80px] text-lg pr-16",
+                currentThought.length > MAX_THOUGHT_LENGTH && "border-destructive focus-visible:ring-destructive"
+              )}
+              disabled={isSubmitting}
+              maxLength={MAX_THOUGHT_LENGTH + 50} // Allow slight overflow for UX
+            />
+            <span className={cn(
+              "absolute bottom-2 right-2 text-xs",
+              currentThought.length > MAX_THOUGHT_LENGTH ? "text-destructive" : "text-muted-foreground"
+            )}>
+              {currentThought.length}/{MAX_THOUGHT_LENGTH}
+            </span>
+          </div>
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              {error}
+            </div>
+          )}
           <Button
             onClick={handleAddThought}
-            disabled={!currentThought.trim()}
+            disabled={!currentThought.trim() || currentThought.length > MAX_THOUGHT_LENGTH}
             variant="outline"
             className="w-full"
           >

@@ -42,6 +42,13 @@ import {
   RatingResultsPlayer,
 } from './rating';
 
+// Leaderboard slide type
+import {
+  LeaderboardEditor,
+  LeaderboardHost,
+  LeaderboardPlayer,
+} from './leaderboard';
+
 // Helper to generate unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
@@ -255,6 +262,24 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
       type: 'rating-results',
       order,
       sourceSlideId: '',
+    }),
+  },
+
+  'leaderboard': {
+    type: 'leaderboard',
+    label: 'Leaderboard',
+    description: 'Show player rankings and scores',
+    icon: 'Trophy',
+    EditorComponent: LeaderboardEditor,
+    HostComponent: LeaderboardHost,
+    PlayerComponent: LeaderboardPlayer,
+    isInteractive: false,
+    createDefaultSlide: (id, order) => ({
+      id,
+      type: 'leaderboard',
+      order,
+      leaderboardMode: 'standard',
+      leaderboardMaxDisplay: 10,
     }),
   },
 };

@@ -4,14 +4,17 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Check, Loader2 } from 'lucide-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { FirebaseError } from 'firebase/app';
 import { AnswerButton } from '@/components/app/answer-button';
 import { CircularTimer } from '@/components/app/circular-timer';
 import { SlidePlayerProps } from '../types';
 import { SingleChoiceQuestion } from '@/lib/types';
 import { useFirebaseApp } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 export function QuizPlayer({ slide, game, playerId, hasResponded, onSubmit, slideIndex }: SlidePlayerProps) {
   const app = useFirebaseApp();
+  const { toast } = useToast();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
@@ -61,6 +64,30 @@ export function QuizPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
       });
     } catch (error) {
       console.error('Failed to submit answer:', error);
+
+      // Show error toast with specific message based on error type
+      const firebaseError = error as FirebaseError;
+      const errorCode = firebaseError.code?.replace('functions/', '');
+      if (errorCode === 'deadline-exceeded') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Too Late',
+          description: 'Your answer was submitted after the time limit.',
+        });
+      } else if (errorCode === 'failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Answer Not Accepted',
+          description: firebaseError.message || 'The game state changed.',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit answer. Your score may not be saved.',
+        });
+      }
+
       // Still mark as submitted to prevent retries
       await onSubmit({
         slideId: slide.id,
@@ -71,7 +98,7 @@ export function QuizPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
     } finally {
       setIsSubmitting(false);
     }
-  }, [slide.id, game.id, playerId, slideIndex, question?.type, timeLimit, hasResponded, isSubmitting, onSubmit, app]);
+  }, [slide.id, game.id, playerId, slideIndex, question?.type, timeLimit, hasResponded, isSubmitting, onSubmit, app, toast]);
 
   if (!question) {
     return (

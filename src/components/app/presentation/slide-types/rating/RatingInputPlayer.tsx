@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Check, Loader2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SlidePlayerProps } from '../types';
 import { RatingInput } from '@/components/app/rating-input';
+import { useToast } from '@/hooks/use-toast';
 
 export function RatingInputPlayer({ slide, presentation, game, playerId, hasResponded, onSubmit }: SlidePlayerProps) {
+  const { toast } = useToast();
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -21,6 +23,16 @@ export function RatingInputPlayer({ slide, presentation, game, playerId, hasResp
   const handleSubmit = useCallback(async () => {
     if (selectedRating === null || hasResponded || isSubmitting) return;
 
+    // Validate rating is within bounds
+    if (selectedRating < metric.min || selectedRating > metric.max) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid Rating',
+        description: `Please select a rating between ${metric.min} and ${metric.max}.`,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -32,10 +44,15 @@ export function RatingInputPlayer({ slide, presentation, game, playerId, hasResp
       });
     } catch (error) {
       console.error('Failed to submit rating:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Submission Failed',
+        description: 'Could not submit your rating. Please try again.',
+      });
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedRating, hasResponded, isSubmitting, onSubmit, slide.id]);
+  }, [selectedRating, hasResponded, isSubmitting, onSubmit, slide.id, metric.min, metric.max, toast]);
 
   // Already submitted view
   if (hasResponded) {

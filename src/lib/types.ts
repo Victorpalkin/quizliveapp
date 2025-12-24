@@ -533,7 +533,8 @@ export type PresentationSlideType =
   | 'thoughts-results'  // Thoughts gathering: word cloud display
   | 'rating-describe'   // Rating: item description (presenter explains)
   | 'rating-input'      // Rating: players submit their rating
-  | 'rating-results';   // Rating: show aggregate results (optional)
+  | 'rating-results'    // Rating: show aggregate results (optional)
+  | 'leaderboard';      // Leaderboard: show player rankings
 
 /**
  * Rating metric configuration for rating slides
@@ -586,6 +587,20 @@ export interface PresentationSlide {
 
   // For 'thoughts-results' and 'rating-results' types
   sourceSlideId?: string;      // Which collection/input slide this shows results for
+
+  // For 'rating-results' type - results display mode
+  ratingResultsMode?: 'single' | 'comparison' | 'live';
+  // 'single' - Show one item with detailed distribution (default)
+  // 'comparison' - Show all rated items ranked side-by-side
+  // 'live' - Show real-time updating results with animations
+  comparisonSlideIds?: string[]; // For 'comparison' mode - which rating-input slides to compare
+
+  // For 'leaderboard' type
+  leaderboardMode?: 'standard' | 'podium';
+  // 'standard' - Simple list view (default, top 10)
+  // 'podium' - Final leaderboard with podium styling (top 20)
+  leaderboardMaxDisplay?: number; // How many players to show (default: 10 for standard, 20 for podium)
+  leaderboardTitle?: string;      // Custom title (default: "Leaderboard")
 }
 
 /**

@@ -40,5 +40,27 @@ service firebase.storage {
       // Cloud Function handles writes, so no write rule needed from client
       allow delete: if request.auth != null;
     }
+
+    // Presentation slide images
+    // Path: presentations/{presentationId}/slides/{slideId}/{imageName}
+    match /presentations/{presentationId}/slides/{slideId}/{imageName} {
+      // Anyone can read presentation images (needed for display during games)
+      allow read;
+
+      // Only the presentation owner can write/delete images
+      allow write: if request.auth != null &&
+                      request.auth.uid == firestore.get(/databases/(default)/documents/presentations/$(presentationId)).data.hostId;
+    }
+
+    // Presentation content images (for rating items, etc.)
+    // Path: presentations/{presentationId}/content/{imageName}
+    match /presentations/{presentationId}/content/{imageName} {
+      // Anyone can read presentation content images
+      allow read;
+
+      // Only the presentation owner can write/delete images
+      allow write: if request.auth != null &&
+                      request.auth.uid == firestore.get(/databases/(default)/documents/presentations/$(presentationId)).data.hostId;
+    }
   }
 }

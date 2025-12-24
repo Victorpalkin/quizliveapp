@@ -5,60 +5,9 @@ import { motion } from 'motion/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ANSWER_COLOR_GRADIENTS } from '@/lib/colors';
 import { SlideResultsProps } from '../types';
 import { SingleChoiceQuestion } from '@/lib/types';
-
-// 8 subtle color gradients matching app design system
-const colorGradients = [
-  {
-    bg: 'from-purple-500/15 to-purple-500/8',
-    border: 'border-purple-200 dark:border-purple-900',
-    badge: 'from-purple-500 to-purple-600',
-    bar: 'from-purple-500 to-purple-600',
-  },
-  {
-    bg: 'from-blue-500/15 to-blue-500/8',
-    border: 'border-blue-200 dark:border-blue-900',
-    badge: 'from-blue-500 to-blue-600',
-    bar: 'from-blue-500 to-blue-600',
-  },
-  {
-    bg: 'from-green-500/15 to-green-500/8',
-    border: 'border-green-200 dark:border-green-900',
-    badge: 'from-green-500 to-green-600',
-    bar: 'from-green-500 to-green-600',
-  },
-  {
-    bg: 'from-amber-500/15 to-amber-500/8',
-    border: 'border-amber-200 dark:border-amber-900',
-    badge: 'from-amber-500 to-amber-600',
-    bar: 'from-amber-500 to-amber-600',
-  },
-  {
-    bg: 'from-rose-500/15 to-rose-500/8',
-    border: 'border-rose-200 dark:border-rose-900',
-    badge: 'from-rose-500 to-rose-600',
-    bar: 'from-rose-500 to-rose-600',
-  },
-  {
-    bg: 'from-cyan-500/15 to-cyan-500/8',
-    border: 'border-cyan-200 dark:border-cyan-900',
-    badge: 'from-cyan-500 to-cyan-600',
-    bar: 'from-cyan-500 to-cyan-600',
-  },
-  {
-    bg: 'from-indigo-500/15 to-indigo-500/8',
-    border: 'border-indigo-200 dark:border-indigo-900',
-    badge: 'from-indigo-500 to-indigo-600',
-    bar: 'from-indigo-500 to-indigo-600',
-  },
-  {
-    bg: 'from-pink-500/15 to-pink-500/8',
-    border: 'border-pink-200 dark:border-pink-900',
-    badge: 'from-pink-500 to-pink-600',
-    bar: 'from-pink-500 to-pink-600',
-  },
-];
 
 export function QuizResults({ slide, responses }: SlideResultsProps) {
   const question = slide.question as SingleChoiceQuestion | undefined;
@@ -108,7 +57,7 @@ export function QuizResults({ slide, responses }: SlideResultsProps) {
       {/* Results Bars */}
       <div className="w-full max-w-4xl space-y-4">
         {distribution.map((item, index) => {
-          const colors = colorGradients[index % colorGradients.length];
+          const colors = ANSWER_COLOR_GRADIENTS[index % ANSWER_COLOR_GRADIENTS.length];
 
           return (
             <motion.div

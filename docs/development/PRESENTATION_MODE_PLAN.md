@@ -647,18 +647,24 @@ joining → lobby → waiting/participating → ended
 **Known bugs to fix:**
 - [ ] (To be identified during testing)
 
-### Milestone 2: Full Activity Support ← CURRENT FOCUS
+### Milestone 2: Full Activity Support ✅ COMPLETE
 **Goal:** Complete all slide types before polishing.
 
 | # | Task | Description |
 |---|------|-------------|
-| 8 | Poll slides | ✅ Reuse quiz UI without correct answer marking |
-| 9 | Thoughts gathering | ✅ `thoughts-collect` for input, `thoughts-results` for word cloud |
-| 10a | Rating describe/input | `rating-describe` + `rating-input` slides |
-| 10b | Rating single results | Single item detailed view with distribution bars |
-| 10c | Rating comparison results | All items ranked side-by-side |
-| 10d | Rating live results | Real-time updating results with animations |
-| 11 | Results visualization | Charts, word clouds, aggregate displays |
+| 8 | Poll slides | ✅ Complete - PollEditor, PollHost, PollPlayer, PollResults |
+| 9 | Thoughts gathering | ✅ Complete - ThoughtsCollect + ThoughtsResults slides |
+| 10a | Rating describe/input | ✅ Complete - RatingDescribe + RatingInput slides |
+| 10b | Rating single results | ✅ Complete - RatingSingleResult component |
+| 10c | Rating comparison results | ✅ Complete - RatingComparisonResult component |
+| 10d | Rating live results | ✅ Complete - RatingLiveResult component |
+| 11 | Results visualization | ✅ Complete - RatingResultsHost dispatches to 3 modes |
+| 11b | Leaderboard slides | ✅ Complete (bonus) - LeaderboardEditor, LeaderboardHost, LeaderboardPlayer |
+
+**Security:**
+- ✅ Firestore rules for `slideResponses` collection (rating/poll submissions)
+- ✅ Presentation game creation rules
+- ✅ Submissions subcollection for thoughts slides
 
 #### Rating Slides Detailed Tasks
 
@@ -781,13 +787,314 @@ function validateRatingData() {
 | Slide timing check | Reject ratings for slides that are no longer active |
 | Player existence check | Verify player joined before slide was shown |
 
-### Milestone 3: Google Integration
-| # | Task | Description |
-|---|------|-------------|
-| 12 | Google OAuth setup | OAuth flow, token storage |
-| 13 | Import Cloud Function | Export slides as images via Drive API |
-| 14 | Import UI | Picker UI in editor |
-| 15 | Re-import/sync | Update existing presentation from source |
+### Milestone 3: Google Integration ← CURRENT FOCUS
+**Goal:** Enable importing slides from Google Slides presentations.
+
+| # | Task | Status | Description |
+|---|------|--------|-------------|
+| 12 | Google OAuth setup | Pending | OAuth flow, token storage |
+| 13 | Import Cloud Function | Pending | Export slides as images via Drive API |
+| 14 | Import UI | Pending | Picker UI in editor |
+| 15 | Re-import/sync | Pending | Update existing presentation from source |
+
+---
+
+#### Phase 3 Detailed Implementation Plan
+
+##### 3.1 Google Cloud Console Setup
+
+**Prerequisites:**
+1. Enable APIs in Google Cloud Console:
+   - Google Slides API
+   - Google Drive API
+2. Configure OAuth consent screen
+3. Create OAuth 2.0 credentials (Web application)
+4. Add authorized redirect URIs
+
+**Tasks:**
+| Task | Files | Description |
+|------|-------|-------------|
+| 3.1.1 | Console setup | Enable Slides API + Drive API |
+| 3.1.2 | OAuth consent | Configure consent screen (internal/external) |
+| 3.1.3 | OAuth credentials | Create Web OAuth client ID |
+| 3.1.4 | Environment vars | Add `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
+
+##### 3.2 OAuth Flow Implementation
+
+**Client-Side Files:**
+```
+src/lib/google-oauth.ts           # OAuth URL generation, token exchange
+src/app/api/auth/google/route.ts  # OAuth callback handler (Next.js API route)
+src/hooks/use-google-auth.ts      # React hook for OAuth state
+```
+
+**Tasks:**
+| Task | File | Description |
+|------|------|-------------|
+| 3.2.1 | `google-oauth.ts` | Generate OAuth URL with scopes, PKCE support |
+| 3.2.2 | `route.ts` | Handle OAuth callback, exchange code for tokens |
+| 3.2.3 | `use-google-auth.ts` | Hook to check connection status, trigger OAuth |
+| 3.2.4 | Token storage | Store refresh token encrypted in Firestore `/users/{uid}/googleTokens` |
+| 3.2.5 | Token refresh | Auto-refresh access token when expired |
+
+**OAuth Scopes Required:**
+```
+https://www.googleapis.com/auth/presentations.readonly
+https://www.googleapis.com/auth/drive.readonly
+```
+
+**OAuth Flow:**
+```
+1. User clicks "Import from Google Slides"
+2. If no valid token → Open OAuth popup
+3. User grants permissions
+4. Callback receives authorization code
+5. Exchange code for access + refresh tokens
+6. Store refresh token encrypted in Firestore
+7. Return to import flow with valid access token
+```
+
+**Security Considerations:**
+- Use PKCE (Proof Key for Code Exchange) for enhanced security
+- Store only refresh token (encrypted with Firebase Secret Manager or KMS)
+- Access tokens are short-lived, never persisted
+- Revocation endpoint support for "Disconnect Google"
+
+##### 3.3 Cloud Function: Import Google Slides
+
+**Files:**
+```
+functions-ai/src/functions/importGoogleSlides.ts
+functions-ai/src/utils/googleApiClient.ts
+```
+
+**Why `functions-ai`?**
+- Keep main `functions` lightweight for fast cold starts
+- Google APIs SDK adds significant bundle size
+- AI functions already have larger dependencies
+
+**Tasks:**
+| Task | File | Description |
+|------|------|-------------|
+| 3.3.1 | `googleApiClient.ts` | Initialize Google API clients with user tokens |
+| 3.3.2 | List presentations | Fetch user's presentations from Drive |
+| 3.3.3 | Get presentation | Fetch presentation metadata (title, slide count) |
+| 3.3.4 | Export slides | Export each slide as PNG using Drive API |
+| 3.3.5 | Upload to Storage | Upload PNGs to `presentations/{presentationId}/slides/{index}.png` |
+| 3.3.6 | Create thumbnails | Generate 200px thumbnails for editor sidebar |
+
+**Cloud Function Interface:**
+```typescript
+interface ImportGoogleSlidesRequest {
+  presentationId: string;      // Zivo presentation ID
+  googlePresentationId: string; // Google Slides presentation ID
+  accessToken: string;         // Short-lived access token
+}
+
+interface ImportGoogleSlidesResponse {
+  slides: Array<{
+    index: number;
+    imageUrl: string;
+    thumbnailUrl: string;
+    sourcePageId: string;      // Google Slides page ID
+  }>;
+  title: string;
+  slideCount: number;
+}
+```
+
+**Export Method (PNG via Drive API):**
+```
+GET https://www.googleapis.com/drive/v3/files/{presentationId}/export
+  ?mimeType=application/pdf
+
+OR use Slides API thumbnail endpoint:
+GET https://slides.googleapis.com/v1/presentations/{presentationId}/pages/{pageId}/thumbnail
+  ?thumbnailProperties.mimeType=PNG
+  &thumbnailProperties.thumbnailSize=LARGE
+```
+
+**Notes:**
+- Thumbnail endpoint gives best quality for slide images
+- Large size = 1600px width (sufficient for full-screen display)
+- Process slides in parallel (Promise.all) for speed
+- Add progress callback for large presentations
+
+##### 3.4 Import UI in Editor
+
+**Files:**
+```
+src/components/app/presentation/editor/GoogleSlidesImporter.tsx  # Import modal
+src/components/app/presentation/editor/GooglePresentationPicker.tsx  # Presentation list
+src/components/app/presentation/editor/ImportProgress.tsx  # Progress indicator
+```
+
+**Tasks:**
+| Task | File | Description |
+|------|------|-------------|
+| 3.4.1 | Import button | Add "Import from Google Slides" to slide type selector |
+| 3.4.2 | `GoogleSlidesImporter` | Modal with OAuth + picker flow |
+| 3.4.3 | `GooglePresentationPicker` | Searchable list of user's presentations |
+| 3.4.4 | Presentation preview | Show slide count, thumbnail before importing |
+| 3.4.5 | `ImportProgress` | Progress bar with slide count during import |
+| 3.4.6 | Slide insertion | Insert imported slides at current position in editor |
+| 3.4.7 | Error handling | Handle OAuth errors, API errors, quota limits |
+
+**UI Flow:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Import from Google Slides                            [X]  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ 🔍 Search presentations...                          │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  Recent Presentations                                       │
+│  ┌──────┬───────────────────────────────────────────────┐  │
+│  │ 📊  │ Q3 Sales Review                               │  │
+│  │      │ 24 slides • Modified 2 days ago              │  │
+│  └──────┴───────────────────────────────────────────────┘  │
+│  ┌──────┬───────────────────────────────────────────────┐  │
+│  │ 📊  │ Product Roadmap 2024                          │  │
+│  │      │ 18 slides • Modified 1 week ago              │  │
+│  └──────┴───────────────────────────────────────────────┘  │
+│                                                             │
+│  [Not connected? Connect Google Account]                    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**After Selection:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Importing: Q3 Sales Review                                 │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│     ████████████░░░░░░░░░░░  45%                           │
+│     Processing slide 11 of 24...                            │
+│                                                             │
+│     ✓ Slide 1-10 imported                                   │
+│     ⏳ Slide 11 processing...                               │
+│                                                             │
+│     [Cancel]                                                │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+##### 3.5 Re-import / Sync Feature
+
+**Tasks:**
+| Task | Description |
+|------|-------------|
+| 3.5.1 | Track source | Store `googleSlidesId` + `googlePageId` per slide |
+| 3.5.2 | "Re-import" button | Add to editor for presentations with Google source |
+| 3.5.3 | Sync logic | Match slides by pageId, detect added/removed |
+| 3.5.4 | Conflict UI | Show diff when slides changed (keep/replace/delete) |
+| 3.5.5 | Preserve activities | Keep interactive slides when re-importing content |
+
+**Sync Strategy:**
+```
+For each Google slide:
+  1. Find matching Zivo slide by googlePageId
+  2. If found → Update image (keep interactive slides unchanged)
+  3. If not found → New slide added in Google, ask user to insert
+
+For each Zivo content slide with googlePageId:
+  1. Check if still exists in Google presentation
+  2. If not → Slide deleted in Google, ask user to remove
+```
+
+##### 3.6 Security & Rate Limiting
+
+**Security Measures:**
+| Measure | Implementation |
+|---------|----------------|
+| Token encryption | Encrypt refresh tokens before storing in Firestore |
+| Token isolation | Each user's tokens stored under their UID |
+| Scope limitation | Only request read-only scopes |
+| Token revocation | Support "Disconnect Google" to revoke tokens |
+| Audit logging | Log import events for debugging |
+
+**Rate Limits:**
+| API | Limit | Mitigation |
+|-----|-------|------------|
+| Slides API | 300 requests/min/user | Batch slide info requests |
+| Drive API | 1000 requests/100 sec | Sequential exports with delay |
+| Storage uploads | 500 uploads/min | Parallel with concurrency limit |
+
+**Error Handling:**
+| Error | User Message | Recovery |
+|-------|--------------|----------|
+| Token expired | "Please reconnect your Google account" | Clear tokens, retry OAuth |
+| API quota exceeded | "Too many requests, please wait..." | Exponential backoff |
+| Presentation not found | "Presentation no longer exists" | Remove googleSlidesId reference |
+| Permission denied | "You don't have access to this presentation" | Show owner info if available |
+
+##### 3.7 File Structure Summary
+
+```
+src/
+├── lib/
+│   └── google-oauth.ts                    # OAuth helpers
+├── app/
+│   └── api/
+│       └── auth/
+│           └── google/
+│               └── route.ts               # OAuth callback
+├── hooks/
+│   └── use-google-auth.ts                 # OAuth state hook
+├── components/app/presentation/editor/
+│   ├── GoogleSlidesImporter.tsx           # Import modal
+│   ├── GooglePresentationPicker.tsx       # Presentation list
+│   └── ImportProgress.tsx                 # Progress indicator
+
+functions-ai/src/
+├── functions/
+│   └── importGoogleSlides.ts              # Import cloud function
+└── utils/
+    └── googleApiClient.ts                 # Google API helpers
+```
+
+##### 3.8 Implementation Order
+
+| Step | Tasks | Dependencies |
+|------|-------|--------------|
+| 1 | 3.1.1-3.1.4 | Google Cloud Console setup | None |
+| 2 | 3.2.1-3.2.3 | OAuth flow (client) | Step 1 |
+| 3 | 3.2.4-3.2.5 | Token storage | Step 2 |
+| 4 | 3.3.1-3.3.2 | Cloud function setup + list | Step 3 |
+| 5 | 3.4.2-3.4.3 | Import UI (picker) | Step 4 |
+| 6 | 3.3.3-3.3.6 | Slide export + upload | Step 4 |
+| 7 | 3.4.4-3.4.7 | Import UI (progress, insertion) | Step 6 |
+| 8 | 3.5.1-3.5.5 | Re-import feature | Step 7 |
+| 9 | 3.6 | Security hardening | All above |
+
+##### 3.9 Environment Variables Required
+
+```env
+# Google OAuth (add to .env.local and production)
+GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=xxx
+
+# For Cloud Functions (set via Firebase config)
+GOOGLE_CLIENT_ID=xxx
+GOOGLE_CLIENT_SECRET=xxx
+```
+
+##### 3.10 Testing Checklist
+
+- [ ] OAuth flow works (connect, disconnect)
+- [ ] Presentation list loads
+- [ ] Search filters presentations
+- [ ] Import progress shows correctly
+- [ ] All slides import successfully
+- [ ] Thumbnails generate correctly
+- [ ] Slides appear in editor after import
+- [ ] Re-import detects changes
+- [ ] Error states display properly
+- [ ] Token refresh works automatically
+- [ ] Rate limiting doesn't break import
 
 ### Milestone 4: Advanced Features
 | # | Task | Description |
