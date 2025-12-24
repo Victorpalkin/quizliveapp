@@ -1,72 +1,77 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
 import { Check, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { AnswerButton } from '@/components/app/answer-button';
+import { CircularTimer } from '@/components/app/circular-timer';
 import { SlidePlayerProps } from '../types';
 import { PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
-
-// 8 subtle color gradients matching app design system
-const colorGradients = [
-  {
-    bg: 'from-purple-500/15 to-purple-500/8',
-    border: 'border-purple-200 dark:border-purple-900',
-    badge: 'from-purple-500 to-purple-600',
-    selectedBg: 'from-purple-500/20 to-transparent',
-  },
-  {
-    bg: 'from-blue-500/15 to-blue-500/8',
-    border: 'border-blue-200 dark:border-blue-900',
-    badge: 'from-blue-500 to-blue-600',
-    selectedBg: 'from-blue-500/20 to-transparent',
-  },
-  {
-    bg: 'from-green-500/15 to-green-500/8',
-    border: 'border-green-200 dark:border-green-900',
-    badge: 'from-green-500 to-green-600',
-    selectedBg: 'from-green-500/20 to-transparent',
-  },
-  {
-    bg: 'from-amber-500/15 to-amber-500/8',
-    border: 'border-amber-200 dark:border-amber-900',
-    badge: 'from-amber-500 to-amber-600',
-    selectedBg: 'from-amber-500/20 to-transparent',
-  },
-  {
-    bg: 'from-rose-500/15 to-rose-500/8',
-    border: 'border-rose-200 dark:border-rose-900',
-    badge: 'from-rose-500 to-rose-600',
-    selectedBg: 'from-rose-500/20 to-transparent',
-  },
-  {
-    bg: 'from-cyan-500/15 to-cyan-500/8',
-    border: 'border-cyan-200 dark:border-cyan-900',
-    badge: 'from-cyan-500 to-cyan-600',
-    selectedBg: 'from-cyan-500/20 to-transparent',
-  },
-  {
-    bg: 'from-indigo-500/15 to-indigo-500/8',
-    border: 'border-indigo-200 dark:border-indigo-900',
-    badge: 'from-indigo-500 to-indigo-600',
-    selectedBg: 'from-indigo-500/20 to-transparent',
-  },
-  {
-    bg: 'from-pink-500/15 to-pink-500/8',
-    border: 'border-pink-200 dark:border-pink-900',
-    badge: 'from-pink-500 to-pink-600',
-    selectedBg: 'from-pink-500/20 to-transparent',
-  },
-];
+import { useFirebaseApp } from '@/firebase';
 
 type PollQuestion = PollSingleQuestion | PollMultipleQuestion;
 
-export function PollPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) {
+export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slideIndex }: SlidePlayerProps) {
+  const app = useFirebaseApp();
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const question = slide.question as PollQuestion | undefined;
   const isMultiple = question?.type === 'poll-multiple';
+  const timeLimit = question?.timeLimit || 30;
+
+  // Track remaining time for consistency with quiz
+  const startTimeRef = useRef<number>(Date.now());
+
+  useEffect(() => {
+    startTimeRef.current = Date.now();
+  }, [slide.id]);
+
+  const submitPollAnswer = useCallback(async (answerIndex?: number, answerIndices?: number[]) => {
+    if (!app) return;
+
+    // Calculate remaining time
+    const elapsedSeconds = Math.floor((Date.now() - startTimeRef.current) / 1000);
+    const timeRemaining = Math.max(0, timeLimit - elapsedSeconds);
+
+    try {
+      // Call submitAnswer cloud function for server-side validation
+      const functions = getFunctions(app, 'europe-west4');
+      const submitAnswer = httpsCallable(functions, 'submitAnswer');
+
+      await submitAnswer({
+        gameId: game.id,
+        playerId,
+        questionIndex: slideIndex,
+        answerIndex,
+        answerIndices,
+        timeRemaining,
+        slideId: slide.id,
+        questionType: question?.type || 'poll-single',
+        questionTimeLimit: timeLimit,
+      });
+
+      // Also call onSubmit to mark as responded (for hasResponded tracking)
+      await onSubmit({
+        slideId: slide.id,
+        playerId: '',
+        playerName: '',
+        answerIndex,
+        answerIndices,
+      });
+    } catch (error) {
+      console.error('Failed to submit poll answer:', error);
+      // Still mark as submitted to prevent retries
+      await onSubmit({
+        slideId: slide.id,
+        playerId: '',
+        playerName: '',
+        answerIndex,
+        answerIndices,
+      });
+    }
+  }, [app, game.id, playerId, slideIndex, slide.id, question?.type, timeLimit, onSubmit]);
 
   const handleSingleSelect = useCallback(async (index: number) => {
     if (hasResponded || isSubmitting) return;
@@ -75,16 +80,11 @@ export function PollPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) 
     setIsSubmitting(true);
 
     try {
-      await onSubmit({
-        slideId: slide.id,
-        playerId: '',
-        playerName: '',
-        answerIndex: index,
-      });
+      await submitPollAnswer(index, undefined);
     } finally {
       setIsSubmitting(false);
     }
-  }, [slide.id, hasResponded, isSubmitting, onSubmit]);
+  }, [hasResponded, isSubmitting, submitPollAnswer]);
 
   const handleMultipleToggle = useCallback((index: number) => {
     if (hasResponded || isSubmitting) return;
@@ -103,16 +103,11 @@ export function PollPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) 
     setIsSubmitting(true);
 
     try {
-      await onSubmit({
-        slideId: slide.id,
-        playerId: '',
-        playerName: '',
-        answerIndices: selectedIndices,
-      });
+      await submitPollAnswer(undefined, selectedIndices);
     } finally {
       setIsSubmitting(false);
     }
-  }, [slide.id, hasResponded, isSubmitting, selectedIndices, onSubmit]);
+  }, [hasResponded, isSubmitting, selectedIndices, submitPollAnswer]);
 
   if (!question) {
     return (
@@ -151,85 +146,39 @@ export function PollPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) 
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      {/* Question */}
-      <div className="text-center mb-4">
+      {/* Question with Timer */}
+      <div className="text-center mb-4 relative">
         <h1 className="text-2xl font-bold">{question.text}</h1>
         {isMultiple && (
           <p className="text-muted-foreground mt-1">Select all that apply</p>
         )}
+        {timeLimit > 0 && (
+          <div className="absolute top-0 right-0">
+            <CircularTimer time={timeLimit} timeLimit={timeLimit} size={64} />
+          </div>
+        )}
       </div>
 
-      {/* Answers - responsive grid */}
+      {/* Answers - responsive grid using AnswerButton */}
       <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4">
-        <AnimatePresence mode="wait">
-          {question.answers.map((answer, index) => {
-            const colors = colorGradients[index % colorGradients.length];
-            const isSelected = selectedIndices.includes(index);
-
-            return (
-              <motion.button
-                key={index}
-                onClick={() => isMultiple ? handleMultipleToggle(index) : handleSingleSelect(index)}
-                disabled={isSubmitting || hasResponded}
-                className={cn(
-                  // Base styles
-                  'w-full p-6 rounded-xl text-left',
-                  'shadow-md transition-all duration-300',
-                  'border',
-
-                  // Color gradient background and border
-                  `bg-gradient-to-r ${colors.bg}`,
-                  colors.border,
-
-                  // Interactive states
-                  !isSubmitting && 'hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] cursor-pointer',
-                  isSubmitting && !isSelected && 'opacity-50 cursor-not-allowed',
-
-                  // Selected state
-                  isSelected && [
-                    'border-l-4',
-                    `bg-gradient-to-r ${colors.selectedBg}`,
-                    'shadow-xl',
-                  ],
-                )}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Letter Badge */}
-                  <div className={cn(
-                    'flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center',
-                    'text-xl font-semibold transition-all duration-300',
-                    isSelected
-                      ? `bg-gradient-to-br ${colors.badge} text-white scale-110`
-                      : 'bg-muted text-muted-foreground'
-                  )}>
-                    {isSelected ? (
-                      <Check className="w-6 h-6 text-white" />
-                    ) : (
-                      String.fromCharCode(65 + index)
-                    )}
-                  </div>
-
-                  {/* Answer Text */}
-                  <span className={cn(
-                    'flex-1 text-lg transition-all duration-300',
-                    isSelected ? 'font-medium' : 'font-normal'
-                  )}>
-                    {answer.text}
-                  </span>
-
-                  {/* Loading indicator for single choice */}
-                  {!isMultiple && isSelected && isSubmitting && (
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-              </motion.button>
-            );
-          })}
-        </AnimatePresence>
+        {question.answers.map((answer, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.1 }}
+          >
+            <AnswerButton
+              letter={String.fromCharCode(65 + index)}
+              text={answer.text}
+              selected={selectedIndices.includes(index)}
+              disabled={isSubmitting || hasResponded}
+              showCheck={isMultiple}
+              onClick={() => isMultiple ? handleMultipleToggle(index) : handleSingleSelect(index)}
+              colorIndex={index}
+            />
+          </motion.div>
+        ))}
       </div>
 
       {/* Submit button for multiple choice */}
@@ -243,7 +192,7 @@ export function PollPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) 
           <Button
             onClick={handleMultipleSubmit}
             disabled={isSubmitting || selectedIndices.length === 0}
-            className="w-full h-14 text-lg"
+            className="w-full h-14 text-lg bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
             size="lg"
           >
             {isSubmitting ? (

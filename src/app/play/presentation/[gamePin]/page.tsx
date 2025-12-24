@@ -188,6 +188,7 @@ export default function PresentationPlayerPage() {
       currentSlideIndex={game.currentSlideIndex}
       gameState={game.state}
       playerId={playerId}
+      playerName={playerName}
       gameId={gameId}
     />
   );

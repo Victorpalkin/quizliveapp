@@ -8,3 +8,4 @@ export { generateQuizWithAI } from './functions/generateQuizWithAI';
 export { generateQuestionImage } from './functions/generateQuestionImage';
 export { evaluateSubmissions } from './functions/evaluateSubmissions';
 export { extractTopics } from './functions/extractTopics';
+// extractSlideTopics was removed - use extractTopics with slideId parameter instead

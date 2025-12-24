@@ -4,7 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, Maximize, Minimize, X } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { QRCodeSVG } from 'qrcode.react';
+import { Users, Maximize, Minimize, X, QrCode, Copy } from 'lucide-react';
 
 interface HostOverlayProps {
   gamePin: string;
@@ -24,6 +31,14 @@ export function HostOverlay({
   const [isVisible, setIsVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lastMouseMove, setLastMouseMove] = useState(Date.now());
+  const [joinUrl, setJoinUrl] = useState('');
+
+  // Build join URL on client
+  useEffect(() => {
+    if (gamePin) {
+      setJoinUrl(`${window.location.origin}/play/${gamePin}`);
+    }
+  }, [gamePin]);
 
   // Auto-hide after 3 seconds of no mouse movement
   useEffect(() => {
@@ -78,14 +93,50 @@ export function HostOverlay({
           transition={{ duration: 0.2 }}
         >
           <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent">
-            {/* Left: Game PIN */}
-            <div className="flex items-center gap-4">
+            {/* Left: Game PIN, QR Code, Copy Link */}
+            <div className="flex items-center gap-3">
               <Badge
                 variant="secondary"
                 className="text-lg font-mono bg-white/20 text-white border-0"
               >
                 PIN: {gamePin}
               </Badge>
+              <CopyButton text={gamePin} className="text-white hover:bg-white/20" />
+
+              {/* QR Code Popover */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white/20 h-8 w-8"
+                  >
+                    <QrCode className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-4" align="start">
+                  <div className="flex flex-col items-center gap-3">
+                    <p className="text-sm font-medium">Scan to join</p>
+                    {joinUrl && (
+                      <div className="bg-white p-3 rounded-lg">
+                        <QRCodeSVG value={joinUrl} size={160} level="M" />
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground max-w-[200px] truncate">{joinUrl}</p>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Copy Link Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20 h-8 w-8"
+                onClick={() => navigator.clipboard.writeText(joinUrl)}
+                title="Copy join link"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
             </div>
 
             {/* Center: Slide Counter */}

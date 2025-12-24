@@ -6,6 +6,7 @@ import { verifyAppCheck } from '../utils/appCheck';
 
 interface ExtractTopicsRequest {
   gameId: string;
+  slideId?: string; // Optional: for presentation slides - filter by slide and skip state updates
 }
 
 interface ExtractTopicsResponse {
@@ -154,29 +155,41 @@ export const extractTopics = onCall(
       throw new HttpsError('permission-denied', 'Only the game host can process submissions');
     }
 
-    // Verify this is a Thoughts Gathering game
-    if (gameData?.activityType !== 'thoughts-gathering') {
+    // Verify this is a Thoughts Gathering game OR a presentation (when slideId is provided)
+    const isPresentation = !!data.slideId;
+    if (!isPresentation && gameData?.activityType !== 'thoughts-gathering') {
       throw new HttpsError('failed-precondition', 'This game is not a Thoughts Gathering activity');
     }
 
-    // Get all submissions for this game
-    const submissionsSnapshot = await db
+    // Get submissions for this game (optionally filtered by slideId for presentations)
+    let submissionsQuery: admin.firestore.Query = db
       .collection('games')
       .doc(data.gameId)
-      .collection('submissions')
-      .get();
+      .collection('submissions');
+
+    if (data.slideId) {
+      submissionsQuery = submissionsQuery.where('slideId', '==', data.slideId);
+    }
+
+    const submissionsSnapshot = await submissionsQuery.get();
+
+    // Determine topics document ID based on whether this is for a specific slide
+    const topicsDocId = data.slideId ? `topics-${data.slideId}` : 'topics';
 
     if (submissionsSnapshot.empty) {
-      // No submissions - update game state and return
-      await db.collection('games').doc(data.gameId).update({
-        state: 'display',
-      });
+      // No submissions - update game state (only for standalone, not presentations)
+      if (!isPresentation) {
+        await db.collection('games').doc(data.gameId).update({
+          state: 'display',
+        });
+      }
 
       // Write empty topics aggregate
-      await db.collection('games').doc(data.gameId).collection('aggregates').doc('topics').set({
+      await db.collection('games').doc(data.gameId).collection('aggregates').doc(topicsDocId).set({
         topics: [],
         totalSubmissions: 0,
         processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        ...(data.slideId && { slideId: data.slideId }),
       });
 
       return {
@@ -235,18 +248,22 @@ Create meaningful groups based on shared themes, questions, or ideas. Provide a 
       const topics = parseExtractionResponse(responseText);
 
       // Write topics to aggregates collection
-      await db.collection('games').doc(data.gameId).collection('aggregates').doc('topics').set({
+      await db.collection('games').doc(data.gameId).collection('aggregates').doc(topicsDocId).set({
         topics,
         totalSubmissions: submissions.length,
         processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        ...(data.slideId && { slideId: data.slideId }),
       });
 
-      // Update game state to display
-      await db.collection('games').doc(data.gameId).update({
-        state: 'display',
-      });
+      // Update game state to display (only for standalone, not presentations)
+      if (!isPresentation) {
+        await db.collection('games').doc(data.gameId).update({
+          state: 'display',
+        });
+      }
 
-      console.log(`Extracted ${topics.length} topics from ${submissions.length} submissions for game ${data.gameId}`);
+      const logContext = data.slideId ? `slide ${data.slideId} in` : '';
+      console.log(`Extracted ${topics.length} topics from ${submissions.length} submissions for ${logContext}game ${data.gameId}`);
 
       return {
         success: true,
@@ -256,10 +273,12 @@ Create meaningful groups based on shared themes, questions, or ideas. Provide a 
     } catch (error) {
       console.error('Error extracting topics:', error);
 
-      // Revert game state on error
-      await db.collection('games').doc(data.gameId).update({
-        state: 'collecting',
-      });
+      // Revert game state on error (only for standalone, not presentations)
+      if (!isPresentation) {
+        await db.collection('games').doc(data.gameId).update({
+          state: 'collecting',
+        });
+      }
 
       if (error instanceof HttpsError) {
         throw error;

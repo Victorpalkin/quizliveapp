@@ -42,6 +42,7 @@ export interface SlidePlayerProps {
   playerName: string;
   hasResponded: boolean;
   onSubmit: (response: SlideResponse) => Promise<void>;
+  slideIndex: number; // Used for submitAnswer questionIndex mapping
 }
 
 /**

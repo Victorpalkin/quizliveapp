@@ -88,14 +88,14 @@ export function PresentationHost({
 
   if (!currentSlide) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-gray-900 text-white">
-        <p className="text-xl">No slides in this presentation</p>
+      <div className="h-screen w-screen flex items-center justify-center bg-background">
+        <p className="text-xl text-muted-foreground">No slides in this presentation</p>
       </div>
     );
   }
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-gray-900">
+    <div className="relative h-screen w-screen overflow-hidden bg-background">
       {/* Slide content - full screen */}
       <AnimatePresence mode="wait">
         <motion.div

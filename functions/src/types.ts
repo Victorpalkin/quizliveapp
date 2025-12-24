@@ -20,6 +20,9 @@ export interface SubmitAnswerRequest {
   // Question metadata
   questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'free-response' | 'poll-single' | 'poll-multiple';
   questionTimeLimit?: number;
+
+  // Presentation context (optional)
+  slideId?: string;  // For presentation slides - identifies which slide this answer is for
 }
 
 /**
@@ -79,6 +82,7 @@ export interface PlayerAnswer {
   points: number;
   isCorrect: boolean;
   wasTimeout: boolean;
+  slideId?: string;  // For presentation slides
 }
 
 /**

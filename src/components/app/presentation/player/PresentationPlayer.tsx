@@ -12,6 +12,7 @@ interface PresentationPlayerProps {
   currentSlideIndex: number;
   gameState: PresentationGameState;
   playerId: string;
+  playerName: string;
   gameId: string;
 }
 
@@ -21,6 +22,7 @@ export function PresentationPlayer({
   currentSlideIndex,
   gameState,
   playerId,
+  playerName,
   gameId,
 }: PresentationPlayerProps) {
   const currentSlide = slides[currentSlideIndex];
@@ -89,7 +91,9 @@ export function PresentationPlayer({
           <PlayerSlideRenderer
             slide={currentSlide}
             playerId={playerId}
+            playerName={playerName}
             gameId={gameId}
+            slideIndex={currentSlideIndex}
           />
         </motion.div>
       </AnimatePresence>

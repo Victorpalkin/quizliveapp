@@ -19,6 +19,29 @@ import { QuizEditor, QuizHost, QuizPlayer, QuizResults } from './quiz';
 // Poll slide type
 import { PollEditor, PollHost, PollPlayer, PollResults } from './poll';
 
+// Thoughts slide types
+import {
+  ThoughtsCollectEditor,
+  ThoughtsCollectHost,
+  ThoughtsCollectPlayer,
+  ThoughtsResultsEditor,
+  ThoughtsResultsHost,
+  ThoughtsResultsPlayer,
+} from './thoughts';
+
+// Rating slide types
+import {
+  RatingDescribeEditor,
+  RatingDescribeHost,
+  RatingDescribePlayer,
+  RatingInputEditor,
+  RatingInputHost,
+  RatingInputPlayer,
+  RatingResultsEditor,
+  RatingResultsHost,
+  RatingResultsPlayer,
+} from './rating';
+
 // Helper to generate unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
@@ -106,10 +129,9 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
     label: 'Thoughts Gathering',
     description: 'Collect ideas from participants',
     icon: 'MessageSquare',
-    // TODO: Create thoughts-collect components
-    EditorComponent: ContentEditor, // Placeholder
-    HostComponent: ContentHost,
-    PlayerComponent: ContentPlayer,
+    EditorComponent: ThoughtsCollectEditor,
+    HostComponent: ThoughtsCollectHost,
+    PlayerComponent: ThoughtsCollectPlayer,
     isInteractive: true,
     createsMultipleSlides: true,
     createDefaultSlide: (id, order) => ({
@@ -141,10 +163,9 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
     label: 'Thoughts Results',
     description: 'Word cloud visualization',
     icon: 'Cloud',
-    // TODO: Create thoughts-results components
-    EditorComponent: ContentEditor, // Placeholder
-    HostComponent: ContentHost,
-    PlayerComponent: ContentPlayer,
+    EditorComponent: ThoughtsResultsEditor,
+    HostComponent: ThoughtsResultsHost,
+    PlayerComponent: ThoughtsResultsPlayer,
     isInteractive: false,
     createDefaultSlide: (id, order) => ({
       id,
@@ -159,10 +180,9 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
     label: 'Item Rating',
     description: 'Present an item for participants to rate',
     icon: 'Star',
-    // TODO: Create rating-describe components
-    EditorComponent: ContentEditor, // Placeholder
-    HostComponent: ContentHost,
-    PlayerComponent: ContentPlayer,
+    EditorComponent: RatingDescribeEditor,
+    HostComponent: RatingDescribeHost,
+    PlayerComponent: RatingDescribePlayer,
     isInteractive: false,
     createsMultipleSlides: true,
     createDefaultSlide: (id, order) => ({
@@ -204,10 +224,9 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
     label: 'Rating Input',
     description: 'Participants submit their rating',
     icon: 'Star',
-    // TODO: Create rating-input components
-    EditorComponent: ContentEditor, // Placeholder
-    HostComponent: ContentHost,
-    PlayerComponent: ContentPlayer,
+    EditorComponent: RatingInputEditor,
+    HostComponent: RatingInputHost,
+    PlayerComponent: RatingInputPlayer,
     isInteractive: true,
     createDefaultSlide: (id, order) => ({
       id,
@@ -227,10 +246,9 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
     label: 'Rating Results',
     description: 'Aggregate rating visualization',
     icon: 'BarChart3',
-    // TODO: Create rating-results components
-    EditorComponent: ContentEditor, // Placeholder
-    HostComponent: ContentHost,
-    PlayerComponent: ContentPlayer,
+    EditorComponent: RatingResultsEditor,
+    HostComponent: RatingResultsHost,
+    PlayerComponent: RatingResultsPlayer,
     isInteractive: false,
     createDefaultSlide: (id, order) => ({
       id,

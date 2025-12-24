@@ -1,9 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { PresentationSlide, Presentation, PresentationGame } from '@/lib/types';
 import { getSlideType, SlidePlayerProps, SlideResponse } from '../slide-types';
+import {
+  usePlayerSlideResponse,
+  useSubmitSlideResponse,
+} from '@/firebase/presentation';
 
 export interface PlayerSlideRendererProps {
   slide: PresentationSlide;
@@ -12,12 +16,13 @@ export interface PlayerSlideRendererProps {
   playerId: string;
   playerName?: string;
   gameId?: string;
+  slideIndex: number; // For submitAnswer questionIndex mapping
   onSubmit?: (response: SlideResponse) => Promise<void>;
 }
 
 /**
  * Dispatches to the correct player component based on slide type.
- * Can be called with minimal props for simple display.
+ * Handles response persistence to Firestore automatically.
  */
 export function PlayerSlideRenderer({
   slide,
@@ -26,9 +31,19 @@ export function PlayerSlideRenderer({
   playerId,
   playerName = '',
   gameId = '',
+  slideIndex,
   onSubmit,
 }: PlayerSlideRendererProps) {
-  const [hasResponded, setHasResponded] = useState(false);
+  // Check if player has already responded to this slide
+  const { hasResponded, loading: responseLoading } = usePlayerSlideResponse(
+    gameId,
+    slide.id,
+    playerId
+  );
+
+  // Hook for submitting responses
+  const { submitResponse, isSubmitting } = useSubmitSlideResponse(gameId);
+
   const slideType = getSlideType(slide.type);
   const PlayerComponent = slideType.PlayerComponent;
 
@@ -54,12 +69,24 @@ export function PlayerSlideRenderer({
 
   const handleSubmit = useCallback(
     async (response: SlideResponse) => {
-      setHasResponded(true);
+      // Fill in player info
+      const fullResponse: SlideResponse = {
+        ...response,
+        playerId,
+        playerName,
+      };
+
+      // Persist to Firestore
+      if (gameId) {
+        await submitResponse(fullResponse);
+      }
+
+      // Call optional external handler
       if (onSubmit) {
-        await onSubmit(response);
+        await onSubmit(fullResponse);
       }
     },
-    [onSubmit]
+    [playerId, playerName, gameId, submitResponse, onSubmit]
   );
 
   const props: SlidePlayerProps = {
@@ -68,8 +95,9 @@ export function PlayerSlideRenderer({
     game: stubGame,
     playerId,
     playerName,
-    hasResponded,
+    hasResponded: hasResponded || isSubmitting,
     onSubmit: handleSubmit,
+    slideIndex,
   };
 
   return (

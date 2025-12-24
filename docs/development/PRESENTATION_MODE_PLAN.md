@@ -35,11 +35,12 @@ Build a Mentimeter-style presentation mode for Zivo that allows users to create 
 - Player join flow with waiting screen for non-interactive slides
 - Keyboard navigation (arrows, space, enter) during presentation
 - Presentations visible on host dashboard with filtering
+- Google Slides import (OAuth, Cloud Function)
+- Poll slides (placeholder components exist)
+- Thoughts gathering slides (placeholder components exist)
 
 ### What's NOT Implemented Yet
-- [ ] Google Slides import (OAuth, Cloud Function)
-- [ ] Poll slides (placeholder components exist)
-- [ ] Thoughts gathering slides (placeholder components exist)
+
 - [ ] Rating slides (placeholder components exist)
 - [ ] Firestore security rules for presentations
 - [ ] Storage rules for presentation images
@@ -74,6 +75,143 @@ Build a Mentimeter-style presentation mode for Zivo that allows users to create 
    - `rating-input`: Players submit star/numeric rating
 2. Optionally add `rating-results` slide to show aggregate
 3. Can rate multiple items, then show all results together at end
+
+### Rating Results Visualization (Detailed)
+
+Rating results can be displayed in three modes, configurable per results slide:
+
+#### 1. Single Item Results (`rating-results-single`)
+Shows detailed results for one specific rated item.
+
+**Display:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     [Item Title]                             │
+│                                                              │
+│     ★★★★☆  4.2 average  (42 responses)                      │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  ★★★★★  ████████████████████  45%  (19)               │ │
+│  │  ★★★★☆  ██████████████  32%  (13)                     │ │
+│  │  ★★★☆☆  █████  12%  (5)                               │ │
+│  │  ★★☆☆☆  ██  5%  (2)                                   │ │
+│  │  ★☆☆☆☆  ██  5%  (2)                                   │ │
+│  └────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Use case:** Deep dive into one item before moving to the next.
+
+#### 2. Comparison Results (`rating-results-comparison`)
+Shows all rated items side-by-side for comparison, sorted by average rating.
+
+**Display:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Overall Ranking                            │
+│                                                              │
+│  #1  ★★★★☆ 4.5  Feature A   ████████████████████████  (42) │
+│  #2  ★★★★☆ 4.2  Feature C   ████████████████████  (38)     │
+│  #3  ★★★☆☆ 3.8  Feature B   ████████████████  (41)         │
+│  #4  ★★★☆☆ 3.2  Feature D   ████████████  (40)             │
+│  #5  ★★☆☆☆ 2.5  Feature E   ████████  (35)                 │
+│                                                              │
+│                    [Total: 196 ratings]                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Use case:** Final slide showing how all items ranked relative to each other.
+
+#### 3. Live/Intermediate Results (`rating-results-live`)
+Shows real-time results as players submit ratings, with animations.
+
+**Display:**
+- Same as Single Item or Comparison, but with:
+  - Live-updating bars that animate as new ratings arrive
+  - Response counter: "23 / 42 rated"
+  - "Waiting for more responses..." indicator when not all players have responded
+  - Option to show "pulse" animation on latest submissions
+
+**Host can choose when to reveal:**
+- Hide results until host clicks "Show Results"
+- Show live as ratings come in
+- Show after X% of players have responded
+
+#### Data Model Addition
+
+```typescript
+// For 'rating-results' type slides
+export interface RatingResultsConfig {
+  mode: 'single' | 'comparison' | 'live';
+
+  // For 'single' mode - which item to show
+  sourceItemSlideId?: string;
+
+  // For 'comparison' mode - which items to compare
+  sourceItemSlideIds?: string[];  // Empty = all rated items
+
+  // For 'live' mode - display options
+  showLiveUpdates?: boolean;      // Animate as ratings arrive
+  revealMode?: 'immediate' | 'on-click' | 'threshold';
+  revealThreshold?: number;       // Percentage of players (e.g., 80)
+
+  // Common display options
+  sortBy?: 'average' | 'count' | 'order';  // For comparison mode
+  showDistribution?: boolean;     // Show rating breakdown bars
+  showResponseCount?: boolean;    // Show "X responses"
+}
+```
+
+#### Editor Experience
+
+When adding a Rating Results slide, the editor shows:
+1. **Mode selector**: Single Item | Comparison | Live Results
+2. **For Single mode**: Dropdown to select which item
+3. **For Comparison mode**: Checkboxes to select which items (default: all)
+4. **For Live mode**: Options for reveal behavior
+5. **Common options**: Sort order, show distribution, etc.
+
+#### Component Structure
+
+```
+src/components/app/presentation/slide-types/rating/
+├── RatingDescribeEditor.tsx     # Item description editor
+├── RatingDescribeHost.tsx       # Host view of item description
+├── RatingInputEditor.tsx        # Rating input config editor
+├── RatingInputHost.tsx          # Host view during rating (shows live count)
+├── RatingInputPlayer.tsx        # Player rating input
+├── RatingResultsEditor.tsx      # Results slide config editor
+├── RatingResultsHost.tsx        # Results visualization (dispatches to:)
+│   ├── RatingSingleResult.tsx   # Single item detailed view
+│   ├── RatingComparisonResult.tsx # All items comparison
+│   └── RatingLiveResult.tsx     # Live updating view
+└── rating-utils.ts              # Shared calculation helpers
+```
+
+#### Firestore Data Structure
+
+```
+/games/{gameId}/aggregates/ratings
+{
+  items: {
+    [slideId]: {
+      title: string;
+      totalResponses: number;
+      averageRating: number;
+      distribution: { [rating: number]: number };  // e.g., { 1: 2, 2: 5, 3: 10, 4: 15, 5: 8 }
+      lastUpdated: Timestamp;
+    }
+  }
+}
+
+/games/{gameId}/players/{playerId}/ratings
+{
+  [slideId]: {
+    rating: number;
+    submittedAt: Timestamp;
+  }
+}
+```
 
 ### Presenter Experience
 - Linear progression: slide 1 → slide 2 → ... → end
@@ -279,7 +417,7 @@ export type PresentationSlideType =
   | 'quiz'              // Quiz question (scored)
   | 'poll'              // Poll question (no scoring)
   | 'thoughts-collect'  // Thoughts gathering: collection prompt
-  | 'thoughts-results'  // Thoughts gathering: word cloud display
+  | 'thoughts-results'  // Thoughts gathering: extracted groups display
   | 'rating-describe'   // Rating: item description (presenter explains)
   | 'rating-input'      // Rating: players submit their rating
   | 'rating-results'    // Rating: show aggregate results (optional)
@@ -514,10 +652,134 @@ joining → lobby → waiting/participating → ended
 
 | # | Task | Description |
 |---|------|-------------|
-| 8 | Poll slides | Reuse quiz UI without correct answer marking |
-| 9 | Thoughts gathering | `thoughts-collect` for input, `thoughts-results` for word cloud |
-| 10 | Rating slides | `rating-describe`, `rating-input`, `rating-results` |
+| 8 | Poll slides | ✅ Reuse quiz UI without correct answer marking |
+| 9 | Thoughts gathering | ✅ `thoughts-collect` for input, `thoughts-results` for word cloud |
+| 10a | Rating describe/input | `rating-describe` + `rating-input` slides |
+| 10b | Rating single results | Single item detailed view with distribution bars |
+| 10c | Rating comparison results | All items ranked side-by-side |
+| 10d | Rating live results | Real-time updating results with animations |
 | 11 | Results visualization | Charts, word clouds, aggregate displays |
+
+#### Rating Slides Detailed Tasks
+
+| Sub-task | Components | Description |
+|----------|------------|-------------|
+| 10a-1 | `RatingDescribeEditor` | Editor for item title, description, image |
+| 10a-2 | `RatingDescribeHost` | Host view showing item to audience |
+| 10a-3 | `RatingInputEditor` | Configure rating scale (stars, 1-10, labels) |
+| 10a-4 | `RatingInputHost` | Host view with response counter |
+| 10a-5 | `RatingInputPlayer` | Player rating submission UI |
+| 10b-1 | `RatingSingleResult` | Detailed view: avg rating + distribution bars |
+| 10c-1 | `RatingComparisonResult` | All items ranked with horizontal bars |
+| 10d-1 | `RatingLiveResult` | Live-updating view with animations |
+| 10e-1 | `RatingResultsEditor` | Mode selector + configuration options |
+| 10e-2 | `use-rating-aggregates` | Firebase hook for rating aggregates |
+| 10e-3 | `submitRating` CF | Cloud function for rating submission |
+
+#### Component Reuse Strategy (from Evaluation)
+
+**Fully Reusable - Import Directly:**
+| Component | Location | Use in Rating Slides |
+|-----------|----------|---------------------|
+| `EvaluationBarChart` | `src/components/app/evaluation-bar-chart.tsx` | **Comparison Results** - horizontal bars ranked by score |
+| `EvaluationHeatmap` | `src/components/app/evaluation-heatmap.tsx` | **Comparison Results** - multi-metric color-coded table |
+| `EvaluationMatrix` | `src/components/app/evaluation-matrix.tsx` | **Comparison Results** - 2D scatter for multi-metric |
+| `ConsensusIndicator` | `src/components/app/consensus-indicator.tsx` | **Single/Comparison** - agreement level badges |
+| `ConsensusList` | `src/components/app/consensus-indicator.tsx` | **Comparison** - high/low consensus summary |
+
+**Extract to Shared Components:**
+| Pattern | Source | New Shared Component |
+|---------|--------|---------------------|
+| Star rating input | `play/evaluation/[gamePin]/page.tsx:526-548` | `src/components/app/rating-input.tsx` |
+| Numeric scale input | `play/evaluation/[gamePin]/page.tsx:550-571` | (same file, variant) |
+| Label buttons input | `play/evaluation/[gamePin]/page.tsx:573-595` | (same file, variant) |
+| Item navigation dots | `play/evaluation/[gamePin]/page.tsx:635-655` | `src/components/app/progress-dots.tsx` |
+
+**Reuse Data Types (already in `src/lib/types.ts`):**
+- `EvaluationItemResult` - Used by all visualization components
+- `EvaluationMetric` - For multi-metric rating scales
+- `PlayerRatings` - Rating submission format
+
+**Build New:**
+| Component | Reason |
+|-----------|--------|
+| `RatingSingleResult` | **New** - Distribution bars (1-5 stars breakdown) for single item |
+| `RatingLiveResult` | **New** - Animation wrapper for live updates using `motion/react` |
+| `RatingResultsEditor` | **New** - Mode selector (single/comparison/live) |
+| `use-slide-ratings` | **New** - Hook with `slideId` filtering for presentation context |
+
+#### Security Considerations
+
+**Firestore Rules for Rating Slides:**
+
+```javascript
+// In firestore.rules - add to games/{gameId} section
+
+// Rating submissions - players can only submit their own
+match /ratings/{playerId} {
+  allow read: if isGameParticipant() || isGameHost();
+  allow create, update: if request.auth != null
+    && playerId == request.resource.data.playerId
+    && isGameActive()
+    && validateRatingData();
+  allow delete: if isGameHost();
+}
+
+// Rating aggregates - read-only for players, host can trigger compute
+match /aggregates/ratings {
+  allow read: if isGameParticipant() || isGameHost();
+  allow write: if false; // Only Cloud Functions can write
+}
+
+function validateRatingData() {
+  let data = request.resource.data;
+  return data.playerId is string
+    && data.ratings is map
+    && data.submittedAt is timestamp;
+}
+```
+
+**Cloud Function Security (`submitRating`):**
+
+| Check | Description |
+|-------|-------------|
+| Game state validation | Only accept ratings when `state == 'presenting'` and current slide is `rating-input` |
+| Player validation | Verify playerId exists in `games/{gameId}/players` |
+| Slide validation | Verify `slideId` matches current slide or is a valid rating-input slide |
+| Rating value bounds | Validate rating is within configured `min`/`max` for the metric |
+| Rate limiting | Max 10 rating submissions per minute per player |
+| Duplicate prevention | Reject if player already rated this slide (unless update allowed) |
+| CORS restrictions | Only accept from allowed origins |
+
+**Server-Side Aggregation:**
+
+| Principle | Implementation |
+|-----------|----------------|
+| No client-side totals | Aggregates computed only by Cloud Functions |
+| Atomic updates | Use Firestore transactions for aggregate updates |
+| Timing validation | Reject ratings submitted after slide advances |
+| Input sanitization | Validate all fields, reject extra properties |
+
+**Data Isolation:**
+
+```
+/games/{gameId}/
+├── ratings/{playerId}           # Individual player ratings (isolated)
+│   └── {slideId}: { rating, submittedAt }
+├── aggregates/
+│   └── ratings                  # Computed aggregates (read-only for clients)
+│       └── items: { [slideId]: { avg, distribution, count } }
+```
+
+**Anti-Cheating Measures:**
+
+| Measure | Description |
+|---------|-------------|
+| Server-side validation | All ratings validated in Cloud Function before storage |
+| No client computation | Averages/distributions computed server-side only |
+| Immutable once submitted | Players cannot change rating after submission |
+| Slide timing check | Reject ratings for slides that are no longer active |
+| Player existence check | Verify player joined before slide was shown |
 
 ### Milestone 3: Google Integration
 | # | Task | Description |
@@ -632,7 +894,219 @@ Before release, verify these scenarios:
 |------|---------|
 | `firestore.rules` | Add presentation access rules |
 | `storage.rules` | Add presentation image rules |
-| `functions/src/functions/` | Add `submitPresentationAnswer.ts` |
+| `functions/src/functions/` | Add `submitRating.ts` for rating slides |
+
+---
+
+## Security Architecture
+
+### Overview
+
+Presentation mode must enforce security at multiple layers to prevent cheating, data leakage, and unauthorized access.
+
+### Firestore Security Rules
+
+#### Presentations Collection
+
+```javascript
+// /presentations/{presentationId}
+match /presentations/{presentationId} {
+  // Only owner can read/write their presentations
+  allow read, write: if request.auth != null
+    && request.auth.uid == resource.data.hostId;
+
+  // Create: authenticated user becomes owner
+  allow create: if request.auth != null
+    && request.resource.data.hostId == request.auth.uid;
+
+  // Shares subcollection (like quizzes)
+  match /shares/{email} {
+    allow read: if request.auth != null
+      && (request.auth.uid == get(/databases/$(database)/documents/presentations/$(presentationId)).data.hostId
+          || request.auth.token.email == email);
+    allow write: if request.auth != null
+      && request.auth.uid == get(/databases/$(database)/documents/presentations/$(presentationId)).data.hostId;
+  }
+}
+```
+
+#### Presentation Games
+
+```javascript
+// /games/{gameId} - Presentation games
+match /games/{gameId} {
+  // Host can read/write their games
+  allow read, write: if request.auth != null
+    && request.auth.uid == resource.data.hostId;
+
+  // Players can read game state (but not answers/secrets)
+  allow read: if isGamePlayer(gameId);
+
+  // Players subcollection
+  match /players/{playerId} {
+    allow read: if isGameHost(gameId) || isGamePlayer(gameId);
+    allow create: if gameIsJoinable(gameId);
+    allow update: if request.auth != null
+      && (playerId == request.auth.uid || isUnauthenticatedPlayer(playerId));
+  }
+
+  // Submissions (for thoughts gathering)
+  match /submissions/{submissionId} {
+    allow read: if isGameHost(gameId) || isGamePlayer(gameId);
+    allow create: if gameIsActive(gameId) && hasValidSubmission();
+    allow update, delete: if isGameHost(gameId);
+  }
+
+  // Ratings (for rating slides)
+  match /ratings/{playerId} {
+    allow read: if isGameHost(gameId) || isGamePlayer(gameId);
+    allow create, update: if isPlayerSubmittingOwnRating(playerId)
+      && gameIsActive(gameId)
+      && hasValidRatingData();
+    allow delete: if isGameHost(gameId);
+  }
+
+  // Aggregates (computed by Cloud Functions only)
+  match /aggregates/{aggregateId} {
+    allow read: if isGameHost(gameId) || isGamePlayer(gameId);
+    allow write: if false; // Only Cloud Functions can write
+  }
+
+  // Slide responses (legacy, being deprecated)
+  match /slideResponses/{responseId} {
+    allow read: if isGameHost(gameId) || isGamePlayer(gameId);
+    allow create: if gameIsActive(gameId);
+    allow update, delete: if isGameHost(gameId);
+  }
+}
+
+// Helper functions
+function isGameHost(gameId) {
+  return request.auth != null
+    && request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId;
+}
+
+function isGamePlayer(gameId) {
+  return exists(/databases/$(database)/documents/games/$(gameId)/players/$(request.auth.uid))
+    || request.auth == null; // Anonymous players allowed
+}
+
+function gameIsJoinable(gameId) {
+  let game = get(/databases/$(database)/documents/games/$(gameId)).data;
+  return game.state == 'lobby' || game.state == 'presenting';
+}
+
+function gameIsActive(gameId) {
+  let game = get(/databases/$(database)/documents/games/$(gameId)).data;
+  return game.state == 'presenting';
+}
+```
+
+### Storage Security Rules
+
+```javascript
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Presentation images
+    match /presentations/{presentationId}/slides/{fileName} {
+      // Owner can upload/delete
+      allow write: if request.auth != null
+        && request.auth.uid == firestore.get(
+          /databases/(default)/documents/presentations/$(presentationId)
+        ).data.hostId
+        && request.resource.size < 5 * 1024 * 1024; // 5MB limit
+
+      // Public read for active presentations
+      allow read: if true;
+    }
+
+    // Temp presentation images (during creation)
+    match /temp/presentations/{tempId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.size < 5 * 1024 * 1024;
+      allow delete: if request.auth != null;
+    }
+  }
+}
+```
+
+### Cloud Function Security
+
+#### Common Security Checks
+
+All presentation Cloud Functions must implement:
+
+| Check | Implementation |
+|-------|----------------|
+| Authentication | Verify `context.auth` exists (or allow anonymous for players) |
+| Rate limiting | Use `rateLimit()` utility from `functions/src/utils/rateLimit.ts` |
+| CORS | Use `ALLOWED_ORIGINS` from `functions/src/config.ts` |
+| Input validation | Validate all parameters, reject unknown fields |
+| Game state check | Verify game exists and is in correct state |
+| Player validation | Verify player exists in game (for player actions) |
+| Host validation | Verify caller is host (for host actions) |
+
+#### submitAnswer (Quiz/Poll Slides)
+
+Already implemented - reuses existing `submitAnswer` function with `slideId` parameter.
+
+#### submitRating (Rating Slides)
+
+```typescript
+// functions/src/functions/submitRating.ts
+interface SubmitRatingRequest {
+  gameId: string;
+  playerId: string;
+  slideId: string;
+  rating: number;
+  metricId?: string; // For multi-metric ratings
+}
+
+// Security checks:
+// 1. Game exists and state is 'presenting'
+// 2. Current slide matches slideId OR slideId is a valid rating-input slide
+// 3. Player exists in game
+// 4. Rating is within configured min/max bounds
+// 5. Player hasn't already submitted for this slide (unless updates allowed)
+// 6. Rate limit: 10 submissions/minute/player
+```
+
+#### extractTopics (Thoughts Slides)
+
+Already implemented - reuses existing `extractTopics` function with `slideId` parameter.
+
+### Data Isolation Principles
+
+| Principle | Implementation |
+|-----------|----------------|
+| Player data isolation | Players can only see their own submissions, not others' |
+| Answer key protection | Correct answers stored in `aggregates/answerKey`, never sent to clients |
+| Aggregate read-only | All aggregates (`leaderboard`, `topics`, `ratings`) written only by CF |
+| Late join safety | Late joiners cannot submit for past slides |
+| Time-based validation | Server timestamps used, client timestamps rejected |
+
+### Anti-Cheating Measures
+
+| Threat | Mitigation |
+|--------|------------|
+| Submitting answers for others | `playerId` validated against authenticated user or session |
+| Submitting after time expires | Server tracks slide timing, rejects late submissions |
+| Multiple submissions | Duplicate detection in Cloud Function |
+| Modifying scores | Scores computed server-side only, client has no write access |
+| Viewing answers before submission | Answer keys in protected aggregate, sanitized questions sent to players |
+| Rapid-fire submissions | Rate limiting (60/min for answers, 10/min for ratings) |
+| Invalid rating values | Server validates against slide's configured min/max |
+
+### Session Management
+
+| Aspect | Implementation |
+|--------|----------------|
+| Player sessions | Stored in localStorage, validated against Firestore on reconnect |
+| Host sessions | Stored in localStorage with `host-session.ts`, enables resume |
+| Anonymous players | Allowed to join without auth, identified by generated playerId |
+| Session expiry | Games auto-cleanup after 30 days via scheduled Cloud Function |
 
 ---
 
@@ -699,8 +1173,14 @@ Uses `motion/react` (Framer Motion) for smooth transitions:
 - **Routes created**: 5 (create, edit, lobby, present, play)
 
 ### Next Up (Milestone 2: Full Activity Support)
-- **New slide types**: 4 (poll, thoughts-collect, thoughts-results, rating)
-- **Components needed**: ~12 (Editor, Host, Player for each type)
+- **Completed slide types**: Poll, Thoughts (collect + results)
+- **Remaining slide types**: Rating (describe, input, 3 results modes)
+- **Components needed**: ~11 for rating:
+  - `RatingDescribeEditor`, `RatingDescribeHost`
+  - `RatingInputEditor`, `RatingInputHost`, `RatingInputPlayer`
+  - `RatingResultsEditor`, `RatingResultsHost`
+  - `RatingSingleResult`, `RatingComparisonResult`, `RatingLiveResult`
+  - `rating-utils.ts`, `use-rating-aggregates.ts`
 
 ### Future (Milestones 3-5)
 - **Google OAuth**: High complexity

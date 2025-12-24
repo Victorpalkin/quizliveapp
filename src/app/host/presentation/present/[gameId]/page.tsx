@@ -82,8 +82,8 @@ export default function PresentationPresentPage() {
 
   if (!game || !presentation) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
-        <h1 className="text-2xl font-bold mb-4">Presentation not found</h1>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+        <h1 className="text-2xl font-bold text-foreground mb-4">Presentation not found</h1>
         <button
           onClick={() => router.push('/host')}
           className="text-primary underline"

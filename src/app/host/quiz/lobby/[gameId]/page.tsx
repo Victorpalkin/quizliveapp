@@ -13,73 +13,11 @@ import { collection, doc, updateDoc, DocumentReference, deleteDoc, setDoc, serve
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Game, Quiz, QuestionSubmission, SingleChoiceQuestion, Question, MultipleChoiceQuestion, SliderQuestion, FreeResponseQuestion } from '@/lib/types';
+import type { Game, Quiz, QuestionSubmission, SingleChoiceQuestion, Question } from '@/lib/types';
 import { removeUndefined } from '@/lib/firestore-utils';
 import { saveHostSession, clearHostSession } from '@/lib/host-session';
+import { extractAnswerKeyEntry, sanitizeQuestionForPlayer } from '@/lib/question-utils';
 import { SubmissionsPanel } from './components/submissions-panel';
-
-/**
- * Extracts answer key data from a question (for server-side scoring).
- * This data is stored securely and never sent to players.
- */
-function extractAnswerKeyEntry(q: Question) {
-  const base = { type: q.type, timeLimit: q.timeLimit || 20 };
-
-  switch (q.type) {
-    case 'single-choice':
-      return { ...base, correctAnswerIndex: q.correctAnswerIndex };
-    case 'multiple-choice':
-      return { ...base, correctAnswerIndices: q.correctAnswerIndices };
-    case 'slider':
-      return {
-        ...base,
-        correctValue: q.correctValue,
-        minValue: q.minValue,
-        maxValue: q.maxValue,
-        acceptableError: q.acceptableError,
-      };
-    case 'free-response':
-      return {
-        ...base,
-        correctAnswer: q.correctAnswer,
-        alternativeAnswers: q.alternativeAnswers,
-        caseSensitive: q.caseSensitive,
-        allowTypos: q.allowTypos,
-      };
-    default:
-      // Polls and slides don't have correct answers
-      return base;
-  }
-}
-
-/**
- * Creates a sanitized version of a question with correct answers removed.
- * This is safe to send to players.
- */
-function sanitizeQuestionForPlayer(q: Question): Question {
-  switch (q.type) {
-    case 'single-choice': {
-      const { correctAnswerIndex, ...rest } = q;
-      return rest as Question;
-    }
-    case 'multiple-choice': {
-      const { correctAnswerIndices, ...rest } = q as MultipleChoiceQuestion;
-      // Add expectedAnswerCount for UX (tells player how many to select)
-      return { ...rest, expectedAnswerCount: correctAnswerIndices.length } as unknown as Question;
-    }
-    case 'slider': {
-      const { correctValue, acceptableError, ...rest } = q as SliderQuestion;
-      return rest as Question;
-    }
-    case 'free-response': {
-      const { correctAnswer, alternativeAnswers, caseSensitive, allowTypos, ...rest } = q as FreeResponseQuestion;
-      return rest as Question;
-    }
-    default:
-      // Slides and polls have no secret data
-      return q;
-  }
-}
 
 
 export default function HostLobbyPage() {

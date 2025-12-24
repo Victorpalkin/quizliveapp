@@ -141,6 +141,7 @@ export const submitAnswer = onCall(
           points: points,
           isCorrect: isCorrect,
           wasTimeout: timeRemaining === 0,
+          ...(data.slideId && { slideId: data.slideId }), // Include slideId for presentation slides
         };
 
         // Add type-specific answer data
