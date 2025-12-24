@@ -65,6 +65,12 @@ service cloud.firestore {
       }
     }
 
+    // Helper function to check if user has poll access via share
+    function hasPollAccess(activityId) {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/activities/$(activityId)/shares/$(request.auth.token.email));
+    }
+
     // Activities collection (for non-quiz activities like Interest Cloud)
     match /activities/{activityId} {
       // Anyone can read activity details (needed for players to see activity info)
@@ -77,6 +83,34 @@ service cloud.firestore {
       // Only the activity owner can update or delete
       allow update, delete: if request.auth != null &&
                               request.auth.uid == resource.data.hostId;
+
+      // Activity shares subcollection (for polls)
+      match /shares/{shareId} {
+        // Owner can read all shares for their activity
+        // Recipient can read shares where sharedWith matches their email
+        allow read: if request.auth != null &&
+                      (request.auth.uid == get(/databases/$(database)/documents/activities/$(activityId)).data.hostId ||
+                       request.auth.token.email == resource.data.sharedWith);
+
+        // Only activity owner can create shares
+        // Document ID (shareId) must match the sharedWith email
+        allow create: if request.auth != null &&
+                        request.auth.uid == get(/databases/$(database)/documents/activities/$(activityId)).data.hostId &&
+                        request.resource.data.sharedBy == request.auth.uid &&
+                        request.resource.data.pollId == activityId &&
+                        shareId == request.resource.data.sharedWith;
+
+        // Owner can delete their shares, recipient can also delete (to cancel)
+        allow delete: if request.auth != null &&
+                        (request.auth.uid == resource.data.sharedBy ||
+                         request.auth.token.email == resource.data.sharedWith);
+      }
+    }
+
+    // Helper function to check if user has presentation access via share
+    function hasPresentationAccess(presentationId) {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/presentations/$(presentationId)/shares/$(request.auth.token.email));
     }
 
     // Presentations collection (for hybrid presentations with interactive slides)
@@ -91,6 +125,28 @@ service cloud.firestore {
       // Only the presentation owner can update or delete
       allow update, delete: if request.auth != null &&
                               request.auth.uid == resource.data.hostId;
+
+      // Presentation shares subcollection
+      match /shares/{shareId} {
+        // Owner can read all shares for their presentation
+        // Recipient can read shares where sharedWith matches their email
+        allow read: if request.auth != null &&
+                      (request.auth.uid == get(/databases/$(database)/documents/presentations/$(presentationId)).data.hostId ||
+                       request.auth.token.email == resource.data.sharedWith);
+
+        // Only presentation owner can create shares
+        // Document ID (shareId) must match the sharedWith email
+        allow create: if request.auth != null &&
+                        request.auth.uid == get(/databases/$(database)/documents/presentations/$(presentationId)).data.hostId &&
+                        request.resource.data.sharedBy == request.auth.uid &&
+                        request.resource.data.presentationId == presentationId &&
+                        shareId == request.resource.data.sharedWith;
+
+        // Owner can delete their shares, recipient can also delete (to cancel)
+        allow delete: if request.auth != null &&
+                        (request.auth.uid == resource.data.sharedBy ||
+                         request.auth.token.email == resource.data.sharedWith);
+      }
     }
 
     // Templates collection (for user-created presentation templates)
@@ -143,15 +199,22 @@ service cloud.firestore {
                          (request.auth.uid == get(/databases/$(database)/documents/quizzes/$(request.resource.data.quizId)).data.hostId ||
                           hasQuizAccess(request.resource.data.quizId)))
                         ||
-                        // Activity-based games (Interest Cloud, Evaluation, etc.)
+                        // Activity-based games (ThoughtsGathering, Evaluation)
                         (request.resource.data.activityType in ['thoughts-gathering', 'evaluation'] &&
                          request.resource.data.activityId != null &&
                          ownsActivity(request.resource.data.activityId))
                         ||
-                        // Presentation-based games
+                        // Poll-based games (own or shared)
+                        (request.resource.data.activityType == 'poll' &&
+                         request.resource.data.activityId != null &&
+                         (ownsActivity(request.resource.data.activityId) ||
+                          hasPollAccess(request.resource.data.activityId)))
+                        ||
+                        // Presentation-based games (own or shared)
                         (request.resource.data.activityType == 'presentation' &&
                          request.resource.data.presentationId != null &&
-                         ownsPresentation(request.resource.data.presentationId))
+                         (ownsPresentation(request.resource.data.presentationId) ||
+                          hasPresentationAccess(request.resource.data.presentationId)))
                       );
 
       // Only the host can update or delete the game

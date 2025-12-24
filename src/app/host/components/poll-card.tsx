@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, Trash2, Eye, Pencil, Vote } from 'lucide-react';
+import { Gamepad2, Trash2, Eye, Pencil, Vote, Share2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,10 +22,11 @@ interface PollCardProps {
   poll: PollActivity;
   onHost: (pollId: string) => void;
   onPreview: (poll: PollActivity) => void;
+  onShare?: (poll: { id: string; title: string }) => void;
   onDelete: (pollId: string) => void;
 }
 
-export function PollCard({ poll, onHost, onPreview, onDelete }: PollCardProps) {
+export function PollCard({ poll, onHost, onPreview, onShare, onDelete }: PollCardProps) {
   const dateDisplay = formatRelativeTime(poll.updatedAt || poll.createdAt);
   const questionCount = poll.questions?.length || 0;
 
@@ -43,6 +44,17 @@ export function PollCard({ poll, onHost, onPreview, onDelete }: PollCardProps) {
           </CardDescription>
         </div>
         <div className='flex items-center gap-1'>
+          {onShare && (
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Share poll"
+              className="h-8 w-8 hover:bg-muted rounded-lg"
+              onClick={() => onShare({ id: poll.id, title: poll.title })}
+            >
+              <Share2 className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          )}
           <Button asChild variant="ghost" size="icon" title="Edit poll" className="h-8 w-8 hover:bg-muted rounded-lg">
             <Link href={`/host/poll/edit/${poll.id}`}>
               <Pencil className="h-4 w-4 text-muted-foreground" />

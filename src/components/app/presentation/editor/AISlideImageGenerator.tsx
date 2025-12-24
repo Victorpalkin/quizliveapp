@@ -33,8 +33,7 @@ interface AISlideImageGeneratorProps {
 function generateDefaultPrompt(context: string): string {
   return `Create an engaging illustration for this presentation slide: "${context}".
 
-Style photorealistic. Make it visually appealing and professional.
-Do not include any text in the image.`;
+Make it visually appealing and professional.`;
 }
 
 /**

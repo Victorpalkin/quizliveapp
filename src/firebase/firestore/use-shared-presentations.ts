@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useFirestore, useUser } from '@/firebase';
 import { collectionGroup, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import type { QuizShare, Quiz } from '@/lib/types';
+import type { PresentationShare, Presentation } from '@/lib/types';
 
-export function useSharedQuizzes() {
+export function useSharedPresentations() {
   const firestore = useFirestore();
   const { user } = useUser();
-  const [shares, setShares] = useState<(QuizShare & { quiz?: Quiz })[]>([]);
+  const [shares, setShares] = useState<(PresentationShare & { presentation?: Presentation })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,44 +20,49 @@ export function useSharedQuizzes() {
       try {
         setLoading(true);
 
-        // Query all shares subcollections where sharedWith matches user email
-        // and the document has quizId (indicating it's a quiz share, not poll/presentation)
+        // Query all shares subcollections in presentations where sharedWith matches user email
         const sharesRef = collectionGroup(firestore, 'shares');
         const q = query(
           sharesRef,
           where('sharedWith', '==', user.email!.toLowerCase()),
-          where('quizId', '!=', null)
+          where('presentationId', '!=', null)
         );
         const querySnapshot = await getDocs(q);
 
-        const fetchedShares: (QuizShare & { quiz?: Quiz })[] = [];
+        const fetchedShares: (PresentationShare & { presentation?: Presentation })[] = [];
 
         for (const shareDoc of querySnapshot.docs) {
           const shareData = shareDoc.data();
 
-          // Fetch the associated quiz
+          // Fetch the associated presentation
           try {
-            const quizDoc = await getDoc(doc(firestore, 'quizzes', shareData.quizId));
-            if (quizDoc.exists()) {
+            const presDoc = await getDoc(doc(firestore, 'presentations', shareData.presentationId));
+            if (presDoc.exists()) {
+              const presData = presDoc.data();
               fetchedShares.push({
                 id: shareDoc.id,
-                quizId: shareData.quizId,
-                quizTitle: shareData.quizTitle,
+                presentationId: shareData.presentationId,
+                presentationTitle: shareData.presentationTitle,
                 sharedWith: shareData.sharedWith,
                 sharedBy: shareData.sharedBy,
                 sharedByEmail: shareData.sharedByEmail,
                 createdAt: shareData.createdAt?.toDate() || new Date(),
-                quiz: { id: quizDoc.id, ...quizDoc.data() } as Quiz,
+                presentation: {
+                  id: presDoc.id,
+                  ...presData,
+                  createdAt: presData.createdAt?.toDate() || new Date(),
+                  updatedAt: presData.updatedAt?.toDate() || new Date(),
+                } as Presentation,
               });
             }
           } catch (error) {
-            console.error('Error fetching quiz for share:', error);
+            console.error('Error fetching presentation for share:', error);
           }
         }
 
         setShares(fetchedShares);
       } catch (error) {
-        console.error('Error fetching shared quizzes:', error);
+        console.error('Error fetching shared presentations:', error);
         setShares([]);
       } finally {
         setLoading(false);

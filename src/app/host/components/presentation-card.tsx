@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Presentation, Play, Pencil, Trash2, MoreVertical, Image as ImageIcon, Eye } from 'lucide-react';
+import { Presentation, Play, Pencil, Trash2, MoreVertical, Image as ImageIcon, Eye, Share2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,10 +27,11 @@ interface PresentationCardProps {
   presentation: PresentationType;
   onHost: (presentationId: string) => void;
   onPreview?: (presentation: PresentationType) => void;
+  onShare?: (presentation: { id: string; title: string }) => void;
   onDelete: (presentationId: string) => void;
 }
 
-export function PresentationCard({ presentation, onHost, onPreview, onDelete }: PresentationCardProps) {
+export function PresentationCard({ presentation, onHost, onPreview, onShare, onDelete }: PresentationCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const slideCount = presentation.slides?.length || 0;
@@ -63,6 +64,14 @@ export function PresentationCard({ presentation, onHost, onPreview, onDelete }: 
                     Edit
                   </Link>
                 </DropdownMenuItem>
+                {onShare && (
+                  <DropdownMenuItem
+                    onClick={() => onShare({ id: presentation.id, title: presentation.title })}
+                  >
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Share
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onClick={() => setShowDeleteDialog(true)}

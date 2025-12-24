@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
-import { SharedQuizzes } from '@/components/app/shared-quizzes';
+import { SharedContent } from '@/components/app/shared-content';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
+import { ContentShareManager } from '@/components/app/content-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
 import { PollPreview } from '@/components/app/poll-preview';
 import { PresentationPreview } from '@/components/app/presentation-preview';
@@ -86,8 +87,10 @@ export default function HostDashboardPage() {
   const storage = useStorage();
   const { user, loading: userLoading } = useUser();
 
-  // State for share dialog
+  // State for share dialogs
   const [shareDialogQuiz, setShareDialogQuiz] = useState<{ id: string; title: string } | null>(null);
+  const [shareDialogPoll, setShareDialogPoll] = useState<{ id: string; title: string } | null>(null);
+  const [shareDialogPresentation, setShareDialogPresentation] = useState<{ id: string; title: string } | null>(null);
 
   // State for preview dialogs
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
@@ -645,6 +648,7 @@ export default function HostDashboardPage() {
                                         presentation={presentation}
                                         onHost={handleHostPresentation}
                                         onPreview={setPreviewPresentation}
+                                        onShare={setShareDialogPresentation}
                                         onDelete={handleDeletePresentation}
                                     />
                                 );
@@ -657,6 +661,7 @@ export default function HostDashboardPage() {
                                         poll={poll}
                                         onHost={handleHostActivity}
                                         onPreview={setPreviewPoll}
+                                        onShare={setShareDialogPoll}
                                         onDelete={handleDeleteActivity}
                                     />
                                 );
@@ -676,8 +681,8 @@ export default function HostDashboardPage() {
             })()}
         </div>
 
-        {/* Shared Quizzes Section */}
-        <SharedQuizzes />
+        {/* Shared Content Section */}
+        <SharedContent />
 
         {/* Completed Activities Section */}
         {completedGames && completedGames.length > 0 && (
@@ -805,6 +810,44 @@ export default function HostDashboardPage() {
               <QuizShareManager
                 quizId={shareDialogQuiz.id}
                 quizTitle={shareDialogQuiz.title}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Share Poll Dialog */}
+        <Dialog open={!!shareDialogPoll} onOpenChange={(open) => !open && setShareDialogPoll(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl shadow-xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-semibold">Share Poll</DialogTitle>
+              <DialogDescription className="text-base">
+                Share "{shareDialogPoll?.title}" with other hosts by entering their email address
+              </DialogDescription>
+            </DialogHeader>
+            {shareDialogPoll && (
+              <ContentShareManager
+                contentId={shareDialogPoll.id}
+                contentTitle={shareDialogPoll.title}
+                contentType="poll"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Share Presentation Dialog */}
+        <Dialog open={!!shareDialogPresentation} onOpenChange={(open) => !open && setShareDialogPresentation(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl shadow-xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-semibold">Share Presentation</DialogTitle>
+              <DialogDescription className="text-base">
+                Share "{shareDialogPresentation?.title}" with other hosts by entering their email address
+              </DialogDescription>
+            </DialogHeader>
+            {shareDialogPresentation && (
+              <ContentShareManager
+                contentId={shareDialogPresentation.id}
+                contentTitle={shareDialogPresentation.title}
+                contentType="presentation"
               />
             )}
           </DialogContent>

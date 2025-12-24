@@ -10,6 +10,8 @@ import {
   Game,
   Player,
   QuizShare,
+  PollShare,
+  PresentationShare,
   ThoughtsGatheringActivity,
   ThoughtSubmission,
   EvaluationActivity,
@@ -136,6 +138,56 @@ export const quizShareConverter: FirestoreDataConverter<QuizShare> = {
       id: snapshot.id,
       quizId: data.quizId,
       quizTitle: data.quizTitle,
+      sharedWith: data.sharedWith,
+      sharedBy: data.sharedBy,
+      sharedByEmail: data.sharedByEmail,
+      createdAt: toDateSafe(data.createdAt) || new Date(),
+    };
+  }
+};
+
+export const pollShareConverter: FirestoreDataConverter<PollShare> = {
+  toFirestore(pollShare: PollShare): DocumentData {
+    const { id, ...data } = pollShare;
+    return removeUndefined({
+      ...data,
+      createdAt: data.createdAt instanceof Date ? Timestamp.fromDate(data.createdAt) : data.createdAt,
+    });
+  },
+  fromFirestore(
+    snapshot: QueryDocumentSnapshot,
+    options: SnapshotOptions
+  ): PollShare {
+    const data = snapshot.data(options);
+    return {
+      id: snapshot.id,
+      pollId: data.pollId,
+      pollTitle: data.pollTitle,
+      sharedWith: data.sharedWith,
+      sharedBy: data.sharedBy,
+      sharedByEmail: data.sharedByEmail,
+      createdAt: toDateSafe(data.createdAt) || new Date(),
+    };
+  }
+};
+
+export const presentationShareConverter: FirestoreDataConverter<PresentationShare> = {
+  toFirestore(share: PresentationShare): DocumentData {
+    const { id, ...data } = share;
+    return removeUndefined({
+      ...data,
+      createdAt: data.createdAt instanceof Date ? Timestamp.fromDate(data.createdAt) : data.createdAt,
+    });
+  },
+  fromFirestore(
+    snapshot: QueryDocumentSnapshot,
+    options: SnapshotOptions
+  ): PresentationShare {
+    const data = snapshot.data(options);
+    return {
+      id: snapshot.id,
+      presentationId: data.presentationId,
+      presentationTitle: data.presentationTitle,
       sharedWith: data.sharedWith,
       sharedBy: data.sharedBy,
       sharedByEmail: data.sharedByEmail,
