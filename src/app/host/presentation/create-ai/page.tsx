@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useFunctions, useUser, trackEvent } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { Loader2, Sparkles, Send, Save, RotateCcw, ArrowLeft, Presentation, MessageSquare, BarChart3, Star, Trophy, HelpCircle, ListChecks } from 'lucide-react';
+import { Loader2, Sparkles, Send, Save, RotateCcw, ArrowLeft, Presentation, MessageSquare, BarChart3, Star, Trophy, HelpCircle, ListChecks, ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import type { PresentationSlide, PresentationSlideType, Presentation as PresentationType } from '@/lib/types';
 import { removeUndefined } from '@/lib/firestore-utils';
@@ -144,6 +144,12 @@ function SlidePreviewCard({ slide, index }: { slide: PresentationSlide; index: n
             {slideTypeIcons[slide.type]}
             <span className="ml-1">{slideTypeLabels[slide.type]}</span>
           </Badge>
+          {slide.imagePrompt && (
+            <Badge variant="secondary" className="text-xs gap-1" title={slide.imagePrompt}>
+              <ImageIcon className="h-3 w-3" />
+              <span>AI Image</span>
+            </Badge>
+          )}
         </div>
         <p className="text-sm font-medium truncate">{getSlideContent()}</p>
         {getSlideDetails() && (

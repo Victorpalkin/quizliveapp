@@ -184,6 +184,9 @@ export interface GeneratedPresentationSlide {
   // For 'leaderboard' type
   leaderboardMode?: 'standard' | 'podium';
   leaderboardMaxDisplay?: number;
+
+  // For image generation (content, quiz, poll slides)
+  imagePrompt?: string;  // AI-suggested prompt for image generation
 }
 
 // Generated presentation structure

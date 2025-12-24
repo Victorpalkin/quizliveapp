@@ -42,12 +42,14 @@ You must respond with a JSON object containing:
 {
   "type": "content",
   "title": "Welcome to the Workshop!",
-  "description": "Today we'll explore the key concepts of effective teamwork..."
+  "description": "Today we'll explore the key concepts of effective teamwork...",
+  "imagePrompt": "Professional team collaborating in a modern office with natural lighting, photorealistic style"
 }
 
 ### 2. Quiz Slide (scored question with correct answer)
 {
   "type": "quiz",
+  "imagePrompt": "Eiffel Tower with Paris cityscape at sunset, illustration style",
   "question": {
     "type": "single-choice",
     "text": "What is the capital of France?",
@@ -65,6 +67,7 @@ You must respond with a JSON object containing:
 ### 3. Poll Slide (no scoring, gather opinions)
 {
   "type": "poll",
+  "imagePrompt": "Diverse group of people learning in different ways - reading, listening, watching, doing, modern illustration",
   "pollQuestion": {
     "type": "poll-single",
     "text": "What is your preferred learning style?",
@@ -163,6 +166,9 @@ Note: resultsDisplayMode can be "individual" (show each poll separately) or "com
 14. poll-results can reference one or more poll slides via sourceSlideIds array
 15. Consider adding quiz-results after a series of quiz questions to reveal answers
 16. Consider adding poll-results after poll questions to show audience opinions
+17. For content, quiz, and poll slides, include "imagePrompt" with a descriptive prompt for AI image generation
+18. Image prompts should be specific, mention the style (photorealistic, illustration, modern, etc.), and describe key visual elements
+19. NEVER include text in image prompts - images should be purely visual
 
 ## Example Presentation Flow
 

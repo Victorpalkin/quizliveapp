@@ -569,6 +569,7 @@ export interface PresentationSlide {
 
   // For 'content' type
   imageUrl?: string;           // Firebase Storage URL (imported or uploaded)
+  imagePrompt?: string;        // AI-suggested prompt for image generation
   googleSlideId?: string;      // Google Slides page ID (for re-import)
   title?: string;              // Optional text content
   description?: string;        // Optional text content

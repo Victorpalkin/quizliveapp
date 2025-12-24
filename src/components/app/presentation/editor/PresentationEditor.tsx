@@ -37,6 +37,7 @@ import { SlideList } from './SlideList';
 import { SlideTypeSelector } from './SlideTypeSelector';
 import { SlideEditorRenderer } from '../core';
 import { createSlide } from '../slide-types';
+import { BatchImageGenerator } from './BatchImageGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { INTERACTIVE_SLIDE_TYPES } from '@/hooks/presentation/use-pacing-status';
 import { useTemplateMutations } from '@/firebase/presentation';
@@ -133,6 +134,19 @@ export function PresentationEditor({
     (updatedSlide: PresentationSlide) => {
       setSlides((prev) =>
         prev.map((s) => (s.id === updatedSlide.id ? updatedSlide : s))
+      );
+      markChanged();
+    },
+    [markChanged]
+  );
+
+  // Handle batch image generation update
+  const handleBatchImageUpdate = useCallback(
+    (slideId: string, imageUrl: string) => {
+      setSlides((prev) =>
+        prev.map((s) =>
+          s.id === slideId ? { ...s, imageUrl } : s
+        )
       );
       markChanged();
     },
@@ -349,6 +363,13 @@ export function PresentationEditor({
           </Button>
         </div>
       </header>
+
+      {/* Batch Image Generator Banner */}
+      <BatchImageGenerator
+        presentationId={presentation.id}
+        slides={slides}
+        onSlideUpdate={handleBatchImageUpdate}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">

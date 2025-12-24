@@ -5,7 +5,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Image, Upload, X, Loader2, AlertCircle } from 'lucide-react';
+import { Image, Upload, X, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { useStorage } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import NextImage from 'next/image';
@@ -19,6 +19,7 @@ interface SlideImageUploadProps {
   presentationId: string;
   slideId: string;
   promptContext: string; // e.g., question text or slide title for AI generation
+  suggestedPrompt?: string; // AI-suggested prompt from presentation generation
   onImageChange: (imageUrl: string | undefined) => void;
   label?: string;
 }
@@ -32,6 +33,7 @@ export function SlideImageUpload({
   presentationId,
   slideId,
   promptContext,
+  suggestedPrompt,
   onImageChange,
   label = 'Image (optional)',
 }: SlideImageUploadProps) {
@@ -186,6 +188,12 @@ export function SlideImageUpload({
                 <p className="text-sm text-muted-foreground mb-3">
                   Upload an image or generate with AI
                 </p>
+                {suggestedPrompt && (
+                  <div className="flex items-center gap-2 text-xs text-primary bg-primary/5 px-3 py-1.5 rounded-full mb-3">
+                    <Sparkles className="h-3 w-3" />
+                    <span>AI prompt ready</span>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -204,6 +212,7 @@ export function SlideImageUpload({
                   </Button>
                   <AISlideImageGenerator
                     promptContext={promptContext}
+                    suggestedPrompt={suggestedPrompt}
                     presentationId={presentationId}
                     slideId={slideId}
                     onImageGenerated={handleAIImageGenerated}

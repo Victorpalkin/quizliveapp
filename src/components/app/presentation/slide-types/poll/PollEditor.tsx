@@ -104,6 +104,7 @@ export function PollEditor({ slide, presentation, onSlideChange }: SlideEditorPr
         presentationId={presentation.id}
         slideId={slide.id}
         promptContext={question?.text || 'poll question'}
+        suggestedPrompt={slide.imagePrompt}
         onImageChange={(url) => onSlideChange({ ...slide, imageUrl: url })}
       />
 

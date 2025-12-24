@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface AISlideImageGeneratorProps {
   promptContext: string;
+  suggestedPrompt?: string; // AI-suggested prompt from presentation generation
   presentationId: string;
   slideId: string;
   onImageGenerated: (imageUrl: string) => void;
@@ -42,6 +43,7 @@ Do not include any text in the image.`;
  */
 export function AISlideImageGenerator({
   promptContext,
+  suggestedPrompt,
   presentationId,
   slideId,
   onImageGenerated,
@@ -55,7 +57,8 @@ export function AISlideImageGenerator({
   const { toast } = useToast();
 
   const handleOpen = () => {
-    setPrompt(generateDefaultPrompt(promptContext));
+    // Use suggested prompt from AI if available, otherwise generate default
+    setPrompt(suggestedPrompt || generateDefaultPrompt(promptContext));
     setPreviewUrl(null);
     setIsOpen(true);
   };
