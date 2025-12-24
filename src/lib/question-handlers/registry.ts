@@ -7,6 +7,7 @@ import { SlideHandler } from './slide';
 import { FreeResponseHandler } from './free-response';
 import { PollSingleHandler } from './poll-single';
 import { PollMultipleHandler } from './poll-multiple';
+import { PollFreeTextHandler } from './poll-free-text';
 
 // Create singleton instances of all handlers
 const handlers = {
@@ -17,6 +18,7 @@ const handlers = {
   'free-response': new FreeResponseHandler(),
   'poll-single': new PollSingleHandler(),
   'poll-multiple': new PollMultipleHandler(),
+  'poll-free-text': new PollFreeTextHandler(),
 } as const;
 
 /**

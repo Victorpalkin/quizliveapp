@@ -3,14 +3,14 @@
 import { createContext, useContext } from 'react';
 import { Control } from 'react-hook-form';
 import type { QuizFormData } from '../quiz-form';
-import type { Question } from '@/lib/types';
+import type { QuizQuestion } from '@/lib/types';
 
 export interface QuizFormContextValue {
   // Form control
   control: Control<QuizFormData>;
 
   // Question operations
-  updateQuestion: (index: number, question: Question) => void;
+  updateQuestion: (index: number, question: QuizQuestion) => void;
   removeQuestion: (index: number) => void;
   duplicateQuestion: (index: number) => void;
   convertType: (index: number, type: 'single-choice' | 'multiple-choice' | 'slider' | 'slide' | 'free-response' | 'poll-single' | 'poll-multiple') => void;

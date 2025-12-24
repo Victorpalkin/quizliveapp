@@ -12,7 +12,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { QRCodeSVG } from 'qrcode.react';
-import { Users, Maximize, Minimize, X, QrCode, Copy, CheckCircle2 } from 'lucide-react';
+import { Users, Maximize, Minimize, X, QrCode, Copy, CheckCircle2, Pin, PinOff } from 'lucide-react';
 import { PacingStatus } from '@/hooks/presentation/use-pacing-status';
 
 interface HostOverlayProps {
@@ -36,6 +36,7 @@ export function HostOverlay({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lastMouseMove, setLastMouseMove] = useState(Date.now());
   const [joinUrl, setJoinUrl] = useState('');
+  const [isQrPinned, setIsQrPinned] = useState(false);
 
   // Build join URL on client
   useEffect(() => {
@@ -87,8 +88,39 @@ export function HostOverlay({
   }, []);
 
   return (
-    <AnimatePresence>
-      {isVisible && (
+    <>
+      {/* Pinned QR Code - always visible when pinned */}
+      <AnimatePresence>
+        {isQrPinned && joinUrl && (
+          <motion.div
+            className="absolute bottom-4 right-4 z-40"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="bg-white p-3 rounded-xl shadow-lg">
+              <QRCodeSVG value={joinUrl} size={120} level="M" />
+              <div className="mt-2 text-center">
+                <p className="text-xs font-medium text-gray-700">PIN: {gamePin}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute -top-2 -right-2 h-6 w-6 bg-gray-100 hover:bg-gray-200 rounded-full shadow"
+                onClick={() => setIsQrPinned(false)}
+                title="Unpin QR code"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Top overlay bar */}
+      <AnimatePresence>
+        {isVisible && (
         <motion.div
           className="absolute top-0 left-0 right-0 z-50"
           initial={{ opacity: 0, y: -20 }}
@@ -105,7 +137,7 @@ export function HostOverlay({
               >
                 PIN: {gamePin}
               </Badge>
-              <CopyButton text={gamePin} className="text-white hover:bg-white/20" />
+              <CopyButton text={gamePin} variant="ghost" className="text-white hover:bg-white/20 h-8 w-8" />
 
               {/* QR Code Popover */}
               <Popover>
@@ -113,14 +145,30 @@ export function HostOverlay({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-white hover:bg-white/20 h-8 w-8"
+                    className={`text-white hover:bg-white/20 h-8 w-8 ${isQrPinned ? 'bg-white/20' : ''}`}
+                    title={isQrPinned ? 'QR code pinned' : 'Show QR code'}
                   >
                     <QrCode className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-4" align="start">
                   <div className="flex flex-col items-center gap-3">
-                    <p className="text-sm font-medium">Scan to join</p>
+                    <div className="flex items-center justify-between w-full">
+                      <p className="text-sm font-medium">Scan to join</p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setIsQrPinned(!isQrPinned)}
+                        title={isQrPinned ? 'Unpin QR code' : 'Pin QR code to screen'}
+                      >
+                        {isQrPinned ? (
+                          <PinOff className="h-4 w-4" />
+                        ) : (
+                          <Pin className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                     {joinUrl && (
                       <div className="bg-white p-3 rounded-lg">
                         <QRCodeSVG value={joinUrl} size={160} level="M" />
@@ -215,5 +263,6 @@ export function HostOverlay({
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   );
 }

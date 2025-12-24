@@ -9,7 +9,7 @@ import { Header } from '@/components/app/header';
 import { SharedQuizzes } from '@/components/app/shared-quizzes';
 import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
-import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion, Gamepad2, ArrowUpDown, Sparkles, RotateCcw, Presentation } from 'lucide-react';
+import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion, Gamepad2, ArrowUpDown, Sparkles, RotateCcw, Presentation, Vote } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateDropdown } from './components/create-dropdown';
 import { QuizCard } from './components/quiz-card';
@@ -22,14 +22,14 @@ import { collection, addDoc, serverTimestamp, query, where, doc, deleteDoc, getD
 import { ref, deleteObject } from 'firebase/storage';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
-import type { Quiz, Game, ThoughtsGatheringActivity, EvaluationActivity, Presentation as PresentationType } from '@/lib/types';
+import type { Quiz, Game, ThoughtsGatheringActivity, EvaluationActivity, PollActivity, Presentation as PresentationType } from '@/lib/types';
 import { usePresentations, usePresentationMutations, useCreatePresentationGame } from '@/firebase/presentation';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { quizConverter, gameConverter, thoughtsGatheringActivityConverter, evaluationActivityConverter } from '@/firebase/converters';
+import { quizConverter, gameConverter, thoughtsGatheringActivityConverter, evaluationActivityConverter, pollActivityConverter } from '@/firebase/converters';
 
-type Activity = ThoughtsGatheringActivity | EvaluationActivity;
+type Activity = ThoughtsGatheringActivity | EvaluationActivity | PollActivity;
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,7 +90,7 @@ export default function HostDashboardPage() {
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
 
   // Filter and sort state
-  type FilterType = 'all' | 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation';
+  type FilterType = 'all' | 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation' | 'poll';
   type SortType = 'recent' | 'alphabetical' | 'created';
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [sortType, setSortType] = useState<SortType>('recent');
@@ -134,12 +134,24 @@ export default function HostDashboardPage() {
 
   const { data: evaluationActivities, loading: evaluationLoading } = useCollection<EvaluationActivity>(evaluationQuery);
 
+  // Fetch Poll activities
+  const pollQuery = useMemoFirebase(() =>
+    user ? query(
+      collection(firestore, 'activities').withConverter(pollActivityConverter),
+      where('hostId', '==', user.uid),
+      where('type', '==', 'poll')
+    ) as Query<PollActivity> : null
+  , [user, firestore]);
+
+  const { data: pollActivities, loading: pollLoading } = useCollection<PollActivity>(pollQuery);
+
   // Combine activities for display
   const activities: Activity[] = [
     ...(thoughtsGatheringActivities || []),
-    ...(evaluationActivities || [])
+    ...(evaluationActivities || []),
+    ...(pollActivities || [])
   ];
-  const activitiesLoading = thoughtsGatheringLoading || evaluationLoading;
+  const activitiesLoading = thoughtsGatheringLoading || evaluationLoading || pollLoading;
 
   useEffect(() => {
     if (!userLoading && !user) {
@@ -288,6 +300,8 @@ export default function HostDashboardPage() {
             router.push(`/host/thoughts-gathering/lobby/${game.id}`);
         } else if (game.activityType === 'evaluation') {
             router.push(`/host/evaluation/game/${game.id}`);
+        } else if (game.activityType === 'poll') {
+            router.push(`/host/poll/lobby/${game.id}`);
         } else {
             router.push(`/host/quiz/lobby/${game.id}`);
         }
@@ -296,6 +310,8 @@ export default function HostDashboardPage() {
             router.push(`/host/thoughts-gathering/game/${game.id}`);
         } else if (game.activityType === 'evaluation') {
             router.push(`/host/evaluation/game/${game.id}`);
+        } else if (game.activityType === 'poll') {
+            router.push(`/host/poll/game/${game.id}`);
         } else {
             router.push(`/host/quiz/game/${game.id}`);
         }
@@ -374,6 +390,9 @@ export default function HostDashboardPage() {
     }
     if (game.activityType === 'evaluation') {
       return activities.find(a => a.id === game.activityId)?.title || 'Evaluation';
+    }
+    if (game.activityType === 'poll') {
+      return activities.find(a => a.id === game.activityId)?.title || 'Poll';
     }
     return quizzes?.find(q => q.id === game.quizId)?.title || 'Quiz';
   };
@@ -477,6 +496,7 @@ export default function HostDashboardPage() {
                     {[
                         { value: 'all', label: 'All', icon: null },
                         { value: 'quiz', label: 'Quizzes', icon: FileQuestion },
+                        { value: 'poll', label: 'Polls', icon: Vote },
                         { value: 'presentation', label: 'Presentations', icon: Presentation },
                         { value: 'thoughts-gathering', label: 'Thoughts', icon: Cloud },
                         { value: 'evaluation', label: 'Evaluations', icon: BarChart3 },
@@ -529,7 +549,7 @@ export default function HostDashboardPage() {
             ) : (() => {
                 // Build unified list of items for filtering and sorting
                 type ContentItem = {
-                    type: 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation';
+                    type: 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation' | 'poll';
                     data: Quiz | Activity | PresentationType;
                     title: string;
                     updatedAt?: Date;

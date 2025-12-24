@@ -15,6 +15,8 @@ import {
   EvaluationActivity,
   EvaluationItem,
   PlayerRatings,
+  PollActivity,
+  PollFreeTextResponse,
 } from '@/lib/types';
 import { removeUndefined } from '@/lib/firestore-utils';
 
@@ -284,6 +286,59 @@ export const playerRatingsConverter: FirestoreDataConverter<PlayerRatings> = {
       ratings: data.ratings || {},
       submittedAt: data.submittedAt,
       isComplete: data.isComplete ?? false,
+    };
+  }
+};
+
+// ==========================================
+// Poll Activity Converters
+// ==========================================
+
+export const pollActivityConverter: FirestoreDataConverter<PollActivity> = {
+  toFirestore(activity: PollActivity): DocumentData {
+    const { id, ...data } = activity;
+    return removeUndefined({
+      ...data,
+      createdAt: data.createdAt instanceof Date ? Timestamp.fromDate(data.createdAt) : data.createdAt,
+      updatedAt: data.updatedAt instanceof Date ? Timestamp.fromDate(data.updatedAt) : data.updatedAt,
+    });
+  },
+  fromFirestore(
+    snapshot: QueryDocumentSnapshot,
+    options: SnapshotOptions
+  ): PollActivity {
+    const data = snapshot.data(options);
+    return {
+      id: snapshot.id,
+      type: 'poll',
+      title: data.title,
+      description: data.description,
+      hostId: data.hostId,
+      questions: data.questions || [],
+      config: data.config || { allowAnonymous: false, defaultShowLiveResults: true },
+      createdAt: toDateSafe(data.createdAt) || new Date(),
+      updatedAt: toDateSafe(data.updatedAt) || new Date(),
+    };
+  }
+};
+
+export const pollFreeTextResponseConverter: FirestoreDataConverter<PollFreeTextResponse> = {
+  toFirestore(response: PollFreeTextResponse): DocumentData {
+    const { id, ...data } = response;
+    return removeUndefined(data);
+  },
+  fromFirestore(
+    snapshot: QueryDocumentSnapshot,
+    options: SnapshotOptions
+  ): PollFreeTextResponse {
+    const data = snapshot.data(options);
+    return {
+      id: snapshot.id,
+      questionIndex: data.questionIndex,
+      playerId: data.playerId,
+      playerName: data.playerName,
+      text: data.text,
+      submittedAt: data.submittedAt,
     };
   }
 };

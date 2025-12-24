@@ -19,6 +19,7 @@ import {
   TrendingUp,
   ArrowLeft,
   Presentation,
+  Vote,
 } from 'lucide-react';
 interface ActivityTypeCardProps {
   icon: React.ReactNode;
@@ -169,6 +170,22 @@ export default function CreateActivityPage() {
             href="/host/thoughts-gathering/create"
           />
 
+          {/* Poll */}
+          <ActivityTypeCard
+            icon={<Vote className="h-8 w-8 text-teal-600" />}
+            iconBg="bg-teal-100 dark:bg-teal-900/30"
+            title="Poll"
+            description="Quick, non-competitive way to gather opinions. Perfect for feedback and sentiment checks."
+            bestFor={['Quick feedback', 'Sentiment checks', 'Anonymous voting', 'Audience engagement']}
+            features={[
+              'Single/multiple choice',
+              'Free text responses',
+              'Live results update',
+              'Optional anonymity',
+            ]}
+            href="/host/poll/create"
+          />
+
           {/* Evaluation */}
           <ActivityTypeCard
             icon={<BarChart3 className="h-8 w-8 text-orange-600" />}
@@ -216,6 +233,7 @@ export default function CreateActivityPage() {
                 <h3 className="text-lg font-semibold mb-1">Not sure which to choose?</h3>
                 <p className="text-muted-foreground mb-3">
                   Start with a <strong>Quiz</strong> if you want to test knowledge,
+                  <strong> Poll</strong> for quick opinion gathering,
                   <strong> Thoughts Gathering</strong> for open-ended feedback,
                   or <strong>Evaluation</strong> for structured prioritization.
                 </p>
@@ -223,6 +241,10 @@ export default function CreateActivityPage() {
                   <div className="flex items-center gap-2">
                     <Trophy className="h-4 w-4 text-purple-500" />
                     <span>Quiz = Competition</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Vote className="h-4 w-4 text-teal-500" />
+                    <span>Poll = Opinions</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-blue-500" />

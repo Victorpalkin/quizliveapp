@@ -9,9 +9,12 @@ import {
   collection,
   setDoc,
   serverTimestamp,
+  query,
+  where,
+  getDocs,
 } from 'firebase/firestore';
 import {
-  usePresentationGameByPin,
+  usePresentationGame,
   usePresentation,
 } from '@/firebase/presentation';
 import { PresentationPlayer, WaitingScreen } from '@/components/app/presentation';
@@ -42,9 +45,44 @@ export default function PresentationPlayerPage() {
   const [gameId, setGameId] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [initializing, setInitializing] = useState(true);
+  const [gameNotFound, setGameNotFound] = useState(false);
 
-  // Firebase data
-  const { game, loading: gameLoading } = usePresentationGameByPin(gamePin);
+  // Find game by PIN on mount (one-time query, like quiz player)
+  useEffect(() => {
+    const findGame = async () => {
+      if (!firestore || !gamePin) return;
+
+      try {
+        const gamesRef = collection(firestore, 'games');
+        const q = query(
+          gamesRef,
+          where('gamePin', '==', gamePin.toUpperCase()),
+          where('activityType', '==', 'presentation')
+        );
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          setGameId(snapshot.docs[0].id);
+        } else {
+          setGameNotFound(true);
+        }
+      } catch (err) {
+        console.error('Error finding game:', err);
+        setGameNotFound(true);
+      }
+    };
+
+    // Only find game if we don't already have the ID from session
+    const session = getPlayerSession();
+    if (session && session.gamePin === gamePin) {
+      setGameId(session.gameDocId);
+    } else {
+      findGame();
+    }
+  }, [firestore, gamePin]);
+
+  // Firebase data - use document-based subscription for real-time updates
+  const { game, loading: gameLoading } = usePresentationGame(gameId || null);
   const { presentation, loading: presentationLoading } = usePresentation(
     game?.presentationId || ''
   );
@@ -70,7 +108,7 @@ export default function PresentationPlayerPage() {
     if (session && session.gamePin === gamePin) {
       setPlayerId(session.playerId);
       setPlayerName(session.nickname);
-      setGameId(session.gameDocId);
+      // gameId is already set in the findGame effect above
       // State machine will handle the state transition
       setJoined();
     } else {
@@ -78,13 +116,6 @@ export default function PresentationPlayerPage() {
     }
     setInitializing(false);
   }, [gamePin, setJoined]);
-
-  // Update gameId when game loads
-  useEffect(() => {
-    if (game && !gameId) {
-      setGameId(game.id);
-    }
-  }, [game, gameId]);
 
   // Join the game
   const handleJoin = useCallback(async () => {
@@ -109,7 +140,6 @@ export default function PresentationPlayerPage() {
       savePlayerSession(playerId, game.id, gamePin, trimmedName);
 
       setPlayerName(trimmedName);
-      setGameId(game.id);
 
       // Notify state machine of successful join
       setJoined();
@@ -119,13 +149,13 @@ export default function PresentationPlayerPage() {
     }
   }, [nameInput, game, playerId, gamePin, firestore, setJoined]);
 
-  // Loading state
-  if (initializing || gameLoading || presentationLoading) {
+  // Loading state - wait for game ID to be found or not found
+  if (initializing || (!gameId && !gameNotFound) || gameLoading || presentationLoading) {
     return <FullPageLoader />;
   }
 
   // Game not found - check after loading is complete
-  if (!game && !gameLoading) {
+  if (gameNotFound || (!game && !gameLoading)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-6">
         <Card className="w-full max-w-md">

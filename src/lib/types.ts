@@ -70,8 +70,21 @@ export interface PollMultipleQuestion extends BaseQuestion {
   answers: Answer[];
 }
 
+// Poll question - free text, no scoring
+export interface PollFreeTextQuestion extends BaseQuestion {
+  type: 'poll-free-text';
+  placeholder?: string;     // e.g., "Share your thoughts..."
+  maxLength?: number;       // Default: 500
+}
+
 // Discriminated union of all question types
-export type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion;
+export type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion | PollFreeTextQuestion;
+
+// Quiz question union (excludes PollFreeTextQuestion since quizzes don't use free text polls)
+export type QuizQuestion = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion;
+
+// Poll question union (for Poll activity)
+export type PollQuestion = PollSingleQuestion | PollMultipleQuestion | PollFreeTextQuestion;
 
 // Crowdsource settings configured during quiz creation/edit
 export interface CrowdsourceSettings {
@@ -116,14 +129,14 @@ export interface HostProfile {
 
 export interface PlayerAnswer {
     questionIndex: number;
-    questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'free-response' | 'poll-single' | 'poll-multiple';
+    questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'free-response' | 'poll-single' | 'poll-multiple' | 'poll-free-text';
     timestamp: Timestamp;
 
     // Answer data (type-specific, one will be populated)
     answerIndex?: number;           // For single-choice, poll-single
     answerIndices?: number[];       // For multiple-choice, poll-multiple
     sliderValue?: number;           // For slider
-    textAnswer?: string;            // For free-response
+    textAnswer?: string;            // For free-response, poll-free-text
 
     // Scoring data
     points: number;
@@ -147,7 +160,7 @@ export interface CrowdsourceState {
 }
 
 // Activity types for the Activity system
-export type ActivityType = 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation';
+export type ActivityType = 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation' | 'poll';
 
 // Quiz game states (existing)
 export type QuizGameState = 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
@@ -158,11 +171,14 @@ export type ThoughtsGatheringGameState = 'lobby' | 'collecting' | 'processing' |
 // Evaluation game states
 export type EvaluationGameState = 'collecting' | 'rating' | 'analyzing' | 'results' | 'ended';
 
+// Poll game states
+export type PollGameState = 'lobby' | 'question' | 'results' | 'ended';
+
 export interface Game {
     id: string;
     quizId: string;
     hostId: string;
-    state: QuizGameState | ThoughtsGatheringGameState | EvaluationGameState;
+    state: QuizGameState | ThoughtsGatheringGameState | EvaluationGameState | PollGameState;
     currentQuestionIndex: number;
     gamePin: string;
     questionStartTime?: Timestamp; // Firestore server timestamp when current question started (for timer sync)
@@ -515,6 +531,58 @@ export interface EvaluationResults {
   items: EvaluationItemResult[];
   totalParticipants: number;
   participantsWhoRated: number;
+  processedAt: Timestamp;
+}
+
+// ==========================================
+// Poll Activity Types
+// ==========================================
+
+/**
+ * Configuration for Poll activity
+ */
+export interface PollConfig {
+  allowAnonymous: boolean;           // Default: false - players can join without name
+  defaultShowLiveResults: boolean;   // Default: true - show results updating in real-time
+}
+
+/**
+ * Poll activity stored in /activities/{activityId}
+ */
+export interface PollActivity {
+  id: string;
+  type: 'poll';
+  title: string;
+  description?: string;
+  hostId: string;
+  questions: PollQuestion[];
+  config: PollConfig;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Free text response stored in /games/{gameId}/responses/{responseId}
+ */
+export interface PollFreeTextResponse {
+  id: string;
+  questionIndex: number;
+  playerId: string;
+  playerName?: string;        // Empty if anonymous
+  text: string;
+  submittedAt: Timestamp;
+}
+
+/**
+ * Aggregated results for poll questions stored in /games/{gameId}/aggregates/question_{index}
+ */
+export interface PollQuestionResult {
+  questionIndex: number;
+  totalResponses: number;
+  // For choice questions
+  answerCounts?: number[];           // Count per answer option
+  // For free text questions (grouped by AI)
+  textGroups?: TopicEntry[];         // Reuse TopicEntry from thoughts gathering
   processedAt: Timestamp;
 }
 

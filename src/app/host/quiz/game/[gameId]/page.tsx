@@ -307,21 +307,23 @@ export default function HostGamePage() {
                 </div>
               </CardContent>
             </Card>
-          ) : question.type === 'free-response' ? (
+          ) : question.type === 'free-response' || question.type === 'poll-free-text' ? (
             <Card className="w-full max-w-2xl mx-auto mt-8">
               <CardContent className="p-8 text-center">
                 <p className="text-lg text-muted-foreground mb-4">Players are typing their answers...</p>
                 <div className="space-y-4">
-                  <Badge variant="secondary" className="text-sm">Free Response Question</Badge>
-                  <p className="text-sm text-muted-foreground">
-                    {question.allowTypos !== false ? 'Typo tolerance enabled' : 'Exact match required'}
-                  </p>
+                  <Badge variant="secondary" className="text-sm">{question.type === 'poll-free-text' ? 'Poll Free Text' : 'Free Response Question'}</Badge>
+                  {question.type === 'free-response' && (
+                    <p className="text-sm text-muted-foreground">
+                      {question.allowTypos !== false ? 'Typo tolerance enabled' : 'Exact match required'}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
-          ) : (
+          ) : 'answers' in question ? (
             <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 w-full max-w-4xl">
-              {question.answers.map((ans, i) => (
+              {question.answers.map((ans: { text: string }, i: number) => (
                 <AnswerButton
                   key={i}
                   letter={indexToLetter(i)}
@@ -334,7 +336,7 @@ export default function HostGamePage() {
                 />
               ))}
             </div>
-          )}
+          ) : null}
         </main>
       )}
 

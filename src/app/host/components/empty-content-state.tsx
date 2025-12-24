@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { FileQuestion, Cloud, BarChart3, Sparkles, FolderOpen, Presentation } from 'lucide-react';
+import { FileQuestion, Cloud, BarChart3, Sparkles, FolderOpen, Presentation, Vote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-type FilterType = 'all' | 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation';
+type FilterType = 'all' | 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation' | 'poll';
 
 interface EmptyContentStateProps {
   filterType: FilterType;
@@ -42,6 +42,14 @@ const activityConfig = {
     gradient: 'from-indigo-500 to-purple-500',
     iconColor: 'text-indigo-500',
     aiHref: '/host/presentation/create-ai',
+  },
+  poll: {
+    title: 'Poll',
+    icon: Vote,
+    href: '/host/poll/create',
+    gradient: 'from-teal-500 to-cyan-500',
+    iconColor: 'text-teal-500',
+    aiHref: null,
   },
 };
 

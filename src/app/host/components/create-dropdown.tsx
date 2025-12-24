@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PlusCircle, Sparkles, FileText, Cloud, ChevronDown, BarChart3, LayoutGrid, Presentation } from 'lucide-react';
+import { PlusCircle, Sparkles, FileText, Cloud, ChevronDown, BarChart3, LayoutGrid, Presentation, Vote } from 'lucide-react';
 
 export function CreateDropdown() {
   return (
@@ -58,6 +58,15 @@ export function CreateDropdown() {
             <div className="flex flex-col">
               <span>Thoughts Gathering</span>
               <span className="text-xs text-muted-foreground">Collect & visualize topics</span>
+            </div>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/host/poll/create" className="flex items-center">
+            <Vote className="mr-2 h-4 w-4 text-teal-500" />
+            <div className="flex flex-col">
+              <span>Poll</span>
+              <span className="text-xs text-muted-foreground">Gather opinions</span>
             </div>
           </Link>
         </DropdownMenuItem>

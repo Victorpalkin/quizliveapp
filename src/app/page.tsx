@@ -15,6 +15,8 @@ import {
   Smartphone,
   LineChart,
   MessageSquare,
+  Presentation,
+  ListChecks,
 } from 'lucide-react';
 import { HostReconnectOverlay } from '@/components/app/host-reconnect-banner';
 
@@ -94,14 +96,62 @@ export default function Home() {
           <div className="container mx-auto px-6">
             <div className="text-center mb-8">
               <h2 className="text-2xl md:text-3xl font-bold mb-2">
-                Three Activity Types
+                Choose Your Activity Type
               </h2>
               <p className="text-muted-foreground">
-                Choose the right format for your live session
+                The right format for your live session
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              {/* Presentation */}
+              <Card className="border-card-border hover:shadow-lg transition-shadow sm:col-span-2 lg:col-span-1">
+                <CardContent className="p-6">
+                  <div className="rounded-xl bg-purple-500/10 p-3 w-fit mb-4">
+                    <Presentation className="h-8 w-8 text-purple-500" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Presentation</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Combine slides with interactive activities. Import from Google Slides or generate with AI.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Keynotes, training sessions, workshops, interactive lectures
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Quiz */}
+              <Card className="border-card-border hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="rounded-xl bg-primary/10 p-3 w-fit mb-4">
+                    <BrainCircuit className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Quiz</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Scored questions with leaderboards. Create manually or generate with AI.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Knowledge checks, competitions, gamified learning
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Poll */}
+              <Card className="border-card-border hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="rounded-xl bg-green-500/10 p-3 w-fit mb-4">
+                    <ListChecks className="h-8 w-8 text-green-500" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Poll</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Unscored questions to gather opinions. See real-time response distributions.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Quick votes, feedback collection, audience sentiment
+                  </p>
+                </CardContent>
+              </Card>
+
               {/* Thoughts Gathering */}
               <Card className="border-card-border hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
@@ -110,26 +160,10 @@ export default function Home() {
                   </div>
                   <h3 className="text-xl font-semibold mb-2">Thoughts Gathering</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Collect ideas and feedback. AI-powered clustering reveals themes.
+                    Collect free-form ideas. AI groups similar responses into themes.
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Brainstorming, Q&A, retrospectives, pain point discovery
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Quizzes & Polls */}
-              <Card className="border-card-border hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="rounded-xl bg-primary/10 p-3 w-fit mb-4">
-                    <BrainCircuit className="h-8 w-8 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">Quizzes & Polls</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Interactive questions with real-time results and leaderboards.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Live polling, knowledge checks, icebreakers, voting
+                    Brainstorming, Q&A, retrospectives, idea generation
                   </p>
                 </CardContent>
               </Card>
@@ -142,10 +176,10 @@ export default function Home() {
                   </div>
                   <h3 className="text-xl font-semibold mb-2">Evaluation</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Rate and rank items across custom criteria with weighted scoring.
+                    Rate items on custom metrics. Visualize rankings with heatmaps and charts.
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Prioritization, comparison, requirements scoring, assessments
+                    Prioritization, comparisons, weighted scoring, assessments
                   </p>
                 </CardContent>
               </Card>
@@ -162,7 +196,7 @@ export default function Home() {
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
               <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border">
                 <Timer className="h-5 w-5 text-primary flex-shrink-0" />
                 <span className="text-sm font-medium">Real-time Sync</span>
@@ -170,7 +204,12 @@ export default function Home() {
 
               <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border">
                 <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
-                <span className="text-sm font-medium">AI-Powered</span>
+                <span className="text-sm font-medium">AI Content Generation</span>
+              </div>
+
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border">
+                <Presentation className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium">Google Slides Import</span>
               </div>
 
               <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border">
@@ -191,6 +230,11 @@ export default function Home() {
               <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border">
                 <Smartphone className="h-5 w-5 text-primary flex-shrink-0" />
                 <span className="text-sm font-medium">Works Everywhere</span>
+              </div>
+
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border">
+                <BrainCircuit className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium">AI Theme Clustering</span>
               </div>
             </div>
           </div>
@@ -213,7 +257,7 @@ export default function Home() {
                 </div>
                 <h3 className="font-semibold mb-1">Create Activity</h3>
                 <p className="text-sm text-muted-foreground">
-                  Choose quiz, thoughts, or evaluation
+                  Presentation, quiz, poll, or more
                 </p>
               </div>
 
