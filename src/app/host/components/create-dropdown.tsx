@@ -71,6 +71,15 @@ export function CreateDropdown() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/host/poll/create-ai" className="flex items-center">
+            <Sparkles className="mr-2 h-4 w-4 text-teal-500" />
+            <div className="flex flex-col">
+              <span>Poll with AI</span>
+              <span className="text-xs text-muted-foreground">AI-generated questions</span>
+            </div>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer">
           <Link href="/host/evaluation/create" className="flex items-center">
             <BarChart3 className="mr-2 h-4 w-4 text-orange-500" />
             <div className="flex flex-col">

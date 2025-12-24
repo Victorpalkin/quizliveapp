@@ -208,3 +208,62 @@ export interface GeneratePresentationResponse {
   presentation: GeneratedPresentation;
   message: string;
 }
+
+/**
+ * Types for AI Poll Generation
+ */
+
+// Poll single choice question (no correct answer)
+export interface GeneratedPollSingleQuestion {
+  type: 'poll-single';
+  text: string;
+  answers: Answer[];
+  timeLimit?: number;
+  showLiveResults?: boolean;
+}
+
+// Poll multiple choice question (no correct answer)
+export interface GeneratedPollMultipleQuestion {
+  type: 'poll-multiple';
+  text: string;
+  answers: Answer[];
+  timeLimit?: number;
+  showLiveResults?: boolean;
+}
+
+// Poll free text question
+export interface GeneratedPollFreeTextQuestion {
+  type: 'poll-free-text';
+  text: string;
+  placeholder?: string;
+  maxLength?: number;
+  timeLimit?: number;
+  showLiveResults?: boolean;
+}
+
+// Union of all poll question types
+export type GeneratedPollQuestionType =
+  | GeneratedPollSingleQuestion
+  | GeneratedPollMultipleQuestion
+  | GeneratedPollFreeTextQuestion;
+
+// Generated poll structure
+export interface GeneratedPoll {
+  title: string;
+  description?: string;
+  questions: GeneratedPollQuestionType[];
+  allowAnonymous?: boolean;
+}
+
+// Request to generate poll
+export interface GeneratePollRequest {
+  prompt: string;
+  conversationHistory?: ChatMessage[];
+  currentPoll?: GeneratedPoll;
+}
+
+// Response from generate poll
+export interface GeneratePollResponse {
+  poll: GeneratedPoll;
+  message: string;
+}
