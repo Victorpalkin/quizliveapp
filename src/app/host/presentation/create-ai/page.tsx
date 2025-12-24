@@ -44,6 +44,7 @@ const slideTypeIcons: Record<PresentationSlideType, React.ReactNode> = {
   'rating-describe': <Star className="h-4 w-4" />,
   'rating-input': <Star className="h-4 w-4" />,
   'rating-results': <Star className="h-4 w-4" />,
+  'rating-summary': <BarChart3 className="h-4 w-4" />,
   'leaderboard': <Trophy className="h-4 w-4" />,
 };
 
@@ -57,6 +58,7 @@ const slideTypeLabels: Record<PresentationSlideType, string> = {
   'rating-describe': 'Rating Item',
   'rating-input': 'Rate',
   'rating-results': 'Rating Results',
+  'rating-summary': 'Summary',
   'leaderboard': 'Leaderboard',
 };
 
@@ -70,6 +72,7 @@ const slideTypeColors: Record<PresentationSlideType, string> = {
   'rating-describe': 'bg-yellow-500/10 text-yellow-600 border-yellow-200',
   'rating-input': 'bg-yellow-500/10 text-yellow-600 border-yellow-200',
   'rating-results': 'bg-yellow-500/10 text-yellow-600 border-yellow-200',
+  'rating-summary': 'bg-amber-500/10 text-amber-600 border-amber-200',
   'leaderboard': 'bg-pink-500/10 text-pink-600 border-pink-200',
 };
 

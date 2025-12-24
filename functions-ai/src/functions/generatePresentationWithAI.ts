@@ -2,6 +2,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { GoogleGenAI } from '@google/genai';
 import { ALLOWED_ORIGINS, REGION, GEMINI_MODEL, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
+import { enforceRateLimitInMemory } from '../utils/rateLimit';
 import {
   GeneratePresentationRequest,
   GeneratePresentationResponse,
@@ -294,6 +295,10 @@ function parsePresentationResponse(responseText: string): GeneratePresentationRe
           if (!slide.pollQuestion.timeLimit) {
             slide.pollQuestion.timeLimit = 30;
           }
+          // Map pollQuestion to question for frontend compatibility
+          // The frontend PresentationSlide type uses 'question' field for both quiz and poll
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (slide as any).question = slide.pollQuestion;
           break;
 
         case 'thoughts-collect':
@@ -336,6 +341,16 @@ function parsePresentationResponse(responseText: string): GeneratePresentationRe
           // Set default mode
           if (!slide.ratingResultsMode) {
             slide.ratingResultsMode = 'single';
+          }
+          break;
+
+        case 'rating-summary':
+          // Set defaults for summary slide
+          if (!slide.summaryTitle) {
+            slide.summaryTitle = 'Rating Summary';
+          }
+          if (!slide.summaryDefaultView) {
+            slide.summaryDefaultView = 'ranking';
           }
           break;
 
@@ -384,8 +399,13 @@ export const generatePresentationWithAI = onCall(
     enforceAppCheck: true,
   },
   async (request): Promise<GeneratePresentationResponse> => {
-    // Verify App Check token (monitoring mode - allows requests without token)
+    // Verify App Check token
     verifyAppCheck(request);
+
+    // Rate limiting: 10 requests per hour per user (high cost operation)
+    if (request.auth?.uid) {
+      enforceRateLimitInMemory(request.auth.uid, 10, 3600);
+    }
 
     // Verify user is authenticated
     if (!request.auth) {

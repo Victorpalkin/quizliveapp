@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback } from 'react';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Loader2 } from 'lucide-react';
 import { PresentationSlide, Presentation, PresentationGame } from '@/lib/types';
 import { getSlideType, SlidePlayerProps, SlideResponse } from '../slide-types';
 import {
@@ -18,6 +19,7 @@ export interface PlayerSlideRendererProps {
   gameId?: string;
   slideIndex: number; // For submitAnswer questionIndex mapping
   onSubmit?: (response: SlideResponse) => Promise<void>;
+  onResponseSubmitted?: () => void; // Callback when response is submitted (for state machine)
 }
 
 /**
@@ -33,6 +35,7 @@ export function PlayerSlideRenderer({
   gameId = '',
   slideIndex,
   onSubmit,
+  onResponseSubmitted,
 }: PlayerSlideRendererProps) {
   // Check if player has already responded to this slide
   const { hasResponded, loading: responseLoading } = usePlayerSlideResponse(
@@ -85,8 +88,13 @@ export function PlayerSlideRenderer({
       if (onSubmit) {
         await onSubmit(fullResponse);
       }
+
+      // Notify state machine that response was submitted
+      if (onResponseSubmitted) {
+        onResponseSubmitted();
+      }
     },
-    [playerId, playerName, gameId, submitResponse, onSubmit]
+    [playerId, playerName, gameId, submitResponse, onSubmit, onResponseSubmitted]
   );
 
   const props: SlidePlayerProps = {
@@ -99,6 +107,20 @@ export function PlayerSlideRenderer({
     onSubmit: handleSubmit,
     slideIndex,
   };
+
+  // Show loading state while checking if player has already responded
+  if (responseLoading) {
+    return (
+      <motion.div
+        className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
+        <p className="text-muted-foreground">Loading...</p>
+      </motion.div>
+    );
+  }
 
   return (
     <AnimatePresence mode="wait">

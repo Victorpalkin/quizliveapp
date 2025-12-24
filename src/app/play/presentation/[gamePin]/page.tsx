@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { nanoid } from 'nanoid';
 import { useFirestore } from '@/firebase';
@@ -25,8 +25,7 @@ import {
   savePlayerSession,
 } from '@/lib/player-session';
 import { useWakeLock } from '@/hooks/use-wake-lock';
-
-type PlayerState = 'loading' | 'joining' | 'joined' | 'not_found' | 'error';
+import { usePresentationPlayerStateMachine } from './hooks/use-presentation-player-state-machine';
 
 export default function PresentationPlayerPage() {
   const params = useParams();
@@ -37,13 +36,13 @@ export default function PresentationPlayerPage() {
   // Keep screen awake during presentation
   useWakeLock(true);
 
-  // Player state
-  const [playerState, setPlayerState] = useState<PlayerState>('loading');
+  // Player identity state
   const [playerId, setPlayerId] = useState<string>('');
   const [playerName, setPlayerName] = useState<string>('');
   const [nameInput, setNameInput] = useState<string>('');
   const [gameId, setGameId] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [initializing, setInitializing] = useState(true);
 
   // Firebase data
   const { game, loading: gameLoading } = usePresentationGameByPin(gamePin);
@@ -52,19 +51,35 @@ export default function PresentationPlayerPage() {
   );
   const { players } = usePresentationPlayers(game?.id || '');
 
-  // Check for existing session on mount
+  // Check for existing session
+  const hasValidSession = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const session = getPlayerSession();
+    return !!(session && session.gamePin === gamePin);
+  }, [gamePin]);
+
+  // State machine for game state synchronization
+  const { state, markSubmitted, setJoined } = usePresentationPlayerStateMachine(
+    gamePin,
+    hasValidSession,
+    game,
+    gameLoading
+  );
+
+  // Initialize player identity on mount
   useEffect(() => {
     const session = getPlayerSession();
     if (session && session.gamePin === gamePin) {
       setPlayerId(session.playerId);
       setPlayerName(session.nickname);
       setGameId(session.gameDocId);
-      setPlayerState('joined');
+      // State machine will handle the state transition
+      setJoined();
     } else {
       setPlayerId(nanoid());
-      setPlayerState('joining');
     }
-  }, [gamePin]);
+    setInitializing(false);
+  }, [gamePin, setJoined]);
 
   // Update gameId when game loads
   useEffect(() => {
@@ -72,13 +87,6 @@ export default function PresentationPlayerPage() {
       setGameId(game.id);
     }
   }, [game, gameId]);
-
-  // Handle game not found
-  useEffect(() => {
-    if (!gameLoading && !game) {
-      setPlayerState('not_found');
-    }
-  }, [game, gameLoading]);
 
   // Join the game
   const handleJoin = useCallback(async () => {
@@ -104,20 +112,22 @@ export default function PresentationPlayerPage() {
 
       setPlayerName(trimmedName);
       setGameId(game.id);
-      setPlayerState('joined');
+
+      // Notify state machine of successful join
+      setJoined();
     } catch (err) {
       console.error('Failed to join game:', err);
       setError('Failed to join. Please try again.');
     }
-  }, [nameInput, game, playerId, gamePin, firestore]);
+  }, [nameInput, game, playerId, gamePin, firestore, setJoined]);
 
   // Loading state
-  if (playerState === 'loading' || gameLoading || presentationLoading) {
+  if (initializing || gameLoading || presentationLoading) {
     return <FullPageLoader />;
   }
 
-  // Game not found
-  if (playerState === 'not_found') {
+  // Game not found - check after loading is complete
+  if (!game && !gameLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-6">
         <Card className="w-full max-w-md">
@@ -141,7 +151,7 @@ export default function PresentationPlayerPage() {
   }
 
   // Join screen
-  if (playerState === 'joining') {
+  if (state === 'joining') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-6">
         <Card className="w-full max-w-md">
@@ -176,7 +186,32 @@ export default function PresentationPlayerPage() {
     );
   }
 
-  // Joined - show presentation player
+  // Ended state
+  if (state === 'ended') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Thanks for Participating!</CardTitle>
+            <CardDescription>
+              The presentation has ended.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => router.push('/join')}
+            >
+              Join Another Session
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Lobby, slide, or submitted states - show presentation player
   if (!game || !presentation) {
     return <WaitingScreen presentationTitle="Loading..." />;
   }
@@ -190,6 +225,7 @@ export default function PresentationPlayerPage() {
       playerId={playerId}
       playerName={playerName}
       gameId={gameId}
+      onResponseSubmitted={markSubmitted}
     />
   );
 }

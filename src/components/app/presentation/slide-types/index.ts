@@ -40,6 +40,9 @@ import {
   RatingResultsEditor,
   RatingResultsHost,
   RatingResultsPlayer,
+  RatingSummaryEditor,
+  RatingSummaryHost,
+  RatingSummaryPlayer,
 } from './rating';
 
 // Leaderboard slide type
@@ -262,6 +265,24 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
       type: 'rating-results',
       order,
       sourceSlideId: '',
+    }),
+  },
+
+  'rating-summary': {
+    type: 'rating-summary',
+    label: 'Rating Summary',
+    description: 'Comprehensive summary with charts and heatmap',
+    icon: 'LayoutGrid',
+    EditorComponent: RatingSummaryEditor,
+    HostComponent: RatingSummaryHost,
+    PlayerComponent: RatingSummaryPlayer,
+    isInteractive: false,
+    createDefaultSlide: (id, order) => ({
+      id,
+      type: 'rating-summary',
+      order,
+      summaryTitle: 'Rating Summary',
+      summaryDefaultView: 'ranking',
     }),
   },
 

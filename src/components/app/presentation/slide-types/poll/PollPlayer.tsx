@@ -20,7 +20,8 @@ export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
   const { toast } = useToast();
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const question = slide.question as PollQuestion | undefined;
+  // Support both 'question' (standard) and 'pollQuestion' (legacy AI-generated) fields
+  const question = (slide.question || (slide as { pollQuestion?: PollQuestion }).pollQuestion) as PollQuestion | undefined;
   const isMultiple = question?.type === 'poll-multiple';
   const timeLimit = question?.timeLimit || 30;
 

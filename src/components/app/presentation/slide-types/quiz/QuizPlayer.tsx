@@ -152,6 +152,7 @@ export function QuizPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
         {question.answers.map((answer, index) => (
           <motion.div
             key={index}
+            className="relative"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.1 }}

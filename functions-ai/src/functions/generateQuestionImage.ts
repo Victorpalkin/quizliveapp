@@ -4,6 +4,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { randomUUID } from 'crypto';
 import { AI_SERVICE_ACCOUNT, REGION, ALLOWED_ORIGINS } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
+import { enforceRateLimitInMemory } from '../utils/rateLimit';
 import type { GenerateImageRequest, GenerateImageResponse } from '../types';
 
 // Image generation model (different from text model)
@@ -32,8 +33,13 @@ export const generateQuestionImage = onCall(
     enforceAppCheck: true,
   },
   async (request): Promise<GenerateImageResponse> => {
-    // Verify App Check token (monitoring mode)
+    // Verify App Check token
     verifyAppCheck(request);
+
+    // Rate limiting: 20 requests per hour per user (medium cost operation)
+    if (request.auth?.uid) {
+      enforceRateLimitInMemory(request.auth.uid, 20, 3600);
+    }
 
     // Verify user is authenticated
     if (!request.auth) {

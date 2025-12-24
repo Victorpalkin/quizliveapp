@@ -187,12 +187,28 @@ export function useSubmitSlideRating(gameId: string | null | undefined) {
 }
 
 /**
+ * Aggregated rating result for a slide
+ */
+export interface RatingAggregate {
+  average: number;
+  count: number;
+  distribution: number[]; // Count of ratings at each value (index 0 = min rating)
+}
+
+/**
  * Hook to get aggregated rating results for multiple slides (comparison view)
  */
-export function useRatingAggregates(gameId: string | null | undefined, slideIds: string[]) {
+export function useRatingAggregates(
+  gameId: string | null | undefined,
+  slideIds: string[],
+  options?: { minRating?: number; maxRating?: number }
+) {
   const firestore = useFirestore();
-  const [aggregates, setAggregates] = useState<Map<string, { average: number; count: number }>>(new Map());
+  const [aggregates, setAggregates] = useState<Map<string, RatingAggregate>>(new Map());
   const [loading, setLoading] = useState(true);
+
+  const minRating = options?.minRating ?? 1;
+  const maxRating = options?.maxRating ?? 5;
 
   useEffect(() => {
     if (!firestore || !gameId || slideIds.length === 0) {
@@ -209,7 +225,7 @@ export function useRatingAggregates(gameId: string | null | undefined, slideIds:
     const unsubscribe = onSnapshot(
       allRatingsQuery,
       (snapshot) => {
-        const newAggregates = new Map<string, { average: number; count: number }>();
+        const newAggregates = new Map<string, RatingAggregate>();
 
         // Group ratings by slideId
         const ratingsBySlide = new Map<string, number[]>();
@@ -224,11 +240,22 @@ export function useRatingAggregates(gameId: string | null | undefined, slideIds:
           }
         });
 
-        // Calculate aggregates
+        // Calculate aggregates with distribution
+        const distributionSize = maxRating - minRating + 1;
         ratingsBySlide.forEach((ratings, slideId) => {
           const count = ratings.length;
           const average = count > 0 ? ratings.reduce((a, b) => a + b, 0) / count : 0;
-          newAggregates.set(slideId, { average, count });
+
+          // Build distribution array
+          const distribution = new Array(distributionSize).fill(0);
+          ratings.forEach(rating => {
+            const index = Math.round(rating) - minRating;
+            if (index >= 0 && index < distributionSize) {
+              distribution[index]++;
+            }
+          });
+
+          newAggregates.set(slideId, { average, count, distribution });
         });
 
         setAggregates(newAggregates);
@@ -241,7 +268,7 @@ export function useRatingAggregates(gameId: string | null | undefined, slideIds:
     );
 
     return () => unsubscribe();
-  }, [firestore, gameId, slideIds.join(',')]);
+  }, [firestore, gameId, slideIds.join(','), minRating, maxRating]);
 
   return { aggregates, loading };
 }

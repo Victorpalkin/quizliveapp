@@ -107,6 +107,7 @@ export type PresentationSlideType =
   | 'rating-describe'   // Item description for rating
   | 'rating-input'      // Rating input slide
   | 'rating-results'    // Rating results display
+  | 'rating-summary'    // Summary with charts/heatmap
   | 'leaderboard';      // Leaderboard slide
 
 // Rating item for rating-describe slides
@@ -164,6 +165,10 @@ export interface GeneratedPresentationSlide {
 
   // For 'rating-results' type
   ratingResultsMode?: 'single' | 'comparison' | 'live';
+
+  // For 'rating-summary' type
+  summaryTitle?: string;
+  summaryDefaultView?: 'ranking' | 'chart' | 'heatmap' | 'matrix';
 
   // For 'leaderboard' type
   leaderboardMode?: 'standard' | 'podium';

@@ -11,6 +11,10 @@ export { RatingResultsEditor } from './RatingResultsEditor';
 export { RatingResultsHost } from './RatingResultsHost';
 export { RatingResultsPlayer } from './RatingResultsPlayer';
 
+export { RatingSummaryEditor } from './RatingSummaryEditor';
+export { RatingSummaryHost } from './RatingSummaryHost';
+export { RatingSummaryPlayer } from './RatingSummaryPlayer';
+
 // Rating result mode components (used internally by RatingResultsHost)
 export { RatingSingleResult } from './RatingSingleResult';
 export { RatingComparisonResult } from './RatingComparisonResult';

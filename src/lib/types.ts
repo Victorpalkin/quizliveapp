@@ -534,6 +534,7 @@ export type PresentationSlideType =
   | 'rating-describe'   // Rating: item description (presenter explains)
   | 'rating-input'      // Rating: players submit their rating
   | 'rating-results'    // Rating: show aggregate results (optional)
+  | 'rating-summary'    // Rating: summary with charts/heatmap/matrix
   | 'leaderboard';      // Leaderboard: show player rankings
 
 /**
@@ -594,6 +595,14 @@ export interface PresentationSlide {
   // 'comparison' - Show all rated items ranked side-by-side
   // 'live' - Show real-time updating results with animations
   comparisonSlideIds?: string[]; // For 'comparison' mode - which rating-input slides to compare
+
+  // For 'rating-summary' type - shows all items with full visualizations
+  summaryTitle?: string;         // Custom title (default: "Rating Summary")
+  summaryDefaultView?: 'ranking' | 'chart' | 'heatmap' | 'matrix';
+  // 'ranking' - Ranked list with progress bars (default)
+  // 'chart' - Bar chart visualization
+  // 'heatmap' - Distribution heatmap
+  // 'matrix' - Comparison matrix
 
   // For 'leaderboard' type
   leaderboardMode?: 'standard' | 'podium';

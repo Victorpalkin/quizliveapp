@@ -14,6 +14,7 @@ interface PresentationPlayerProps {
   playerId: string;
   playerName: string;
   gameId: string;
+  onResponseSubmitted?: () => void;
 }
 
 export function PresentationPlayer({
@@ -24,6 +25,7 @@ export function PresentationPlayer({
   playerId,
   playerName,
   gameId,
+  onResponseSubmitted,
 }: PresentationPlayerProps) {
   const currentSlide = slides[currentSlideIndex];
 
@@ -94,6 +96,7 @@ export function PresentationPlayer({
             playerName={playerName}
             gameId={gameId}
             slideIndex={currentSlideIndex}
+            onResponseSubmitted={onResponseSubmitted}
           />
         </motion.div>
       </AnimatePresence>

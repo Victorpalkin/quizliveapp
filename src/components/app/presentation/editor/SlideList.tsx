@@ -18,6 +18,7 @@ const SLIDE_TYPE_ICONS: Record<PresentationSlideType, React.ReactNode> = {
   'rating-describe': <Star className="h-4 w-4" />,
   'rating-input': <Star className="h-4 w-4" />,
   'rating-results': <BarChart3 className="h-4 w-4" />,
+  'rating-summary': <BarChart3 className="h-4 w-4" />,
   'leaderboard': <Trophy className="h-4 w-4" />,
 };
 

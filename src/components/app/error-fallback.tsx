@@ -13,7 +13,6 @@ import {
   XCircle,
   Home,
   RefreshCw,
-  LayoutDashboard,
   Info,
 } from 'lucide-react';
 

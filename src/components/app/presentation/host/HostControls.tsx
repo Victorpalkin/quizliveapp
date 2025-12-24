@@ -112,6 +112,7 @@ export function HostControls({
         className="h-12 w-12 rounded-full bg-white/90 hover:bg-white shadow-lg"
         onClick={onPrevious}
         disabled={!canGoPrevious}
+        aria-label="Previous slide"
       >
         <ChevronLeft className="h-6 w-6" />
       </Button>
@@ -132,6 +133,7 @@ export function HostControls({
           onMouseLeave={handleForceEnd}
           onTouchStart={handleForceStart}
           onTouchEnd={handleForceEnd}
+          aria-label="Hold to force advance to next slide"
         >
           {/* Force advance progress overlay */}
           {isForcing && (
@@ -164,6 +166,7 @@ export function HostControls({
           className="h-12 px-6 rounded-full shadow-lg"
           onClick={handleNextClick}
           disabled={!canGoNext}
+          aria-label="Next slide"
         >
           Next
           <ChevronRight className="h-5 w-5 ml-1" />
