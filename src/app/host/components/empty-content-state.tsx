@@ -41,7 +41,7 @@ const activityConfig = {
     href: '/host/presentation/create',
     gradient: 'from-indigo-500 to-purple-500',
     iconColor: 'text-indigo-500',
-    aiHref: null,
+    aiHref: '/host/presentation/create-ai',
   },
 };
 

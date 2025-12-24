@@ -79,6 +79,15 @@ export function CreateDropdown() {
             </div>
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/host/presentation/create-ai" className="flex items-center">
+            <Sparkles className="mr-2 h-4 w-4 text-indigo-500" />
+            <div className="flex flex-col">
+              <span>Presentation with AI</span>
+              <span className="text-xs text-muted-foreground">AI-generated slides</span>
+            </div>
+          </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

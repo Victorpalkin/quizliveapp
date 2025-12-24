@@ -92,3 +92,100 @@ export interface GenerateImageRequest {
 export interface GenerateImageResponse {
   imageUrl: string;
 }
+
+/**
+ * Types for AI Presentation Generation
+ */
+
+// Presentation slide types
+export type PresentationSlideType =
+  | 'content'           // Informational slide
+  | 'quiz'              // Quiz question (scored)
+  | 'poll'              // Poll question (no scoring)
+  | 'thoughts-collect'  // Word cloud collection
+  | 'thoughts-results'  // Word cloud display
+  | 'rating-describe'   // Item description for rating
+  | 'rating-input'      // Rating input slide
+  | 'rating-results'    // Rating results display
+  | 'leaderboard';      // Leaderboard slide
+
+// Rating item for rating-describe slides
+export interface GeneratedRatingItem {
+  title: string;
+  description?: string;
+}
+
+// Rating metric for rating-input slides
+export interface GeneratedRatingMetric {
+  type: 'stars' | 'numeric' | 'labels';
+  min: number;
+  max: number;
+  question?: string;
+  labels?: string[];  // For 'labels' type
+}
+
+// Poll question types
+export interface GeneratedPollQuestion {
+  type: 'poll-single' | 'poll-multiple';
+  text: string;
+  answers: Answer[];
+  timeLimit?: number;
+}
+
+// Generated presentation slide
+export interface GeneratedPresentationSlide {
+  id?: string;  // Will be auto-generated if not present
+  type: PresentationSlideType;
+  order?: number;  // Will be set based on array position
+
+  // For 'content' type
+  title?: string;
+  description?: string;
+
+  // For 'quiz' type
+  question?: GeneratedQuestion;
+
+  // For 'poll' type
+  pollQuestion?: GeneratedPollQuestion;
+
+  // For 'thoughts-collect' type
+  thoughtsPrompt?: string;
+  thoughtsMaxPerPlayer?: number;
+
+  // For 'thoughts-results' and 'rating-results' types
+  sourceSlideId?: string;
+
+  // For 'rating-describe' type
+  ratingItem?: GeneratedRatingItem;
+
+  // For 'rating-input' type
+  ratingInputSlideId?: string;
+  ratingMetric?: GeneratedRatingMetric;
+
+  // For 'rating-results' type
+  ratingResultsMode?: 'single' | 'comparison' | 'live';
+
+  // For 'leaderboard' type
+  leaderboardMode?: 'standard' | 'podium';
+  leaderboardMaxDisplay?: number;
+}
+
+// Generated presentation structure
+export interface GeneratedPresentation {
+  title: string;
+  description?: string;
+  slides: GeneratedPresentationSlide[];
+}
+
+// Request to generate presentation
+export interface GeneratePresentationRequest {
+  prompt: string;
+  conversationHistory?: ChatMessage[];
+  currentPresentation?: GeneratedPresentation;
+}
+
+// Response from generate presentation
+export interface GeneratePresentationResponse {
+  presentation: GeneratedPresentation;
+  message: string;
+}

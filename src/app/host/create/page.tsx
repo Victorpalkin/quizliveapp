@@ -199,6 +199,7 @@ export default function CreateActivityPage() {
               'Smooth transitions',
             ]}
             href="/host/presentation/create"
+            aiOption={{ href: '/host/presentation/create-ai', label: 'Generate with AI' }}
           />
         </div>
 
