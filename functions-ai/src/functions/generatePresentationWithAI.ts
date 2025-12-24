@@ -120,7 +120,25 @@ You must respond with a JSON object containing:
   "ratingResultsMode": "comparison"
 }
 
-### 9. Leaderboard Slide (show scores)
+### 9. Quiz Results Slide (show results from quiz questions)
+{
+  "type": "quiz-results",
+  "sourceSlideIds": ["quiz-1", "quiz-2"],
+  "resultsTitle": "Quiz Results",
+  "resultsDisplayMode": "individual"
+}
+Note: resultsDisplayMode can be "individual" (show each question separately) or "combined" (summary grid)
+
+### 10. Poll Results Slide (show results from poll questions)
+{
+  "type": "poll-results",
+  "sourceSlideIds": ["poll-1"],
+  "resultsTitle": "Poll Results",
+  "resultsDisplayMode": "individual"
+}
+Note: resultsDisplayMode can be "individual" (show each poll separately) or "combined" (summary grid)
+
+### 11. Leaderboard Slide (show scores)
 {
   "type": "leaderboard",
   "leaderboardMode": "standard",
@@ -135,24 +153,31 @@ You must respond with a JSON object containing:
 4. End with either a summary content slide or a leaderboard (if there are quiz questions)
 5. thoughts-collect MUST be followed by thoughts-results that references it
 6. rating-describe MUST be followed by rating-input that references it
-7. Use temporary IDs like "thoughts-1", "rating-desc-1", etc. for linking
+7. Use temporary IDs like "thoughts-1", "rating-desc-1", "quiz-1", "poll-1" for linking
 8. For quiz questions: use 20 seconds for easy, 30 for medium
 9. Provide 4 answer options for quiz/poll questions
 10. Make wrong answers plausible but clearly incorrect
 11. If the user asks to modify the presentation, only change what they request
 12. Always respond with valid JSON - no markdown code blocks, no extra text
+13. quiz-results can reference one or more quiz slides via sourceSlideIds array
+14. poll-results can reference one or more poll slides via sourceSlideIds array
+15. Consider adding quiz-results after a series of quiz questions to reveal answers
+16. Consider adding poll-results after poll questions to show audience opinions
 
 ## Example Presentation Flow
 
 For a "Team Workshop" presentation:
 1. Content: Welcome and agenda
 2. Poll: Ice breaker question
-3. Content: Topic introduction
-4. Thoughts-collect: Gather ideas
-5. Thoughts-results: Show word cloud
-6. Quiz: Knowledge check
-7. Content: Key takeaways
-8. Leaderboard: Final scores
+3. Poll-results: Show poll results
+4. Content: Topic introduction
+5. Thoughts-collect: Gather ideas
+6. Thoughts-results: Show word cloud
+7. Quiz: Knowledge check 1
+8. Quiz: Knowledge check 2
+9. Quiz-results: Show quiz results (references quiz-1, quiz-2)
+10. Content: Key takeaways
+11. Leaderboard: Final scores
 
 ## Handling Refinement Requests
 
@@ -202,6 +227,10 @@ function linkResultsSlides(slides: GeneratedPresentationSlide[]): void {
   // Create a map of temporary IDs to actual slide indices
   const tempIdMap = new Map<string, string>();
 
+  // Track quiz and poll slide counts for sequential temp IDs
+  let quizCount = 0;
+  let pollCount = 0;
+
   // First pass: assign IDs and build temp ID map
   slides.forEach((slide, index) => {
     if (!slide.id) {
@@ -220,6 +249,16 @@ function linkResultsSlides(slides: GeneratedPresentationSlide[]): void {
     } else if (slide.type === 'rating-input') {
       const tempId = `rating-input-${index + 1}`;
       tempIdMap.set(tempId, slide.id);
+    } else if (slide.type === 'quiz') {
+      // Map quiz slides: quiz-1, quiz-2, etc. (sequential count, not index)
+      quizCount++;
+      const tempId = `quiz-${quizCount}`;
+      tempIdMap.set(tempId, slide.id);
+    } else if (slide.type === 'poll') {
+      // Map poll slides: poll-1, poll-2, etc. (sequential count, not index)
+      pollCount++;
+      const tempId = `poll-${pollCount}`;
+      tempIdMap.set(tempId, slide.id);
     }
   });
 
@@ -230,6 +269,12 @@ function linkResultsSlides(slides: GeneratedPresentationSlide[]): void {
     }
     if (slide.ratingInputSlideId && tempIdMap.has(slide.ratingInputSlideId)) {
       slide.ratingInputSlideId = tempIdMap.get(slide.ratingInputSlideId)!;
+    }
+    // Resolve sourceSlideIds array (for quiz-results and poll-results)
+    if (slide.sourceSlideIds && Array.isArray(slide.sourceSlideIds)) {
+      slide.sourceSlideIds = slide.sourceSlideIds.map(id =>
+        tempIdMap.has(id) ? tempIdMap.get(id)! : id
+      );
     }
   });
 }
@@ -361,6 +406,32 @@ function parsePresentationResponse(responseText: string): GeneratePresentationRe
           }
           if (!slide.leaderboardMaxDisplay) {
             slide.leaderboardMaxDisplay = 10;
+          }
+          break;
+
+        case 'quiz-results':
+          // Set defaults for quiz results slide
+          if (!slide.resultsTitle) {
+            slide.resultsTitle = 'Quiz Results';
+          }
+          if (!slide.resultsDisplayMode) {
+            slide.resultsDisplayMode = 'individual';
+          }
+          if (!slide.sourceSlideIds) {
+            slide.sourceSlideIds = [];
+          }
+          break;
+
+        case 'poll-results':
+          // Set defaults for poll results slide
+          if (!slide.resultsTitle) {
+            slide.resultsTitle = 'Poll Results';
+          }
+          if (!slide.resultsDisplayMode) {
+            slide.resultsDisplayMode = 'individual';
+          }
+          if (!slide.sourceSlideIds) {
+            slide.sourceSlideIds = [];
           }
           break;
       }

@@ -106,6 +106,8 @@ export type PresentationSlideType =
   | 'content'           // Informational slide
   | 'quiz'              // Quiz question (scored)
   | 'poll'              // Poll question (no scoring)
+  | 'quiz-results'      // Quiz results display
+  | 'poll-results'      // Poll results display
   | 'thoughts-collect'  // Word cloud collection
   | 'thoughts-results'  // Word cloud display
   | 'rating-describe'   // Item description for rating
@@ -169,6 +171,11 @@ export interface GeneratedPresentationSlide {
 
   // For 'rating-results' type
   ratingResultsMode?: 'single' | 'comparison' | 'live';
+
+  // For 'quiz-results' and 'poll-results' types
+  sourceSlideIds?: string[];  // Array of quiz/poll slide IDs to show results for
+  resultsTitle?: string;
+  resultsDisplayMode?: 'individual' | 'combined';
 
   // For 'rating-summary' type
   summaryTitle?: string;
