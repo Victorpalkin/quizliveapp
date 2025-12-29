@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { motion } from 'motion/react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,11 +8,41 @@ import { Badge } from '@/components/ui/badge';
 import { Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ANSWER_COLOR_GRADIENTS } from '@/lib/colors';
+import { CircularTimer } from '@/components/app/circular-timer';
 import { SlideHostProps } from '../types';
 import { SingleChoiceQuestion } from '@/lib/types';
 
 export function QuizHost({ slide, responseCount, playerCount }: SlideHostProps) {
   const question = slide.question as SingleChoiceQuestion | undefined;
+  const timeLimit = question?.timeLimit || 20;
+
+  // Countdown timer state
+  const [time, setTime] = useState(timeLimit);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Reset timer when slide changes
+  useEffect(() => {
+    setTime(timeLimit);
+
+    // Start countdown
+    timerRef.current = setInterval(() => {
+      setTime(prev => {
+        if (prev <= 1) {
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [slide.id, timeLimit]);
 
   if (!question) {
     return (
@@ -90,6 +121,18 @@ export function QuizHost({ slide, responseCount, playerCount }: SlideHostProps) 
           );
         })}
       </div>
+
+      {/* Timer */}
+      {timeLimit > 0 && (
+        <motion.div
+          className="absolute bottom-8 left-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          <CircularTimer time={time} timeLimit={timeLimit} size={80} />
+        </motion.div>
+      )}
 
       {/* Response Counter */}
       <motion.div

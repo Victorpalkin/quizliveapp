@@ -14,10 +14,10 @@ import { SlideTypeDefinition, SlideEditorProps, SlideHostProps, SlidePlayerProps
 import { ContentEditor, ContentHost, ContentPlayer } from './content';
 
 // Quiz slide type
-import { QuizEditor, QuizHost, QuizPlayer, QuizResults } from './quiz';
+import { QuizEditor, QuizHost, QuizPlayer } from './quiz';
 
 // Poll slide type
-import { PollEditor, PollHost, PollPlayer, PollResults } from './poll';
+import { PollEditor, PollHost, PollPlayer } from './poll';
 
 // Thoughts slide types
 import {
@@ -99,7 +99,6 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
     EditorComponent: QuizEditor,
     HostComponent: QuizHost,
     PlayerComponent: QuizPlayer,
-    ResultsComponent: QuizResults,
     isInteractive: true,
     createDefaultSlide: (id, order) => ({
       id,
@@ -128,7 +127,6 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
     EditorComponent: PollEditor,
     HostComponent: PollHost,
     PlayerComponent: PollPlayer,
-    ResultsComponent: PollResults,
     isInteractive: true,
     createDefaultSlide: (id, order) => ({
       id,

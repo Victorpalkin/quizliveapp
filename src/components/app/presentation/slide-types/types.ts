@@ -88,7 +88,6 @@ export interface SlideTypeDefinition {
   EditorComponent: React.ComponentType<SlideEditorProps>;
   HostComponent: React.ComponentType<SlideHostProps>;
   PlayerComponent: React.ComponentType<SlidePlayerProps>;
-  ResultsComponent?: React.ComponentType<SlideResultsProps>;
 
   // If true, adding this slide type creates multiple slides (e.g., thoughts-collect + thoughts-results)
   createsMultipleSlides?: boolean;

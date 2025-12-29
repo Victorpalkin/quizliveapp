@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { SlideRenderer } from '../core';
 import { HostOverlay } from './HostOverlay';
 import { HostControls } from './HostControls';
-import { PresentationSlide, Presentation } from '@/lib/types';
+import { PresentationSlide, Presentation, PresentationGame } from '@/lib/types';
 import { usePacingStatus } from '@/hooks/presentation/use-pacing-status';
 
 interface PresentationHostProps {
@@ -15,6 +15,7 @@ interface PresentationHostProps {
   currentSlideIndex: number;
   playerCount: number;
   presentation: Presentation;
+  game: PresentationGame;
   onSlideChange: (index: number) => void;
   onCancel?: () => void;
 }
@@ -26,6 +27,7 @@ export function PresentationHost({
   currentSlideIndex,
   playerCount,
   presentation,
+  game,
   onSlideChange,
   onCancel,
 }: PresentationHostProps) {
@@ -129,6 +131,10 @@ export function PresentationHost({
         >
           <SlideRenderer
             slide={currentSlide}
+            presentation={presentation}
+            game={game}
+            slideIndex={currentSlideIndex}
+            totalSlides={slides.length}
             playerCount={playerCount}
             responseCount={pacingStatus.responseCount}
           />

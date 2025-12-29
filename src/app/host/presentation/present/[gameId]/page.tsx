@@ -102,6 +102,7 @@ export default function PresentationPresentPage() {
       currentSlideIndex={game.currentSlideIndex}
       playerCount={players.length}
       presentation={presentation}
+      game={game}
       onSlideChange={handleSlideChange}
       onCancel={handleCancel}
     />
