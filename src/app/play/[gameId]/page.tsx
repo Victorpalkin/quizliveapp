@@ -6,6 +6,8 @@
  * This is a thin routing layer that looks up the game by PIN and redirects
  * to the appropriate activity-specific player page:
  * - Quiz games → /play/quiz/{PIN}
+ * - Poll games → /play/poll/{PIN}
+ * - Presentation games → /play/presentation/{PIN}
  * - Thoughts Gathering → /play/thoughts-gathering/{PIN}
  * - Evaluation → /play/evaluation/{PIN}
  */
@@ -86,7 +88,12 @@ export default function PlayRouterPage() {
           router.replace(`/play/thoughts-gathering/${gamePin}`);
         } else if (activityType === 'evaluation') {
           router.replace(`/play/evaluation/${gamePin}`);
+        } else if (activityType === 'presentation') {
+          router.replace(`/play/presentation/${gamePin}`);
+        } else if (activityType === 'poll') {
+          router.replace(`/play/poll/${gamePin}`);
         } else {
+          // Default to quiz for backward compatibility
           router.replace(`/play/quiz/${gamePin}`);
         }
       } catch (err) {
