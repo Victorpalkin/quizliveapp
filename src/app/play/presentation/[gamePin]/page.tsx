@@ -126,13 +126,17 @@ export default function PresentationPlayerPage() {
       const trimmedName = nameInput.trim();
 
       // Create player document
+      // Must include all fields required by Firestore security rules
       const playerRef = doc(
         collection(firestore, 'games', game.id, 'players'),
         playerId
       );
       await setDoc(playerRef, {
+        id: playerId,
         name: trimmedName,
         score: 0,
+        answers: [],
+        currentStreak: 0,
         joinedAt: serverTimestamp(),
       });
 
