@@ -127,7 +127,11 @@ export function PresentationHost({
           exit={{ opacity: 0, x: -50 }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
         >
-          <SlideRenderer slide={currentSlide} />
+          <SlideRenderer
+            slide={currentSlide}
+            playerCount={playerCount}
+            responseCount={pacingStatus.responseCount}
+          />
         </motion.div>
       </AnimatePresence>
 

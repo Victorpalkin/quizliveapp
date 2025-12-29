@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { motion } from 'motion/react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -8,7 +8,6 @@ import { FirebaseError } from 'firebase/app';
 import { Button } from '@/components/ui/button';
 import { Check, Loader2 } from 'lucide-react';
 import { AnswerButton } from '@/components/app/answer-button';
-import { CircularTimer } from '@/components/app/circular-timer';
 import { SlidePlayerProps } from '../types';
 import { PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import { useFirebaseApp } from '@/firebase';
@@ -24,21 +23,15 @@ export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
   // Support both 'question' (standard) and 'pollQuestion' (legacy AI-generated) fields
   const question = (slide.question || (slide as { pollQuestion?: PollQuestion }).pollQuestion) as PollQuestion | undefined;
   const isMultiple = question?.type === 'poll-multiple';
-  const timeLimit = question?.timeLimit || 30;
 
-  // Track remaining time for consistency with quiz
-  const startTimeRef = useRef<number>(Date.now());
-
-  useEffect(() => {
-    startTimeRef.current = Date.now();
-  }, [slide.id]);
+  // Presentation polls have no time limit
+  const INFINITE_TIME_LIMIT = 99999;
 
   const submitPollAnswer = useCallback(async (answerIndex?: number, answerIndices?: number[]) => {
     if (!app) return;
 
-    // Calculate remaining time
-    const elapsedSeconds = Math.floor((Date.now() - startTimeRef.current) / 1000);
-    const timeRemaining = Math.max(0, timeLimit - elapsedSeconds);
+    // No time limit for presentation polls - always send max time remaining
+    const timeRemaining = INFINITE_TIME_LIMIT;
 
     try {
       // Call submitAnswer cloud function for server-side validation
@@ -54,7 +47,7 @@ export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
         timeRemaining,
         slideId: slide.id,
         questionType: question?.type || 'poll-single',
-        questionTimeLimit: timeLimit,
+        questionTimeLimit: INFINITE_TIME_LIMIT,
       });
 
       // Also call onSubmit to mark as responded (for hasResponded tracking)
@@ -100,7 +93,7 @@ export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
         answerIndices,
       });
     }
-  }, [app, game.id, playerId, slideIndex, slide.id, question?.type, timeLimit, onSubmit, toast]);
+  }, [app, game.id, playerId, slideIndex, slide.id, question?.type, onSubmit, toast]);
 
   const handleSingleSelect = useCallback(async (index: number) => {
     if (hasResponded || isSubmitting) return;
@@ -175,16 +168,11 @@ export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      {/* Question with Timer */}
-      <div className="text-center mb-4 relative">
+      {/* Question */}
+      <div className="text-center mb-4">
         <h1 className="text-2xl font-bold">{question.text}</h1>
         {isMultiple && (
           <p className="text-muted-foreground mt-1">Select all that apply</p>
-        )}
-        {timeLimit > 0 && (
-          <div className="absolute top-0 right-0">
-            <CircularTimer time={timeLimit} timeLimit={timeLimit} size={64} />
-          </div>
         )}
       </div>
 

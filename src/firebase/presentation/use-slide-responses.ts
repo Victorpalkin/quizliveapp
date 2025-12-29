@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { useFirestore } from '../provider';
 import { SlideResponse } from '@/components/app/presentation/slide-types/types';
+import { removeUndefined } from '@/lib/firestore-utils';
 
 /**
  * Stored submission in the unified submissions collection
@@ -161,10 +162,10 @@ export function useSubmitSlideResponse(gameId: string | null | undefined) {
         const responseId = `${response.slideId}_${response.playerId}`;
         const responseRef = doc(firestore, 'games', gameId, 'slideResponses', responseId);
 
-        await setDoc(responseRef, {
+        await setDoc(responseRef, removeUndefined({
           ...response,
           submittedAt: serverTimestamp(),
-        });
+        }));
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to submit response');
         setError(error);
