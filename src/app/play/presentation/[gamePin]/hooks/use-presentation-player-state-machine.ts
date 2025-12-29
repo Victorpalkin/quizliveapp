@@ -47,6 +47,13 @@ export function usePresentationPlayerStateMachine(
     const gameState = game.state;
     const currentSlideIndex = game.currentSlideIndex;
 
+    // CRITICAL: Never auto-transition from 'joining' state
+    // Players must explicitly call setJoined() after entering their name
+    // This is different from quiz where gameDocId is null until after joining
+    if (state === 'joining') {
+      return;
+    }
+
     // CRITICAL: Detect slide index change using ref
     // Refs don't trigger re-renders, but we can compare against them
     const slideChanged = currentSlideIndex !== lastSlideIndexRef.current
@@ -97,11 +104,8 @@ export function usePresentationPlayerStateMachine(
 
     // 3. Lobby state - waiting for presentation to start
     if (gameState === 'lobby') {
-      if (state === 'joining') {
-        console.log('[Presentation Player] Joined lobby: joining → lobby');
-        setState('lobby');
-      }
-      // If already in lobby, stay there
+      // Players in 'lobby' state stay there until presentation starts
+      // Note: 'joining' state is handled by early return above
       return;
     }
   }, [game?.state, game?.currentSlideIndex, gameLoading, state]);
