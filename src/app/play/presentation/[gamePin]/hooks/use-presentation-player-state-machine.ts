@@ -84,10 +84,13 @@ export function usePresentationPlayerStateMachine(
 
     // 2. Presentation is active
     if (gameState === 'presenting') {
-      if (state === 'lobby' || state === 'joining') {
+      // Only transition from 'lobby' to 'slide'
+      // Players in 'joining' state must enter their name first
+      if (state === 'lobby') {
         console.log(`[Presentation Player] Presentation started: ${state} → slide`);
         setState('slide');
       }
+      // If in joining state, stay there until player enters name and joins
       // If in slide or submitted state, stay there (slide change handler above will reset if needed)
       return;
     }
