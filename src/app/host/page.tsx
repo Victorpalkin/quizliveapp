@@ -407,6 +407,9 @@ export default function HostDashboardPage() {
     if (game.activityType === 'poll') {
       return activities.find(a => a.id === game.activityId)?.title || 'Poll';
     }
+    if (game.activityType === 'presentation') {
+      return presentations?.find(p => p.id === game.presentationId)?.title || 'Presentation';
+    }
     return quizzes?.find(q => q.id === game.quizId)?.title || 'Quiz';
   };
 

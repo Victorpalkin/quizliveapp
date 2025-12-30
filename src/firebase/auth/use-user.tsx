@@ -10,6 +10,14 @@ export function useUser() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Defensive check - auth should always be defined from useAuth(),
+    // but this provides an extra safety net
+    if (!auth) {
+      console.error('[useUser] Auth is undefined - this should not happen');
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(
       auth,
       (user) => {

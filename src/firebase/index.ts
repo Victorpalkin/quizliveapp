@@ -24,35 +24,61 @@ import { useDoc } from './firestore/use-doc';
 import { useCollection } from './firestore/use-collection';
 
 function initializeFirebase() {
-  if (getApps().length) {
-    const app = getApp();
+  try {
+    if (getApps().length) {
+      const app = getApp();
+      const auth = getAuth(app);
+      const firestore = getFirestore(app);
+      const storage = getStorage(app);
+      const functions = getFunctions(app, 'europe-west4'); // Use europe-west4 region
+
+      // Validate all services are initialized
+      if (!auth || !firestore || !storage || !functions) {
+        console.error('[Firebase] Existing app missing services:', {
+          hasAuth: !!auth,
+          hasFirestore: !!firestore,
+          hasStorage: !!storage,
+          hasFunctions: !!functions,
+        });
+      }
+
+      return { app, auth, firestore, storage, functions };
+    }
+
+    const app = initializeApp(firebaseConfig);
+
+    // Initialize App Check for security
+    // This verifies requests come from your genuine app
+    initializeAppCheckClient(app);
+
+    // Initialize Analytics (lazy loaded after page is interactive)
+    initAnalytics(app);
+
     const auth = getAuth(app);
     const firestore = getFirestore(app);
     const storage = getStorage(app);
     const functions = getFunctions(app, 'europe-west4'); // Use europe-west4 region
+
+    // Validate all services are initialized
+    if (!auth || !firestore || !storage || !functions) {
+      console.error('[Firebase] New app missing services:', {
+        hasAuth: !!auth,
+        hasFirestore: !!firestore,
+        hasStorage: !!storage,
+        hasFunctions: !!functions,
+      });
+    }
+
+    // Uncomment to use local emulator
+    // if (process.env.NODE_ENV === 'development') {
+    //   connectFunctionsEmulator(functions, 'localhost', 5001);
+    // }
+
     return { app, auth, firestore, storage, functions };
+  } catch (error) {
+    console.error('[Firebase] Initialization failed:', error);
+    throw error;
   }
-
-  const app = initializeApp(firebaseConfig);
-
-  // Initialize App Check for security
-  // This verifies requests come from your genuine app
-  initializeAppCheckClient(app);
-
-  // Initialize Analytics (lazy loaded after page is interactive)
-  initAnalytics(app);
-
-  const auth = getAuth(app);
-  const firestore = getFirestore(app);
-  const storage = getStorage(app);
-  const functions = getFunctions(app, 'europe-west4'); // Use europe-west4 region
-
-  // Uncomment to use local emulator
-  // if (process.env.NODE_ENV === 'development') {
-  //   connectFunctionsEmulator(functions, 'localhost', 5001);
-  // }
-
-  return { app, auth, firestore, storage, functions };
 }
 
 export {

@@ -47,7 +47,20 @@ export function FirebaseProvider({
 export function useFirebase() {
   const context = useContext(FirebaseContext);
   if (!context) {
+    // Provide more context in the error message to help debug
+    const componentStack = new Error().stack;
+    console.error('[useFirebase] Context is undefined. Component stack:', componentStack);
     throw new Error('useFirebase must be used within a FirebaseProvider');
+  }
+  // Additional runtime check to catch if context is missing expected properties
+  if (!context.auth || !context.firestore) {
+    console.error('[useFirebase] Context is missing required properties:', {
+      hasAuth: !!context.auth,
+      hasFirestore: !!context.firestore,
+      hasStorage: !!context.storage,
+      hasFunctions: !!context.functions,
+      hasApp: !!context.app,
+    });
   }
   return context;
 }
