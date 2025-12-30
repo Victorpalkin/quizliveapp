@@ -31,12 +31,19 @@ export interface AnswerKeyEntry {
   allowTypos?: boolean;
 }
 
+// Poll questions have no time limit - use a high value that matches client's INFINITE_TIME_LIMIT
+const INFINITE_TIME_LIMIT = 99999;
+
 /**
  * Extracts answer key data from a question (for server-side scoring).
  * This data is stored securely and never sent to players.
  */
 export function extractAnswerKeyEntry(q: Question): AnswerKeyEntry {
-  const base = { type: q.type, timeLimit: q.timeLimit || 20 };
+  const isPollType = ['poll-single', 'poll-multiple', 'poll-free-text'].includes(q.type);
+  const base = {
+    type: q.type,
+    timeLimit: isPollType ? INFINITE_TIME_LIMIT : (q.timeLimit || 20),
+  };
 
   switch (q.type) {
     case 'single-choice':
