@@ -25,6 +25,16 @@ export function FirebaseProvider({
   children: ReactNode;
   value: FirebaseContextValue;
 }) {
+  // Defensive validation to catch initialization issues early
+  if (!value) {
+    console.error('[FirebaseProvider] value is undefined');
+    throw new Error('FirebaseProvider received undefined value');
+  }
+  if (!value.auth) {
+    console.error('[FirebaseProvider] auth is undefined in value:', Object.keys(value));
+    throw new Error('FirebaseProvider received value without auth');
+  }
+
   const memoizedValue = useMemo(() => value, [value]);
   return (
     <FirebaseContext.Provider value={memoizedValue}>
