@@ -120,7 +120,7 @@ export function RatingSummaryEditor({ slide, presentation, onSlideChange }: Slid
               <div className="space-y-2">
                 {ratingInputSlides.map((inputSlide, index) => {
                   const describeSlide = presentation.slides.find(
-                    s => s.id === inputSlide.ratingInputSlideId
+                    s => s.id === inputSlide.sourceDescribeSlideId
                   );
                   const title = describeSlide?.ratingItem?.title || 'Untitled';
                   return (

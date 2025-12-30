@@ -33,7 +33,7 @@ export function RatingComparisonResult({ slide, presentation, game }: SlideHostP
   // Build ranked items list
   const rankedItems: RankedItem[] = ratingInputSlides.map(inputSlide => {
     // Find the describe slide for the title
-    const describeSlide = presentation.slides.find(s => s.id === inputSlide.ratingInputSlideId);
+    const describeSlide = presentation.slides.find(s => s.id === inputSlide.sourceDescribeSlideId);
     const title = describeSlide?.ratingItem?.title || 'Untitled';
 
     const aggregate = aggregates.get(inputSlide.id);

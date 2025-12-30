@@ -149,7 +149,7 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
   'quiz-results': {
     type: 'quiz-results',
     label: 'Quiz Results',
-    description: 'Show results from quiz questions',
+    description: 'Show results from quiz slides (requires quiz slides)',
     icon: 'CheckCircle',
     EditorComponent: QuizResultsEditor,
     HostComponent: QuizResultsHost,
@@ -168,7 +168,7 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
   'poll-results': {
     type: 'poll-results',
     label: 'Poll Results',
-    description: 'Show results from poll questions',
+    description: 'Show results from poll slides (requires poll slides)',
     icon: 'PieChart',
     EditorComponent: PollResultsEditor,
     HostComponent: PollResultsHost,
@@ -187,7 +187,7 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
   'thoughts-collect': {
     type: 'thoughts-collect',
     label: 'Thoughts Gathering',
-    description: 'Collect ideas from participants',
+    description: 'Collect ideas (creates collect and results slides)',
     icon: 'MessageSquare',
     EditorComponent: ThoughtsCollectEditor,
     HostComponent: ThoughtsCollectHost,
@@ -238,7 +238,7 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
   'rating-describe': {
     type: 'rating-describe',
     label: 'Item Rating',
-    description: 'Present an item for participants to rate',
+    description: 'Rate an item (creates describe, input, and results slides)',
     icon: 'Star',
     EditorComponent: RatingDescribeEditor,
     HostComponent: RatingDescribeHost,
@@ -268,13 +268,20 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
         id: `${baseId}-input`,
         type: 'rating-input' as PresentationSlideType,
         order: startOrder + 1,
-        ratingInputSlideId: `${baseId}-describe`,
+        sourceDescribeSlideId: `${baseId}-describe`,
         ratingMetric: {
           type: 'stars',
           min: 1,
           max: 5,
           question: 'How would you rate this?',
         },
+      },
+      {
+        id: `${baseId}-results`,
+        type: 'rating-results' as PresentationSlideType,
+        order: startOrder + 2,
+        sourceSlideId: `${baseId}-input`,
+        ratingResultsMode: 'single',
       },
     ],
   },
@@ -292,7 +299,7 @@ export const SLIDE_TYPES: Record<PresentationSlideType, SlideTypeDefinition> = {
       id,
       type: 'rating-input',
       order,
-      ratingInputSlideId: '',
+      sourceDescribeSlideId: '',
       ratingMetric: {
         type: 'stars',
         min: 1,

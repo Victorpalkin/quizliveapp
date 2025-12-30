@@ -19,7 +19,7 @@ export function RatingInputEditor({ slide, presentation, onSlideChange }: SlideE
   const metric = slide.ratingMetric || { type: 'stars', min: 1, max: 5 };
 
   // Find the linked describe slide to show context
-  const describeSlide = presentation.slides.find(s => s.id === slide.ratingInputSlideId);
+  const describeSlide = presentation.slides.find(s => s.id === slide.sourceDescribeSlideId);
   const itemTitle = describeSlide?.ratingItem?.title || 'Linked item';
 
   const handleTypeChange = useCallback((value: string) => {

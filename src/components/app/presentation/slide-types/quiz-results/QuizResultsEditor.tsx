@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect, useRef } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -44,6 +44,18 @@ export function QuizResultsEditor({ slide, presentation, onSlideChange }: SlideE
   }, [presentation.slides, slide.order]);
 
   const selectedIds = slide.sourceSlideIds || [];
+
+  // Track if we've initialized auto-selection
+  const hasInitialized = useRef(false);
+
+  // Auto-select all quiz slides on first mount if none are selected
+  useEffect(() => {
+    if (!hasInitialized.current && availableQuizSlides.length > 0 && selectedIds.length === 0) {
+      hasInitialized.current = true;
+      const allIds = availableQuizSlides.map(s => s.id);
+      onSlideChange({ ...slide, sourceSlideIds: allIds });
+    }
+  }, [availableQuizSlides, selectedIds.length, slide, onSlideChange]);
 
   const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onSlideChange({ ...slide, resultsTitle: e.target.value });

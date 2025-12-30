@@ -13,7 +13,7 @@ export function RatingLiveResult({ slide, presentation, game, playerCount }: Sli
 
   // Find linked describe slide for item title
   const sourceSlide = presentation.slides.find(s => s.id === sourceSlideId);
-  const describeSlide = presentation.slides.find(s => s.id === sourceSlide?.ratingInputSlideId);
+  const describeSlide = presentation.slides.find(s => s.id === sourceSlide?.sourceDescribeSlideId);
   const itemTitle = describeSlide?.ratingItem?.title || 'Item';
   const metric = sourceSlide?.ratingMetric || { type: 'stars' as const, min: 1, max: 5 };
 

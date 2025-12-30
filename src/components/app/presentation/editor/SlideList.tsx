@@ -5,7 +5,8 @@ import { motion, Reorder } from 'motion/react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, GripVertical, Image, HelpCircle, BarChart3, MessageSquare, Star, Trophy } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Image, HelpCircle, BarChart3, MessageSquare, Star, Trophy, AlertTriangle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { PresentationSlide, PresentationSlideType } from '@/lib/types';
 import { getSlideType } from '../slide-types';
 
@@ -52,6 +53,46 @@ export function SlideList({
     },
     [onReorderSlides]
   );
+
+  // Check if a slide has missing dependencies
+  const getSlideWarning = (slide: PresentationSlide): string | null => {
+    // Quiz results without source slides selected
+    if (slide.type === 'quiz-results') {
+      const hasQuizSlides = slides.some(s => s.type === 'quiz' && s.order < slide.order);
+      if (!hasQuizSlides) return 'No quiz slides to display results for';
+      if (!slide.sourceSlideIds || slide.sourceSlideIds.length === 0) return 'No quiz slides selected';
+    }
+
+    // Poll results without source slides selected
+    if (slide.type === 'poll-results') {
+      const hasPollSlides = slides.some(s => s.type === 'poll' && s.order < slide.order);
+      if (!hasPollSlides) return 'No poll slides to display results for';
+      if (!slide.sourceSlideIds || slide.sourceSlideIds.length === 0) return 'No poll slides selected';
+    }
+
+    // Thoughts results without collect slide
+    if (slide.type === 'thoughts-results') {
+      if (!slide.sourceSlideId) return 'No thoughts-collect slide linked';
+      const sourceExists = slides.some(s => s.id === slide.sourceSlideId);
+      if (!sourceExists) return 'Linked thoughts-collect slide not found';
+    }
+
+    // Rating input without describe slide
+    if (slide.type === 'rating-input') {
+      if (!slide.sourceDescribeSlideId) return 'No rating-describe slide linked';
+      const sourceExists = slides.some(s => s.id === slide.sourceDescribeSlideId);
+      if (!sourceExists) return 'Linked rating-describe slide not found';
+    }
+
+    // Rating results without input slide
+    if (slide.type === 'rating-results') {
+      if (!slide.sourceSlideId) return 'No rating-input slide linked';
+      const sourceExists = slides.some(s => s.id === slide.sourceSlideId);
+      if (!sourceExists) return 'Linked rating-input slide not found';
+    }
+
+    return null;
+  };
 
   const getSlideLabel = (slide: PresentationSlide, index: number): string => {
     const slideType = getSlideType(slide.type);
@@ -115,6 +156,19 @@ export function SlideList({
                       {getSlideLabel(slide, index)}
                     </p>
                   </div>
+
+                  {getSlideWarning(slide) && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex-shrink-0 p-1">
+                          <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-xs">
+                        <p className="text-sm">{getSlideWarning(slide)}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
 
                   <Button
                     variant="ghost"

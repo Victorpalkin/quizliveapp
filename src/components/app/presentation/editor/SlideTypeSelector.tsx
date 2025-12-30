@@ -122,7 +122,7 @@ export function SlideTypeSelector({
                             <h4 className="font-medium text-sm">{slideType.label}</h4>
                             {slideType.createsMultipleSlides && (
                               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                                2 slides
+                                {slideType.type === 'rating-describe' ? '3 slides' : '2 slides'}
                               </Badge>
                             )}
                           </div>

@@ -41,7 +41,7 @@ export function RatingResultsEditor({ slide, presentation, onSlideChange }: Slid
 
   // Get the corresponding describe slide for display
   const getItemTitle = (inputSlide: typeof ratingInputSlides[0]) => {
-    const describeSlide = presentation.slides.find(s => s.id === inputSlide.ratingInputSlideId);
+    const describeSlide = presentation.slides.find(s => s.id === inputSlide.sourceDescribeSlideId);
     return describeSlide?.ratingItem?.title || 'Untitled Item';
   };
 

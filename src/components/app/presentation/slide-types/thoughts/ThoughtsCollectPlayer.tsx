@@ -9,7 +9,7 @@ import { Check, Send, MessageSquare, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlidePlayerProps } from '../types';
 import { useFirestore } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 const MAX_THOUGHT_LENGTH = 500;
@@ -54,10 +54,13 @@ export function ThoughtsCollectPlayer({ slide, game, playerId, playerName, hasRe
     try {
       // Write to submissions collection (unified with standalone thoughts-gathering)
       // Each thought is a separate document with rawText field
+      // Use batch write for atomicity - all thoughts succeed or all fail
       const submissionsRef = collection(firestore, 'games', game.id, 'submissions');
+      const batch = writeBatch(firestore);
 
       for (const thought of thoughts) {
-        await addDoc(submissionsRef, {
+        const docRef = doc(submissionsRef);
+        batch.set(docRef, {
           playerId,
           playerName,
           rawText: thought, // Match standalone format
@@ -65,6 +68,8 @@ export function ThoughtsCollectPlayer({ slide, game, playerId, playerName, hasRe
           submittedAt: serverTimestamp(),
         });
       }
+
+      await batch.commit();
 
       // Also call onSubmit to mark as responded (for hasResponded tracking)
       await onSubmit({

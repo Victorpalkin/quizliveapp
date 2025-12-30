@@ -107,7 +107,7 @@ You must respond with a JSON object containing:
 ### 7. Rating Input Slide (players rate the item)
 {
   "type": "rating-input",
-  "ratingInputSlideId": "rating-desc-1",
+  "sourceDescribeSlideId": "rating-desc-1",
   "ratingMetric": {
     "type": "stars",
     "min": 1,
@@ -273,8 +273,8 @@ function linkResultsSlides(slides: GeneratedPresentationSlide[]): void {
     if (slide.sourceSlideId && tempIdMap.has(slide.sourceSlideId)) {
       slide.sourceSlideId = tempIdMap.get(slide.sourceSlideId)!;
     }
-    if (slide.ratingInputSlideId && tempIdMap.has(slide.ratingInputSlideId)) {
-      slide.ratingInputSlideId = tempIdMap.get(slide.ratingInputSlideId)!;
+    if (slide.sourceDescribeSlideId && tempIdMap.has(slide.sourceDescribeSlideId)) {
+      slide.sourceDescribeSlideId = tempIdMap.get(slide.sourceDescribeSlideId)!;
     }
     // Resolve sourceSlideIds array (for quiz-results and poll-results)
     if (slide.sourceSlideIds && Array.isArray(slide.sourceSlideIds)) {

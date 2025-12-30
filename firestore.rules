@@ -362,15 +362,15 @@ service cloud.firestore {
         allow read: if true;
 
         // Players can create their own responses during presentation
+        // Validates player exists and is part of this game
         allow create: if get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
                          get(/databases/$(database)/documents/games/$(gameId)).data.state == 'presenting' &&
                          request.resource.data.playerId is string &&
                          request.resource.data.slideId is string &&
+                         exists(/databases/$(database)/documents/games/$(gameId)/players/$(request.resource.data.playerId)) &&
                          (
-                           // Rating submissions (rating field present)
-                           (request.resource.data.rating is number &&
-                            request.resource.data.rating >= 1 &&
-                            request.resource.data.rating <= 10)
+                           // Rating submissions (rating field present, client validates range per slide config)
+                           request.resource.data.rating is number
                            ||
                            // Poll/other submissions (no rating field required)
                            request.resource.data.rating == null

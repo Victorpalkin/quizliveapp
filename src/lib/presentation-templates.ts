@@ -174,7 +174,7 @@ const teamFeedbackSlides: PresentationSlide[] = [
     id: generateId(),
     type: 'rating-input',
     order: 2,
-    ratingInputSlideId: '', // Will be linked
+    sourceDescribeSlideId: '', // Will be linked
     ratingMetric: {
       type: 'stars',
       min: 1,
@@ -195,7 +195,7 @@ const teamFeedbackSlides: PresentationSlide[] = [
     id: generateId(),
     type: 'rating-input',
     order: 4,
-    ratingInputSlideId: '', // Will be linked
+    sourceDescribeSlideId: '', // Will be linked
     ratingMetric: {
       type: 'stars',
       min: 1,
@@ -233,8 +233,8 @@ const teamFeedbackSlides: PresentationSlide[] = [
 ];
 
 // Link rating slides
-teamFeedbackSlides[2].ratingInputSlideId = teamFeedbackSlides[1].id;
-teamFeedbackSlides[4].ratingInputSlideId = teamFeedbackSlides[3].id;
+teamFeedbackSlides[2].sourceDescribeSlideId = teamFeedbackSlides[1].id;
+teamFeedbackSlides[4].sourceDescribeSlideId = teamFeedbackSlides[3].id;
 teamFeedbackSlides[5].comparisonSlideIds = [teamFeedbackSlides[2].id, teamFeedbackSlides[4].id];
 teamFeedbackSlides[5].sourceSlideId = teamFeedbackSlides[2].id;
 teamFeedbackSlides[7].sourceSlideId = teamFeedbackSlides[6].id;
@@ -419,8 +419,8 @@ export function cloneTemplateSlides(slides: PresentationSlide[]): PresentationSl
     if (newSlide.sourceSlideId && idMap.has(newSlide.sourceSlideId)) {
       newSlide.sourceSlideId = idMap.get(newSlide.sourceSlideId);
     }
-    if (newSlide.ratingInputSlideId && idMap.has(newSlide.ratingInputSlideId)) {
-      newSlide.ratingInputSlideId = idMap.get(newSlide.ratingInputSlideId);
+    if (newSlide.sourceDescribeSlideId && idMap.has(newSlide.sourceDescribeSlideId)) {
+      newSlide.sourceDescribeSlideId = idMap.get(newSlide.sourceDescribeSlideId);
     }
     if (newSlide.comparisonSlideIds) {
       newSlide.comparisonSlideIds = newSlide.comparisonSlideIds

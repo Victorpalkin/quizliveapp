@@ -9,7 +9,7 @@ export function RatingResultsPlayer({ slide, presentation }: SlidePlayerProps) {
 
   // Find linked describe slide for item title
   const sourceSlide = presentation.slides.find(s => s.id === sourceSlideId);
-  const describeSlide = presentation.slides.find(s => s.id === sourceSlide?.ratingInputSlideId);
+  const describeSlide = presentation.slides.find(s => s.id === sourceSlide?.sourceDescribeSlideId);
   const itemTitle = describeSlide?.ratingItem?.title || 'Item';
 
   return (

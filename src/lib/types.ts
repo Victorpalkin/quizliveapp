@@ -814,7 +814,7 @@ export interface PresentationSlide {
   ratingItem?: PresentationRatingItem;
 
   // For 'rating-input' type - rating input
-  ratingInputSlideId?: string; // Links to the 'rating-describe' slide it belongs to
+  sourceDescribeSlideId?: string; // Links to the 'rating-describe' slide this input belongs to
   ratingMetric?: PresentationRatingMetric;
 
   // For 'thoughts-results' and 'rating-results' types

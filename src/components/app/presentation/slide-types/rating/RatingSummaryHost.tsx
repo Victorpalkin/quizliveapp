@@ -65,7 +65,7 @@ export function RatingSummaryHost({ slide, presentation, game }: SlideHostProps)
   const rankedItems: RankedItem[] = useMemo(() => {
     const items = ratingInputSlides.map(inputSlide => {
       // Find the describe slide for the title
-      const describeSlide = presentation.slides.find(s => s.id === inputSlide.ratingInputSlideId);
+      const describeSlide = presentation.slides.find(s => s.id === inputSlide.sourceDescribeSlideId);
       const itemTitle = describeSlide?.ratingItem?.title || 'Untitled';
       const itemDescription = describeSlide?.ratingItem?.description;
 

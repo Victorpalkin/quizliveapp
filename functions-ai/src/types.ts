@@ -166,7 +166,7 @@ export interface GeneratedPresentationSlide {
   ratingItem?: GeneratedRatingItem;
 
   // For 'rating-input' type
-  ratingInputSlideId?: string;
+  sourceDescribeSlideId?: string;
   ratingMetric?: GeneratedRatingMetric;
 
   // For 'rating-results' type

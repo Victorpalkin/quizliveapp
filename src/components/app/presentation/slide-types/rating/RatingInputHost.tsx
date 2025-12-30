@@ -11,7 +11,7 @@ export function RatingInputHost({ slide, presentation, responseCount, playerCoun
   const metric = slide.ratingMetric || { type: 'stars' as const, min: 1, max: 5 };
 
   // Find linked describe slide for item title
-  const describeSlide = presentation.slides.find(s => s.id === slide.ratingInputSlideId);
+  const describeSlide = presentation.slides.find(s => s.id === slide.sourceDescribeSlideId);
   const itemTitle = describeSlide?.ratingItem?.title || 'Item';
   const question = metric.question || 'How would you rate this?';
 
