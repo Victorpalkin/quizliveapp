@@ -93,7 +93,7 @@ export function HostOverlay({
       <AnimatePresence>
         {isQrPinned && joinUrl && (
           <motion.div
-            className="absolute bottom-4 right-4 z-40"
+            className="absolute bottom-24 right-4 z-40"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}

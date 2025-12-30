@@ -21,11 +21,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { QrCode, Copy, Users, XCircle, FileQuestion, Cloud, BarChart3, Keyboard, Presentation } from 'lucide-react';
+import { QrCode, Copy, Users, XCircle, FileQuestion, Cloud, BarChart3, Keyboard, Presentation, Vote } from 'lucide-react';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { cn } from '@/lib/utils';
 
-export type ActivityType = 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation';
+export type ActivityType = 'quiz' | 'poll' | 'thoughts-gathering' | 'evaluation' | 'presentation';
 
 interface GameHeaderProps {
   /** The game PIN to display */
@@ -48,6 +48,7 @@ interface GameHeaderProps {
 
 const activityConfig: Record<ActivityType, { icon: React.ElementType; color: string; label: string }> = {
   'quiz': { icon: FileQuestion, color: 'text-purple-500', label: 'Quiz' },
+  'poll': { icon: Vote, color: 'text-teal-500', label: 'Poll' },
   'thoughts-gathering': { icon: Cloud, color: 'text-blue-500', label: 'Thoughts Gathering' },
   'evaluation': { icon: BarChart3, color: 'text-orange-500', label: 'Evaluation' },
   'presentation': { icon: Presentation, color: 'text-indigo-500', label: 'Presentation' },

@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, setDoc, updateDoc, getDocs, DocumentReference, arrayUnion, Timestamp } from 'firebase/firestore';
+import { useDoc, useFirestore, useFunctions, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where, setDoc, getDocs, DocumentReference } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
-import type { Game, Player, PollActivity, PollQuestion, PlayerAnswer } from '@/lib/types';
+import type { Game, Player, PollActivity } from '@/lib/types';
 import { gameConverter, pollActivityConverter } from '@/firebase/converters';
 import { ThemeToggle } from '@/components/app/theme-toggle';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,7 +25,9 @@ export default function PollPlayerPage() {
   const params = useParams();
   const gamePin = params.gamePin as string;
   const firestore = useFirestore();
+  const functions = useFunctions();
   const router = useRouter();
+  const { toast } = useToast();
 
   // Player state
   const [playerId] = useState(nanoid());
@@ -137,45 +141,78 @@ export default function PollPlayerPage() {
     }
   };
 
-  // Handle submitting answer
+  // Handle submitting answer via Cloud Function
   const handleSubmitAnswer = async () => {
     if (!gameDocId || !player || !game || !poll) return;
 
     const currentQuestion = poll.questions[game.currentQuestionIndex];
     if (!currentQuestion) return;
 
+    // Validate answer before submitting
+    if (currentQuestion.type === 'poll-single' && selectedIndex === null) {
+      return;
+    }
+    if (currentQuestion.type === 'poll-multiple' && selectedIndices.length === 0) {
+      return;
+    }
+    if (currentQuestion.type === 'poll-free-text' && !textAnswer.trim()) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const answer: PlayerAnswer = {
+      // Build request for Cloud Function
+      const request: {
+        gameId: string;
+        playerId: string;
+        questionIndex: number;
+        questionType: string;
+        answerIndex?: number;
+        answerIndices?: number[];
+        textAnswer?: string;
+      } = {
+        gameId: gameDocId,
+        playerId,
         questionIndex: game.currentQuestionIndex,
         questionType: currentQuestion.type,
-        timestamp: Timestamp.now(),
-        points: 0,
-        isCorrect: false,
-        wasTimeout: false,
       };
 
-      if (currentQuestion.type === 'poll-single' && selectedIndex !== null) {
-        answer.answerIndex = selectedIndex;
-      } else if (currentQuestion.type === 'poll-multiple' && selectedIndices.length > 0) {
-        answer.answerIndices = selectedIndices;
-      } else if (currentQuestion.type === 'poll-free-text' && textAnswer.trim()) {
-        answer.textAnswer = textAnswer.trim();
-      } else {
-        setIsSubmitting(false);
-        return;
+      if (currentQuestion.type === 'poll-single') {
+        request.answerIndex = selectedIndex!;
+      } else if (currentQuestion.type === 'poll-multiple') {
+        request.answerIndices = selectedIndices;
+      } else if (currentQuestion.type === 'poll-free-text') {
+        request.textAnswer = textAnswer.trim();
       }
 
-      // Update player document with answer
-      await updateDoc(doc(firestore, 'games', gameDocId, 'players', playerId), {
-        answers: arrayUnion(answer),
-      });
+      // Submit via Cloud Function
+      const submitPollAnswerFn = httpsCallable(functions, 'submitPollAnswer');
+      await submitPollAnswerFn(request);
 
       setHasAnswered(true);
       setState('waiting');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error submitting answer:', error);
+
+      // Show user-friendly error message
+      const errorCode = (error as { code?: string })?.code;
+      if (errorCode === 'functions/failed-precondition') {
+        toast({
+          variant: 'destructive',
+          title: 'Already Answered',
+          description: 'You have already submitted a response for this question.',
+        });
+        // Still mark as answered since they already submitted
+        setHasAnswered(true);
+        setState('waiting');
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submission Error',
+          description: 'Failed to submit your response. Please try again.',
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }

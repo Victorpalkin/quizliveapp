@@ -277,6 +277,73 @@ export interface ComputeGameAnalyticsResult {
 }
 
 // ==========================================
+// Poll Analytics Types
+// ==========================================
+
+/**
+ * Pre-computed analytics for a completed poll.
+ * Stored at: games/{gameId}/aggregates/poll-analytics
+ */
+export interface PollAnalytics {
+  gameId: string;
+  activityId: string;
+  pollTitle: string;
+  totalQuestions: number;
+  totalParticipants: number;
+  computedAt: admin.firestore.FieldValue;
+
+  questionStats: PollQuestionStats[];
+  summary: PollAnalyticsSummary;
+}
+
+export interface PollAnalyticsSummary {
+  avgResponseRate: number;      // Average percentage of participants who answered each question
+  totalResponses: number;       // Sum of all responses across all questions
+}
+
+export interface PollQuestionStats {
+  questionIndex: number;
+  questionText: string;
+  questionType: 'poll-single' | 'poll-multiple' | 'poll-free-text';
+
+  totalResponded: number;
+  responseRate: number;         // Percentage of participants who answered
+
+  // For single/multiple choice questions
+  answerDistribution?: {
+    label: string;
+    count: number;
+    percentage: number;
+  }[];
+
+  // For free text questions (grouped responses)
+  textGroups?: {
+    text: string;
+    count: number;
+    percentage: number;
+  }[];
+}
+
+/**
+ * Request interface for computePollAnalytics Cloud Function
+ */
+export interface ComputePollAnalyticsRequest {
+  gameId: string;
+}
+
+/**
+ * Result returned from computePollAnalytics function
+ */
+export interface ComputePollAnalyticsResult {
+  success: boolean;
+  message: string;
+  analytics?: {
+    totalParticipants: number;
+    totalQuestions: number;
+  };
+}
+
+// ==========================================
 // Ranking Activity Types
 // ==========================================
 
@@ -410,5 +477,166 @@ export interface ComputeRankingResultsResult {
   results?: {
     totalItems: number;
     totalParticipants: number;
+  };
+}
+
+// ==========================================
+// Poll Answer Submission Types
+// ==========================================
+
+/**
+ * Poll question type union
+ * Note: These don't require scoring - responses are just recorded
+ */
+export type PollQuestionType = 'poll-single' | 'poll-multiple' | 'poll-free-text';
+
+/**
+ * Request interface for submitPollAnswer Cloud Function
+ * Separate from submitAnswer to keep quiz answer submission fast
+ */
+export interface SubmitPollAnswerRequest {
+  gameId: string;
+  playerId: string;
+  questionIndex: number;
+  questionType: PollQuestionType;
+
+  // Answer data (one will be used based on question type)
+  answerIndex?: number;        // For poll-single
+  answerIndices?: number[];    // For poll-multiple
+  textAnswer?: string;         // For poll-free-text
+}
+
+/**
+ * Result returned from submitPollAnswer function
+ */
+export interface SubmitPollAnswerResult {
+  success: boolean;
+}
+
+/**
+ * Poll player answer stored in Firestore
+ */
+export interface PollPlayerAnswer {
+  questionIndex: number;
+  questionType: PollQuestionType;
+  timestamp: admin.firestore.FieldValue;
+  answerIndex?: number;
+  answerIndices?: number[];
+  textAnswer?: string;
+}
+
+// ==========================================
+// Presentation Analytics Types
+// ==========================================
+
+/**
+ * Slide type enum (subset from client types)
+ */
+export type PresentationSlideType =
+  | 'content'
+  | 'quiz'
+  | 'poll'
+  | 'quiz-results'
+  | 'poll-results'
+  | 'thoughts-collect'
+  | 'thoughts-results'
+  | 'rating-describe'
+  | 'rating-input'
+  | 'rating-results'
+  | 'rating-summary'
+  | 'leaderboard';
+
+/**
+ * Pre-computed analytics for a completed presentation.
+ * Stored at: games/{gameId}/aggregates/analytics
+ */
+export interface PresentationAnalytics {
+  gameId: string;
+  presentationId: string;
+  presentationTitle: string;
+  totalSlides: number;
+  interactiveSlides: number;
+  totalPlayers: number;
+  computedAt: admin.firestore.FieldValue;
+
+  slideStats: PresentationSlideStats[];
+  playerEngagement: PlayerEngagementStats[];
+  summary: PresentationAnalyticsSummary;
+  slideTypeBreakdown: SlideTypeStats[];
+}
+
+export interface PresentationSlideStats {
+  slideIndex: number;
+  slideId: string;
+  slideType: PresentationSlideType;
+  title?: string;
+
+  totalResponded: number;
+  responseRate: number;
+
+  // For quiz slides
+  correctCount?: number;
+  correctRate?: number;
+  avgPoints?: number;
+  answerDistribution?: { label: string; count: number; isCorrect: boolean }[];
+
+  // For poll slides
+  pollDistribution?: { label: string; count: number; percentage: number }[];
+
+  // For rating slides
+  avgRating?: number;
+  ratingDistribution?: number[];
+
+  // For thoughts slides
+  submissionCount?: number;
+  topicsCount?: number;
+}
+
+export interface PlayerEngagementStats {
+  playerId: string;
+  playerName: string;
+  engagementScore: number;
+  responsesSubmitted: number;
+  totalInteractiveSlides: number;
+  responseRate: number;
+
+  totalScore?: number;
+  correctAnswers?: number;
+  avgResponseTime?: number;
+}
+
+export interface PresentationAnalyticsSummary {
+  avgResponseRate: number;
+  avgEngagementScore: number;
+  mostEngagedSlide: { index: number; responseRate: number } | null;
+  leastEngagedSlide: { index: number; responseRate: number } | null;
+  avgQuizAccuracy?: number;
+  avgRating?: number;
+}
+
+export interface SlideTypeStats {
+  type: PresentationSlideType;
+  count: number;
+  avgResponseRate: number;
+  label: string;
+}
+
+/**
+ * Request interface for computePresentationAnalytics Cloud Function
+ */
+export interface ComputePresentationAnalyticsRequest {
+  gameId: string;
+}
+
+/**
+ * Result returned from computePresentationAnalytics function
+ */
+export interface ComputePresentationAnalyticsResult {
+  success: boolean;
+  message: string;
+  analytics?: {
+    totalPlayers: number;
+    totalSlides: number;
+    interactiveSlides: number;
   };
 }

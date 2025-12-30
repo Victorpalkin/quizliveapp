@@ -19,6 +19,7 @@ import { QuizCard } from './components/quiz-card';
 import { PollCard } from './components/poll-card';
 import { ActivityCard } from './components/activity-card';
 import { PresentationCard } from './components/presentation-card';
+import { CompletedActivityCard } from './components/completed-activity-card';
 import { EmptyContentState } from './components/empty-content-state';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { useCollection, useFirestore, useUser, useMemoFirebase, useStorage } from '@/firebase';
@@ -699,99 +700,15 @@ export default function HostDashboardPage() {
                     {gamesLoading ? (
                         <Card><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
                     ) : (
-                        completedGames.map(game => {
-                            const isThoughtsGathering = game.activityType === 'thoughts-gathering';
-                            const isEvaluation = game.activityType === 'evaluation';
-                            const isQuiz = !isThoughtsGathering && !isEvaluation;
-
-                            // Determine badge styling
-                            const badgeClass = isThoughtsGathering
-                                ? 'bg-blue-500/20 text-blue-500'
-                                : isEvaluation
-                                    ? 'bg-orange-500/20 text-orange-500'
-                                    : 'bg-purple-500/20 text-purple-500';
-                            const badgeIcon = isThoughtsGathering
-                                ? <Cloud className="h-3 w-3" />
-                                : isEvaluation
-                                    ? <BarChart3 className="h-3 w-3" />
-                                    : <FileQuestion className="h-3 w-3" />;
-                            const badgeLabel = isThoughtsGathering ? 'Thoughts Gathering' : isEvaluation ? 'Evaluation' : 'Quiz';
-
-                            return (
-                                <Card key={game.id} variant="interactive" className="flex flex-col">
-                                    <CardHeader className="p-4 pb-3">
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex items-center gap-2">
-                                                {badgeIcon}
-                                                <CardTitle className="text-lg font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
-                                            </div>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent className="rounded-2xl shadow-xl">
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle className="text-2xl font-semibold">Delete this record?</AlertDialogTitle>
-                                                        <AlertDialogDescription className="text-base">
-                                                            This will permanently delete the record for &apos;{game.gamePin}&apos;.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel className="rounded-xl">Back</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
-                                                            Yes, Delete
-                                                        </AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </div>
-                                        <CardDescription className="text-sm">
-                                            {getGameTitle(game)}
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="flex flex-col gap-2 p-4 pt-0">
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="gradient"
-                                                className="flex-1"
-                                                onClick={() => handleOpenGame(game)}
-                                            >
-                                                <Eye className="mr-2 h-4 w-4" /> Results
-                                            </Button>
-                                            {isQuiz && (
-                                                <Button asChild variant="gradient" className="flex-1">
-                                                    <Link href={`/host/quiz/analytics/${game.id}`}>
-                                                        <BarChart3 className="mr-2 h-4 w-4" /> Analytics
-                                                    </Link>
-                                                </Button>
-                                            )}
-                                        </div>
-                                        {isQuiz && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="w-full"
-                                                onClick={() => handleHostGame(game.quizId)}
-                                            >
-                                                <Gamepad2 className="mr-2 h-4 w-4" /> Host Again
-                                            </Button>
-                                        )}
-                                        {isEvaluation && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="w-full"
-                                                onClick={() => router.push(`/host/evaluation/game/${game.id}`)}
-                                            >
-                                                <RotateCcw className="mr-2 h-4 w-4" /> Reopen Session
-                                            </Button>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            );
-                        })
+                        completedGames.map(game => (
+                            <CompletedActivityCard
+                                key={game.id}
+                                game={game}
+                                title={getGameTitle(game)}
+                                onDelete={handleDeleteGame}
+                                onHostAgain={game.quizId ? () => handleHostGame(game.quizId) : undefined}
+                            />
+                        ))
                     )}
                 </div>
             </div>

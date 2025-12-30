@@ -380,6 +380,142 @@ export interface LeaderboardWithStats {
 }
 
 // ==========================================
+// Poll Analytics Types
+// ==========================================
+
+/**
+ * Pre-computed analytics for a completed poll.
+ * Stored at: games/{gameId}/aggregates/poll-analytics
+ */
+export interface PollAnalytics {
+  gameId: string;
+  activityId: string;
+  pollTitle: string;
+  totalQuestions: number;
+  totalParticipants: number;
+  computedAt: Timestamp;
+
+  questionStats: PollQuestionStats[];
+  summary: PollAnalyticsSummary;
+}
+
+export interface PollAnalyticsSummary {
+  avgResponseRate: number;      // Average percentage of participants who answered each question
+  totalResponses: number;       // Sum of all responses across all questions
+}
+
+export interface PollQuestionStats {
+  questionIndex: number;
+  questionText: string;
+  questionType: 'poll-single' | 'poll-multiple' | 'poll-free-text';
+
+  totalResponded: number;
+  responseRate: number;         // Percentage of participants who answered
+
+  // For single/multiple choice questions
+  answerDistribution?: {
+    label: string;
+    count: number;
+    percentage: number;
+  }[];
+
+  // For free text questions (grouped responses)
+  textGroups?: {
+    text: string;
+    count: number;
+    percentage: number;
+  }[];
+}
+
+// ==========================================
+// Presentation Analytics Types
+// ==========================================
+
+/**
+ * Pre-computed analytics for a completed presentation.
+ * Stored at: games/{gameId}/aggregates/analytics
+ */
+export interface PresentationAnalytics {
+  gameId: string;
+  presentationId: string;
+  presentationTitle: string;
+  totalSlides: number;
+  interactiveSlides: number;  // Slides that collected responses
+  totalPlayers: number;
+  computedAt: Timestamp;
+
+  // Per-slide statistics
+  slideStats: PresentationSlideStats[];
+
+  // Player engagement data
+  playerEngagement: PlayerEngagementStats[];
+
+  // Aggregated summary
+  summary: PresentationAnalyticsSummary;
+
+  // Slide type breakdown
+  slideTypeBreakdown: SlideTypeStats[];
+}
+
+export interface PresentationSlideStats {
+  slideIndex: number;
+  slideId: string;
+  slideType: PresentationSlideType;
+  title?: string;  // From slide content
+
+  // Response metrics
+  totalResponded: number;
+  responseRate: number;  // percentage
+
+  // For quiz slides
+  correctCount?: number;
+  correctRate?: number;
+  avgPoints?: number;
+  answerDistribution?: { label: string; count: number; isCorrect: boolean }[];
+
+  // For poll slides
+  pollDistribution?: { label: string; count: number; percentage: number }[];
+
+  // For rating slides
+  avgRating?: number;
+  ratingDistribution?: number[];  // count at each value
+
+  // For thoughts slides
+  submissionCount?: number;
+  topicsCount?: number;
+}
+
+export interface PlayerEngagementStats {
+  playerId: string;
+  playerName: string;
+  engagementScore: number;  // 0-100 based on participation
+  responsesSubmitted: number;
+  totalInteractiveSlides: number;
+  responseRate: number;  // percentage
+
+  // For scored presentations
+  totalScore?: number;
+  correctAnswers?: number;
+  avgResponseTime?: number;
+}
+
+export interface PresentationAnalyticsSummary {
+  avgResponseRate: number;
+  avgEngagementScore: number;
+  mostEngagedSlide: { index: number; responseRate: number } | null;
+  leastEngagedSlide: { index: number; responseRate: number } | null;
+  avgQuizAccuracy?: number;  // If quiz slides exist
+  avgRating?: number;  // If rating slides exist
+}
+
+export interface SlideTypeStats {
+  type: PresentationSlideType;
+  count: number;
+  avgResponseRate: number;
+  label: string;  // Human-readable label
+}
+
+// ==========================================
 // Thoughts Gathering Activity Types
 // ==========================================
 

@@ -217,6 +217,11 @@ export default function PollGamePage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button asChild size="lg" className="bg-gradient-to-r from-teal-500 to-cyan-500">
+                  <Link href={`/host/poll/analytics/${gameId}`}>
+                    <BarChart3 className="mr-2 h-5 w-5" /> View Analytics
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
                   <Link href="/host">
                     <Home className="mr-2 h-5 w-5" /> Return to Dashboard
                   </Link>
