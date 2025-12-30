@@ -49,7 +49,8 @@ export default function PresentationLobbyPage() {
         presentation.title,
         user.uid,
         'presentation',
-        'lobby'
+        'lobby',
+        `/host/presentation/lobby/${gameId}`
       );
     }
   }, [gameId, game, presentation, user]);

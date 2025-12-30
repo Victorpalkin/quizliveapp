@@ -77,7 +77,7 @@ export default function ThoughtsGatheringGamePage() {
   // Save host session
   useEffect(() => {
     if (game && activity && user) {
-      saveHostSession(gameId, game.gamePin, game.activityId || '', activity.title, user.uid, 'thoughts-gathering', game.state);
+      saveHostSession(gameId, game.gamePin, game.activityId || '', activity.title, user.uid, 'thoughts-gathering', game.state, `/host/thoughts-gathering/game/${gameId}`);
     }
   }, [gameId, game, activity, user, game?.state]);
 

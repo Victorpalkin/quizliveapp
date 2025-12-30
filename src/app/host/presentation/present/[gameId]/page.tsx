@@ -43,7 +43,8 @@ export default function PresentationPresentPage() {
         presentation.title,
         user.uid,
         'presentation',
-        'presenting'
+        'presenting',
+        `/host/presentation/present/${gameId}`
       );
     }
   }, [gameId, game, presentation, user]);

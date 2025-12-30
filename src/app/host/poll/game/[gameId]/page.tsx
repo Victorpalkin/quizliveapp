@@ -12,6 +12,7 @@ import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from '@
 import { doc, collection, updateDoc, DocumentReference, Query, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { Game, Player, PollActivity, PollQuestion, PlayerAnswer } from '@/lib/types';
+import { saveHostSession, clearHostSession } from '@/lib/host-session';
 import { gameConverter, playerConverter, pollActivityConverter } from '@/firebase/converters';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import Link from 'next/link';
@@ -138,6 +139,20 @@ export default function PollGamePage() {
       router.push('/login');
     }
   }, [user, userLoading, router]);
+
+  // Save host session when game is loaded
+  useEffect(() => {
+    if (game && poll && user && game.state !== 'ended') {
+      saveHostSession(gameId, game.gamePin, game.activityId || '', poll.title, user.uid, 'poll', game.state, `/host/poll/game/${gameId}`);
+    }
+  }, [gameId, game, poll, user, game?.state]);
+
+  // Clear host session when game ends
+  useEffect(() => {
+    if (game?.state === 'ended') {
+      clearHostSession();
+    }
+  }, [game?.state]);
 
   const handleNextQuestion = async () => {
     if (!game || !poll) return;

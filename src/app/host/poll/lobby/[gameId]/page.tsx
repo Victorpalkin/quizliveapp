@@ -11,6 +11,7 @@ import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from '@
 import { doc, collection, updateDoc, deleteDoc, DocumentReference, Query } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { Game, Player, PollActivity } from '@/lib/types';
+import { saveHostSession, clearHostSession } from '@/lib/host-session';
 import { gameConverter, playerConverter, pollActivityConverter } from '@/firebase/converters';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { QRCodeSVG } from 'qrcode.react';
@@ -70,6 +71,13 @@ export default function PollLobbyPage() {
     }
   }, [user, userLoading, router]);
 
+  // Save host session when lobby is loaded
+  useEffect(() => {
+    if (game && poll && user) {
+      saveHostSession(gameId, game.gamePin, game.activityId || '', poll.title, user.uid, 'poll', 'lobby', `/host/poll/lobby/${gameId}`);
+    }
+  }, [gameId, game, poll, user]);
+
   // Redirect if game state changes
   useEffect(() => {
     if (game?.state === 'question' || game?.state === 'results') {
@@ -108,6 +116,7 @@ export default function PollLobbyPage() {
 
   const handleCancelGame = async () => {
     try {
+      clearHostSession();
       await deleteDoc(doc(firestore, 'games', gameId));
       toast({
         title: 'Session Cancelled',

@@ -137,7 +137,8 @@ export default function EvaluationGamePage() {
         activity.title,
         user.uid,
         'evaluation',
-        game.state
+        game.state,
+        `/host/evaluation/game/${gameId}`
       );
     }
   }, [gameId, game, activity, user]);
