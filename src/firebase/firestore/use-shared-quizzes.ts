@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore } from '../provider';
+import { useUser } from '../auth/use-user';
 import { collectionGroup, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import type { QuizShare, Quiz } from '@/lib/types';
 

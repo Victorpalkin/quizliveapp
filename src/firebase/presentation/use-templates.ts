@@ -12,7 +12,8 @@ import {
   deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore } from '../provider';
+import { useUser } from '../auth/use-user';
 import { PresentationTemplate, PresentationSlide } from '@/lib/types';
 
 /**

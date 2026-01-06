@@ -1,4 +1,5 @@
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirestore, useMemoFirebase } from '../provider';
+import { useDoc } from '../firestore/use-doc';
 import { doc, DocumentReference } from 'firebase/firestore';
 import type { GameLeaderboard } from '@/lib/types';
 
