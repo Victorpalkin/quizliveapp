@@ -1,6 +1,6 @@
 // src/firebase/client-provider.tsx
 'use client';
-import { ReactNode, useMemo } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -24,59 +24,35 @@ interface FirebaseContextValue {
   functions: Functions;
 }
 
-// Module-level singleton - initialized once when module loads
+// Module-level singleton - stable reference across re-renders
 let firebaseInstance: FirebaseContextValue | null = null;
-let initializationAttempted = false;
 
 function getOrCreateFirebaseInstance(): FirebaseContextValue {
   if (firebaseInstance) {
     return firebaseInstance;
   }
 
-  if (initializationAttempted) {
-    throw new Error('Firebase initialization already attempted but failed');
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const firestore = getFirestore(app);
+  const storage = getStorage(app);
+  const functions = getFunctions(app, 'europe-west4');
+
+  // Initialize App Check and Analytics for newly created app
+  if (getApps().length === 1) {
+    initializeAppCheckClient(app);
+    initAnalytics(app);
   }
 
-  initializationAttempted = true;
-
-  try {
-    // Check if Firebase app already exists
-    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-
-    // Initialize services
-    const auth = getAuth(app);
-    const firestore = getFirestore(app);
-    const storage = getStorage(app);
-    const functions = getFunctions(app, 'europe-west4');
-
-    // Initialize App Check and Analytics (only for newly created app)
-    if (getApps().length === 1) {
-      initializeAppCheckClient(app);
-      initAnalytics(app);
-    }
-
-    // Validate all services are initialized
-    if (!auth || !firestore || !storage || !functions) {
-      console.error('[Firebase] Services validation failed:', {
-        hasAuth: !!auth,
-        hasFirestore: !!firestore,
-        hasStorage: !!storage,
-        hasFunctions: !!functions,
-      });
-      throw new Error('Firebase services failed to initialize');
-    }
-
-    firebaseInstance = { app, auth, firestore, storage, functions };
-    return firebaseInstance;
-  } catch (error) {
-    console.error('[Firebase] Initialization error:', error);
-    throw error;
+  if (!auth || !firestore || !storage || !functions) {
+    console.error('[Firebase] Service initialization failed');
+    throw new Error('Firebase services failed to initialize');
   }
+
+  firebaseInstance = { app, auth, firestore, storage, functions };
+  return firebaseInstance;
 }
 
-/**
- * Simple loading spinner for Firebase initialization
- */
 function FirebaseLoadingSpinner() {
   return (
     <div className="flex min-h-screen items-center justify-center">
@@ -86,17 +62,42 @@ function FirebaseLoadingSpinner() {
 }
 
 export function FirebaseClientProvider({ children }: { children: ReactNode }) {
-  // Initialize SYNCHRONOUSLY during render (not in useEffect)
-  // This ensures the context is available immediately on first client render
-  const firebase = useMemo(() => {
-    // During SSR, return null - we'll show a loading state
-    if (typeof window === 'undefined') {
-      return null;
+  // Hydration-safe: state starts false on both server and client
+  const [hydrated, setHydrated] = useState(false);
+  const [firebase, setFirebase] = useState<FirebaseContextValue | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    // This only runs on client after hydration
+    try {
+      const instance = getOrCreateFirebaseInstance();
+      setFirebase(instance);
+      setHydrated(true);
+    } catch (err) {
+      console.error('[FirebaseClientProvider] Initialization error:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+      setHydrated(true);
     }
-    return getOrCreateFirebaseInstance();
   }, []);
 
-  // During SSR or if initialization failed, show loading
+  // During SSR and first client render: show loading (matches on both)
+  if (!hydrated) {
+    return <FirebaseLoadingSpinner />;
+  }
+
+  // After hydration: show error if initialization failed
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="text-center text-red-600">
+          <p className="font-semibold">Failed to initialize</p>
+          <p className="text-sm">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // After hydration: if somehow firebase is null, show loading
   if (!firebase) {
     return <FirebaseLoadingSpinner />;
   }
