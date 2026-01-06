@@ -14,7 +14,7 @@ import type { Functions } from 'firebase/functions';
 import { firebaseConfig } from './config';
 import { initializeAppCheckClient } from './app-check';
 import { initAnalytics } from './analytics';
-import { FirebaseProvider } from './provider';
+import { FirebaseProvider, setGlobalFirebaseInstance } from './provider';
 
 interface FirebaseContextValue {
   app: FirebaseApp;
@@ -50,6 +50,11 @@ function getOrCreateFirebaseInstance(): FirebaseContextValue {
   }
 
   firebaseInstance = { app, auth, firestore, storage, functions };
+
+  // CRITICAL: Store in global window for cross-chunk access
+  // This ensures all chunks can access the same Firebase instance
+  setGlobalFirebaseInstance(firebaseInstance);
+
   return firebaseInstance;
 }
 

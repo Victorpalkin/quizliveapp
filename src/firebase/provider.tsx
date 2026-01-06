@@ -16,6 +16,30 @@ interface FirebaseContextValue {
   functions: Functions;
 }
 
+// Global key for cross-chunk singleton - uses window to avoid module duplication issues
+const GLOBAL_FIREBASE_KEY = '__zivo_firebase_instance__';
+
+/**
+ * Get Firebase instance from global window object.
+ * This works across all chunks even if the module is duplicated.
+ */
+export function getGlobalFirebaseInstance(): FirebaseContextValue | null {
+  if (typeof window !== 'undefined') {
+    return (window as any)[GLOBAL_FIREBASE_KEY] || null;
+  }
+  return null;
+}
+
+/**
+ * Set Firebase instance in global window object.
+ * Called by FirebaseClientProvider after initialization.
+ */
+export function setGlobalFirebaseInstance(instance: FirebaseContextValue): void {
+  if (typeof window !== 'undefined') {
+    (window as any)[GLOBAL_FIREBASE_KEY] = instance;
+  }
+}
+
 const FirebaseContext = createContext<FirebaseContextValue | null>(null);
 
 export function FirebaseProvider({
@@ -44,40 +68,33 @@ export function FirebaseProvider({
   );
 }
 
-export function useFirebase() {
+export function useFirebase(): FirebaseContextValue {
+  // FIRST: Check global singleton (works across all chunks even if module is duplicated)
+  const globalInstance = getGlobalFirebaseInstance();
+  if (globalInstance) {
+    return globalInstance;
+  }
+
+  // FALLBACK: Try React context (for initial render before global is set)
   const context = useContext(FirebaseContext);
 
-  // Extra defensive check for production - explicit null/undefined check
-  if (context === undefined || context === null) {
-    console.error('[useFirebase] CRITICAL: Context is undefined/null');
+  if (!context) {
+    console.error('[useFirebase] CRITICAL: No Firebase instance available');
+    console.error('Global instance:', globalInstance);
+    console.error('Context:', context);
     throw new Error('useFirebase must be used within a FirebaseProvider');
   }
 
-  // Validate context is an object with required properties
-  if (typeof context !== 'object') {
-    console.error('[useFirebase] CRITICAL: Context is not an object:', typeof context);
-    throw new Error('Firebase context is corrupted - not an object');
-  }
-
-  // Validate context has auth property
-  if (!context.auth) {
-    console.error('[useFirebase] CRITICAL: Context missing auth:', {
-      keys: Object.keys(context),
-      hasAuth: 'auth' in context,
-      authValue: context.auth,
-    });
-    throw new Error('Firebase context is corrupted - missing auth');
-  }
-
-  // Validate other required properties
-  if (!context.firestore || !context.storage || !context.functions || !context.app) {
-    console.error('[useFirebase] WARNING: Context missing some properties:', {
+  // Validate context has required properties
+  if (!context.auth || !context.firestore || !context.storage || !context.functions || !context.app) {
+    console.error('[useFirebase] CRITICAL: Context missing required properties:', {
       hasAuth: !!context.auth,
       hasFirestore: !!context.firestore,
       hasStorage: !!context.storage,
       hasFunctions: !!context.functions,
       hasApp: !!context.app,
     });
+    throw new Error('Firebase context is corrupted - missing required properties');
   }
 
   return context;
