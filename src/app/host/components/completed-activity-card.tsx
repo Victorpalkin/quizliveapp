@@ -106,7 +106,7 @@ export function CompletedActivityCard({ game, title, onDelete, onHostAgain }: Co
 
   // Determine if we should show "Host Again" button
   const showHostAgain = activityType === 'quiz' && onHostAgain && game.quizId;
-  const showHostAgainLink = hostAgainPath !== null;
+  const showHostAgainLink = hostAgainPath != null;
 
   // Determine if we should show "Reopen Session" button
   const showReopen = reopenPath !== null;
