@@ -46,15 +46,32 @@ export function FirebaseProvider({
 
 export function useFirebase() {
   const context = useContext(FirebaseContext);
-  if (!context) {
-    // Provide more context in the error message to help debug
-    const componentStack = new Error().stack;
-    console.error('[useFirebase] Context is undefined. Component stack:', componentStack);
+
+  // Extra defensive check for production - explicit null/undefined check
+  if (context === undefined || context === null) {
+    console.error('[useFirebase] CRITICAL: Context is undefined/null');
     throw new Error('useFirebase must be used within a FirebaseProvider');
   }
-  // Additional runtime check to catch if context is missing expected properties
-  if (!context.auth || !context.firestore) {
-    console.error('[useFirebase] Context is missing required properties:', {
+
+  // Validate context is an object with required properties
+  if (typeof context !== 'object') {
+    console.error('[useFirebase] CRITICAL: Context is not an object:', typeof context);
+    throw new Error('Firebase context is corrupted - not an object');
+  }
+
+  // Validate context has auth property
+  if (!context.auth) {
+    console.error('[useFirebase] CRITICAL: Context missing auth:', {
+      keys: Object.keys(context),
+      hasAuth: 'auth' in context,
+      authValue: context.auth,
+    });
+    throw new Error('Firebase context is corrupted - missing auth');
+  }
+
+  // Validate other required properties
+  if (!context.firestore || !context.storage || !context.functions || !context.app) {
+    console.error('[useFirebase] WARNING: Context missing some properties:', {
       hasAuth: !!context.auth,
       hasFirestore: !!context.firestore,
       hasStorage: !!context.storage,
@@ -62,6 +79,7 @@ export function useFirebase() {
       hasApp: !!context.app,
     });
   }
+
   return context;
 }
 

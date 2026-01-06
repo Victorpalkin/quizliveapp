@@ -1,6 +1,6 @@
 // src/firebase/client-provider.tsx
 'use client';
-import { ReactNode, useState, useEffect, useRef } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -24,69 +24,54 @@ interface FirebaseContextValue {
   functions: Functions;
 }
 
-/**
- * Initialize Firebase app and all services.
- * This function is self-contained to avoid circular import issues.
- */
-function initializeFirebase(): FirebaseContextValue {
-  if (getApps().length) {
-    const app = getApp();
+// Module-level singleton - initialized once when module loads
+let firebaseInstance: FirebaseContextValue | null = null;
+let initializationAttempted = false;
+
+function getOrCreateFirebaseInstance(): FirebaseContextValue {
+  if (firebaseInstance) {
+    return firebaseInstance;
+  }
+
+  if (initializationAttempted) {
+    throw new Error('Firebase initialization already attempted but failed');
+  }
+
+  initializationAttempted = true;
+
+  try {
+    // Check if Firebase app already exists
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+    // Initialize services
     const auth = getAuth(app);
     const firestore = getFirestore(app);
     const storage = getStorage(app);
     const functions = getFunctions(app, 'europe-west4');
 
+    // Initialize App Check and Analytics (only for newly created app)
+    if (getApps().length === 1) {
+      initializeAppCheckClient(app);
+      initAnalytics(app);
+    }
+
+    // Validate all services are initialized
     if (!auth || !firestore || !storage || !functions) {
-      console.error('[Firebase] Existing app missing services:', {
+      console.error('[Firebase] Services validation failed:', {
         hasAuth: !!auth,
         hasFirestore: !!firestore,
         hasStorage: !!storage,
         hasFunctions: !!functions,
       });
-      throw new Error('Firebase services not properly initialized');
+      throw new Error('Firebase services failed to initialize');
     }
 
-    return { app, auth, firestore, storage, functions };
+    firebaseInstance = { app, auth, firestore, storage, functions };
+    return firebaseInstance;
+  } catch (error) {
+    console.error('[Firebase] Initialization error:', error);
+    throw error;
   }
-
-  const app = initializeApp(firebaseConfig);
-
-  // Initialize App Check for security
-  initializeAppCheckClient(app);
-
-  // Initialize Analytics (lazy loaded after page is interactive)
-  initAnalytics(app);
-
-  const auth = getAuth(app);
-  const firestore = getFirestore(app);
-  const storage = getStorage(app);
-  const functions = getFunctions(app, 'europe-west4');
-
-  if (!auth || !firestore || !storage || !functions) {
-    console.error('[Firebase] New app missing services:', {
-      hasAuth: !!auth,
-      hasFirestore: !!firestore,
-      hasStorage: !!storage,
-      hasFunctions: !!functions,
-    });
-    throw new Error('Firebase services not properly initialized');
-  }
-
-  return { app, auth, firestore, storage, functions };
-}
-
-// Singleton reference - initialized lazily on first use
-let firebaseInstance: FirebaseContextValue | null = null;
-
-/**
- * Get or create the Firebase instance.
- * Uses singleton pattern to ensure only one instance exists.
- */
-function getFirebaseInstance(): FirebaseContextValue {
-  if (!firebaseInstance) {
-    firebaseInstance = initializeFirebase();
-  }
-  return firebaseInstance;
 }
 
 /**
@@ -101,30 +86,17 @@ function FirebaseLoadingSpinner() {
 }
 
 export function FirebaseClientProvider({ children }: { children: ReactNode }) {
-  const [firebase, setFirebase] = useState<FirebaseContextValue | null>(null);
-  const [error, setError] = useState<Error | null>(null);
-  const initializingRef = useRef(false);
-
-  useEffect(() => {
-    // Prevent double initialization in React Strict Mode
-    if (initializingRef.current) return;
-    initializingRef.current = true;
-
-    try {
-      const instance = getFirebaseInstance();
-      setFirebase(instance);
-    } catch (err) {
-      console.error('[FirebaseClientProvider] Initialization failed:', err);
-      setError(err instanceof Error ? err : new Error('Firebase initialization failed'));
+  // Initialize SYNCHRONOUSLY during render (not in useEffect)
+  // This ensures the context is available immediately on first client render
+  const firebase = useMemo(() => {
+    // During SSR, return null - we'll show a loading state
+    if (typeof window === 'undefined') {
+      return null;
     }
+    return getOrCreateFirebaseInstance();
   }, []);
 
-  // Re-throw error to be caught by error boundary
-  if (error) {
-    throw error;
-  }
-
-  // Show loading state until Firebase is ready
+  // During SSR or if initialization failed, show loading
   if (!firebase) {
     return <FirebaseLoadingSpinner />;
   }
