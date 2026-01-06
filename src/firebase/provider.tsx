@@ -100,24 +100,39 @@ export function useFirebase(): FirebaseContextValue {
   return context;
 }
 
-export function useFirebaseApp() {
+export function useFirebaseApp(): FirebaseApp {
+  // Direct global check - cannot be optimized away by bundler inlining
+  const global = getGlobalFirebaseInstance();
+  if (global) return global.app;
   return useFirebase().app;
 }
 
-export function useAuth() {
+export function useAuth(): Auth {
+  // Direct global check - cannot be optimized away by bundler inlining
+  const global = getGlobalFirebaseInstance();
+  if (global) return global.auth;
   return useFirebase().auth;
 }
 
-export function useFirestore() {
+export function useFirestore(): Firestore {
+  // Direct global check - cannot be optimized away by bundler inlining
+  const global = getGlobalFirebaseInstance();
+  if (global) return global.firestore;
   return useFirebase().firestore;
 }
 
-export function useStorage() {
-    return useFirebase().storage;
+export function useStorage(): FirebaseStorage {
+  // Direct global check - cannot be optimized away by bundler inlining
+  const global = getGlobalFirebaseInstance();
+  if (global) return global.storage;
+  return useFirebase().storage;
 }
 
-export function useFunctions() {
-    return useFirebase().functions;
+export function useFunctions(): Functions {
+  // Direct global check - cannot be optimized away by bundler inlining
+  const global = getGlobalFirebaseInstance();
+  if (global) return global.functions;
+  return useFirebase().functions;
 }
 
 export function useMemoFirebase<T>(
