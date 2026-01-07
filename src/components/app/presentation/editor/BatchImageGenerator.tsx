@@ -23,6 +23,7 @@ interface BatchImageGeneratorProps {
   presentationId: string;
   slides: PresentationSlide[];
   onSlideUpdate: (slideId: string, imageUrl: string) => void;
+  imageStyle?: string; // Presentation-wide image style for consistent generation
 }
 
 type GenerationStatus = 'pending' | 'generating' | 'success' | 'error';
@@ -42,6 +43,7 @@ export function BatchImageGenerator({
   presentationId,
   slides,
   onSlideUpdate,
+  imageStyle,
 }: BatchImageGeneratorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -93,19 +95,20 @@ export function BatchImageGenerator({
       if (!functions) throw new Error('Functions not available');
 
       const generateImage = httpsCallable<
-        { prompt: string; presentationId: string; slideId: string },
+        { prompt: string; styleGuide?: string; presentationId: string; slideId: string },
         { imageUrl: string }
       >(functions, 'generateQuestionImage');
 
       const result = await generateImage({
         prompt: slide.imagePrompt!,
+        styleGuide: imageStyle,
         presentationId,
         slideId: slide.id,
       });
 
       return result.data.imageUrl;
     },
-    [functions, presentationId]
+    [functions, presentationId, imageStyle]
   );
 
   // Start batch generation

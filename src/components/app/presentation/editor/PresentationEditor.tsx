@@ -17,6 +17,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -32,7 +38,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Save, Play, ArrowLeft, Loader2, Users, MoreVertical, Copy } from 'lucide-react';
-import { Presentation, PresentationSlide, PresentationSlideType } from '@/lib/types';
+import { Presentation, PresentationSlide, PresentationSlideType, PresentationStyle } from '@/lib/types';
 import { SlideList } from './SlideList';
 import { SlideTypeSelector } from './SlideTypeSelector';
 import { SlideEditorRenderer } from '../core';
@@ -83,6 +89,11 @@ export function PresentationEditor({
   );
   const [defaultPacingThreshold, setDefaultPacingThreshold] = useState<number>(
     presentation.defaultPacingThreshold ?? 80
+  );
+
+  // Presentation style
+  const [style, setStyle] = useState<PresentationStyle>(
+    presentation.style || {}
   );
 
   // Get selected slide
@@ -226,6 +237,15 @@ export function PresentationEditor({
     [markChanged]
   );
 
+  // Handle style changes
+  const handleStyleChange = useCallback(
+    (field: keyof PresentationStyle, value: string) => {
+      setStyle((prev) => ({ ...prev, [field]: value || undefined }));
+      markChanged();
+    },
+    [markChanged]
+  );
+
   // Handle save
   const handleSave = useCallback(async () => {
     try {
@@ -235,6 +255,7 @@ export function PresentationEditor({
         slides,
         defaultPacingMode,
         defaultPacingThreshold,
+        style,
       });
       setHasUnsavedChanges(false);
       toast({
@@ -248,7 +269,7 @@ export function PresentationEditor({
         description: 'Failed to save presentation.',
       });
     }
-  }, [title, description, slides, defaultPacingMode, defaultPacingThreshold, onSave, toast]);
+  }, [title, description, slides, defaultPacingMode, defaultPacingThreshold, style, onSave, toast]);
 
   // Handle launch
   const handleLaunch = useCallback(async () => {
@@ -369,6 +390,7 @@ export function PresentationEditor({
         presentationId={presentation.id}
         slides={slides}
         onSlideUpdate={handleBatchImageUpdate}
+        imageStyle={style?.imageStyle}
       />
 
       {/* Main Content */}
@@ -402,6 +424,7 @@ export function PresentationEditor({
                     title,
                     description,
                     slides,
+                    style,
                   }}
                   onSlideChange={handleSlideChange}
                   isSelected={true}
@@ -501,6 +524,66 @@ export function PresentationEditor({
                 </div>
               )}
             </div>
+
+            {/* Presentation Style Settings */}
+            <Accordion type="single" collapsible className="border-t pt-4">
+              <AccordionItem value="style" className="border-none">
+                <AccordionTrigger className="py-2 text-sm font-medium">
+                  Presentation Style
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Image Style</Label>
+                    <Textarea
+                      value={style?.imageStyle || ''}
+                      onChange={(e) => handleStyleChange('imageStyle', e.target.value)}
+                      placeholder="Modern flat illustration, soft gradients, pastel colors..."
+                      rows={2}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Header Template</Label>
+                    <Input
+                      value={style?.headerTemplate || ''}
+                      onChange={(e) => handleStyleChange('headerTemplate', e.target.value)}
+                      placeholder="Workshop: {title}"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Footer Template</Label>
+                    <Input
+                      value={style?.footerTemplate || ''}
+                      onChange={(e) => handleStyleChange('footerTemplate', e.target.value)}
+                      placeholder="Company Name | 2024"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Font Style</Label>
+                    <Input
+                      value={style?.fontStyle || ''}
+                      onChange={(e) => handleStyleChange('fontStyle', e.target.value)}
+                      placeholder="Clean sans-serif, bold headings"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Layout Hints</Label>
+                    <Input
+                      value={style?.layoutHints || ''}
+                      onChange={(e) => handleStyleChange('layoutHints', e.target.value)}
+                      placeholder="Centered titles, generous whitespace"
+                      className="text-sm"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    These settings guide AI when generating slides and images
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             <div className="text-sm text-muted-foreground pt-2 border-t">
               {slides.length} slide{slides.length !== 1 ? 's' : ''}

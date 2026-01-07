@@ -83,6 +83,7 @@ export interface GenerateQuizResponse {
 // Request to generate question image
 export interface GenerateImageRequest {
   prompt: string;
+  styleGuide?: string; // Presentation-wide image style to prepend to prompt
   // For quiz images
   quizId?: string;     // For existing quizzes
   tempId?: string;     // For new quizzes (temp storage)
@@ -189,11 +190,23 @@ export interface GeneratedPresentationSlide {
   imagePrompt?: string;  // AI-suggested prompt for image generation
 }
 
+/**
+ * Presentation style settings for consistent AI generation
+ */
+export interface PresentationStyle {
+  imageStyle?: string;      // Art style, color palette, mood for AI-generated images
+  headerTemplate?: string;  // Standard header format (e.g., "Workshop: {title}")
+  footerTemplate?: string;  // Standard footer format (e.g., "Company Name | 2024")
+  fontStyle?: string;       // Typography hints (e.g., "Clean sans-serif, bold headings")
+  layoutHints?: string;     // Layout preferences (e.g., "Centered titles, generous whitespace")
+}
+
 // Generated presentation structure
 export interface GeneratedPresentation {
   title: string;
   description?: string;
   slides: GeneratedPresentationSlide[];
+  style?: PresentationStyle; // AI-generated presentation style
 }
 
 // Request to generate presentation

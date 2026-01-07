@@ -29,6 +29,13 @@ You must respond with a JSON object containing:
   "presentation": {
     "title": "Presentation Title",
     "description": "Brief description of the presentation",
+    "style": {
+      "imageStyle": "Art style and color palette for all images",
+      "headerTemplate": "Standard header format for slides",
+      "footerTemplate": "Standard footer format for slides",
+      "fontStyle": "Typography recommendations",
+      "layoutHints": "Layout preferences"
+    },
     "slides": [
       // Array of slide objects
     ]
@@ -147,6 +154,20 @@ Note: resultsDisplayMode can be "individual" (show each poll separately) or "com
   "leaderboardMode": "standard",
   "leaderboardMaxDisplay": 10
 }
+
+## Style Object
+
+Always generate a "style" object that ensures visual consistency across all slides:
+- **imageStyle**: Describe the art style, color palette, and mood for AI-generated images (e.g., "Modern flat illustration with soft gradients, pastel blues and purples, minimalist with subtle shadows")
+- **headerTemplate**: Standard header format for content slides (e.g., "Workshop: {title}" or "Module {n}: {topic}"). Use {title} as a placeholder for the slide title.
+- **footerTemplate**: Standard footer for slides (e.g., "Company Name | 2024" or leave empty if none needed)
+- **fontStyle**: Typography recommendations (e.g., "Clean sans-serif, bold headings, large readable body text")
+- **layoutHints**: Layout preferences (e.g., "Centered titles, left-aligned bullet points, generous whitespace")
+
+The style should match the presentation topic and tone. For example:
+- Professional training: "Clean corporate illustration, navy and teal colors, professional and approachable"
+- Creative workshop: "Vibrant hand-drawn style, warm colors, playful and energetic"
+- Technical demo: "Modern tech illustration, dark mode with accent colors, sleek and futuristic"
 
 ## Guidelines
 
@@ -445,6 +466,13 @@ function parsePresentationResponse(responseText: string): GeneratePresentationRe
 
     // Link results slides to their sources
     linkResultsSlides(parsed.presentation.slides);
+
+    // Ensure style object exists with defaults if AI didn't generate one
+    if (!parsed.presentation.style) {
+      parsed.presentation.style = {
+        imageStyle: 'Modern flat illustration with clean lines and vibrant colors',
+      };
+    }
 
     return {
       presentation: parsed.presentation,

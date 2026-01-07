@@ -94,6 +94,7 @@ export function QuizEditor({ slide, presentation, onSlideChange }: SlideEditorPr
         promptContext={question?.text || 'quiz question'}
         suggestedPrompt={slide.imagePrompt}
         onImageChange={(url) => onSlideChange({ ...slide, imageUrl: url })}
+        imageStyle={presentation.style?.imageStyle}
       />
 
       {/* Time Limit */}

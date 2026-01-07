@@ -25,6 +25,7 @@ interface AISlideImageGeneratorProps {
   presentationId: string;
   slideId: string;
   onImageGenerated: (imageUrl: string) => void;
+  imageStyle?: string; // Presentation-wide image style for consistent generation
 }
 
 /**
@@ -46,6 +47,7 @@ export function AISlideImageGenerator({
   presentationId,
   slideId,
   onImageGenerated,
+  imageStyle,
 }: AISlideImageGeneratorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
@@ -93,12 +95,13 @@ export function AISlideImageGenerator({
     setIsGenerating(true);
     try {
       const generateImage = httpsCallable<
-        { prompt: string; presentationId: string; slideId: string },
+        { prompt: string; styleGuide?: string; presentationId: string; slideId: string },
         { imageUrl: string }
       >(functions, 'generateQuestionImage');
 
       const result = await generateImage({
         prompt: prompt.trim(),
+        styleGuide: imageStyle,
         presentationId,
         slideId,
       });

@@ -106,6 +106,7 @@ export function PollEditor({ slide, presentation, onSlideChange }: SlideEditorPr
         promptContext={question?.text || 'poll question'}
         suggestedPrompt={slide.imagePrompt}
         onImageChange={(url) => onSlideChange({ ...slide, imageUrl: url })}
+        imageStyle={presentation.style?.imageStyle}
       />
 
       {/* Poll Type Toggle */}

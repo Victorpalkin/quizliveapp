@@ -858,6 +858,18 @@ export interface PresentationSlide {
 }
 
 /**
+ * Presentation style settings for consistent AI generation
+ * Guides AI to produce visually cohesive slides and images
+ */
+export interface PresentationStyle {
+  imageStyle?: string;      // Art style, color palette, mood for AI-generated images
+  headerTemplate?: string;  // Standard header format (e.g., "Workshop: {title}")
+  footerTemplate?: string;  // Standard footer format (e.g., "Company Name | 2024")
+  fontStyle?: string;       // Typography hints (e.g., "Clean sans-serif, bold headings")
+  layoutHints?: string;     // Layout preferences (e.g., "Centered titles, generous whitespace")
+}
+
+/**
  * Presentation activity stored in /presentations/{presentationId}
  */
 export interface Presentation {
@@ -874,6 +886,9 @@ export interface Presentation {
   // Default pacing settings (applies to all interactive slides unless overridden)
   defaultPacingMode?: 'none' | 'threshold' | 'all';
   defaultPacingThreshold?: number; // 0-100, default: 80
+
+  // AI-generated or user-defined presentation style
+  style?: PresentationStyle;
 
   createdAt: Date;
   updatedAt: Date;

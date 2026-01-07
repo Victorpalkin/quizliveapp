@@ -13,7 +13,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { Loader2, Sparkles, Send, Save, RotateCcw, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import type { PresentationSlide } from '@/lib/types';
+import type { PresentationSlide, PresentationStyle } from '@/lib/types';
 import { removeUndefined } from '@/lib/firestore-utils';
 import { SlidePreviewCard } from '@/components/app/presentation-preview';
 
@@ -27,6 +27,7 @@ interface GeneratedPresentation {
   title: string;
   description?: string;
   slides: PresentationSlide[];
+  style?: PresentationStyle; // AI-generated presentation style
 }
 
 interface GeneratePresentationResponse {
@@ -136,6 +137,7 @@ export default function CreatePresentationWithAIPage() {
           id: slide.id || crypto.randomUUID(),
           order: index,
         })),
+        style: generatedPresentation.style, // Include AI-generated style
         hostId: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -352,10 +354,28 @@ export default function CreatePresentationWithAIPage() {
                     {generatedPresentation.description || `${generatedPresentation.slides.length} slides generated`}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="max-h-[600px] overflow-y-auto space-y-2">
-                  {generatedPresentation.slides.map((slide, index) => (
-                    <SlidePreviewCard key={slide.id || index} slide={slide} index={index} showImage={false} />
-                  ))}
+                <CardContent className="max-h-[600px] overflow-y-auto space-y-4">
+                  {/* Style Summary */}
+                  {generatedPresentation.style && (
+                    <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
+                      <p className="font-medium text-xs text-muted-foreground uppercase tracking-wide">Style</p>
+                      {generatedPresentation.style.imageStyle && (
+                        <p><span className="text-muted-foreground">Images:</span> {generatedPresentation.style.imageStyle}</p>
+                      )}
+                      {generatedPresentation.style.headerTemplate && (
+                        <p><span className="text-muted-foreground">Header:</span> {generatedPresentation.style.headerTemplate}</p>
+                      )}
+                      {generatedPresentation.style.footerTemplate && (
+                        <p><span className="text-muted-foreground">Footer:</span> {generatedPresentation.style.footerTemplate}</p>
+                      )}
+                    </div>
+                  )}
+                  {/* Slides */}
+                  <div className="space-y-2">
+                    {generatedPresentation.slides.map((slide, index) => (
+                      <SlidePreviewCard key={slide.id || index} slide={slide} index={index} showImage={false} />
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             ) : (

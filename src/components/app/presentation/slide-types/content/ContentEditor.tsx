@@ -27,6 +27,7 @@ export function ContentEditor({ slide, presentation, onSlideChange }: SlideEdito
         suggestedPrompt={slide.imagePrompt}
         onImageChange={(url) => onSlideChange({ ...slide, imageUrl: url })}
         label="Slide Image"
+        imageStyle={presentation.style?.imageStyle}
       />
 
       {/* Title Section */}

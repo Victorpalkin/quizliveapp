@@ -22,6 +22,7 @@ interface SlideImageUploadProps {
   suggestedPrompt?: string; // AI-suggested prompt from presentation generation
   onImageChange: (imageUrl: string | undefined) => void;
   label?: string;
+  imageStyle?: string; // Presentation-wide image style for consistent generation
 }
 
 /**
@@ -36,6 +37,7 @@ export function SlideImageUpload({
   suggestedPrompt,
   onImageChange,
   label = 'Image (optional)',
+  imageStyle,
 }: SlideImageUploadProps) {
   const storage = useStorage();
   const { toast } = useToast();
@@ -216,6 +218,7 @@ export function SlideImageUpload({
                     presentationId={presentationId}
                     slideId={slideId}
                     onImageGenerated={handleAIImageGenerated}
+                    imageStyle={imageStyle}
                   />
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">

@@ -50,7 +50,7 @@ export const generateQuestionImage = onCall(
     }
 
     const data = request.data as GenerateImageRequest;
-    const { prompt, quizId, tempId, questionIndex, presentationId, slideId } = data;
+    const { prompt, styleGuide, quizId, tempId, questionIndex, presentationId, slideId } = data;
 
     // Validate inputs
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -93,10 +93,13 @@ export const generateQuestionImage = onCall(
         location: IMAGE_LOCATION, // Must be 'global' for image generation
       });
 
+      // Combine style guide with prompt if provided
+      const fullPrompt = styleGuide ? `${styleGuide}. ${prompt}` : prompt;
+
       // Generate image with Gemini 3 Pro Image
       const response = await client.models.generateContent({
         model: GEMINI_IMAGE_MODEL,
-        contents: prompt,
+        contents: fullPrompt,
         config: {
           responseModalities: ['TEXT', 'IMAGE'], // Must include both
           imageConfig: {
