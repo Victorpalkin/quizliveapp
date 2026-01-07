@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, GripVertical, Image, HelpCircle, BarChart3, MessageSquare, Star, Trophy, AlertTriangle } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PresentationSlide, PresentationSlideType } from '@/lib/types';
 import { getSlideType } from '../slide-types';
 
@@ -158,16 +158,18 @@ export function SlideList({
                   </div>
 
                   {getSlideWarning(slide) && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex-shrink-0 p-1">
-                          <AlertTriangle className="h-4 w-4 text-amber-500" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" className="max-w-xs">
-                        <p className="text-sm">{getSlideWarning(slide)}</p>
-                      </TooltipContent>
-                    </Tooltip>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex-shrink-0 p-1">
+                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-xs">
+                          <p className="text-sm">{getSlideWarning(slide)}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
 
                   <Button
