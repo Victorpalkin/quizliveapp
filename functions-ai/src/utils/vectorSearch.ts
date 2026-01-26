@@ -41,7 +41,13 @@ export interface MatchingAgent {
   score: number;
   functionalArea: string;
   industry: string;
+  distance?: number;  // Cosine distance (0=identical, 1=orthogonal)
 }
+
+// Configuration for similarity filtering
+// Cosine distance: 0.0 = identical, 1.0 = orthogonal, 2.0 = opposite
+// Threshold 0.6 is lenient, broadly related (recommended starting point)
+const MAX_DISTANCE_THRESHOLD = 0.6;
 
 /**
  * Generate embedding for a text query using Vertex AI
@@ -86,27 +92,40 @@ export async function findSimilarAgents(
   // Generate embedding for the topic
   const queryEmbedding = await generateEmbedding(topicText);
 
-  // Vector similarity search using Firestore findNearest
+  // Vector similarity search with distance threshold and result field
   const results = await db.collection(COLLECTION_NAME)
     .findNearest('embedding', queryEmbedding, {
-      limit,
+      limit: limit * 2,  // Request more to allow for filtering
       distanceMeasure: 'COSINE',
+      distanceThreshold: MAX_DISTANCE_THRESHOLD,  // Filter weak matches
+      distanceResultField: 'vectorDistance',       // Capture distance
     })
     .get();
 
-  return results.docs.map(doc => {
-    const data = doc.data() as AIAgent;
-    return {
-      uniqueId: data.uniqueId,
-      agentName: data.agentName,
-      summary: data.summary ? data.summary.substring(0, 300) : '',
-      referenceLink: data.referenceLink,
-      maturity: data.maturity || 0,
-      score: data.score || 0,
-      functionalArea: data.functionalArea || '',
-      industry: data.industry || '',
-    };
-  });
+  // Map results and include distance
+  const agents = results.docs
+    .map(doc => {
+      const data = doc.data() as AIAgent & { vectorDistance?: number };
+      return {
+        uniqueId: data.uniqueId,
+        agentName: data.agentName,
+        summary: data.summary ? data.summary.substring(0, 300) : '',
+        referenceLink: data.referenceLink,
+        maturity: data.maturity || 0,
+        score: data.score || 0,
+        functionalArea: data.functionalArea || '',
+        industry: data.industry || '',
+        distance: data.vectorDistance,
+      };
+    })
+    .slice(0, limit);  // Take only requested limit
+
+  console.log(`Vector search for "${topicText.substring(0, 50)}..." returned ${agents.length} agents`);
+  if (agents.length > 0) {
+    console.log(`  Matches: ${agents.map(a => `${a.agentName} (d=${a.distance?.toFixed(3)})`).join(', ')}`);
+  }
+
+  return agents;
 }
 
 /**
