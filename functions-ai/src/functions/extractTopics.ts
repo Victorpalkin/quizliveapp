@@ -79,14 +79,14 @@ Respond ONLY with valid JSON in this exact format:
 }
 
 Guidelines:
-- **topic**: A specific, descriptive title (3-8 words, Title Case) that DIFFERENTIATES this group from others
-- **description**: 1-2 sentences explaining the specific focus of this group
+- **topic**: A specific, descriptive title (6-10 words, Title Case) that DIFFERENTIATES this group from others and answers the initial prompt to the participants
+- **description**: 2-3 sentences explaining the specific focus of this group
 - **count**: Number of submissions in this group
 - **variations**: 2-5 representative excerpts showing the range of ideas in this group
 - **submissionIds**: IDs of all submissions in this group
 
 Grouping rules:
-- Each submission belongs to exactly ONE group
+- Each submission can belong to multiple groups
 - Create 3-15 groups depending on content diversity
 - Groups should represent DISTINCT categories, not overlapping themes
 - Unique submissions can form their own small groups
