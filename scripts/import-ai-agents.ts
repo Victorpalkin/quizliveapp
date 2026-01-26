@@ -3,7 +3,7 @@
  *
  * This script:
  * 1. Parses the AI Agent Tracker TSV file
- * 2. Generates embeddings using Vertex AI (gemini-embedding-001)
+ * 2. Generates embeddings using Vertex AI (text-embedding-004)
  * 3. Stores agents in Firestore 'aiAgents' collection with FieldValue.vector()
  *
  * Usage:
@@ -28,8 +28,8 @@ const __dirname = path.dirname(__filename);
 // Configuration
 const TSV_FILE_PATH = path.join(__dirname, '../docs/AI Agent tracker - AI Agent tracker.tsv');
 const COLLECTION_NAME = 'aiAgents';
-const EMBEDDING_MODEL = 'gemini-embedding-001';
-const EMBEDDING_DIMENSION = 3072; // gemini-embedding-001 outputs 3072 dimensions
+const EMBEDDING_MODEL = 'text-embedding-004';
+const EMBEDDING_DIMENSION = 768; // text-embedding-004 outputs 768 dimensions (within Firestore's 2048 limit)
 const BATCH_SIZE = 50; // Number of documents to write in a batch
 const EMBEDDING_DELAY_MS = 100; // Delay between embedding requests to avoid rate limiting
 

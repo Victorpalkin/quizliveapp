@@ -21,8 +21,8 @@ The Agentic Use Cases Collection feature enables matching collected topics with 
                               ▼ import-ai-agents.ts
 ┌─────────────────────────────────────────────────────────────┐
 │                   Vertex AI Embeddings                       │
-│                   (gemini-embedding-001)                     │
-│                   3072 dimensions per agent                  │
+│                   (text-embedding-004)                       │
+│                   768 dimensions per agent                   │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -42,7 +42,7 @@ The Agentic Use Cases Collection feature enables matching collected topics with 
 │    referenceLink: string,                                    │
 │    maturity: number,                                         │
 │    score: number,                                            │
-│    embedding: FieldValue.vector([...])  // 3072 dims         │
+│    embedding: FieldValue.vector([...])  // 768 dims          │
 │  }                                                           │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -114,7 +114,7 @@ Create the vector index for semantic search. This is required before querying:
 gcloud firestore indexes composite create \
   --collection-group=aiAgents \
   --query-scope=COLLECTION \
-  --field-config field-path=embedding,vector-config='{"dimension":"3072","flat": {}}'
+  --field-config field-path=embedding,vector-config='{"dimension":"768","flat": {}}'
 ```
 
 **Note:** Index creation takes 10-30 minutes. You can check the status in the Firebase Console under Firestore > Indexes.
@@ -143,7 +143,7 @@ Check in Firebase Console:
 1. Navigate to Firestore > `aiAgents` collection
 2. Verify document count (~3181)
 3. Sample a document to confirm:
-   - `embedding` field exists with 3072 values
+   - `embedding` field exists with 768 values
    - All required fields are populated
 
 ## Updating Agent Data
