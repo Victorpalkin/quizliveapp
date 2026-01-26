@@ -147,13 +147,15 @@ export function CompletedActivityCard({ game, title, onDelete, onHostAgain }: Co
       </CardHeader>
       <CardContent className="flex flex-col gap-2 p-4 pt-0">
         <div className="flex gap-2">
-          <Button
-            variant="gradient"
-            className="flex-1"
-            onClick={() => router.push(resultsPath)}
-          >
-            <Eye className="mr-2 h-4 w-4" /> Results
-          </Button>
+          {activityType !== 'presentation' && (
+            <Button
+              variant="gradient"
+              className="flex-1"
+              onClick={() => router.push(resultsPath)}
+            >
+              <Eye className="mr-2 h-4 w-4" /> Results
+            </Button>
+          )}
           {analyticsPath && (
             <Button asChild variant="gradient" className="flex-1">
               <Link href={analyticsPath}>
