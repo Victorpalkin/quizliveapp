@@ -19,7 +19,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import * as admin from 'firebase-admin';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { GoogleGenAI } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -162,10 +163,10 @@ async function importAgents(options: { force?: boolean; incremental?: boolean } 
   console.log('='.repeat(60));
 
   // Initialize Firebase Admin
-  if (!admin.apps.length) {
-    admin.initializeApp();
+  if (!getApps().length) {
+    initializeApp();
   }
-  const db = admin.firestore();
+  const db = getFirestore();
 
   // Initialize Vertex AI client
   const project = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT;
@@ -234,8 +235,8 @@ async function importAgents(options: { force?: boolean; incremental?: boolean } 
         const docRef = db.collection(COLLECTION_NAME).doc(agent.uniqueId);
         writeBatch.set(docRef, {
           ...agent,
-          embedding: admin.firestore.FieldValue.vector(embedding),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          embedding: FieldValue.vector(embedding),
+          updatedAt: FieldValue.serverTimestamp(),
         });
 
         batchCount++;
