@@ -3,6 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 import * as admin from 'firebase-admin';
 import { ALLOWED_ORIGINS, REGION, GEMINI_MODEL, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
+import { findSimilarAgents, getTopMatureAgents, MatchingAgent } from '../utils/vectorSearch';
 
 interface ExtractTopicsRequest {
   gameId: string;
@@ -27,6 +28,18 @@ interface InterestSubmission {
   playerId: string;
   playerName: string;
   rawText: string;
+}
+
+interface TopicAgentMatch {
+  topicName: string;
+  matchingAgents: MatchingAgent[];
+}
+
+interface ThoughtsGatheringConfig {
+  prompt: string;
+  maxSubmissionsPerPlayer: number;
+  allowMultipleRounds: boolean;
+  agenticUseCasesCollection?: boolean;
 }
 
 // System prompt for grouping similar submissions
@@ -159,6 +172,15 @@ export const extractTopics = onCall(
       throw new HttpsError('failed-precondition', 'This game is not a Thoughts Gathering activity');
     }
 
+    // Fetch activity config to check for agentic use cases feature
+    let activityConfig: ThoughtsGatheringConfig | null = null;
+    if (gameData?.activityId) {
+      const activityDoc = await db.collection('activities').doc(gameData.activityId).get();
+      if (activityDoc.exists) {
+        activityConfig = activityDoc.data()?.config as ThoughtsGatheringConfig;
+      }
+    }
+
     // Get all submissions for this game
     const submissionsSnapshot = await db
       .collection('games')
@@ -234,12 +256,62 @@ Create meaningful groups based on shared themes, questions, or ideas. Provide a 
       // Parse topic extraction results
       const topics = parseExtractionResponse(responseText);
 
-      // Write topics to aggregates collection
-      await db.collection('games').doc(data.gameId).collection('aggregates').doc('topics').set({
+      // Initialize result object
+      const topicsResult: {
+        topics: TopicEntry[];
+        totalSubmissions: number;
+        processedAt: admin.firestore.FieldValue;
+        agentMatches?: TopicAgentMatch[];
+        topMatureAgents?: MatchingAgent[];
+      } = {
         topics,
         totalSubmissions: submissions.length,
         processedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      };
+
+      // If agentic use cases collection is enabled, match topics with AI agents
+      if (activityConfig?.agenticUseCasesCollection) {
+        console.log('Agentic use cases collection enabled - matching topics with AI agents...');
+
+        const agentMatches: TopicAgentMatch[] = [];
+        const allMatchedAgents: MatchingAgent[] = [];
+
+        for (const topic of topics) {
+          try {
+            // Create search text from topic name and description
+            const searchText = `${topic.topic} ${topic.description}`;
+            const matchingAgents = await findSimilarAgents(searchText, 3);
+
+            agentMatches.push({
+              topicName: topic.topic,
+              matchingAgents,
+            });
+
+            // Collect all agents for top 5 calculation
+            allMatchedAgents.push(...matchingAgents);
+
+            console.log(`Matched ${matchingAgents.length} agents for topic: ${topic.topic}`);
+          } catch (error) {
+            console.error(`Error matching agents for topic "${topic.topic}":`, error);
+            // Continue with other topics if one fails
+            agentMatches.push({
+              topicName: topic.topic,
+              matchingAgents: [],
+            });
+          }
+        }
+
+        // Calculate top 5 most mature agents across all matches
+        const topMatureAgents = getTopMatureAgents(allMatchedAgents, 5);
+
+        topicsResult.agentMatches = agentMatches;
+        topicsResult.topMatureAgents = topMatureAgents;
+
+        console.log(`Found ${topMatureAgents.length} top mature agents across all topics`);
+      }
+
+      // Write topics to aggregates collection
+      await db.collection('games').doc(data.gameId).collection('aggregates').doc('topics').set(topicsResult);
 
       // Update game state to display
       await db.collection('games').doc(data.gameId).update({
