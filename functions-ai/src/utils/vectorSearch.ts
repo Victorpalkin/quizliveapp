@@ -8,7 +8,8 @@
 import { GoogleGenAI } from '@google/genai';
 import * as admin from 'firebase-admin';
 
-const EMBEDDING_MODEL = 'text-embedding-004';
+const EMBEDDING_MODEL = 'gemini-embedding-001';
+const EMBEDDING_DIMENSION = 1536; // Scaled down from 3072 to fit Firestore's 2048 limit
 const COLLECTION_NAME = 'aiAgents';
 
 /**
@@ -60,6 +61,9 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   const response = await client.models.embedContent({
     model: EMBEDDING_MODEL,
     contents: [{ role: 'user', parts: [{ text }] }],
+    config: {
+      outputDimensionality: EMBEDDING_DIMENSION, // Reduce from 3072 to 1536
+    },
   });
 
   const embedding = response.embeddings?.[0]?.values;
