@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Users, MessageSquare } from 'lucide-react';
+import { ChevronDown, ChevronRight, Users, MessageSquare, Bot, ExternalLink, Star } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import type { TopicEntry, ThoughtSubmission } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
+import type { TopicEntry, ThoughtSubmission, TopicAgentMatch, MatchingAgent } from '@/lib/types';
 
 interface ThoughtsGroupedViewProps {
   topics: TopicEntry[];
   submissions: ThoughtSubmission[];
+  agentMatches?: TopicAgentMatch[];
   className?: string;
 }
 
@@ -23,7 +25,7 @@ const COLORS = [
   { bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', text: 'text-indigo-600 dark:text-indigo-400' },
 ];
 
-export function ThoughtsGroupedView({ topics, submissions, className = '' }: ThoughtsGroupedViewProps) {
+export function ThoughtsGroupedView({ topics, submissions, agentMatches, className = '' }: ThoughtsGroupedViewProps) {
   // Track which groups are expanded
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -33,6 +35,15 @@ export function ThoughtsGroupedView({ topics, submissions, className = '' }: Tho
     submissions.forEach(sub => map.set(sub.id, sub));
     return map;
   }, [submissions]);
+
+  // Create a map for O(1) agent match lookup by topic name
+  const agentMatchMap = useMemo(() => {
+    const map = new Map<string, MatchingAgent[]>();
+    if (agentMatches) {
+      agentMatches.forEach(match => map.set(match.topicName, match.matchingAgents));
+    }
+    return map;
+  }, [agentMatches]);
 
   // Sort topics by count (descending)
   const sortedTopics = useMemo(() => {
@@ -69,6 +80,9 @@ export function ThoughtsGroupedView({ topics, submissions, className = '' }: Tho
         const topicSubmissions = topic.submissionIds
           .map(id => submissionMap.get(id))
           .filter((sub): sub is ThoughtSubmission => sub !== undefined);
+
+        // Get matching agents for this topic
+        const matchingAgents = agentMatchMap.get(topic.topic) || [];
 
         return (
           <Collapsible
@@ -137,6 +151,67 @@ export function ThoughtsGroupedView({ topics, submissions, className = '' }: Tho
                           ))}
                           {topic.variations.length > 3 && <span> +{topic.variations.length - 3} more</span>}
                         </p>
+                      </div>
+                    )}
+                    {matchingAgents.length > 0 && (
+                      <div className="pt-3 border-t border-border/30 mt-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Bot className="h-4 w-4 text-violet-500" />
+                          <span className="text-sm font-medium text-violet-600 dark:text-violet-400">
+                            Related AI Agents
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {matchingAgents.map((agent) => (
+                            <div
+                              key={agent.uniqueId}
+                              className="p-3 bg-violet-500/5 border border-violet-500/20 rounded-lg"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {agent.referenceLink ? (
+                                      <a
+                                        href={agent.referenceLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-medium text-sm text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1"
+                                      >
+                                        {agent.agentName}
+                                        <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    ) : (
+                                      <span className="font-medium text-sm text-violet-600 dark:text-violet-400">
+                                        {agent.agentName}
+                                      </span>
+                                    )}
+                                    <Badge variant="outline" className="text-xs border-violet-500/30 text-violet-600">
+                                      <Star className="h-3 w-3 mr-1" />
+                                      Maturity: {agent.maturity}
+                                    </Badge>
+                                  </div>
+                                  {agent.summary && (
+                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                      {agent.summary}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    {agent.functionalArea && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {agent.functionalArea}
+                                      </span>
+                                    )}
+                                    {agent.industry && (
+                                      <span className="text-xs text-muted-foreground">
+                                        • {agent.industry}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>

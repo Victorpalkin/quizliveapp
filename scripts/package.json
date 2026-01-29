@@ -1,0 +1,20 @@
+{
+  "name": "quizliveapp-scripts",
+  "version": "1.0.0",
+  "description": "Admin scripts for QuizLive App",
+  "type": "module",
+  "scripts": {
+    "import-agents": "npx tsx import-ai-agents.ts",
+    "import-agents:force": "npx tsx import-ai-agents.ts --force",
+    "import-agents:incremental": "npx tsx import-ai-agents.ts --incremental"
+  },
+  "dependencies": {
+    "@google/genai": "^1.30.0",
+    "firebase-admin": "^13.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -345,6 +345,7 @@ export interface ThoughtsGatheringConfig {
   prompt: string;                    // e.g., "What topics interest you most?"
   maxSubmissionsPerPlayer: number;   // Default: 3
   allowMultipleRounds: boolean;      // Can host reopen for more submissions
+  agenticUseCasesCollection?: boolean;  // Enable AI agent matching for collected topics
 }
 
 /**
@@ -385,12 +386,36 @@ export interface TopicEntry {
 }
 
 /**
+ * A matching AI agent from the tracker database
+ */
+export interface MatchingAgent {
+  uniqueId: string;
+  agentName: string;
+  summary: string;
+  referenceLink: string;
+  maturity: number;
+  score: number;
+  functionalArea: string;
+  industry: string;
+}
+
+/**
+ * Matched agents for a specific topic group
+ */
+export interface TopicAgentMatch {
+  topicName: string;
+  matchingAgents: MatchingAgent[];
+}
+
+/**
  * Aggregated topic cloud result stored in /games/{gameId}/aggregates/topics
  */
 export interface TopicCloudResult {
   topics: TopicEntry[];
   totalSubmissions: number;
   processedAt: Timestamp;
+  agentMatches?: TopicAgentMatch[];  // Populated when agenticUseCasesCollection=true
+  topMatureAgents?: MatchingAgent[];  // Top 5 most mature agents across all matches
 }
 
 // ==========================================
