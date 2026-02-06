@@ -35,8 +35,8 @@ export const submitAnswer = onCall(
     minInstances: 1, // Keep 1 instance warm to eliminate cold starts (~$5-10/month)
     maxInstances: 10,
     concurrency: 80,
-    // App Check enabled - verifies requests come from genuine app instances
-    enforceAppCheck: true,
+    // App Check disabled to allow unauthenticated access
+    enforceAppCheck: false,
   },
   async (request): Promise<SubmitAnswerResult> => {
     // Verify App Check token (currently in monitoring mode)
