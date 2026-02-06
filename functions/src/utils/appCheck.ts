@@ -16,7 +16,7 @@ import { HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 
 // Check if App Check enforcement is enabled via environment variable
 // This allows gradual rollout: monitor first, then enforce
-const APP_CHECK_ENFORCEMENT = process.env.APP_CHECK_ENFORCEMENT === 'true';
+const APP_CHECK_ENFORCEMENT = process.env.APP_CHECK_ENFORCEMENT === 'false';
 
 /**
  * Verify App Check token from request
