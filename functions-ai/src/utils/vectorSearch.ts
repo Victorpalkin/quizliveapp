@@ -93,13 +93,16 @@ export async function findSimilarAgents(
   const queryEmbedding = await generateEmbedding(topicText);
 
   // Vector similarity search with distance threshold and result field
+  // Note: distanceThreshold and distanceResultField are valid Firestore options
+  // but not yet in the TypeScript types
   const results = await db.collection(COLLECTION_NAME)
     .findNearest('embedding', queryEmbedding, {
       limit: limit * 2,  // Request more to allow for filtering
       distanceMeasure: 'COSINE',
       distanceThreshold: MAX_DISTANCE_THRESHOLD,  // Filter weak matches
       distanceResultField: 'vectorDistance',       // Capture distance
-    })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
     .get();
 
   // Map results and include distance
