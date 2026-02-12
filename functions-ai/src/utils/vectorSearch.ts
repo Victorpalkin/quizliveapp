@@ -118,7 +118,7 @@ export async function findSimilarAgents(
         score: data.score || 0,
         functionalArea: data.functionalArea || '',
         industry: data.industry || '',
-        distance: data.vectorDistance,
+        ...(data.vectorDistance !== undefined && { distance: data.vectorDistance }),
       };
     })
     .slice(0, limit);  // Take only requested limit
