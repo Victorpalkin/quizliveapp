@@ -14,6 +14,11 @@ This guide covers setting up production and dev/test environments with automatic
 8. [Phase 6: First Deployment](#phase-6-first-deployment)
 9. [Daily Workflow](#daily-workflow)
 10. [Troubleshooting](#troubleshooting)
+11. [Additional Features](#additional-features)
+
+## Related Documentation
+
+- **[AI Agents Setup Guide](./AI_AGENTS_SETUP.md)** - Set up the AI Agents database for the Agentic Use Cases Collection feature in Thoughts Gathering. Required for matching topics with AI agents from the tracker.
 
 ---
 

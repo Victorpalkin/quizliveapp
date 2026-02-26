@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Header } from '@/components/app/header';
-import { Cloud, ArrowLeft, Loader2, Save } from 'lucide-react';
+import { Cloud, ArrowLeft, Loader2, Save, Bot } from 'lucide-react';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp, DocumentReference } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -31,6 +31,7 @@ export default function EditThoughtsGatheringPage() {
   const [prompt, setPrompt] = useState('');
   const [maxSubmissions, setMaxSubmissions] = useState(3);
   const [allowMultipleRounds, setAllowMultipleRounds] = useState(false);
+  const [agenticUseCasesCollection, setAgenticUseCasesCollection] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -55,6 +56,7 @@ export default function EditThoughtsGatheringPage() {
       setPrompt(activity.config.prompt);
       setMaxSubmissions(activity.config.maxSubmissionsPerPlayer);
       setAllowMultipleRounds(activity.config.allowMultipleRounds);
+      setAgenticUseCasesCollection(activity.config.agenticUseCasesCollection || false);
       setIsInitialized(true);
     }
   }, [activity, isInitialized]);
@@ -94,6 +96,7 @@ export default function EditThoughtsGatheringPage() {
         prompt: prompt.trim(),
         maxSubmissionsPerPlayer: maxSubmissions,
         allowMultipleRounds,
+        agenticUseCasesCollection,
       };
 
       await updateDoc(activityDocRef, {
@@ -255,6 +258,23 @@ export default function EditThoughtsGatheringPage() {
                 id="multipleRounds"
                 checked={allowMultipleRounds}
                 onCheckedChange={setAllowMultipleRounds}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-4 border-violet-500/30 bg-violet-500/5">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-violet-500" />
+                  <Label htmlFor="agenticUseCases">Agentic Use Cases Collection</Label>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Match topics with AI agents from the tracker database
+                </p>
+              </div>
+              <Switch
+                id="agenticUseCases"
+                checked={agenticUseCasesCollection}
+                onCheckedChange={setAgenticUseCasesCollection}
               />
             </div>
 
