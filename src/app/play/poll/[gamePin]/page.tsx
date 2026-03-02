@@ -3,12 +3,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useFunctions, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, setDoc, getDocs, DocumentReference } from 'firebase/firestore';
+import { doc, collection, query, where, setDoc, getDocs, getDoc, DocumentReference } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { nanoid } from 'nanoid';
 import type { Game, Player, PollActivity } from '@/lib/types';
-import { gameConverter, pollActivityConverter } from '@/firebase/converters';
+import { gameConverter, pollActivityConverter, playerConverter } from '@/firebase/converters';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -18,8 +18,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Send, CheckCircle, Home, Vote, Clock } from 'lucide-react';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
+import { getPlayerSession, savePlayerSession, clearPlayerSession, sessionMatchesPin } from '@/lib/player-session';
+import { logError } from '@/lib/error-logging';
 
-type PlayerState = 'joining' | 'lobby' | 'answering' | 'waiting' | 'results' | 'ended';
+type PlayerState = 'joining' | 'reconnecting' | 'lobby' | 'answering' | 'waiting' | 'results' | 'ended';
 
 export default function PollPlayerPage() {
   const params = useParams();
@@ -29,12 +31,14 @@ export default function PollPlayerPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Player state
-  const [playerId] = useState(nanoid());
-  const [nickname, setNickname] = useState('');
-  const [gameDocId, setGameDocId] = useState<string | null>(null);
+  // Session-aware player state initialization
+  const storedSession = useRef(getPlayerSession());
+  const hasValidSession = storedSession.current && sessionMatchesPin(gamePin);
+  const [playerId] = useState(() => hasValidSession ? storedSession.current!.playerId : nanoid());
+  const [nickname, setNickname] = useState(() => hasValidSession ? storedSession.current!.nickname : '');
+  const [gameDocId, setGameDocId] = useState<string | null>(() => hasValidSession ? storedSession.current!.gameDocId : null);
   const [player, setPlayer] = useState<Player | null>(null);
-  const [state, setState] = useState<PlayerState>('joining');
+  const [state, setState] = useState<PlayerState>(() => hasValidSession ? 'reconnecting' : 'joining');
   const [isJoining, setIsJoining] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -44,8 +48,9 @@ export default function PollPlayerPage() {
   const [textAnswer, setTextAnswer] = useState('');
   const [hasAnswered, setHasAnswered] = useState(false);
 
-  // Track current question
+  // Track current question and answered questions (for reconnection)
   const lastQuestionIndexRef = useRef<number>(-1);
+  const answeredQuestionsRef = useRef<Set<number>>(new Set());
 
   // Game data
   const gameRef = useMemoFirebase(
@@ -67,8 +72,9 @@ export default function PollPlayerPage() {
   const shouldKeepAwake = ['answering', 'waiting', 'results'].includes(state);
   useWakeLock(shouldKeepAwake);
 
-  // Find game by PIN on mount
+  // Find game by PIN on mount (skip if already have gameDocId from session)
   useEffect(() => {
+    if (gameDocId) return;
     const findGame = async () => {
       const gamesRef = collection(firestore, 'games');
       const q = query(gamesRef, where('gamePin', '==', gamePin));
@@ -78,7 +84,39 @@ export default function PollPlayerPage() {
       }
     };
     findGame();
-  }, [firestore, gamePin]);
+  }, [firestore, gamePin, gameDocId]);
+
+  // Reconnection logic: check if player document still exists
+  useEffect(() => {
+    if (state !== 'reconnecting' || !gameDocId) return;
+
+    const attemptReconnect = async () => {
+      try {
+        const playerDocRef = doc(firestore, 'games', gameDocId, 'players', playerId).withConverter(playerConverter);
+        const playerDoc = await getDoc(playerDocRef);
+
+        if (playerDoc.exists()) {
+          const playerData = playerDoc.data();
+          setPlayer(playerData);
+          setNickname(playerData.name);
+
+          // Check which questions the player has already answered to restore hasAnswered state
+          // This will be synced properly once game data loads via the state sync useEffect
+          const answeredQuestions = new Set(playerData.answers.map(a => a.questionIndex));
+          answeredQuestionsRef.current = answeredQuestions;
+        } else {
+          // Player doc doesn't exist anymore, clear session and start fresh
+          clearPlayerSession();
+          setState('joining');
+        }
+      } catch (error) {
+        logError(error as Error, { context: 'PollPlayer:reconnect', gameId: gameDocId });
+        clearPlayerSession();
+        setState('joining');
+      }
+    };
+    attemptReconnect();
+  }, [state, gameDocId, firestore, playerId]);
 
   // Sync state with game state
   useEffect(() => {
@@ -87,11 +125,18 @@ export default function PollPlayerPage() {
     // Detect new question
     if (game.currentQuestionIndex !== lastQuestionIndexRef.current) {
       lastQuestionIndexRef.current = game.currentQuestionIndex;
-      // Reset answer state for new question
-      setSelectedIndex(null);
-      setSelectedIndices([]);
-      setTextAnswer('');
-      setHasAnswered(false);
+
+      // Check if this question was already answered (handles reconnection)
+      const alreadyAnswered = answeredQuestionsRef.current.has(game.currentQuestionIndex);
+      if (alreadyAnswered) {
+        setHasAnswered(true);
+      } else {
+        // Reset answer state for new question
+        setSelectedIndex(null);
+        setSelectedIndices([]);
+        setTextAnswer('');
+        setHasAnswered(false);
+      }
     }
 
     switch (game.state) {
@@ -106,6 +151,7 @@ export default function PollPlayerPage() {
         break;
       case 'ended':
         setState('ended');
+        clearPlayerSession();
         break;
     }
   }, [game?.state, game?.currentQuestionIndex, player, hasAnswered]);
@@ -133,9 +179,10 @@ export default function PollPlayerPage() {
       });
 
       setPlayer({ id: playerId, ...playerData });
+      savePlayerSession(playerId, gameDocId, gamePin, playerName);
       setState('lobby');
     } catch (error) {
-      console.error('Error joining game:', error);
+      logError(error as Error, { context: 'PollPlayer:join', gameId: gameDocId });
     } finally {
       setIsJoining(false);
     }
@@ -191,9 +238,10 @@ export default function PollPlayerPage() {
       await submitPollAnswerFn(request);
 
       setHasAnswered(true);
+      answeredQuestionsRef.current.add(game.currentQuestionIndex);
       setState('waiting');
     } catch (error: unknown) {
-      console.error('Error submitting answer:', error);
+      logError(error as Error, { context: 'PollPlayer:submit', gameId: gameDocId || undefined });
 
       // Show user-friendly error message
       const errorCode = (error as { code?: string })?.code;
@@ -436,6 +484,9 @@ export default function PollPlayerPage() {
             </CardContent>
           </Card>
         );
+
+      case 'reconnecting':
+        return <FullPageLoader />;
 
       case 'ended':
         return (

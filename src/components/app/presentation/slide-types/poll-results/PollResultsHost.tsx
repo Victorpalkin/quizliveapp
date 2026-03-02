@@ -76,7 +76,7 @@ export function PollResultsHost({ slide, presentation, game }: SlideHostProps) {
               counts[idx]++;
             }
           });
-        } else if (response.answerIndex !== undefined && response.answerIndex < answerCount) {
+        } else if (response.answerIndex !== undefined && response.answerIndex >= 0 && response.answerIndex < answerCount) {
           // Single choice
           counts[response.answerIndex]++;
         }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -132,7 +132,7 @@ export default function PollGamePage() {
 
     setAnswerDistribution(distribution);
     setRespondedCount(responded);
-  }, [players, game?.currentQuestionIndex]);
+  }, [players, game]);
 
   useEffect(() => {
     if (!userLoading && !user) {
@@ -154,6 +154,16 @@ export default function PollGamePage() {
     }
   }, [game?.state]);
 
+  const resetLeaderboardForNewQuestion = useCallback(async () => {
+    try {
+      await updateDoc(doc(firestore, 'games', gameId, 'aggregates', 'leaderboard'), {
+        answerCounts: [],
+        liveAnswerCounts: {},
+        totalAnswered: 0,
+      });
+    } catch { /* document may not exist yet */ }
+  }, [firestore, gameId]);
+
   const handleNextQuestion = async () => {
     if (!game || !poll) return;
 
@@ -165,13 +175,13 @@ export default function PollGamePage() {
         state: 'ended',
       });
     } else {
+      // Reset leaderboard aggregate before advancing to next question
+      await resetLeaderboardForNewQuestion();
       // Go to next question
       await updateDoc(doc(firestore, 'games', gameId), {
         currentQuestionIndex: nextIndex,
         state: 'question',
       });
-      setAnswerDistribution({});
-      setRespondedCount(0);
     }
   };
 

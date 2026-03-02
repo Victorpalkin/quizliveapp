@@ -1,6 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
-import { SubmitPollAnswerRequest, SubmitPollAnswerResult, PollPlayerAnswer } from '../types';
+import { SubmitPollAnswerRequest, SubmitPollAnswerResult, PollPlayerAnswer, Game } from '../types';
 import { ALLOWED_ORIGINS, REGION } from '../config';
 import { validateOrigin } from '../utils/cors';
 import { verifyAppCheck } from '../utils/appCheck';
@@ -21,6 +21,9 @@ import { enforceRateLimitInMemory } from '../utils/rateLimit';
  * - CORS validation: Only accepts requests from authorized origins
  * - Rate limiting: Per-player rate limiting prevents abuse (60 requests/minute)
  * - Transaction safety: Uses Firestore transactions to prevent race conditions
+ * - Game state validation: Rejects submissions when game is not in 'question' state
+ * - Question index validation: Prevents future-question and out-of-bounds submissions
+ * - Answer index bounds checking: Validates against actual poll question options
  */
 export const submitPollAnswer = onCall(
   {
@@ -62,7 +65,7 @@ export const submitPollAnswer = onCall(
     // Rate limiting: 60 requests per minute per player
     enforceRateLimitInMemory(`poll:${playerId}`, 60, 60);
 
-    // Validate answer data based on question type
+    // Validate answer data based on question type (basic structural validation)
     if (questionType === 'poll-single') {
       if (typeof data.answerIndex !== 'number' || data.answerIndex < 0) {
         throw new HttpsError('invalid-argument', 'answerIndex is required for poll-single');
@@ -85,11 +88,70 @@ export const submitPollAnswer = onCall(
     }
 
     const db = admin.firestore();
-    const playerRef = db.collection('games').doc(gameId).collection('players').doc(playerId);
+    const gameRef = db.collection('games').doc(gameId);
+    const playerRef = gameRef.collection('players').doc(playerId);
 
     try {
-      // Use transaction to ensure atomic update and prevent duplicate submissions
+      // Use transaction to ensure atomic validation and update
       await db.runTransaction(async (transaction) => {
+        // Fetch game, player, and poll activity docs inside transaction for atomic validation
+        const gameDoc = await transaction.get(gameRef);
+
+        if (!gameDoc.exists) {
+          throw new HttpsError('not-found', 'Game not found');
+        }
+
+        const gameData = gameDoc.data() as Game;
+
+        // Validate game state — only accept answers during active questioning
+        if (gameData.state !== 'question') {
+          throw new HttpsError('failed-precondition', 'Game is not accepting answers');
+        }
+
+        // Validate question index matches current question (prevent future-question submissions)
+        if (questionIndex !== gameData.currentQuestionIndex) {
+          throw new HttpsError('failed-precondition', 'Question index does not match current question');
+        }
+
+        // Fetch poll activity to validate question bounds and answer bounds
+        if (!gameData.activityId) {
+          throw new HttpsError('failed-precondition', 'Game has no associated poll activity');
+        }
+
+        const pollDoc = await transaction.get(db.collection('activities').doc(gameData.activityId));
+
+        if (!pollDoc.exists) {
+          throw new HttpsError('not-found', 'Poll activity not found');
+        }
+
+        const pollData = pollDoc.data();
+        const pollQuestions = pollData?.questions || [];
+
+        // Validate question index is within bounds
+        if (questionIndex >= pollQuestions.length) {
+          throw new HttpsError('invalid-argument', 'Question index out of bounds');
+        }
+
+        const pollQuestion = pollQuestions[questionIndex];
+
+        // Validate answer index bounds against actual poll question options
+        if (questionType === 'poll-single' && data.answerIndex !== undefined) {
+          const answerCount = pollQuestion.answers?.length || 0;
+          if (data.answerIndex >= answerCount) {
+            throw new HttpsError('invalid-argument', 'Answer index out of bounds');
+          }
+        } else if (questionType === 'poll-multiple' && data.answerIndices) {
+          const answerCount = pollQuestion.answers?.length || 0;
+          // Deduplicate indices
+          const uniqueIndices = [...new Set(data.answerIndices)];
+          data.answerIndices = uniqueIndices;
+          // Validate all indices are within bounds
+          if (uniqueIndices.some(idx => idx >= answerCount)) {
+            throw new HttpsError('invalid-argument', 'One or more answer indices out of bounds');
+          }
+        }
+
+        // Fetch player doc
         const playerDoc = await transaction.get(playerRef);
 
         if (!playerDoc.exists) {
@@ -126,7 +188,7 @@ export const submitPollAnswer = onCall(
         });
       });
 
-      // Update totalAnswered counter (for host to see progress)
+      // Update totalAnswered counter (outside transaction — FieldValue.increment is atomic)
       const leaderboardRef = db.collection('games').doc(gameId).collection('aggregates').doc('leaderboard');
 
       // Build update with totalAnswered and liveAnswerCounts for choice-based questions
@@ -144,7 +206,12 @@ export const submitPollAnswer = onCall(
       }
       // Note: poll-free-text doesn't have discrete options, no liveAnswerCounts
 
-      await leaderboardRef.set(leaderboardUpdate, { merge: true });
+      try {
+        await leaderboardRef.set(leaderboardUpdate, { merge: true });
+      } catch (leaderboardError) {
+        // Log but don't fail the request — the answer was already saved successfully
+        console.error('Failed to update leaderboard aggregate:', leaderboardError);
+      }
 
       return { success: true };
     } catch (error) {

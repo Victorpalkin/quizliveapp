@@ -66,6 +66,8 @@ export interface Game {
   questionStartTime?: {
     toMillis: () => number;
   };
+  activityId?: string;
+  activityType?: string;
 }
 
 /**
