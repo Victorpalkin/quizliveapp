@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { PresentationSlide, Presentation, PresentationGame } from '@/lib/types';
 import { getSlideType, SlideHostProps } from '../slide-types';
@@ -35,30 +36,36 @@ export function SlideRenderer({
   const slideType = getSlideType(slide.type);
   const HostComponent = slideType.HostComponent;
 
-  // Create stub objects if not provided
-  const stubPresentation: Presentation = presentation || {
-    id: '',
-    title: '',
-    hostId: '',
-    slides: [slide],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
+  // Memoize stub objects to avoid re-creation on every render
+  const effectivePresentation = useMemo<Presentation>(
+    () => presentation || {
+      id: '',
+      title: '',
+      hostId: '',
+      slides: [slide],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    [presentation, slide]
+  );
 
-  const stubGame: PresentationGame = game || {
-    id: '',
-    hostId: '',
-    gamePin: '',
-    activityType: 'presentation',
-    presentationId: '',
-    state: 'presenting',
-    currentSlideIndex: slideIndex,
-  };
+  const effectiveGame = useMemo<PresentationGame>(
+    () => game || {
+      id: '',
+      hostId: '',
+      gamePin: '',
+      activityType: 'presentation',
+      presentationId: '',
+      state: 'presenting',
+      currentSlideIndex: slideIndex,
+    },
+    [game, slideIndex]
+  );
 
   const props: SlideHostProps = {
     slide,
-    presentation: stubPresentation,
-    game: stubGame,
+    presentation: effectivePresentation,
+    game: effectiveGame,
     slideIndex,
     totalSlides,
     playerCount,

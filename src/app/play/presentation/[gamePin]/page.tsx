@@ -27,6 +27,7 @@ import {
   savePlayerSession,
 } from '@/lib/player-session';
 import { useWakeLock } from '@/hooks/use-wake-lock';
+import { logError } from '@/lib/error-logging';
 import { usePresentationPlayerStateMachine } from './hooks/use-presentation-player-state-machine';
 
 export default function PresentationPlayerPage() {
@@ -67,7 +68,7 @@ export default function PresentationPlayerPage() {
           setGameNotFound(true);
         }
       } catch (err) {
-        console.error('Error finding game:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'PresentationPlayer.findGame' });
         setGameNotFound(true);
       }
     };
@@ -148,7 +149,7 @@ export default function PresentationPlayerPage() {
       // Notify state machine of successful join
       setJoined();
     } catch (err) {
-      console.error('Failed to join game:', err);
+      logError(err instanceof Error ? err : new Error(String(err)), { context: 'PresentationPlayer.joinGame' });
       setError('Failed to join. Please try again.');
     }
   }, [nameInput, game, playerId, gamePin, firestore, setJoined]);

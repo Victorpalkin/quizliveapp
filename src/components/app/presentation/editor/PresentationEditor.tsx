@@ -1,35 +1,11 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ref, deleteObject } from 'firebase/storage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,15 +13,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Save, Play, ArrowLeft, Loader2, Users, MoreVertical, Copy } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { Save, Play, ArrowLeft, Loader2, MoreVertical, Copy, Settings } from 'lucide-react';
 import { Presentation, PresentationSlide, PresentationSlideType, PresentationStyle } from '@/lib/types';
 import { SlideList } from './SlideList';
 import { SlideTypeSelector } from './SlideTypeSelector';
 import { SlideEditorRenderer } from '../core';
 import { createSlide } from '../slide-types';
 import { BatchImageGenerator } from './BatchImageGenerator';
+import { PresentationSettingsPanel } from './PresentationSettingsPanel';
+import { SaveTemplateDialog } from './SaveTemplateDialog';
 import { useToast } from '@/hooks/use-toast';
-import { INTERACTIVE_SLIDE_TYPES } from '@/hooks/presentation/use-pacing-status';
+import { logError } from '@/lib/error-logging';
+import { INTERACTIVE_SLIDE_TYPES } from '@/lib/constants';
 import { useTemplateMutations } from '@/firebase/presentation';
 import { useStorage } from '@/firebase';
 
@@ -79,9 +65,6 @@ export function PresentationEditor({
 
   // Save as Template state
   const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
-  const [templateName, setTemplateName] = useState('');
-  const [templateDescription, setTemplateDescription] = useState('');
-  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   // Pacing settings
   const [defaultPacingMode, setDefaultPacingMode] = useState<'none' | 'threshold' | 'all'>(
@@ -112,6 +95,27 @@ export function PresentationEditor({
   const markChanged = useCallback(() => {
     setHasUnsavedChanges(true);
   }, []);
+
+  // Warn on browser close/refresh with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Handle back navigation with unsaved changes check
+  const handleBack = useCallback(() => {
+    if (hasUnsavedChanges) {
+      if (!window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+        return;
+      }
+    }
+    router.push('/host');
+  }, [hasUnsavedChanges, router]);
 
   // Handle title change
   const handleTitleChange = useCallback(
@@ -194,7 +198,7 @@ export function PresentationEditor({
           const imageRef = ref(storage, slideToDelete.imageUrl);
           await deleteObject(imageRef);
         } catch (error) {
-          console.error('Failed to delete slide image:', error);
+          logError(error instanceof Error ? error : new Error(String(error)), { context: 'PresentationEditor.deleteSlideImage' });
           // Continue with slide deletion even if image cleanup fails
         }
       }
@@ -217,6 +221,33 @@ export function PresentationEditor({
       markChanged();
     },
     [slides, selectedSlideId, markChanged, storage]
+  );
+
+  // Handle duplicate slide
+  const handleDuplicateSlide = useCallback(
+    (slideId: string) => {
+      const slideToDuplicate = slides.find((s) => s.id === slideId);
+      if (!slideToDuplicate) return;
+
+      const newId = Math.random().toString(36).substring(2, 15);
+      const insertIndex = slides.findIndex((s) => s.id === slideId) + 1;
+
+      const duplicatedSlide: PresentationSlide = {
+        ...slideToDuplicate,
+        id: newId,
+        order: insertIndex,
+      };
+
+      setSlides((prev) => {
+        const newSlides = [...prev];
+        newSlides.splice(insertIndex, 0, duplicatedSlide);
+        return newSlides.map((s, i) => ({ ...s, order: i }));
+      });
+
+      setSelectedSlideId(newId);
+      markChanged();
+    },
+    [slides, markChanged]
   );
 
   // Handle pacing mode change
@@ -280,50 +311,13 @@ export function PresentationEditor({
   }, [hasUnsavedChanges, handleSave, onLaunch]);
 
   // Handle save as template
-  const handleOpenSaveTemplateDialog = useCallback(() => {
-    setTemplateName(title || 'My Template');
-    setTemplateDescription('');
-    setShowSaveTemplateDialog(true);
-  }, [title]);
-
-  const handleSaveAsTemplate = useCallback(async () => {
-    if (!templateName.trim()) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Please enter a template name.',
-      });
-      return;
-    }
-
-    if (slides.length === 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Cannot save an empty presentation as a template.',
-      });
-      return;
-    }
-
-    setIsSavingTemplate(true);
-    try {
-      await saveAsTemplate(templateName.trim(), templateDescription.trim(), slides);
-      setShowSaveTemplateDialog(false);
-      toast({
-        title: 'Template Saved',
-        description: 'Your presentation has been saved as a template.',
-      });
-    } catch (error) {
-      console.error('Failed to save template:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to save template.',
-      });
-    } finally {
-      setIsSavingTemplate(false);
-    }
-  }, [templateName, templateDescription, slides, saveAsTemplate, toast]);
+  const handleSaveTemplate = useCallback(async (name: string, description: string) => {
+    await saveAsTemplate(name, description, slides);
+    toast({
+      title: 'Template Saved',
+      description: 'Your presentation has been saved as a template.',
+    });
+  }, [slides, saveAsTemplate, toast]);
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -333,7 +327,7 @@ export function PresentationEditor({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push('/host')}
+            onClick={handleBack}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -369,7 +363,7 @@ export function PresentationEditor({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={handleOpenSaveTemplateDialog}
+                onClick={() => setShowSaveTemplateDialog(true)}
                 disabled={slides.length === 0}
               >
                 <Copy className="h-4 w-4 mr-2" />
@@ -377,6 +371,34 @@ export function PresentationEditor({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Mobile settings button */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="lg:hidden">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Presentation Settings</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4">
+                <PresentationSettingsPanel
+                  description={description}
+                  onDescriptionChange={handleDescriptionChange}
+                  interactiveSlideCount={interactiveSlideCount}
+                  slideCount={slides.length}
+                  defaultPacingMode={defaultPacingMode}
+                  onDefaultPacingModeChange={handleDefaultPacingModeChange}
+                  defaultPacingThreshold={defaultPacingThreshold}
+                  onDefaultPacingThresholdChange={handleDefaultPacingThresholdChange}
+                  style={style}
+                  onStyleChange={handleStyleChange}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
 
           <Button onClick={handleLaunch} disabled={slides.length === 0}>
             <Play className="h-4 w-4 mr-2" />
@@ -403,6 +425,7 @@ export function PresentationEditor({
             onSelectSlide={setSelectedSlideId}
             onReorderSlides={handleReorderSlides}
             onDeleteSlide={handleDeleteSlide}
+            onDuplicateSlide={handleDuplicateSlide}
             onAddSlide={() => setShowSlideTypeSelector(true)}
           />
         </div>
@@ -445,150 +468,21 @@ export function PresentationEditor({
           )}
         </div>
 
-        {/* Properties Panel (optional) */}
+        {/* Properties Panel - desktop */}
         <div className="w-72 flex-shrink-0 border-l p-4 bg-muted/20 hidden lg:block overflow-y-auto">
           <h3 className="font-medium mb-4">Presentation Settings</h3>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={description}
-                onChange={handleDescriptionChange}
-                placeholder="Optional description"
-                rows={3}
-              />
-            </div>
-
-            {/* Audience Pacing Settings */}
-            <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <Label className="text-sm font-medium">Audience Pacing</Label>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Control when you can advance past interactive slides
-                {interactiveSlideCount > 0 && (
-                  <span className="font-medium"> ({interactiveSlideCount} interactive slide{interactiveSlideCount !== 1 ? 's' : ''})</span>
-                )}
-              </p>
-
-              <div className="space-y-2">
-                <Label className="text-xs">Default Pacing Mode</Label>
-                <Select
-                  value={defaultPacingMode}
-                  onValueChange={handleDefaultPacingModeChange}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">
-                      <div className="flex flex-col items-start">
-                        <span>No requirement</span>
-                        <span className="text-xs text-muted-foreground">Advance anytime</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="threshold">
-                      <div className="flex flex-col items-start">
-                        <span>Wait for percentage</span>
-                        <span className="text-xs text-muted-foreground">Wait for X% to respond</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="all">
-                      <div className="flex flex-col items-start">
-                        <span>Wait for all</span>
-                        <span className="text-xs text-muted-foreground">Wait for 100% response</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {defaultPacingMode === 'threshold' && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">Response Threshold</Label>
-                    <span className="text-sm font-medium">{defaultPacingThreshold}%</span>
-                  </div>
-                  <Slider
-                    value={[defaultPacingThreshold]}
-                    onValueChange={handleDefaultPacingThresholdChange}
-                    min={10}
-                    max={100}
-                    step={5}
-                    className="py-2"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    You can advance when {defaultPacingThreshold}% of players have responded
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Presentation Style Settings */}
-            <Accordion type="single" collapsible className="border-t pt-4">
-              <AccordionItem value="style" className="border-none">
-                <AccordionTrigger className="py-2 text-sm font-medium">
-                  Presentation Style
-                </AccordionTrigger>
-                <AccordionContent className="space-y-4 pt-2">
-                  <div className="space-y-2">
-                    <Label className="text-xs">Image Style</Label>
-                    <Textarea
-                      value={style?.imageStyle || ''}
-                      onChange={(e) => handleStyleChange('imageStyle', e.target.value)}
-                      placeholder="Modern flat illustration, soft gradients, pastel colors..."
-                      rows={2}
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Header Template</Label>
-                    <Input
-                      value={style?.headerTemplate || ''}
-                      onChange={(e) => handleStyleChange('headerTemplate', e.target.value)}
-                      placeholder="Workshop: {title}"
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Footer Template</Label>
-                    <Input
-                      value={style?.footerTemplate || ''}
-                      onChange={(e) => handleStyleChange('footerTemplate', e.target.value)}
-                      placeholder="Company Name | 2024"
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Font Style</Label>
-                    <Input
-                      value={style?.fontStyle || ''}
-                      onChange={(e) => handleStyleChange('fontStyle', e.target.value)}
-                      placeholder="Clean sans-serif, bold headings"
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Layout Hints</Label>
-                    <Input
-                      value={style?.layoutHints || ''}
-                      onChange={(e) => handleStyleChange('layoutHints', e.target.value)}
-                      placeholder="Centered titles, generous whitespace"
-                      className="text-sm"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    These settings guide AI when generating slides and images
-                  </p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-
-            <div className="text-sm text-muted-foreground pt-2 border-t">
-              {slides.length} slide{slides.length !== 1 ? 's' : ''}
-            </div>
-          </div>
+          <PresentationSettingsPanel
+            description={description}
+            onDescriptionChange={handleDescriptionChange}
+            interactiveSlideCount={interactiveSlideCount}
+            slideCount={slides.length}
+            defaultPacingMode={defaultPacingMode}
+            onDefaultPacingModeChange={handleDefaultPacingModeChange}
+            defaultPacingThreshold={defaultPacingThreshold}
+            onDefaultPacingThresholdChange={handleDefaultPacingThresholdChange}
+            style={style}
+            onStyleChange={handleStyleChange}
+          />
         </div>
       </div>
 
@@ -600,62 +494,12 @@ export function PresentationEditor({
       />
 
       {/* Save as Template Dialog */}
-      <Dialog open={showSaveTemplateDialog} onOpenChange={setShowSaveTemplateDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Save as Template</DialogTitle>
-            <DialogDescription>
-              Save this presentation as a reusable template for future use.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="template-name">Template Name</Label>
-              <Input
-                id="template-name"
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="My Template"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="template-description">Description (optional)</Label>
-              <Textarea
-                id="template-description"
-                value={templateDescription}
-                onChange={(e) => setTemplateDescription(e.target.value)}
-                placeholder="Describe what this template is for..."
-                rows={3}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              This template will include {slides.length} slide{slides.length !== 1 ? 's' : ''}.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowSaveTemplateDialog(false)}
-              disabled={isSavingTemplate}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSaveAsTemplate} disabled={isSavingTemplate}>
-              {isSavingTemplate ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Save Template
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SaveTemplateDialog
+        open={showSaveTemplateDialog}
+        onOpenChange={setShowSaveTemplateDialog}
+        slideCount={slides.length}
+        onSave={handleSaveTemplate}
+      />
     </div>
   );
 }

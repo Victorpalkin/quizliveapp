@@ -112,13 +112,19 @@ export function usePresentationPlayerStateMachine(
     }
   }, [state]);
 
-  // Callback for join flow to transition to lobby
+  // Callback for join flow to transition based on current game state
   const setJoined = useCallback(() => {
     if (state === 'joining') {
-      // The effect will sync with actual game state
-      setState('lobby');
+      // Skip lobby flash if game is already presenting
+      if (game?.state === 'presenting') {
+        setState('slide');
+      } else if (game?.state === 'ended') {
+        setState('ended');
+      } else {
+        setState('lobby');
+      }
     }
-  }, [state]);
+  }, [state, game?.state]);
 
   return {
     state,

@@ -2,13 +2,13 @@
 
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
 import { Users, Play } from 'lucide-react';
 import { GameHeader } from '@/components/app/game-header';
 import { TipBanner, ReadinessChecklist } from '@/components/app/host-action-hint';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFunctions } from '@/firebase';
 import {
   usePresentationGame,
   usePresentationPlayers,
@@ -18,13 +18,12 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { saveHostSession, clearHostSession } from '@/lib/host-session';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
-import { extractSlideAnswerKeyEntry } from '@/lib/question-utils';
 
 export default function PresentationLobbyPage() {
   const params = useParams();
   const gameId = params.gameId as string;
   const router = useRouter();
-  const firestore = useFirestore();
+  const functions = useFunctions();
   const { user, loading: userLoading } = useUser();
 
   const { game, loading: gameLoading } = usePresentationGame(gameId);
@@ -63,23 +62,11 @@ export default function PresentationLobbyPage() {
   }, [game?.state, gameId, router]);
 
   const handleStartPresentation = async () => {
-    if (!presentation || !firestore) return;
+    if (!presentation) return;
 
-    // Create answerKey from all slides (for quiz/poll server-side scoring)
-    const answerKeyRef = doc(firestore, 'games', gameId, 'aggregates', 'answerKey');
-    await setDoc(answerKeyRef, {
-      questions: presentation.slides.map(extractSlideAnswerKeyEntry),
-    });
-
-    // Create leaderboard aggregate (like standalone quiz)
-    const leaderboardRef = doc(firestore, 'games', gameId, 'aggregates', 'leaderboard');
-    await setDoc(leaderboardRef, {
-      topPlayers: [],
-      totalPlayers: players.length,
-      totalAnswered: 0,
-      answerCounts: [],
-      lastUpdated: serverTimestamp(),
-    });
+    // Initialize answer key and leaderboard server-side via Cloud Function
+    const initGame = httpsCallable(functions, 'initPresentationGame');
+    await initGame({ gameId });
 
     await startPresentation();
     router.push(`/host/presentation/present/${gameId}`);

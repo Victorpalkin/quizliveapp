@@ -6,18 +6,11 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Users, Target } from 'lucide-react';
 import type { PresentationAnalytics, PresentationSlideType } from '@/lib/types';
+import { INTERACTIVE_SLIDE_TYPES } from '@/lib/constants';
 
 interface EngagementTabProps {
   analytics: PresentationAnalytics;
 }
-
-// Interactive slide types
-const INTERACTIVE_SLIDE_TYPES: PresentationSlideType[] = [
-  'quiz',
-  'poll',
-  'thoughts-collect',
-  'rating-input',
-];
 
 export function EngagementTab({ analytics }: EngagementTabProps) {
   const { playerEngagement, slideStats, totalPlayers, interactiveSlides } = analytics;

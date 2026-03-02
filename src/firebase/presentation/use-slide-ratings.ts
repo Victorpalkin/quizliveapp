@@ -11,6 +11,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { useFirestore } from '../provider';
+import { logError } from '@/lib/error-logging';
 
 /**
  * Stored rating for a slide
@@ -69,7 +70,7 @@ export function useSlideRatings(gameId: string | null | undefined, slideId: stri
         setLoading(false);
       },
       (err) => {
-        console.error('Error fetching slide ratings:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'useSlideRatings', gameId: gameId || undefined });
         setLoading(false);
       }
     );
@@ -126,7 +127,7 @@ export function usePlayerSlideRating(
         setLoading(false);
       },
       (err) => {
-        console.error('Error checking player rating:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'usePlayerSlideRating', gameId: gameId || undefined });
         setLoading(false);
       }
     );
@@ -262,7 +263,7 @@ export function useRatingAggregates(
         setLoading(false);
       },
       (err) => {
-        console.error('Error fetching rating aggregates:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'useRatingAggregates', gameId: gameId || undefined });
         setLoading(false);
       }
     );

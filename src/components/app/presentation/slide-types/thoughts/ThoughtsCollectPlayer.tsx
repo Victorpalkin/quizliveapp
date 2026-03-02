@@ -11,6 +11,7 @@ import { SlidePlayerProps } from '../types';
 import { useFirestore } from '@/firebase';
 import { collection, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { logError } from '@/lib/error-logging';
 
 const MAX_THOUGHT_LENGTH = 500;
 
@@ -79,7 +80,7 @@ export function ThoughtsCollectPlayer({ slide, game, playerId, playerName, hasRe
         thoughts: thoughts,
       });
     } catch (err) {
-      console.error('Failed to submit thoughts:', err);
+      logError(err instanceof Error ? err : new Error(String(err)), { context: 'ThoughtsCollectPlayer.submit' });
       toast({
         variant: 'destructive',
         title: 'Submission Failed',

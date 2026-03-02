@@ -15,6 +15,7 @@ import {
 import { useFirestore } from '../provider';
 import { useUser } from '../auth/use-user';
 import { PresentationTemplate, PresentationSlide } from '@/lib/types';
+import { logError } from '@/lib/error-logging';
 
 /**
  * Hook to fetch user's custom templates
@@ -62,7 +63,7 @@ export function useUserTemplates() {
         setLoading(false);
       },
       (err) => {
-        console.error('Error fetching user templates:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'useUserTemplates' });
         setError(err as Error);
         setLoading(false);
       }

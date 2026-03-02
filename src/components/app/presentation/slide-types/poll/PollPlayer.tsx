@@ -12,6 +12,7 @@ import { SlidePlayerProps } from '../types';
 import { PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
 import { useFirebaseApp } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { logError } from '@/lib/error-logging';
 
 type PollQuestion = PollSingleQuestion | PollMultipleQuestion;
 
@@ -59,7 +60,7 @@ export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
         answerIndices,
       });
     } catch (error) {
-      console.error('Failed to submit poll answer:', error);
+      logError(error instanceof Error ? error : new Error(String(error)), { context: 'PollPlayer.submitPollAnswer' });
 
       // Show error toast with specific message based on error type
       const firebaseError = error as FirebaseError;

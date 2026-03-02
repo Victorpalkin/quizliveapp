@@ -12,6 +12,7 @@ import { SlidePlayerProps } from '../types';
 import { SingleChoiceQuestion } from '@/lib/types';
 import { useFirebaseApp } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { logError } from '@/lib/error-logging';
 
 export function QuizPlayer({ slide, game, playerId, hasResponded, onSubmit, slideIndex }: SlidePlayerProps) {
   const app = useFirebaseApp();
@@ -104,7 +105,7 @@ export function QuizPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
         answerIndex: index,
       });
     } catch (error) {
-      console.error('Failed to submit answer:', error);
+      logError(error instanceof Error ? error : new Error(String(error)), { context: 'QuizPlayer.submitAnswer' });
 
       // Show error toast with specific message based on error type
       const firebaseError = error as FirebaseError;

@@ -12,6 +12,16 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { QRCodeSVG } from 'qrcode.react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Users, Maximize, Minimize, X, QrCode, Copy, CheckCircle2, Pin, PinOff } from 'lucide-react';
 import { PacingStatus } from '@/hooks/presentation/use-pacing-status';
 
@@ -20,6 +30,7 @@ interface HostOverlayProps {
   currentSlide: number;
   totalSlides: number;
   playerCount: number;
+  isVisible?: boolean;
   onCancel?: () => void;
   pacingStatus?: PacingStatus;
 }
@@ -29,14 +40,14 @@ export function HostOverlay({
   currentSlide,
   totalSlides,
   playerCount,
+  isVisible = true,
   onCancel,
   pacingStatus,
 }: HostOverlayProps) {
-  const [isVisible, setIsVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [lastMouseMove, setLastMouseMove] = useState(Date.now());
   const [joinUrl, setJoinUrl] = useState('');
   const [isQrPinned, setIsQrPinned] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
 
   // Build join URL on client
   useEffect(() => {
@@ -44,27 +55,6 @@ export function HostOverlay({
       setJoinUrl(`${window.location.origin}/play/${gamePin}`);
     }
   }, [gamePin]);
-
-  // Auto-hide after 3 seconds of no mouse movement
-  useEffect(() => {
-    const handleMouseMove = () => {
-      setLastMouseMove(Date.now());
-      setIsVisible(true);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (Date.now() - lastMouseMove > 3000) {
-        setIsVisible(false);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [lastMouseMove]);
 
   // Fullscreen toggle
   const toggleFullscreen = useCallback(() => {
@@ -184,7 +174,7 @@ export function HostOverlay({
                 variant="ghost"
                 size="icon"
                 className="text-white hover:bg-white/20 h-8 w-8"
-                onClick={() => navigator.clipboard.writeText(joinUrl)}
+                onClick={() => { navigator.clipboard.writeText(joinUrl).catch(() => {}); }}
                 title="Copy join link"
               >
                 <Copy className="h-4 w-4" />
@@ -253,7 +243,7 @@ export function HostOverlay({
                   variant="ghost"
                   size="icon"
                   className="text-white hover:bg-red-500/50"
-                  onClick={onCancel}
+                  onClick={() => setShowEndConfirm(true)}
                 >
                   <X className="h-5 w-5" />
                 </Button>
@@ -263,6 +253,27 @@ export function HostOverlay({
         </motion.div>
       )}
     </AnimatePresence>
+
+      {/* End Presentation Confirmation */}
+      <AlertDialog open={showEndConfirm} onOpenChange={setShowEndConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>End Presentation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will end the live session for all {playerCount} participant{playerCount !== 1 ? 's' : ''}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue Presenting</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onCancel}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              End Presentation
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

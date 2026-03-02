@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '../provider';
+import { logError } from '@/lib/error-logging';
 
 /**
  * Single response for a quiz/poll slide
@@ -79,7 +80,7 @@ export function useQuizPollResponses(
         setLoading(false);
       },
       (err) => {
-        console.error('Error fetching quiz/poll responses:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'useQuizPollResponses', gameId: gameId || undefined });
         setLoading(false);
       }
     );

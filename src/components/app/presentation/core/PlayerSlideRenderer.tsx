@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Loader2 } from 'lucide-react';
 import { PresentationSlide, Presentation, PresentationGame } from '@/lib/types';
@@ -50,25 +50,31 @@ export function PlayerSlideRenderer({
   const slideType = getSlideType(slide.type);
   const PlayerComponent = slideType.PlayerComponent;
 
-  // Create stub objects if not provided
-  const stubPresentation: Presentation = presentation || {
-    id: '',
-    title: '',
-    hostId: '',
-    slides: [slide],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
+  // Memoize stub objects to avoid re-creation on every render
+  const effectivePresentation = useMemo<Presentation>(
+    () => presentation || {
+      id: '',
+      title: '',
+      hostId: '',
+      slides: [slide],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    [presentation, slide]
+  );
 
-  const stubGame: PresentationGame = game || {
-    id: gameId,
-    hostId: '',
-    gamePin: '',
-    activityType: 'presentation',
-    presentationId: '',
-    state: 'presenting',
-    currentSlideIndex: 0,
-  };
+  const effectiveGame = useMemo<PresentationGame>(
+    () => game || {
+      id: gameId,
+      hostId: '',
+      gamePin: '',
+      activityType: 'presentation',
+      presentationId: '',
+      state: 'presenting',
+      currentSlideIndex: 0,
+    },
+    [game, gameId]
+  );
 
   const handleSubmit = useCallback(
     async (response: SlideResponse) => {
@@ -99,8 +105,8 @@ export function PlayerSlideRenderer({
 
   const props: SlidePlayerProps = {
     slide,
-    presentation: stubPresentation,
-    game: stubGame,
+    presentation: effectivePresentation,
+    game: effectiveGame,
     playerId,
     playerName,
     hasResponded: hasResponded || isSubmitting,

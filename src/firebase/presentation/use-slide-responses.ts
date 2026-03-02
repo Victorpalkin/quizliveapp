@@ -14,6 +14,7 @@ import {
 import { useFirestore } from '../provider';
 import { SlideResponse } from '@/components/app/presentation/slide-types/types';
 import { removeUndefined } from '@/lib/firestore-utils';
+import { logError } from '@/lib/error-logging';
 
 /**
  * Stored submission in the unified submissions collection
@@ -71,7 +72,7 @@ export function useSlideResponses(gameId: string | null | undefined, slideId: st
         setLoading(false);
       },
       (err) => {
-        console.error('Error fetching slide submissions:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'useSlideResponses', gameId: gameId || undefined });
         setLoading(false);
       }
     );
@@ -129,7 +130,7 @@ export function usePlayerSlideResponse(
         setLoading(false);
       },
       (err) => {
-        console.error('Error checking player response:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'usePlayerSlideResponse', gameId: gameId || undefined });
         setLoading(false);
       }
     );
@@ -215,7 +216,7 @@ export function useSlideTopics(gameId: string | null | undefined, slideId: strin
         setLoading(false);
       },
       (err) => {
-        console.error('Error fetching slide topics:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'useSlideTopics', gameId: gameId || undefined });
         setLoading(false);
       }
     );

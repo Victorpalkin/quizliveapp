@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Image, Upload, X, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { useStorage } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { logError } from '@/lib/error-logging';
 import NextImage from 'next/image';
 import { AISlideImageGenerator } from './AISlideImageGenerator';
 
@@ -51,7 +52,7 @@ export function SlideImageUpload({
       const imageRef = ref(storage, oldUrl);
       await deleteObject(imageRef);
     } catch (error) {
-      console.error('Failed to delete old image:', error);
+      logError(error instanceof Error ? error : new Error(String(error)), { context: 'SlideImageUpload.deleteOldImage' });
     }
   }, [storage]);
 
@@ -101,7 +102,7 @@ export function SlideImageUpload({
         description: 'Your image has been uploaded successfully.',
       });
     } catch (error) {
-      console.error('Failed to upload image:', error);
+      logError(error instanceof Error ? error : new Error(String(error)), { context: 'SlideImageUpload.upload' });
       setUploadError('Failed to upload image. Please try again.');
       toast({
         variant: 'destructive',

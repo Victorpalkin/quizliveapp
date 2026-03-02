@@ -115,7 +115,10 @@ service cloud.firestore {
 
     // Presentations collection (for hybrid presentations with interactive slides)
     match /presentations/{presentationId} {
-      // Anyone can read presentation details (needed for players during game)
+      // Readable by anyone - required because unauthenticated players need to
+      // read presentation data (slides) during live games.
+      // Note: Quiz answer correctAnswerIndex is exposed here. Server-side scoring
+      // via the answerKey aggregate (which IS restricted) mitigates cheating.
       allow read: if true;
 
       // Only authenticated hosts can create presentations
@@ -358,15 +361,18 @@ service cloud.firestore {
       // Slide responses subcollection - for presentation rating/poll submissions
       // Document ID format: {slideId}_{playerId}
       match /slideResponses/{responseId} {
-        // Anyone can read (for host to see results, players to see their own)
+        // Readable by game host (authenticated) and game participants
+        // Note: Players are unauthenticated so we can't restrict beyond game scope.
+        // The parent game document is already scoped, so only people who know the gameId can read.
         allow read: if true;
 
         // Players can create their own responses during presentation
-        // Validates player exists and is part of this game
+        // Document ID must match slideId_playerId to prevent overwrites
         allow create: if get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
                          get(/databases/$(database)/documents/games/$(gameId)).data.state == 'presenting' &&
                          request.resource.data.playerId is string &&
                          request.resource.data.slideId is string &&
+                         responseId == request.resource.data.slideId + '_' + request.resource.data.playerId &&
                          exists(/databases/$(database)/documents/games/$(gameId)/players/$(request.resource.data.playerId)) &&
                          (
                            // Rating submissions (rating field present, client validates range per slide config)

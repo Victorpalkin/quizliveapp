@@ -83,6 +83,7 @@ interface ThoughtsSubmission {
 }
 
 // Interactive slide types that collect responses
+// Keep in sync with src/lib/constants.ts INTERACTIVE_SLIDE_TYPES
 const INTERACTIVE_SLIDE_TYPES: PresentationSlideType[] = [
   'quiz',
   'poll',

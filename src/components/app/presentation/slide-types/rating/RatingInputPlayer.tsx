@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { SlidePlayerProps } from '../types';
 import { RatingInput } from '@/components/app/rating-input';
 import { useToast } from '@/hooks/use-toast';
+import { logError } from '@/lib/error-logging';
 
 export function RatingInputPlayer({ slide, presentation, game, playerId, hasResponded, onSubmit }: SlidePlayerProps) {
   const { toast } = useToast();
@@ -43,7 +44,7 @@ export function RatingInputPlayer({ slide, presentation, game, playerId, hasResp
         rating: selectedRating,
       });
     } catch (error) {
-      console.error('Failed to submit rating:', error);
+      logError(error instanceof Error ? error : new Error(String(error)), { context: 'RatingInputPlayer.submit' });
       toast({
         variant: 'destructive',
         title: 'Submission Failed',

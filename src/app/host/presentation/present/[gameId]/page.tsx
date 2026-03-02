@@ -49,13 +49,13 @@ export default function PresentationPresentPage() {
     }
   }, [gameId, game, presentation, user]);
 
-  // Redirect if game ended
+  // Redirect to analytics when game ends
   useEffect(() => {
     if (game?.state === 'ended') {
       clearHostSession();
-      router.push('/host');
+      router.push(`/host/presentation/analytics/${gameId}`);
     }
-  }, [game?.state, router]);
+  }, [game?.state, gameId, router]);
 
   // Redirect to lobby if still in lobby state
   useEffect(() => {
@@ -74,8 +74,8 @@ export default function PresentationPresentPage() {
   const handleCancel = useCallback(async () => {
     clearHostSession();
     await endPresentation();
-    router.push('/host');
-  }, [endPresentation, router]);
+    router.push(`/host/presentation/analytics/${gameId}`);
+  }, [endPresentation, gameId, router]);
 
   if (userLoading || gameLoading || presentationLoading) {
     return <FullPageLoader />;

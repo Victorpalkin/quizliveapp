@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { PresentationSlide, Presentation, PresentationSlideType } from '@/lib/types';
+import { INTERACTIVE_SLIDE_TYPES } from '@/lib/constants';
+import { logError } from '@/lib/error-logging';
 
 /**
  * Pacing status for the current slide
@@ -17,16 +19,6 @@ export interface PacingStatus {
   pacingMode: 'none' | 'threshold' | 'all';
   requiredThreshold: number;  // The threshold percentage required (0-100)
 }
-
-/**
- * Slide types that are interactive and can have pacing
- */
-const INTERACTIVE_SLIDE_TYPES: PresentationSlideType[] = [
-  'quiz',
-  'poll',
-  'thoughts-collect',
-  'rating-input',
-];
 
 /**
  * Check if a slide type is interactive
@@ -132,7 +124,7 @@ export function usePacingStatus(
         setResponseCount(uniquePlayers.size);
       },
       (err) => {
-        console.error('Error fetching response count for pacing:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'usePacingStatus', gameId: gameId || undefined });
       }
     );
 
@@ -173,4 +165,5 @@ export function usePacingStatus(
 /**
  * Export helper function for checking interactive slides
  */
-export { isInteractiveSlideType, INTERACTIVE_SLIDE_TYPES };
+export { isInteractiveSlideType };
+export { INTERACTIVE_SLIDE_TYPES } from '@/lib/constants';

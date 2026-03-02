@@ -18,6 +18,7 @@ import { PresentationSlide } from '@/lib/types';
 import { useFunctions } from '@/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
+import { logError } from '@/lib/error-logging';
 
 interface BatchImageGeneratorProps {
   presentationId: string;
@@ -150,7 +151,7 @@ export function BatchImageGenerator({
         onSlideUpdate(slide.id, imageUrl);
         successCount++;
       } catch (error) {
-        console.error(`Failed to generate image for slide ${slide.id}:`, error);
+        logError(error instanceof Error ? error : new Error(String(error)), { context: 'BatchImageGenerator.generate', additionalInfo: { slideId: slide.id } });
 
         // Update state to error
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';

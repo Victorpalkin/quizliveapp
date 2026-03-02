@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { useFirestore } from '../provider';
 import { PresentationGame, PresentationGameState, Player } from '@/lib/types';
+import { logError } from '@/lib/error-logging';
 
 /**
  * Generate a random 6-character game PIN
@@ -63,7 +64,7 @@ export function usePresentationGame(gameId: string | null | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching game:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'usePresentationGame', gameId: gameId || undefined });
         setError(err);
         setLoading(false);
       }
@@ -111,7 +112,7 @@ export function usePresentationGameByPin(gamePin: string | null | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching game by PIN:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'usePresentationGameByPin' });
         setError(err);
         setLoading(false);
       }
@@ -152,7 +153,7 @@ export function usePresentationPlayers(gameId: string | null | undefined) {
         setLoading(false);
       },
       (err) => {
-        console.error('Error fetching players:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'usePresentationPlayers', gameId: gameId || undefined });
         setLoading(false);
       }
     );

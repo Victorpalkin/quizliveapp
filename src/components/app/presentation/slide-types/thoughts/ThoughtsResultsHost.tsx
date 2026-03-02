@@ -13,6 +13,7 @@ import { ThoughtsGroupedView } from '@/components/app/thoughts-grouped-view';
 import { TopicEntry, ThoughtSubmission } from '@/lib/types';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Timestamp } from 'firebase/firestore';
+import { logError } from '@/lib/error-logging';
 import { useFirebaseApp } from '@/firebase';
 
 interface ThoughtItem {
@@ -75,7 +76,7 @@ export function ThoughtsResultsHost({ slide, presentation, game }: SlideHostProp
         slideId: sourceSlideId, // Filter by slide for presentations
       });
     } catch (err) {
-      console.error('Failed to process topics:', err);
+      logError(err instanceof Error ? err : new Error(String(err)), { context: 'ThoughtsResultsHost.processTopics', gameId: game.id });
       setError(err instanceof Error ? err.message : 'Failed to process topics');
     } finally {
       setIsProcessing(false);

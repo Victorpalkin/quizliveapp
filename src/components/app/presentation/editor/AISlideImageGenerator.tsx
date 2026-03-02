@@ -18,6 +18,7 @@ import { useFunctions, useStorage } from '@/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { ref, deleteObject } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
+import { logError } from '@/lib/error-logging';
 
 interface AISlideImageGeneratorProps {
   promptContext: string;
@@ -71,7 +72,7 @@ export function AISlideImageGenerator({
         const imageRef = ref(storage, previewUrl);
         await deleteObject(imageRef);
       } catch (error) {
-        console.error('Failed to delete preview image:', error);
+        logError(error instanceof Error ? error : new Error(String(error)), { context: 'AISlideImageGenerator.deletePreview' });
       }
     }
     setPreviewUrl(null);
@@ -87,7 +88,7 @@ export function AISlideImageGenerator({
         const imageRef = ref(storage, previewUrl);
         await deleteObject(imageRef);
       } catch (error) {
-        console.error('Failed to delete previous preview:', error);
+        logError(error instanceof Error ? error : new Error(String(error)), { context: 'AISlideImageGenerator.deletePreviousPreview' });
       }
       setPreviewUrl(null);
     }
@@ -109,7 +110,7 @@ export function AISlideImageGenerator({
       // Show preview instead of immediately applying
       setPreviewUrl(result.data.imageUrl);
     } catch (error) {
-      console.error('Error generating image:', error);
+      logError(error instanceof Error ? error : new Error(String(error)), { context: 'AISlideImageGenerator.generate' });
 
       let errorMessage = 'Could not generate image. Please try again.';
       if (error instanceof Error) {

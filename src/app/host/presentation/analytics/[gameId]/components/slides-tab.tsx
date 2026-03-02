@@ -7,19 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, CheckCircle, XCircle, Star, MessageSquare, HelpCircle, Vote, Layers } from 'lucide-react';
 import type { PresentationAnalytics, PresentationSlideStats, PresentationSlideType, Presentation } from '@/lib/types';
+import { INTERACTIVE_SLIDE_TYPES } from '@/lib/constants';
 
 interface SlidesTabProps {
   analytics: PresentationAnalytics;
   presentation?: Presentation | null;
 }
-
-// Slide types that we show in analytics
-const INTERACTIVE_SLIDE_TYPES: PresentationSlideType[] = [
-  'quiz',
-  'poll',
-  'thoughts-collect',
-  'rating-input',
-];
 
 export function SlidesTab({ analytics, presentation }: SlidesTabProps) {
   const { slideStats, totalPlayers } = analytics;

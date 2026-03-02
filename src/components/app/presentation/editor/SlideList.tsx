@@ -5,7 +5,7 @@ import { motion, Reorder } from 'motion/react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, GripVertical, Image, HelpCircle, BarChart3, MessageSquare, Star, Trophy, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Copy, GripVertical, Image, HelpCircle, BarChart3, MessageSquare, Star, Trophy, AlertTriangle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PresentationSlide, PresentationSlideType } from '@/lib/types';
 import { getSlideType } from '../slide-types';
@@ -31,6 +31,7 @@ interface SlideListProps {
   onSelectSlide: (slideId: string) => void;
   onReorderSlides: (slides: PresentationSlide[]) => void;
   onDeleteSlide: (slideId: string) => void;
+  onDuplicateSlide: (slideId: string) => void;
   onAddSlide: () => void;
 }
 
@@ -40,6 +41,7 @@ export function SlideList({
   onSelectSlide,
   onReorderSlides,
   onDeleteSlide,
+  onDuplicateSlide,
   onAddSlide,
 }: SlideListProps) {
   const handleReorder = useCallback(
@@ -172,6 +174,17 @@ export function SlideList({
                     </TooltipProvider>
                   )}
 
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 flex-shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDuplicateSlide(slide.id);
+                    }}
+                  >
+                    <Copy className="h-3 w-3 text-muted-foreground" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SlideRenderer } from '../core';
 import { HostOverlay } from './HostOverlay';
 import { HostControls } from './HostControls';
 import { PresentationSlide, Presentation, PresentationGame } from '@/lib/types';
 import { usePacingStatus } from '@/hooks/presentation/use-pacing-status';
+import { useAutoHide } from '@/hooks/presentation/use-auto-hide';
 
 interface PresentationHostProps {
   gameId: string;
@@ -31,10 +32,10 @@ export function PresentationHost({
   onSlideChange,
   onCancel,
 }: PresentationHostProps) {
-  const [isControlsVisible, setIsControlsVisible] = useState(true);
-  const [lastMouseMove, setLastMouseMove] = useState(Date.now());
-
   const currentSlide = slides[currentSlideIndex];
+
+  // Shared auto-hide logic for controls and overlay
+  const { isVisible: isControlsVisible } = useAutoHide(3000);
 
   // Pacing status for current slide
   const pacingStatus = usePacingStatus(
@@ -51,21 +52,11 @@ export function PresentationHost({
     pacingStatus.pacingMode !== 'none' &&
     !pacingStatus.thresholdMet;
 
-  // Auto-hide controls after inactivity
+  // Keyboard navigation
   useEffect(() => {
-    const handleMouseMove = () => {
-      setLastMouseMove(Date.now());
-      setIsControlsVisible(true);
-    };
-
     const handleKeyDown = (e: KeyboardEvent) => {
-      setLastMouseMove(Date.now());
-      setIsControlsVisible(true);
-
-      // Keyboard navigation (respects pacing for forward navigation)
       if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
-        // Block forward navigation if pacing threshold not met
         if (!isPacingBlocked && currentSlideIndex < slides.length - 1) {
           onSlideChange(currentSlideIndex + 1);
         }
@@ -77,25 +68,9 @@ export function PresentationHost({
       }
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlideIndex, slides.length, onSlideChange, isPacingBlocked]);
-
-  // Hide controls after 3 seconds of no activity
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (Date.now() - lastMouseMove > 3000) {
-        setIsControlsVisible(false);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [lastMouseMove]);
 
   const handlePrevious = useCallback(() => {
     if (currentSlideIndex > 0) {
@@ -147,6 +122,7 @@ export function PresentationHost({
         currentSlide={currentSlideIndex + 1}
         totalSlides={slides.length}
         playerCount={playerCount}
+        isVisible={isControlsVisible}
         onCancel={onCancel}
         pacingStatus={pacingStatus}
       />

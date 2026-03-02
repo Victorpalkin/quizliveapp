@@ -17,6 +17,7 @@ import {
 import { useFirestore } from '../provider';
 import { useUser } from '../auth/use-user';
 import { Presentation, PresentationSlide } from '@/lib/types';
+import { logError } from '@/lib/error-logging';
 
 /**
  * Hook to get a single presentation by ID
@@ -52,7 +53,7 @@ export function usePresentation(presentationId: string | null | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching presentation:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'usePresentation' });
         setError(err);
         setLoading(false);
       }
@@ -100,7 +101,7 @@ export function usePresentations() {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching presentations:', err);
+        logError(err instanceof Error ? err : new Error(String(err)), { context: 'usePresentations' });
         setError(err);
         setLoading(false);
       }
