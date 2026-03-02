@@ -993,31 +993,3 @@ export interface PresentationTemplate {
   updatedAt?: Date;
 }
 
-// ==========================================
-// Type Aliases for Backward Compatibility
-// These can be removed after full migration
-// ==========================================
-
-/** @deprecated Use ThoughtsGatheringConfig instead */
-export type InterestCloudConfig = ThoughtsGatheringConfig;
-/** @deprecated Use ThoughtsGatheringActivity instead */
-export type InterestCloudActivity = ThoughtsGatheringActivity;
-/** @deprecated Use ThoughtSubmission instead */
-export type InterestSubmission = ThoughtSubmission;
-/** @deprecated Use ThoughtsGatheringGameState instead */
-export type InterestCloudGameState = ThoughtsGatheringGameState;
-
-/** @deprecated Use EvaluationMetric instead */
-export type RankingMetric = EvaluationMetric;
-/** @deprecated Use EvaluationConfig instead */
-export type RankingConfig = EvaluationConfig;
-/** @deprecated Use EvaluationActivity instead */
-export type RankingActivity = EvaluationActivity;
-/** @deprecated Use EvaluationItem instead */
-export type RankingItem = EvaluationItem;
-/** @deprecated Use EvaluationItemResult instead */
-export type RankingItemResult = EvaluationItemResult;
-/** @deprecated Use EvaluationResults instead */
-export type RankingResults = EvaluationResults;
-/** @deprecated Use EvaluationGameState instead */
-export type RankingGameState = EvaluationGameState;

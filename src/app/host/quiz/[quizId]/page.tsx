@@ -81,13 +81,6 @@ export default function EditQuizPage() {
     setIsSubmitting(true);
 
     try {
-      console.log('Update attempt:', {
-        quizId,
-        userUid: user.uid,
-        quizHostId: quizData?.hostId,
-        match: user.uid === quizData?.hostId
-      });
-
       const quizDataForUpload = { ...data, questions: [...data.questions] };
 
       // Upload new/updated images

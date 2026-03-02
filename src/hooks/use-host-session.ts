@@ -63,19 +63,16 @@ export function useHostSession(): UseHostSessionResult {
 
         if (!gameSnap.exists()) {
           // Game was deleted
-          console.log('[HostSession] Game no longer exists, clearing session');
           clearHostSession();
           setSession(null);
         } else {
           const game = gameSnap.data();
           if (game.state === 'ended') {
             // Game has ended
-            console.log('[HostSession] Game has ended, clearing session');
             clearHostSession();
             setSession(null);
           } else {
             // Session is valid
-            console.log('[HostSession] Valid session found for game:', storedSession.gamePin);
             setSession(storedSession);
           }
         }

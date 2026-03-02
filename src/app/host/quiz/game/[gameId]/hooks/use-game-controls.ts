@@ -40,7 +40,6 @@ export function useGameControls(
       });
     } catch (error) {
       // If document doesn't exist yet, that's fine - it will be created on first answer
-      console.log('[Leaderboard] Reset skipped - aggregate may not exist yet');
     }
   }, [gameRef, gameId]);
 

@@ -24,11 +24,10 @@ export function useWakeLock(enabled: boolean) {
         if (!wakeLockRef.current || wakeLockRef.current.released) {
           const wakeLock = await navigator.wakeLock.request('screen');
           wakeLockRef.current = wakeLock;
-          console.log('[WakeLock] Screen wake lock acquired');
 
           // Handle wake lock release (can happen when tab becomes hidden)
           wakeLock.addEventListener('release', () => {
-            console.log('[WakeLock] Screen wake lock released');
+            // Wake lock was released (e.g., tab became hidden)
           });
         }
       } catch (error) {
@@ -61,7 +60,6 @@ export function useWakeLock(enabled: boolean) {
       if (wakeLockRef.current && !wakeLockRef.current.released) {
         wakeLockRef.current.release()
           .then(() => {
-            console.log('[WakeLock] Screen wake lock released on cleanup');
             wakeLockRef.current = null;
           })
           .catch((error) => {

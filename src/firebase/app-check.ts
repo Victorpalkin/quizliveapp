@@ -46,7 +46,6 @@ export function initializeAppCheckClient(app: FirebaseApp): void {
       if (debugToken) {
         // Set debug token for Firebase emulator
         (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken;
-        console.log('[App Check] Debug mode enabled');
       }
     }
 
@@ -58,8 +57,6 @@ export function initializeAppCheckClient(app: FirebaseApp): void {
       // Set to true to refresh App Check tokens as needed
       isTokenAutoRefreshEnabled: true,
     });
-
-    console.log('[App Check] Initialized successfully');
   } catch (error) {
     // Log error but don't crash the app
     // App Check is a security enhancement, not a hard requirement

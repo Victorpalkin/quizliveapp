@@ -77,12 +77,6 @@ export async function calculateClockOffset(firestore: Firestore, samples: number
   // Average the offsets from fast samples
   const averageOffset = fastSamples.reduce((sum, r) => sum + r.offset, 0) / fastSamples.length;
 
-  console.log(
-    `[ClockSync] Multi-sample sync complete: ${results.length} samples, ` +
-    `median RTT: ${sortedByRTT[Math.floor(sortedByRTT.length / 2)].roundTripTime.toFixed(0)}ms, ` +
-    `average offset: ${averageOffset.toFixed(0)}ms`
-  );
-
   return averageOffset;
 }
 
@@ -139,11 +133,6 @@ export async function calculateClockOffsetDetailed(firestore: Firestore): Promis
     deleteDoc(syncRef).catch(err => {
       console.warn('[ClockSync] Failed to delete sync document:', err);
     });
-
-    console.log(
-      `[ClockSync] Synchronized - Offset: ${offset.toFixed(0)}ms, RTT: ${roundTripTime.toFixed(0)}ms, ` +
-      `Server time: ${new Date(serverTime).toISOString()}`
-    );
 
     return {
       offset,

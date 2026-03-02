@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
-  BarChart3,
   Play,
   Plus,
   Trash2,
@@ -56,11 +55,7 @@ import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { saveHostSession, clearHostSession } from '@/lib/host-session';
 import { evaluationActivityConverter, evaluationItemConverter, playerRatingsConverter, playerConverter } from '@/firebase/converters';
 import type { Game, EvaluationActivity, EvaluationItem, PlayerRatings, EvaluationGameState, Player, EvaluationResults } from '@/lib/types';
-import { EvaluationBarChart } from '@/components/app/evaluation-bar-chart';
-import { EvaluationHeatmap } from '@/components/app/evaluation-heatmap';
-import { EvaluationMatrix } from '@/components/app/evaluation-matrix';
-import { ConsensusList } from '@/components/app/consensus-indicator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EvaluationResultsDisplay } from '@/components/app/evaluation-results-display';
 import { GameHeader, KeyboardShortcutsHint } from '@/components/app/game-header';
 import { HostActionHint, ReadinessChecklist } from '@/components/app/host-action-hint';
 
@@ -729,52 +724,11 @@ export default function EvaluationGamePage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {resultsLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : evaluationResults?.items && evaluationResults.items.length > 0 ? (
-                    <Tabs defaultValue="ranking" className="w-full">
-                      <TabsList className={`grid w-full mb-4 ${activity && activity.config.metrics.length >= 2 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                        <TabsTrigger value="ranking">Results</TabsTrigger>
-                        <TabsTrigger value="heatmap">Heatmap</TabsTrigger>
-                        {activity && activity.config.metrics.length >= 2 && (
-                          <TabsTrigger value="matrix">Matrix</TabsTrigger>
-                        )}
-                        <TabsTrigger value="consensus">Consensus</TabsTrigger>
-                      </TabsList>
-
-                      <TabsContent value="ranking" className="mt-0">
-                        <EvaluationBarChart items={evaluationResults.items} />
-                      </TabsContent>
-
-                      <TabsContent value="heatmap" className="mt-0">
-                        {activity && (
-                          <EvaluationHeatmap
-                            items={evaluationResults.items}
-                            metrics={activity.config.metrics}
-                          />
-                        )}
-                      </TabsContent>
-
-                      {activity && activity.config.metrics.length >= 2 && (
-                        <TabsContent value="matrix" className="mt-0">
-                          <EvaluationMatrix
-                            items={evaluationResults.items}
-                            metrics={activity.config.metrics}
-                          />
-                        </TabsContent>
-                      )}
-
-                      <TabsContent value="consensus" className="mt-0">
-                        <ConsensusList items={evaluationResults.items} />
-                      </TabsContent>
-                    </Tabs>
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      No results available yet.
-                    </p>
-                  )}
+                  <EvaluationResultsDisplay
+                    results={evaluationResults}
+                    metrics={activity.config.metrics}
+                    loading={resultsLoading}
+                  />
                 </CardContent>
               </Card>
 
@@ -799,52 +753,11 @@ export default function EvaluationGamePage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {resultsLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : evaluationResults?.items && evaluationResults.items.length > 0 ? (
-                    <Tabs defaultValue="ranking" className="w-full">
-                      <TabsList className={`grid w-full mb-4 ${activity && activity.config.metrics.length >= 2 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                        <TabsTrigger value="ranking">Results</TabsTrigger>
-                        <TabsTrigger value="heatmap">Heatmap</TabsTrigger>
-                        {activity && activity.config.metrics.length >= 2 && (
-                          <TabsTrigger value="matrix">Matrix</TabsTrigger>
-                        )}
-                        <TabsTrigger value="consensus">Consensus</TabsTrigger>
-                      </TabsList>
-
-                      <TabsContent value="ranking" className="mt-0">
-                        <EvaluationBarChart items={evaluationResults.items} />
-                      </TabsContent>
-
-                      <TabsContent value="heatmap" className="mt-0">
-                        {activity && (
-                          <EvaluationHeatmap
-                            items={evaluationResults.items}
-                            metrics={activity.config.metrics}
-                          />
-                        )}
-                      </TabsContent>
-
-                      {activity && activity.config.metrics.length >= 2 && (
-                        <TabsContent value="matrix" className="mt-0">
-                          <EvaluationMatrix
-                            items={evaluationResults.items}
-                            metrics={activity.config.metrics}
-                          />
-                        </TabsContent>
-                      )}
-
-                      <TabsContent value="consensus" className="mt-0">
-                        <ConsensusList items={evaluationResults.items} />
-                      </TabsContent>
-                    </Tabs>
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      No results available.
-                    </p>
-                  )}
+                  <EvaluationResultsDisplay
+                    results={evaluationResults}
+                    metrics={activity.config.metrics}
+                    loading={resultsLoading}
+                  />
                 </CardContent>
               </Card>
 

@@ -1,6 +1,6 @@
 # Zivo
 
-Zivo is an interactive, real-time audience engagement platform that allows users to host live sessions including quizzes, interest clouds, and prioritization rankings. Players join and participate from their own devices. Built with Next.js, Firebase, and TypeScript.
+Zivo is an interactive, real-time audience engagement platform that allows users to host live sessions including quizzes, polls, presentations, thoughts gathering, and evaluation/prioritization activities. Players join and participate from their own devices. Built with Next.js, Firebase, and TypeScript.
 
 ## Features
 
@@ -83,13 +83,32 @@ For complete deployment instructions including CI/CD setup, see **[Deployment Gu
 | `/` | Home page (host or join selection) |
 | `/login` | Host sign-in |
 | `/host` | Host dashboard |
-| `/host/create` | Create quiz manually |
-| `/host/create-ai` | Create quiz with AI |
-| `/host/edit/[quizId]` | Edit quiz |
-| `/host/lobby/[gameId]` | Game lobby |
-| `/host/game/[gameId]` | Live game view |
+| **Quiz** | |
+| `/host/quiz/create` | Create quiz manually |
+| `/host/quiz/create-ai` | Create quiz with AI |
+| `/host/quiz/[quizId]` | Edit quiz |
+| `/host/quiz/lobby/[gameId]` | Quiz game lobby |
+| `/host/quiz/game/[gameId]` | Live quiz game view |
+| `/play/quiz/[gamePin]` | Quiz player interface |
+| **Poll** | |
+| `/host/poll/create` | Create poll |
+| `/host/poll/[activityId]` | Poll detail |
+| `/play/poll/[gamePin]` | Poll player interface |
+| **Presentation** | |
+| `/host/presentation/create` | Create presentation |
+| `/host/presentation/edit/[presentationId]` | Edit presentation |
+| `/play/presentation/[gamePin]` | Presentation player interface |
+| **Thoughts Gathering** | |
+| `/host/thoughts-gathering/create` | Create thoughts gathering |
+| `/host/thoughts-gathering/game/[gameId]` | Live session |
+| `/play/thoughts-gathering/[gamePin]` | Player interface |
+| **Evaluation** | |
+| `/host/evaluation/create` | Create evaluation |
+| `/host/evaluation/game/[gameId]` | Live evaluation session |
+| `/play/evaluation/[gamePin]` | Evaluation player interface |
+| **Shared** | |
 | `/join` | Player join page |
-| `/play/[gamePin]` | Player game interface |
+| `/play/[gameId]` | Auto-routing to correct activity type |
 
 ## Monitoring & Analytics
 
@@ -134,4 +153,3 @@ For detailed monitoring documentation, see the [Deployment Guide](docs/deploymen
 | **[Architecture Blueprint](docs/architecture/blueprint.md)** | System design, state management, timer sync, security |
 | **[Bug Fixes & Solutions](docs/development/FIXES_AND_SOLUTIONS.md)** | Technical solutions and lessons learned |
 | **[Feature Backlog](docs/development/BACKLOG.md)** | Planned features and improvements |
-| **[Differentiation Features](docs/development/DIFFERENTIATION_FEATURES.md)** | Innovative feature ideas for future development |

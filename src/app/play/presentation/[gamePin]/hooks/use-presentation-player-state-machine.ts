@@ -38,7 +38,6 @@ export function usePresentationPlayerStateMachine(
     if (!game) {
       // If we're not loading and game is null, it might have been deleted
       if (!gameLoading && state !== 'joining' && state !== 'ended') {
-        console.log('[Presentation Player] Game not found, transitioning to ended');
         setState('ended');
       }
       return;
@@ -60,13 +59,11 @@ export function usePresentationPlayerStateMachine(
       && lastSlideIndexRef.current !== -1;
 
     if (slideChanged) {
-      console.log(`[Presentation Player] Slide changed: ${lastSlideIndexRef.current} → ${currentSlideIndex}`);
       lastSlideIndexRef.current = currentSlideIndex;
 
       // Reset to slide state for new slide
       // This ensures player gets fresh state for new interactive slides
       if (state === 'submitted') {
-        console.log('[Presentation Player] Resetting to slide state for new slide');
         setState('slide');
         return; // Effect will run again due to state change
       }
@@ -83,7 +80,6 @@ export function usePresentationPlayerStateMachine(
     // 1. Terminal state - presentation ended
     if (gameState === 'ended') {
       if (state !== 'ended') {
-        console.log(`[Presentation Player] Presentation ended: ${state} → ended`);
         setState('ended');
       }
       return;
@@ -94,7 +90,6 @@ export function usePresentationPlayerStateMachine(
       // Only transition from 'lobby' to 'slide'
       // Players in 'joining' state must enter their name first
       if (state === 'lobby') {
-        console.log(`[Presentation Player] Presentation started: ${state} → slide`);
         setState('slide');
       }
       // If in joining state, stay there until player enters name and joins
@@ -113,7 +108,6 @@ export function usePresentationPlayerStateMachine(
   // Callback for slide components to mark response as submitted
   const markSubmitted = useCallback(() => {
     if (state === 'slide') {
-      console.log('[Presentation Player] Response submitted: slide → submitted');
       setState('submitted');
     }
   }, [state]);
@@ -121,7 +115,6 @@ export function usePresentationPlayerStateMachine(
   // Callback for join flow to transition to lobby
   const setJoined = useCallback(() => {
     if (state === 'joining') {
-      console.log('[Presentation Player] Join successful');
       // The effect will sync with actual game state
       setState('lobby');
     }
