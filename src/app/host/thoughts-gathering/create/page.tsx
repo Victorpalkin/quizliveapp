@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/app/header';
-import { Cloud, ArrowLeft, Loader2, Lightbulb, Eye } from 'lucide-react';
+import { Cloud, ArrowLeft, Loader2, Lightbulb, Eye, Bot } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +41,7 @@ export default function CreateThoughtsGatheringPage() {
   const [prompt, setPrompt] = useState('What topics interest you most?');
   const [maxSubmissions, setMaxSubmissions] = useState(3);
   const [allowMultipleRounds, setAllowMultipleRounds] = useState(false);
+  const [agenticUseCasesCollection, setAgenticUseCasesCollection] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
   // Track if form has been modified
@@ -82,6 +83,7 @@ export default function CreateThoughtsGatheringPage() {
         prompt: prompt.trim(),
         maxSubmissionsPerPlayer: maxSubmissions,
         allowMultipleRounds,
+        agenticUseCasesCollection,
       };
 
       const activityData = {
@@ -240,6 +242,27 @@ export default function CreateThoughtsGatheringPage() {
                 id="multipleRounds"
                 checked={allowMultipleRounds}
                 onCheckedChange={setAllowMultipleRounds}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-4 border-violet-500/30 bg-violet-500/5">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-violet-500" />
+                  <Label htmlFor="agenticUseCases">Agentic Use Cases Collection</Label>
+                  <FeatureTooltip
+                    content="When enabled, collected topics will be matched with AI agents from the tracker database. Shows related AI use cases for each topic group."
+                    icon="info"
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Match topics with AI agents from the tracker database
+                </p>
+              </div>
+              <Switch
+                id="agenticUseCases"
+                checked={agenticUseCasesCollection}
+                onCheckedChange={setAgenticUseCasesCollection}
               />
             </div>
 

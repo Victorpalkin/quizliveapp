@@ -49,6 +49,19 @@
         { "fieldPath": "sharedWith", "order": "ASCENDING" },
         { "fieldPath": "presentationId", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "aiAgents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "embedding",
+          "vectorConfig": {
+            "dimension": 1536,
+            "flat": {}
+          }
+        }
+      ]
     }
   ],
   "fieldOverrides": [
