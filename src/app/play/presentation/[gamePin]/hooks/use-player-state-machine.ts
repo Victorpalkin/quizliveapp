@@ -141,8 +141,10 @@ export function usePlayerStateMachine(gamePin: string) {
     await setDoc(
       doc(firestore, 'games', game.id, 'players', playerId),
       {
+        id: playerId,
         name,
         score: 0,
+        answers: [],
         currentStreak: 0,
         maxStreak: 0,
         joinedAt: serverTimestamp(),
