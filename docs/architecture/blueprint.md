@@ -1011,7 +1011,7 @@ Submissions are automatically cleaned up:
 
 | File | Purpose |
 |------|---------|
-| `src/lib/types.ts` | CrowdsourceSettings, CrowdsourceState, QuestionSubmission types |
+| `src/lib/types/quiz.ts` | CrowdsourceSettings, CrowdsourceState, QuestionSubmission types |
 | `src/components/app/quiz-form/` | Quiz form components including crowdsource settings |
 | `src/app/play/quiz/[gamePin]/components/question-submission-form.tsx` | Player submission form |
 | `src/app/host/quiz/lobby/[gameId]/components/submissions-panel.tsx` | Host review panel |
@@ -1181,7 +1181,16 @@ src/
 │   └── use-question-timer.ts                 # Shared timer (5-phase sync)
 │
 ├── lib/
-│   ├── types.ts                              # All shared TypeScript types
+│   ├── types/                                # Shared TypeScript types (split by domain)
+│   │   ├── index.ts                          # Barrel re-export
+│   │   ├── shared.ts                         # HostProfile, share types, ContentType
+│   │   ├── quiz.ts                           # Question types, Quiz, CrowdsourceSettings
+│   │   ├── game.ts                           # Player, Game, Leaderboard, state types
+│   │   ├── analytics.ts                      # GameAnalytics, PollAnalytics
+│   │   ├── thoughts-gathering.ts             # Topics, agents, submissions
+│   │   ├── evaluation.ts                     # Metrics, items, ratings, results
+│   │   ├── poll.ts                           # PollActivity, PollConfig, PollQuestionResult
+│   │   └── presentation.ts                   # Slides, elements, templates
 │   ├── error-logging.ts                      # Structured error logging
 │   ├── constants.ts                          # App constants
 │   ├── question-handlers/                    # Question type registry
