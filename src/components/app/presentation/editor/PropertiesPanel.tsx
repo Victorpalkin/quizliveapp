@@ -53,7 +53,8 @@ export function PropertiesPanel({
   // Show element-specific properties
   return (
     <div className="w-[280px] flex-shrink-0 bg-background border-l overflow-y-auto">
-      <div className="p-4 border-b">
+      <div className="p-4 border-b flex items-center gap-2">
+        <div className="w-1 h-4 rounded-full bg-gradient-to-b from-primary to-accent" />
         <h3 className="text-sm font-medium capitalize">{selectedElement.type} Properties</h3>
       </div>
 

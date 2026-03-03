@@ -10,7 +10,7 @@ export {
   usePresentationControls,
 } from './use-presentation-game';
 
-export { useResponses, useResponseCount } from './use-responses';
+export { useResponses, useElementResponses, useResponseCount } from './use-responses';
 export { useReactions } from './use-reactions';
 export { useQuestions } from './use-questions';
 export { useLeaderboard } from './use-leaderboard';

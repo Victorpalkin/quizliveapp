@@ -1,5 +1,6 @@
 'use client';
 
+import { motion } from 'motion/react';
 import { HostTextElement } from './elements/HostTextElement';
 import { HostImageElement } from './elements/HostImageElement';
 import { HostShapeElement } from './elements/HostShapeElement';
@@ -45,9 +46,12 @@ export function HostSlideCanvas({ slide, slides, gameId, playerCount, playerName
 
   return (
     <div className="relative w-full h-full" style={bgStyle}>
-      {sortedElements.map((element) => (
-        <div
+      {sortedElements.map((element, i) => (
+        <motion.div
           key={element.id}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.05, duration: 0.4, ease: 'easeOut' }}
           className="absolute"
           style={{
             left: `${element.x}%`,
@@ -73,7 +77,7 @@ export function HostSlideCanvas({ slide, slides, gameId, playerCount, playerName
           {element.type === 'leaderboard' && <HostLeaderboardElement element={element} gameId={gameId} />}
           {element.type === 'qa' && <HostQAElement element={element} gameId={gameId} />}
           {element.type === 'spin-wheel' && <HostSpinWheelElement element={element} playerNames={playerNames} />}
-        </div>
+        </motion.div>
       ))}
     </div>
   );

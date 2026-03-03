@@ -149,11 +149,17 @@ export function SlideCanvas({
     [onUpdateElement]
   );
 
+  const hasBackground = slide.background && (
+    (slide.background.type === 'solid' && slide.background.color) ||
+    (slide.background.type === 'gradient' && slide.background.gradient) ||
+    (slide.background.type === 'image' && slide.background.imageUrl)
+  );
+
   return (
-    <div className="flex-1 flex items-center justify-center p-6 overflow-hidden">
+    <div className="flex-1 flex items-center justify-center p-6 overflow-hidden bg-muted/20">
       <div
         ref={canvasRef}
-        className="relative shadow-xl rounded-lg overflow-hidden"
+        className={`relative shadow-xl rounded-lg overflow-hidden ${!hasBackground ? 'bg-grid-dots' : ''}`}
         style={{
           ...bgStyle,
           aspectRatio: '16 / 9',
@@ -170,7 +176,9 @@ export function SlideCanvas({
           return (
             <div
               key={element.id}
-              className="absolute"
+              className={`absolute group/el transition-shadow duration-150 ${
+                isDragging && isSelected ? 'shadow-2xl' : ''
+              }`}
               style={{
                 left: `${element.x}%`,
                 top: `${element.y}%`,
@@ -179,7 +187,7 @@ export function SlideCanvas({
                 zIndex: element.zIndex,
                 opacity: element.opacity ?? 1,
                 transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
-                cursor: element.locked ? 'default' : 'grab',
+                cursor: element.locked ? 'default' : isDragging ? 'grabbing' : 'grab',
               }}
               onMouseDown={(e) => handleMouseDown(e, element)}
             >
@@ -188,6 +196,10 @@ export function SlideCanvas({
                 isSelected={isSelected}
                 onSelect={() => onSelectElement(element.id)}
               />
+              {/* Hover indicator (thin dashed border before selection) */}
+              {!isSelected && !element.locked && (
+                <div className="absolute inset-0 border border-dashed border-transparent group-hover/el:border-primary/30 rounded-sm pointer-events-none transition-colors" />
+              )}
               {isSelected && !element.locked && (
                 <SelectionOverlay
                   element={element}

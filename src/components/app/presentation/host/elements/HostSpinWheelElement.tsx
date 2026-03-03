@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import type { SlideElement } from '@/lib/types';
 
@@ -53,17 +54,27 @@ export function HostSpinWheelElement({ element, playerNames }: HostSpinWheelElem
     <div className="w-full h-full flex flex-col items-center justify-center p-4">
       {/* Wheel */}
       <div className="relative" style={{ width: '280px', height: '280px' }}>
+        {/* Outer glow ring */}
+        <div
+          className="absolute -inset-2 rounded-full opacity-50 animate-glow-pulse"
+          style={{
+            background: `conic-gradient(${segments.map((s, i) => `${s.color} ${i * segAngle}deg ${(i + 1) * segAngle}deg`).join(', ')})`,
+            filter: 'blur(12px)',
+          }}
+        />
+
         {/* Pointer */}
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px] border-l-transparent border-r-transparent border-t-foreground z-10" />
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px] border-l-transparent border-r-transparent border-t-foreground z-10 drop-shadow-lg" />
 
         {/* Wheel SVG */}
         <svg
           viewBox="0 0 200 200"
-          className="w-full h-full transition-transform"
+          className="w-full h-full relative z-[1]"
           style={{
             transform: `rotate(${rotation}deg)`,
             transitionDuration: spinning ? '4s' : '0s',
             transitionTimingFunction: 'cubic-bezier(0.17, 0.67, 0.12, 0.99)',
+            transitionProperty: 'transform',
           }}
         >
           {segments.map((seg, i) => {
@@ -86,7 +97,7 @@ export function HostSpinWheelElement({ element, playerNames }: HostSpinWheelElem
                   d={`M100,100 L${x1},${y1} A95,95 0 ${largeArc},1 ${x2},${y2} Z`}
                   fill={seg.color}
                   stroke="white"
-                  strokeWidth="1"
+                  strokeWidth="2"
                 />
                 <text
                   x={textX}
@@ -103,20 +114,47 @@ export function HostSpinWheelElement({ element, playerNames }: HostSpinWheelElem
               </g>
             );
           })}
+          {/* Center circle */}
+          <circle cx="100" cy="100" r="12" fill="white" />
+          <circle cx="100" cy="100" r="10" fill="#1a1a1a" />
         </svg>
       </div>
 
       {/* Spin button & winner */}
       <div className="mt-4 text-center">
-        {winner ? (
-          <div className="text-2xl font-bold text-primary animate-bounce">{winner}</div>
-        ) : (
-          <Button onClick={spin} disabled={spinning} size="lg" variant="gradient">
-            {spinning ? 'Spinning...' : 'Spin!'}
-          </Button>
-        )}
+        <AnimatePresence mode="wait">
+          {winner ? (
+            <motion.div
+              key="winner"
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              transition={{ type: 'spring', stiffness: 200 }}
+              className="text-2xl font-bold text-primary drop-shadow-[0_0_12px_rgba(147,51,234,0.5)]"
+            >
+              {winner}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <Button onClick={spin} disabled={spinning} size="lg" variant="gradient">
+                {spinning ? 'Spinning...' : 'Spin!'}
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {config?.action && winner && (
-          <p className="text-sm text-muted-foreground mt-2">{config.action}</p>
+          <motion.p
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-sm text-muted-foreground mt-2"
+          >
+            {config.action}
+          </motion.p>
         )}
       </div>
     </div>

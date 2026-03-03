@@ -102,26 +102,26 @@ export function SelectionOverlay({ element, canvasRef, onResize }: SelectionOver
   const handles: HandlePosition[] = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'];
 
   const handleStyles: Record<HandlePosition, React.CSSProperties> = {
-    nw: { top: -4, left: -4 },
-    ne: { top: -4, right: -4 },
-    sw: { bottom: -4, left: -4 },
-    se: { bottom: -4, right: -4 },
-    n: { top: -4, left: '50%', transform: 'translateX(-50%)' },
-    s: { bottom: -4, left: '50%', transform: 'translateX(-50%)' },
-    e: { right: -4, top: '50%', transform: 'translateY(-50%)' },
-    w: { left: -4, top: '50%', transform: 'translateY(-50%)' },
+    nw: { top: -6, left: -6 },
+    ne: { top: -6, right: -6 },
+    sw: { bottom: -6, left: -6 },
+    se: { bottom: -6, right: -6 },
+    n: { top: -6, left: '50%', transform: 'translateX(-50%)' },
+    s: { bottom: -6, left: '50%', transform: 'translateX(-50%)' },
+    e: { right: -6, top: '50%', transform: 'translateY(-50%)' },
+    w: { left: -6, top: '50%', transform: 'translateY(-50%)' },
   };
 
   return (
     <>
       {/* Selection border */}
-      <div className="absolute inset-0 border-2 border-primary pointer-events-none rounded-sm" />
+      <div className="absolute inset-0 border-2 border-primary pointer-events-none rounded-sm shadow-[0_0_0_1px_rgba(147,51,234,0.15)]" />
 
       {/* Resize handles */}
       {handles.map((pos) => (
         <div
           key={pos}
-          className="absolute w-2.5 h-2.5 bg-white border-2 border-primary rounded-sm z-10"
+          className="absolute w-3 h-3 bg-primary border-2 border-white rounded-full z-10 hover:scale-125 transition-transform shadow-sm"
           style={{
             ...handleStyles[pos],
             cursor: HANDLE_CURSORS[pos],

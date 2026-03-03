@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PlayerHeader } from './PlayerHeader';
@@ -32,6 +33,30 @@ interface PresentationPlayerProps {
   hasResponded: (elementId: string) => boolean;
 }
 
+function AnimatedScore({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    if (value === 0) { setDisplay(0); return; }
+    const duration = 1500;
+    const steps = 40;
+    const increment = value / steps;
+    let current = 0;
+    const interval = setInterval(() => {
+      current += increment;
+      if (current >= value) {
+        setDisplay(value);
+        clearInterval(interval);
+      } else {
+        setDisplay(Math.floor(current));
+      }
+    }, duration / steps);
+    return () => clearInterval(interval);
+  }, [value]);
+
+  return <>{display.toLocaleString()}</>;
+}
+
 export function PresentationPlayer({
   state,
   game,
@@ -57,129 +82,240 @@ export function PresentationPlayer({
     }
   };
 
-  // Joining screen
-  if (state === 'joining') {
-    return (
-      <div className="flex items-center justify-center h-screen p-4">
-        <div className="w-full max-w-sm space-y-4">
-          <h1 className="text-2xl font-bold text-center">Join Game</h1>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
-            maxLength={20}
-            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-            autoFocus
-          />
-          <Button
-            onClick={handleJoin}
-            disabled={!name.trim() || joining}
-            className="w-full"
-            variant="gradient"
-          >
-            {joining ? 'Joining...' : 'Join'}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Lobby screen
-  if (state === 'lobby') {
-    return (
-      <div className="flex items-center justify-center h-screen p-4">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-            <span className="text-2xl">🎯</span>
-          </div>
-          <h1 className="text-2xl font-bold">You&apos;re in!</h1>
-          <p className="text-lg text-muted-foreground">{session?.playerName}</p>
-          <p className="text-sm text-muted-foreground">Waiting for the host to start...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Ended screen
-  if (state === 'ended') {
-    return (
-      <div className="flex items-center justify-center h-screen p-4">
-        <div className="text-center space-y-4">
-          <h1 className="text-2xl font-bold">Game Over!</h1>
-          <div className="text-4xl font-bold text-primary">{playerScore.toLocaleString()}</div>
-          <p className="text-muted-foreground">points</p>
-          {playerStreak > 0 && (
-            <p className="text-sm text-muted-foreground">Best streak: {playerStreak}</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Active state
-  const responded = interactiveElement ? hasResponded(interactiveElement.id) : false;
-
   return (
-    <div className="flex flex-col h-screen">
-      <PlayerHeader
-        playerName={session?.playerName || ''}
-        score={playerScore}
-        streak={playerStreak}
-      />
+    <AnimatePresence mode="wait">
+      {/* Joining screen */}
+      {state === 'joining' && (
+        <motion.div
+          key="joining"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center justify-center h-screen p-4 bg-gradient-to-br from-primary/5 via-background to-accent/5"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="w-full max-w-sm space-y-6"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+              className="text-center"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/25">
+                <span className="text-2xl text-white font-bold">Z</span>
+              </div>
+              <h1 className="text-2xl font-bold">Join Game</h1>
+            </motion.div>
+            <div className="glass rounded-2xl p-6 space-y-4 shadow-xl">
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+                maxLength={20}
+                onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+                autoFocus
+                className="h-12 text-base bg-background/50"
+              />
+              <Button
+                onClick={handleJoin}
+                disabled={!name.trim() || joining}
+                className="w-full h-12 text-base"
+                variant="gradient"
+              >
+                {joining ? 'Joining...' : 'Join'}
+              </Button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
 
-      <div className="flex-1 overflow-y-auto">
-        {interactiveElement && !responded ? (
-          // Show interactive element UI
-          <div className="p-4">
-            {interactiveElement.type === 'quiz' && game && session && (
-              <PlayerQuiz
-                element={interactiveElement}
-                gameId={game.id}
-                playerId={session.playerId}
-                playerName={session.playerName}
-                onSubmitted={() => markResponded(interactiveElement.id)}
-              />
-            )}
-            {interactiveElement.type === 'poll' && game && session && (
-              <PlayerPoll
-                element={interactiveElement}
-                gameId={game.id}
-                playerId={session.playerId}
-                playerName={session.playerName}
-                onSubmitted={() => markResponded(interactiveElement.id)}
-              />
-            )}
-            {interactiveElement.type === 'thoughts' && game && session && (
-              <PlayerThoughts
-                element={interactiveElement}
-                gameId={game.id}
-                playerId={session.playerId}
-                playerName={session.playerName}
-                onSubmitted={() => markResponded(interactiveElement.id)}
-              />
-            )}
-            {interactiveElement.type === 'rating' && game && session && (
-              <PlayerRating
-                element={interactiveElement}
-                gameId={game.id}
-                playerId={session.playerId}
-                playerName={session.playerName}
-                onSubmitted={() => markResponded(interactiveElement.id)}
-              />
+      {/* Lobby screen */}
+      {state === 'lobby' && (
+        <motion.div
+          key="lobby"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex items-center justify-center h-screen p-4 bg-gradient-to-br from-primary/5 via-background to-accent/5"
+        >
+          <div className="text-center space-y-6">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+              className="relative w-20 h-20 mx-auto"
+            >
+              <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse-ring" />
+              <div className="absolute inset-0 rounded-full bg-primary/10 animate-pulse-ring [animation-delay:0.5s]" />
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/25">
+                <span className="text-3xl">🎯</span>
+              </div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <h1 className="text-2xl font-bold">You&apos;re in!</h1>
+              <div className="mt-2 inline-block glass rounded-full px-4 py-1.5">
+                <p className="text-lg font-medium">{session?.playerName}</p>
+              </div>
+            </motion.div>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="text-sm text-muted-foreground animate-glow-pulse"
+            >
+              Waiting for the host to start...
+            </motion.p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Ended screen */}
+      {state === 'ended' && (
+        <motion.div
+          key="ended"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex items-center justify-center h-screen p-4 bg-gradient-to-br from-primary/5 via-background to-accent/5"
+        >
+          <div className="text-center space-y-6">
+            <motion.div
+              initial={{ scale: 0, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+              className="text-6xl"
+            >
+              🏆
+            </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-2xl font-bold"
+            >
+              Game Over!
+            </motion.h1>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.6, type: 'spring' }}
+              className="glass rounded-2xl p-6 inline-block"
+            >
+              <div className="text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                <AnimatedScore value={playerScore} />
+              </div>
+              <p className="text-muted-foreground mt-1">points</p>
+            </motion.div>
+            {playerStreak > 0 && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 }}
+                className="text-sm text-muted-foreground"
+              >
+                Best streak: {playerStreak} 🔥
+              </motion.p>
             )}
           </div>
-        ) : (
-          <IdleView
-            currentSlide={currentSlide}
-            responded={responded}
-          />
-        )}
-      </div>
-
-      {/* Reaction bar always visible during active state */}
-      {game?.settings.enableReactions && game && (
-        <ReactionBar gameId={game.id} playerId={session?.playerId || ''} />
+        </motion.div>
       )}
-    </div>
+
+      {/* Active state */}
+      {state === 'active' && (
+        <motion.div
+          key="active"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="flex flex-col h-screen"
+        >
+          <PlayerHeader
+            playerName={session?.playerName || ''}
+            score={playerScore}
+            streak={playerStreak}
+          />
+
+          <div className="flex-1 overflow-y-auto">
+            <AnimatePresence mode="wait">
+              {interactiveElement && !hasResponded(interactiveElement.id) ? (
+                <motion.div
+                  key={`element-${interactiveElement.id}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-4"
+                >
+                  {interactiveElement.type === 'quiz' && game && session && (
+                    <PlayerQuiz
+                      element={interactiveElement}
+                      gameId={game.id}
+                      playerId={session.playerId}
+                      playerName={session.playerName}
+                      onSubmitted={() => markResponded(interactiveElement.id)}
+                    />
+                  )}
+                  {interactiveElement.type === 'poll' && game && session && (
+                    <PlayerPoll
+                      element={interactiveElement}
+                      gameId={game.id}
+                      playerId={session.playerId}
+                      playerName={session.playerName}
+                      onSubmitted={() => markResponded(interactiveElement.id)}
+                    />
+                  )}
+                  {interactiveElement.type === 'thoughts' && game && session && (
+                    <PlayerThoughts
+                      element={interactiveElement}
+                      gameId={game.id}
+                      playerId={session.playerId}
+                      playerName={session.playerName}
+                      onSubmitted={() => markResponded(interactiveElement.id)}
+                    />
+                  )}
+                  {interactiveElement.type === 'rating' && game && session && (
+                    <PlayerRating
+                      element={interactiveElement}
+                      gameId={game.id}
+                      playerId={session.playerId}
+                      playerName={session.playerName}
+                      onSubmitted={() => markResponded(interactiveElement.id)}
+                    />
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="idle"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full"
+                >
+                  <IdleView
+                    currentSlide={currentSlide}
+                    responded={interactiveElement ? hasResponded(interactiveElement.id) : false}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {game?.settings.enableReactions && game && (
+            <ReactionBar gameId={game.id} playerId={session?.playerId || ''} />
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

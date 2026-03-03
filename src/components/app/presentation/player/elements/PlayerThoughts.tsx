@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useResponses } from '@/firebase/presentation';
-import { Send } from 'lucide-react';
+import { Send, X } from 'lucide-react';
 import type { SlideElement } from '@/lib/types';
 
 interface PlayerThoughtsProps {
@@ -33,6 +34,10 @@ export function PlayerThoughts({ element, gameId, playerId, playerName, onSubmit
     setCurrent('');
   };
 
+  const removeThought = (index: number) => {
+    setThoughts((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
     const allThoughts = current.trim()
       ? [...thoughts, current.trim()]
@@ -59,22 +64,48 @@ export function PlayerThoughts({ element, gameId, playerId, playerName, onSubmit
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-center">{config.prompt}</h2>
+      <motion.h2
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-xl font-bold text-center"
+      >
+        {config.prompt}
+      </motion.h2>
 
       {/* Already added thoughts */}
       {thoughts.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {thoughts.map((t, i) => (
-            <div key={i} className="bg-primary/10 text-primary rounded-full px-3 py-1 text-sm">
-              {t}
-            </div>
-          ))}
+          <AnimatePresence>
+            {thoughts.map((t, i) => (
+              <motion.div
+                key={`${t}-${i}`}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                className="bg-primary/10 text-primary rounded-full px-3 py-1 text-sm flex items-center gap-1.5"
+              >
+                {t}
+                <button
+                  onClick={() => removeThought(i)}
+                  className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
 
       {/* Input */}
       {remaining > 0 && (
-        <div className="flex gap-2">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="flex gap-2"
+        >
           <Input
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
@@ -87,16 +118,33 @@ export function PlayerThoughts({ element, gameId, playerId, playerName, onSubmit
               }
             }}
             autoFocus
+            className="bg-background/50"
           />
           <Button variant="ghost" size="icon" onClick={addThought} disabled={!current.trim()}>
             <Send className="h-4 w-4" />
           </Button>
-        </div>
+        </motion.div>
       )}
 
-      <p className="text-xs text-muted-foreground text-center">
-        {remaining > 0 ? `${remaining} remaining` : 'Maximum reached'}
-      </p>
+      {/* Remaining counter */}
+      <div className="flex items-center justify-center gap-2">
+        <div className="flex gap-1">
+          {Array.from({ length: maxPerPlayer }, (_, i) => (
+            <motion.div
+              key={i}
+              animate={{
+                backgroundColor: i < thoughts.length
+                  ? 'hsl(var(--primary))'
+                  : 'hsl(var(--muted))',
+              }}
+              className="w-2 h-2 rounded-full"
+            />
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {remaining > 0 ? `${remaining} remaining` : 'Maximum reached'}
+        </p>
+      </div>
 
       <Button
         onClick={handleSubmit}

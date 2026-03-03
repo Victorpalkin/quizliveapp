@@ -9,6 +9,7 @@ import {
   Undo2,
   Redo2,
   Play,
+  Check,
 } from 'lucide-react';
 import { InsertMenu } from './InsertMenu';
 import type { SlideElementType, PresentationSettings, PresentationTheme } from '@/lib/types';
@@ -45,7 +46,7 @@ export function EditorToolbar({
   presentationId,
 }: EditorToolbarProps) {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-background border-b">
+    <div className="flex items-center gap-2 px-3 py-2 backdrop-blur-md bg-background/90 border-b border-border/50">
       {/* Back */}
       <Button variant="ghost" size="icon" asChild>
         <Link href="/host">
@@ -62,12 +63,16 @@ export function EditorToolbar({
       />
 
       {/* Divider */}
-      <div className="w-px h-6 bg-border" />
+      <div className="w-px h-6 bg-border/50" />
 
       {/* Save */}
       <Button variant="ghost" size="sm" onClick={onSave} disabled={!isDirty}>
-        <Save className="h-4 w-4 mr-1.5" />
-        Save
+        {isDirty ? (
+          <Save className="h-4 w-4 mr-1.5" />
+        ) : (
+          <Check className="h-4 w-4 mr-1.5 text-green-500" />
+        )}
+        {isDirty ? 'Save' : 'Saved'}
       </Button>
 
       {/* Undo/Redo */}
@@ -81,7 +86,7 @@ export function EditorToolbar({
       </div>
 
       {/* Divider */}
-      <div className="w-px h-6 bg-border" />
+      <div className="w-px h-6 bg-border/50" />
 
       {/* Insert menu */}
       <InsertMenu
@@ -94,7 +99,7 @@ export function EditorToolbar({
 
       {/* Present button */}
       {presentationId && (
-        <Button variant="gradient" size="sm" asChild>
+        <Button variant="gradient" size="sm" className="shadow-lg shadow-primary/20" asChild>
           <Link href={`/host/presentation/edit/${presentationId}`}>
             <Play className="h-4 w-4 mr-1.5" />
             Present

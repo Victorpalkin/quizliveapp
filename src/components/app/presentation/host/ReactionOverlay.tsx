@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useReactions } from '@/firebase/presentation';
 
 interface FloatingEmoji {
   id: string;
   emoji: string;
   x: number;
+  size: number;
+  drift: number;
   createdAt: number;
 }
 
@@ -31,6 +33,8 @@ export function ReactionOverlay({ gameId }: ReactionOverlayProps) {
       id: `${latest.id}-${Date.now()}`,
       emoji: latest.emoji,
       x: 10 + Math.random() * 80,
+      size: 1.5 + Math.random() * 1.5,
+      drift: -20 + Math.random() * 40,
       createdAt: Date.now(),
     };
 
@@ -40,40 +44,31 @@ export function ReactionOverlay({ gameId }: ReactionOverlayProps) {
   // Clean up old emojis
   useEffect(() => {
     const interval = setInterval(() => {
-      const cutoff = Date.now() - 3000;
+      const cutoff = Date.now() - 3500;
       setFloating((prev) => prev.filter((f) => f.createdAt > cutoff));
     }, 500);
     return () => clearInterval(interval);
   }, []);
 
+  // Memoize stable emoji list for rendering
+  const emojiElements = useMemo(() => floating.map((f) => (
+    <div
+      key={f.id}
+      className="absolute bottom-0 animate-float-up"
+      style={{
+        left: `${f.x}%`,
+        fontSize: `${f.size}rem`,
+        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
+        ['--tw-translate-x' as string]: `${f.drift}px`,
+      }}
+    >
+      {f.emoji}
+    </div>
+  )), [floating]);
+
   return (
     <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
-      {floating.map((f) => (
-        <div
-          key={f.id}
-          className="absolute text-3xl animate-bounce"
-          style={{
-            left: `${f.x}%`,
-            bottom: 0,
-            animation: 'float-up 3s ease-out forwards',
-          }}
-        >
-          {f.emoji}
-        </div>
-      ))}
-
-      <style jsx>{`
-        @keyframes float-up {
-          0% {
-            transform: translateY(0) scale(1);
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(-100vh) scale(0.5);
-            opacity: 0;
-          }
-        }
-      `}</style>
+      {emojiElements}
     </div>
   );
 }

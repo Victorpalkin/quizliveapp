@@ -50,47 +50,57 @@ function SlideThumbnail({
   }
 
   return (
-    <div
-      className={`relative aspect-video rounded-md border-2 overflow-hidden cursor-pointer transition-all ${
-        isActive
-          ? 'border-primary ring-2 ring-primary/20'
-          : 'border-transparent hover:border-muted-foreground/30'
-      }`}
-      style={bgStyle}
-    >
-      {/* Mini element indicators */}
-      <div className="absolute inset-0 p-1">
-        {slide.elements.map((el) => (
-          <div
-            key={el.id}
-            className={`absolute rounded-sm ${
-              INTERACTIVE_TYPES.includes(el.type)
-                ? 'bg-primary/30 border border-primary/50'
-                : el.type === 'text'
-                ? 'bg-foreground/10'
-                : el.type === 'image'
-                ? 'bg-blue-500/20'
-                : 'bg-muted-foreground/15'
-            }`}
-            style={{
-              left: `${el.x}%`,
-              top: `${el.y}%`,
-              width: `${el.width}%`,
-              height: `${el.height}%`,
-            }}
-          />
-        ))}
-      </div>
+    <div className="flex items-stretch gap-1.5">
+      {/* Active indicator */}
+      <div
+        className={`w-1 rounded-full flex-shrink-0 transition-all duration-200 ${
+          isActive
+            ? 'bg-gradient-to-b from-primary to-accent'
+            : 'bg-transparent'
+        }`}
+      />
+      <div
+        className={`relative flex-1 aspect-video rounded-md overflow-hidden cursor-pointer transition-all duration-200 ${
+          isActive
+            ? 'shadow-lg shadow-primary/15 ring-1 ring-primary/30'
+            : 'shadow-sm hover:shadow-md hover:scale-[1.02]'
+        }`}
+        style={bgStyle}
+      >
+        {/* Mini element indicators */}
+        <div className="absolute inset-0 p-1">
+          {slide.elements.map((el) => (
+            <div
+              key={el.id}
+              className={`absolute rounded-sm ${
+                INTERACTIVE_TYPES.includes(el.type)
+                  ? 'bg-primary/30 border border-primary/50'
+                  : el.type === 'text'
+                  ? 'bg-foreground/10'
+                  : el.type === 'image'
+                  ? 'bg-blue-500/20'
+                  : 'bg-muted-foreground/15'
+              }`}
+              style={{
+                left: `${el.x}%`,
+                top: `${el.y}%`,
+                width: `${el.width}%`,
+                height: `${el.height}%`,
+              }}
+            />
+          ))}
+        </div>
 
-      {/* Slide number */}
-      <div className="absolute bottom-0.5 left-1 text-[9px] font-mono text-muted-foreground bg-background/70 px-1 rounded">
-        {index + 1}
-      </div>
+        {/* Slide number */}
+        <div className="absolute bottom-0.5 left-1 text-[9px] font-mono text-muted-foreground bg-background/70 px-1 rounded">
+          {index + 1}
+        </div>
 
-      {/* Interactive badge */}
-      {hasInteractive && (
-        <div className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-primary" />
-      )}
+        {/* Interactive badge */}
+        {hasInteractive && (
+          <div className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-primary shadow-sm shadow-primary/50" />
+        )}
+      </div>
     </div>
   );
 }
@@ -121,7 +131,7 @@ export function SlidePanel({
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute top-0.5 left-0.5 h-5 w-5 opacity-0 group-hover:opacity-100 bg-background/80 hover:bg-background"
+                className="absolute top-0.5 right-0.5 h-5 w-5 opacity-0 group-hover:opacity-100 bg-background/80 hover:bg-background transition-opacity"
               >
                 <MoreHorizontal className="h-3 w-3" />
               </Button>
@@ -152,7 +162,7 @@ export function SlidePanel({
       <Button
         variant="outline"
         size="sm"
-        className="w-full aspect-video flex items-center justify-center border-dashed"
+        className="w-full aspect-video flex items-center justify-center border-dashed hover:border-primary hover:bg-primary/5 transition-colors"
         onClick={() => onAddSlide()}
       >
         <Plus className="h-4 w-4" />

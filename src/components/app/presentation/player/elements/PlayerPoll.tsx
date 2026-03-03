@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { ANSWER_COLORS } from '@/lib/constants';
 import { useResponses } from '@/firebase/presentation';
@@ -58,44 +59,92 @@ export function PlayerPoll({ element, gameId, playerId, playerName, onSubmitted 
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-center">{config.question}</h2>
+      <motion.h2
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-xl font-bold text-center"
+      >
+        {config.question}
+      </motion.h2>
       {config.allowMultiple && (
-        <p className="text-xs text-muted-foreground text-center">Select all that apply</p>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="text-xs text-muted-foreground text-center"
+        >
+          Select all that apply
+        </motion.p>
       )}
 
       <div className="grid grid-cols-1 gap-3">
         {config.options.map((opt, i) => {
           const isSelected = selected.includes(i);
           return (
-            <Button
+            <motion.div
               key={i}
-              onClick={() => toggleOption(i)}
-              disabled={submitting}
-              variant="outline"
-              className={`h-12 text-base font-medium justify-start gap-2 ${
-                isSelected ? 'ring-2 ring-primary bg-primary/10' : ''
-              }`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.06, duration: 0.3 }}
             >
-              <div
-                className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                style={{ backgroundColor: ANSWER_COLORS[i % ANSWER_COLORS.length] }}
+              <Button
+                onClick={() => toggleOption(i)}
+                disabled={submitting}
+                variant="outline"
+                className={`w-full h-12 text-base font-medium justify-start gap-2 transition-all duration-200 ${
+                  isSelected ? 'ring-2 ring-primary bg-primary/10 shadow-md' : ''
+                }`}
               >
-                {isSelected ? <Check className="h-4 w-4" /> : String.fromCharCode(65 + i)}
-              </div>
-              {opt.text}
-            </Button>
+                <motion.div
+                  animate={isSelected ? { scale: [1, 1.2, 1] } : {}}
+                  transition={{ duration: 0.2 }}
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                  style={{ backgroundColor: ANSWER_COLORS[i % ANSWER_COLORS.length] }}
+                >
+                  <AnimatePresence mode="wait">
+                    {isSelected ? (
+                      <motion.span
+                        key="check"
+                        initial={{ scale: 0, rotate: -90 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0 }}
+                        transition={{ type: 'spring', stiffness: 300 }}
+                      >
+                        <Check className="h-4 w-4" />
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="letter"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0 }}
+                      >
+                        {String.fromCharCode(65 + i)}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+                {opt.text}
+              </Button>
+            </motion.div>
           );
         })}
       </div>
 
-      <Button
-        onClick={handleSubmit}
-        disabled={selected.length === 0 || submitting}
-        className="w-full"
-        variant="gradient"
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
       >
-        {submitting ? 'Submitting...' : 'Vote'}
-      </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={selected.length === 0 || submitting}
+          className="w-full"
+          variant="gradient"
+        >
+          {submitting ? 'Submitting...' : 'Vote'}
+        </Button>
+      </motion.div>
     </div>
   );
 }

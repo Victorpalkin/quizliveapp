@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'motion/react';
 import { usePresentationById } from '@/firebase/presentation/use-presentation';
 import { usePresentationControls } from '@/firebase/presentation/use-presentation-game';
 import { HostSlideCanvas } from './HostSlideCanvas';
@@ -31,7 +32,14 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-black text-white">
-        Loading presentation...
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center gap-3"
+        >
+          <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          <span className="text-white/60">Loading presentation...</span>
+        </motion.div>
       </div>
     );
   }
@@ -65,13 +73,24 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
       {/* 16:9 canvas centered */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="relative w-full h-full max-w-[177.78vh] max-h-[56.25vw]">
-          <HostSlideCanvas
-            slide={currentSlide}
-            slides={presentation.slides}
-            gameId={game.id}
-            playerCount={players.length}
-            playerNames={playerNames}
-          />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={game.currentSlideIndex}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+              className="w-full h-full"
+            >
+              <HostSlideCanvas
+                slide={currentSlide}
+                slides={presentation.slides}
+                gameId={game.id}
+                playerCount={players.length}
+                playerNames={playerNames}
+              />
+            </motion.div>
+          </AnimatePresence>
 
           {/* Overlay: PIN, slide counter, player count */}
           <HostOverlay

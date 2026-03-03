@@ -122,6 +122,39 @@ export function useResponses(gameId: string | null) {
   };
 }
 
+/** Hook to get responses for a specific element */
+export function useElementResponses(gameId: string | null, elementId: string | null) {
+  const firestore = useFirestore();
+  const [responses, setResponses] = useState<PresentationElementResponse[]>([]);
+
+  useEffect(() => {
+    if (!firestore || !gameId || !elementId) {
+      setResponses([]);
+      return;
+    }
+
+    const q = query(
+      collection(firestore, 'games', gameId, 'responses'),
+      where('elementId', '==', elementId)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+        } as PresentationElementResponse;
+      });
+      setResponses(items);
+    });
+
+    return () => unsubscribe();
+  }, [firestore, gameId, elementId]);
+
+  return responses;
+}
+
 /** Hook to get response count for an element (lightweight) */
 export function useResponseCount(gameId: string | null, elementId: string | null) {
   const firestore = useFirestore();

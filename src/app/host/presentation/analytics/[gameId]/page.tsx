@@ -2,6 +2,7 @@
 
 import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Loader2 } from 'lucide-react';
@@ -35,7 +36,7 @@ export default function PresentationAnalyticsPage({ params }: { params: Promise<
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center gap-3 px-6 py-4 border-b">
+      <div className="flex items-center gap-3 px-6 py-4 border-b backdrop-blur-md bg-background/90">
         <Button variant="ghost" size="icon" onClick={() => router.push('/host')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -52,25 +53,35 @@ export default function PresentationAnalyticsPage({ params }: { params: Promise<
           </div>
         ) : (
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-4 glass-subtle">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="slides">Slides</TabsTrigger>
               <TabsTrigger value="engagement">Engagement</TabsTrigger>
               <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="mt-6">
-              <OverviewTab analytics={analytics} />
-            </TabsContent>
-            <TabsContent value="slides" className="mt-6">
-              <SlidesTab analytics={analytics} />
-            </TabsContent>
-            <TabsContent value="engagement" className="mt-6">
-              <EngagementTab analytics={analytics} />
-            </TabsContent>
-            <TabsContent value="leaderboard" className="mt-6">
-              <LeaderboardTab analytics={analytics} />
-            </TabsContent>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={tab}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+              >
+                <TabsContent value="overview" className="mt-6" forceMount={tab === 'overview' ? true : undefined}>
+                  <OverviewTab analytics={analytics} />
+                </TabsContent>
+                <TabsContent value="slides" className="mt-6" forceMount={tab === 'slides' ? true : undefined}>
+                  <SlidesTab analytics={analytics} />
+                </TabsContent>
+                <TabsContent value="engagement" className="mt-6" forceMount={tab === 'engagement' ? true : undefined}>
+                  <EngagementTab analytics={analytics} />
+                </TabsContent>
+                <TabsContent value="leaderboard" className="mt-6" forceMount={tab === 'leaderboard' ? true : undefined}>
+                  <LeaderboardTab analytics={analytics} />
+                </TabsContent>
+              </motion.div>
+            </AnimatePresence>
           </Tabs>
         )}
       </div>

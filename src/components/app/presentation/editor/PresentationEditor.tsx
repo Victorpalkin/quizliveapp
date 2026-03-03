@@ -167,11 +167,12 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
       </div>
 
       {/* Status bar */}
-      <div className="flex items-center justify-between px-4 py-1.5 text-xs text-muted-foreground bg-background border-t">
+      <div className="flex items-center justify-between px-4 py-1.5 text-xs text-muted-foreground glass-subtle">
         <span>
           Slide {editor.currentSlideIndex + 1}/{editor.slides.length}
         </span>
-        <span>
+        <span className="flex items-center gap-1.5">
+          <span className={`inline-block w-1.5 h-1.5 rounded-full ${editor.isDirty ? 'bg-orange-400' : 'bg-green-400'}`} />
           {editor.isDirty ? 'Unsaved changes' : 'All changes saved'}
           {editor.interactiveElementCount > 0 && (
             <> &middot; {editor.interactiveElementCount} interactive</>

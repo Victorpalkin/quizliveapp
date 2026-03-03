@@ -30,6 +30,14 @@ interface InsertMenuProps {
   disableInteractive: boolean;
 }
 
+function IconCircle({ children, className }: { children: React.ReactNode; className: string }) {
+  return (
+    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
 export function InsertMenu({ onInsert, disableInteractive }: InsertMenuProps) {
   return (
     <DropdownMenu>
@@ -43,15 +51,21 @@ export function InsertMenu({ onInsert, disableInteractive }: InsertMenuProps) {
         {/* Content elements */}
         <DropdownMenuLabel className="text-xs text-muted-foreground">Content</DropdownMenuLabel>
         <DropdownMenuItem onClick={() => onInsert('text')}>
-          <Type className="h-4 w-4 mr-2" />
+          <IconCircle className="bg-foreground/10 mr-2">
+            <Type className="h-3.5 w-3.5" />
+          </IconCircle>
           Text
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsert('image')}>
-          <Image className="h-4 w-4 mr-2" />
+          <IconCircle className="bg-blue-500/10 mr-2">
+            <Image className="h-3.5 w-3.5 text-blue-500" />
+          </IconCircle>
           Image
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsert('shape')}>
-          <Square className="h-4 w-4 mr-2" />
+          <IconCircle className="bg-gray-500/10 mr-2">
+            <Square className="h-3.5 w-3.5 text-gray-500" />
+          </IconCircle>
           Shape
         </DropdownMenuItem>
 
@@ -62,19 +76,27 @@ export function InsertMenu({ onInsert, disableInteractive }: InsertMenuProps) {
           Interactive {disableInteractive && '(max 1 per slide)'}
         </DropdownMenuLabel>
         <DropdownMenuItem onClick={() => onInsert('quiz')} disabled={disableInteractive}>
-          <FileQuestion className="h-4 w-4 mr-2 text-purple-500" />
+          <IconCircle className="bg-purple-500/10 mr-2">
+            <FileQuestion className="h-3.5 w-3.5 text-purple-500" />
+          </IconCircle>
           Quiz Question
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsert('poll')} disabled={disableInteractive}>
-          <Vote className="h-4 w-4 mr-2 text-teal-500" />
+          <IconCircle className="bg-teal-500/10 mr-2">
+            <Vote className="h-3.5 w-3.5 text-teal-500" />
+          </IconCircle>
           Poll
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsert('thoughts')} disabled={disableInteractive}>
-          <MessageSquare className="h-4 w-4 mr-2 text-blue-500" />
+          <IconCircle className="bg-blue-500/10 mr-2">
+            <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+          </IconCircle>
           Thoughts Gathering
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsert('rating')} disabled={disableInteractive}>
-          <Star className="h-4 w-4 mr-2 text-orange-500" />
+          <IconCircle className="bg-orange-500/10 mr-2">
+            <Star className="h-3.5 w-3.5 text-orange-500" />
+          </IconCircle>
           Rating
         </DropdownMenuItem>
 
@@ -83,23 +105,33 @@ export function InsertMenu({ onInsert, disableInteractive }: InsertMenuProps) {
         {/* Results & special */}
         <DropdownMenuLabel className="text-xs text-muted-foreground">Results & Special</DropdownMenuLabel>
         <DropdownMenuItem onClick={() => onInsert('quiz-results')}>
-          <BarChart3 className="h-4 w-4 mr-2 text-purple-400" />
+          <IconCircle className="bg-purple-400/10 mr-2">
+            <BarChart3 className="h-3.5 w-3.5 text-purple-400" />
+          </IconCircle>
           Quiz Results
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsert('poll-results')}>
-          <BarChart3 className="h-4 w-4 mr-2 text-teal-400" />
+          <IconCircle className="bg-teal-400/10 mr-2">
+            <BarChart3 className="h-3.5 w-3.5 text-teal-400" />
+          </IconCircle>
           Poll Results
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsert('leaderboard')}>
-          <Trophy className="h-4 w-4 mr-2 text-yellow-500" />
+          <IconCircle className="bg-yellow-500/10 mr-2">
+            <Trophy className="h-3.5 w-3.5 text-yellow-500" />
+          </IconCircle>
           Leaderboard
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsert('qa')}>
-          <HelpCircle className="h-4 w-4 mr-2 text-green-500" />
+          <IconCircle className="bg-green-500/10 mr-2">
+            <HelpCircle className="h-3.5 w-3.5 text-green-500" />
+          </IconCircle>
           Q&A Feed
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsert('spin-wheel')}>
-          <Disc3 className="h-4 w-4 mr-2 text-pink-500" />
+          <IconCircle className="bg-pink-500/10 mr-2">
+            <Disc3 className="h-3.5 w-3.5 text-pink-500" />
+          </IconCircle>
           Spin Wheel
         </DropdownMenuItem>
       </DropdownMenuContent>
