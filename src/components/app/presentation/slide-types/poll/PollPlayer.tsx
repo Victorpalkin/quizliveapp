@@ -3,98 +3,23 @@
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { motion } from 'motion/react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { FirebaseError } from 'firebase/app';
 import { Button } from '@/components/ui/button';
 import { Check, Loader2 } from 'lucide-react';
 import { AnswerButton } from '@/components/app/answer-button';
 import { SlidePlayerProps } from '../types';
 import { PollSingleQuestion, PollMultipleQuestion } from '@/lib/types';
-import { useFirebaseApp } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { logError } from '@/lib/error-logging';
 
 type PollQuestion = PollSingleQuestion | PollMultipleQuestion;
 
-export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slideIndex }: SlidePlayerProps) {
-  const app = useFirebaseApp();
+export function PollPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) {
   const { toast } = useToast();
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Support both 'question' (standard) and 'pollQuestion' (legacy AI-generated) fields
   const question = (slide.question || (slide as { pollQuestion?: PollQuestion }).pollQuestion) as PollQuestion | undefined;
   const isMultiple = question?.type === 'poll-multiple';
-
-  // Presentation polls have no time limit
-  const INFINITE_TIME_LIMIT = 99999;
-
-  const submitPollAnswer = useCallback(async (answerIndex?: number, answerIndices?: number[]) => {
-    if (!app) return;
-
-    // No time limit for presentation polls - always send max time remaining
-    const timeRemaining = INFINITE_TIME_LIMIT;
-
-    try {
-      // Call submitAnswer cloud function for server-side validation
-      const functions = getFunctions(app, 'europe-west4');
-      const submitAnswer = httpsCallable(functions, 'submitAnswer');
-
-      await submitAnswer({
-        gameId: game.id,
-        playerId,
-        questionIndex: slideIndex,
-        answerIndex,
-        answerIndices,
-        timeRemaining,
-        slideId: slide.id,
-        questionType: question?.type || 'poll-single',
-        questionTimeLimit: INFINITE_TIME_LIMIT,
-      });
-
-      // Also call onSubmit to mark as responded (for hasResponded tracking)
-      await onSubmit({
-        slideId: slide.id,
-        playerId: '',
-        playerName: '',
-        answerIndex,
-        answerIndices,
-      });
-    } catch (error) {
-      logError(error instanceof Error ? error : new Error(String(error)), { context: 'PollPlayer.submitPollAnswer' });
-
-      // Show error toast with specific message based on error type
-      const firebaseError = error as FirebaseError;
-      const errorCode = firebaseError.code?.replace('functions/', '');
-      if (errorCode === 'deadline-exceeded') {
-        toast({
-          variant: 'destructive',
-          title: 'Response Too Late',
-          description: 'Your vote was submitted after the time limit.',
-        });
-      } else if (errorCode === 'failed-precondition') {
-        toast({
-          variant: 'destructive',
-          title: 'Vote Not Accepted',
-          description: firebaseError.message || 'The game state changed.',
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Submission Error',
-          description: 'Failed to submit vote. Please try again.',
-        });
-      }
-
-      // Still mark as submitted to prevent retries
-      await onSubmit({
-        slideId: slide.id,
-        playerId: '',
-        playerName: '',
-        answerIndex,
-        answerIndices,
-      });
-    }
-  }, [app, game.id, playerId, slideIndex, slide.id, question?.type, onSubmit, toast]);
 
   const handleSingleSelect = useCallback(async (index: number) => {
     if (hasResponded || isSubmitting) return;
@@ -103,11 +28,23 @@ export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
     setIsSubmitting(true);
 
     try {
-      await submitPollAnswer(index, undefined);
+      await onSubmit({
+        slideId: slide.id,
+        playerId: '',
+        playerName: '',
+        answerIndex: index,
+      });
+    } catch (error) {
+      logError(error instanceof Error ? error : new Error(String(error)), { context: 'PollPlayer.handleSingleSelect' });
+      toast({
+        variant: 'destructive',
+        title: 'Submission Error',
+        description: 'Failed to submit vote. Please try again.',
+      });
     } finally {
       setIsSubmitting(false);
     }
-  }, [hasResponded, isSubmitting, submitPollAnswer]);
+  }, [hasResponded, isSubmitting, onSubmit, slide.id, toast]);
 
   const handleMultipleToggle = useCallback((index: number) => {
     if (hasResponded || isSubmitting) return;
@@ -126,11 +63,23 @@ export function PollPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
     setIsSubmitting(true);
 
     try {
-      await submitPollAnswer(undefined, selectedIndices);
+      await onSubmit({
+        slideId: slide.id,
+        playerId: '',
+        playerName: '',
+        answerIndices: selectedIndices,
+      });
+    } catch (error) {
+      logError(error instanceof Error ? error : new Error(String(error)), { context: 'PollPlayer.handleMultipleSubmit' });
+      toast({
+        variant: 'destructive',
+        title: 'Submission Error',
+        description: 'Failed to submit vote. Please try again.',
+      });
     } finally {
       setIsSubmitting(false);
     }
-  }, [hasResponded, isSubmitting, selectedIndices, submitPollAnswer]);
+  }, [hasResponded, isSubmitting, selectedIndices, onSubmit, slide.id, toast]);
 
   if (!question) {
     return (

@@ -10,11 +10,11 @@ import { usePresentationLeaderboard } from '@/firebase/presentation/use-presenta
  * LeaderboardPlayer shows the player their current rank.
  * This is a passive slide - no interaction required.
  */
-export function LeaderboardPlayer({ slide, game, playerId, playerName }: SlidePlayerProps) {
+export function LeaderboardPlayer({ slide, game, playerId, playerName, presentation }: SlidePlayerProps) {
   const title = slide.leaderboardTitle || 'Leaderboard';
   const mode = slide.leaderboardMode || 'standard';
 
-  const { topPlayers, totalPlayers, playerRanks, loading } = usePresentationLeaderboard(game.id);
+  const { topPlayers, totalPlayers, playerRanks, loading } = usePresentationLeaderboard(game.id, presentation);
 
   // Get player's rank info
   const playerRankInfo = playerRanks[playerId];

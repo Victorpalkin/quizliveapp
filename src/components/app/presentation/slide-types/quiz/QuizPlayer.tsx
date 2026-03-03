@@ -4,18 +4,14 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { motion } from 'motion/react';
 import { Check, Loader2 } from 'lucide-react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { FirebaseError } from 'firebase/app';
 import { AnswerButton } from '@/components/app/answer-button';
 import { CircularTimer } from '@/components/app/circular-timer';
 import { SlidePlayerProps } from '../types';
 import { SingleChoiceQuestion } from '@/lib/types';
-import { useFirebaseApp } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { logError } from '@/lib/error-logging';
 
-export function QuizPlayer({ slide, game, playerId, hasResponded, onSubmit, slideIndex }: SlidePlayerProps) {
-  const app = useFirebaseApp();
+export function QuizPlayer({ slide, hasResponded, onSubmit }: SlidePlayerProps) {
   const { toast } = useToast();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,12 +23,8 @@ export function QuizPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
   const [time, setTime] = useState(timeLimit);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Track remaining time for scoring
-  const startTimeRef = useRef<number>(Date.now());
-
   // Reset timer and state when slide changes
   useEffect(() => {
-    startTimeRef.current = Date.now();
     setTime(timeLimit);
     setSelectedIndex(null);
     setTimedOut(false);
@@ -68,7 +60,7 @@ export function QuizPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
   }, [slide.id, hasResponded, timedOut]);
 
   const handleSelect = useCallback(async (index: number) => {
-    if (hasResponded || isSubmitting || timedOut || !app) return;
+    if (hasResponded || isSubmitting || timedOut) return;
 
     // Stop the timer
     if (timerRef.current) {
@@ -82,65 +74,24 @@ export function QuizPlayer({ slide, game, playerId, hasResponded, onSubmit, slid
     const timeRemaining = time;
 
     try {
-      // Call submitAnswer cloud function for server-side scoring
-      const functions = getFunctions(app, 'europe-west4');
-      const submitAnswer = httpsCallable(functions, 'submitAnswer');
-
-      await submitAnswer({
-        gameId: game.id,
-        playerId,
-        questionIndex: slideIndex, // Slide index = answer key index
+      await onSubmit({
+        slideId: slide.id,
+        playerId: '',
+        playerName: '',
         answerIndex: index,
         timeRemaining,
-        slideId: slide.id,
-        questionType: question?.type || 'single-choice',
-        questionTimeLimit: timeLimit,
-      });
-
-      // Also call onSubmit to mark as responded (for hasResponded tracking via slideResponses)
-      await onSubmit({
-        slideId: slide.id,
-        playerId: '',
-        playerName: '',
-        answerIndex: index,
       });
     } catch (error) {
-      logError(error instanceof Error ? error : new Error(String(error)), { context: 'QuizPlayer.submitAnswer' });
-
-      // Show error toast with specific message based on error type
-      const firebaseError = error as FirebaseError;
-      const errorCode = firebaseError.code?.replace('functions/', '');
-      if (errorCode === 'deadline-exceeded') {
-        toast({
-          variant: 'destructive',
-          title: 'Answer Too Late',
-          description: 'Your answer was submitted after the time limit.',
-        });
-      } else if (errorCode === 'failed-precondition') {
-        toast({
-          variant: 'destructive',
-          title: 'Answer Not Accepted',
-          description: firebaseError.message || 'The game state changed.',
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Submission Error',
-          description: 'Failed to submit answer. Your score may not be saved.',
-        });
-      }
-
-      // Still mark as submitted to prevent retries
-      await onSubmit({
-        slideId: slide.id,
-        playerId: '',
-        playerName: '',
-        answerIndex: index,
+      logError(error instanceof Error ? error : new Error(String(error)), { context: 'QuizPlayer.handleSelect' });
+      toast({
+        variant: 'destructive',
+        title: 'Submission Error',
+        description: 'Failed to submit answer. Please try again.',
       });
     } finally {
       setIsSubmitting(false);
     }
-  }, [slide.id, game.id, playerId, slideIndex, question?.type, timeLimit, hasResponded, isSubmitting, timedOut, time, onSubmit, app, toast]);
+  }, [slide.id, hasResponded, isSubmitting, timedOut, time, onSubmit, toast]);
 
   if (!question) {
     return (

@@ -12,12 +12,12 @@ import { usePresentationLeaderboard } from '@/firebase/presentation/use-presenta
  * - 'standard': Simple top-N list (default)
  * - 'podium': Final leaderboard with podium-style top 3
  */
-export function LeaderboardHost({ slide, game }: SlideHostProps) {
+export function LeaderboardHost({ slide, game, presentation }: SlideHostProps) {
   const mode = slide.leaderboardMode || 'standard';
   const maxDisplay = slide.leaderboardMaxDisplay || (mode === 'podium' ? 20 : 10);
   const title = slide.leaderboardTitle;
 
-  const { topPlayers, totalPlayers, loading } = usePresentationLeaderboard(game.id);
+  const { topPlayers, totalPlayers, loading } = usePresentationLeaderboard(game.id, presentation);
 
   if (loading) {
     return (

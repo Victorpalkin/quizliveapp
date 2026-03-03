@@ -68,6 +68,9 @@ export interface SlideResponse {
   answerIndex?: number;
   answerIndices?: number[];
 
+  // For quiz slides - time remaining when answer was submitted (for scoring)
+  timeRemaining?: number;
+
   // For thoughts-collect slides
   thoughts?: string[];
 
