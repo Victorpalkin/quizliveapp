@@ -10,7 +10,7 @@ import type {
   PollSingleQuestion,
   PollMultipleQuestion
 } from '@/lib/types';
-import type { QuizFormData } from '../../quiz-form';
+import type { QuizFormData } from '../schemas';
 
 type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion;
 

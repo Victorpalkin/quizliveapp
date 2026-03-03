@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { PlusCircle, X } from 'lucide-react';
 import { Control } from 'react-hook-form';
-import type { QuizFormData } from '../../quiz-form';
+import type { QuizFormData } from '../schemas';
 
 interface AnswerListProps {
   questionIndex: number;

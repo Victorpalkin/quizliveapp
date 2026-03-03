@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from 'react';
 import { Control } from 'react-hook-form';
-import type { QuizFormData } from '../quiz-form';
+import type { QuizFormData } from './schemas';
 import type { QuizQuestion } from '@/lib/types';
 
 export interface QuizFormContextValue {

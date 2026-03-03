@@ -1139,7 +1139,10 @@ src/
 │   │   │   └── edit/[presentationId]/page.tsx # Edit presentation
 │   │   ├── thoughts-gathering/
 │   │   │   ├── create/page.tsx                # Create thoughts gathering
-│   │   │   └── game/[gameId]/page.tsx         # Live session
+│   │   │   └── game/[gameId]/
+│   │   │       ├── page.tsx                   # Live session
+│   │   │       └── components/
+│   │   │           └── mature-agents-card.tsx  # Top mature AI agents card
 │   │   └── evaluation/
 │   │       ├── create/page.tsx                # Create evaluation
 │   │       ├── create-from-thoughts/page.tsx  # Create from thoughts session
@@ -1162,6 +1165,7 @@ src/
 │   ├── app/
 │   │   ├── header.tsx                        # App header
 │   │   ├── quiz-form/                        # Quiz form components
+│   │   │   ├── schemas.ts                    # Zod validation schemas & QuizFormData type
 │   │   ├── evaluation-form-fields.tsx        # Shared evaluation form components
 │   │   ├── evaluation-results-display.tsx    # Shared evaluation results
 │   │   ├── presentation/                     # Presentation components
