@@ -1,264 +1,31 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { nanoid } from 'nanoid';
-import { useFirestore } from '@/firebase';
-import {
-  doc,
-  collection,
-  setDoc,
-  serverTimestamp,
-  query,
-  where,
-  getDocs,
-} from 'firebase/firestore';
-import {
-  usePresentationGame,
-  usePresentation,
-} from '@/firebase/presentation';
-import { PresentationPlayer, WaitingScreen } from '@/components/app/presentation';
-import { FullPageLoader } from '@/components/ui/full-page-loader';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  getPlayerSession,
-  savePlayerSession,
-} from '@/lib/player-session';
-import { useWakeLock } from '@/hooks/use-wake-lock';
-import { logError } from '@/lib/error-logging';
-import { usePresentationPlayerStateMachine } from './hooks/use-presentation-player-state-machine';
+import { use } from 'react';
+import { PresentationPlayer } from '@/components/app/presentation/player/PresentationPlayer';
+import { usePlayerStateMachine } from './hooks/use-player-state-machine';
 
-export default function PresentationPlayerPage() {
-  const params = useParams();
-  const gamePin = params.gamePin as string;
-  const router = useRouter();
-  const firestore = useFirestore();
+export default function PlayPresentationPage({ params }: { params: Promise<{ gamePin: string }> }) {
+  const { gamePin } = use(params);
+  const playerState = usePlayerStateMachine(gamePin);
 
-  // Keep screen awake during presentation
-  useWakeLock(true);
-
-  // Player identity state
-  const [playerId, setPlayerId] = useState<string>('');
-  const [playerName, setPlayerName] = useState<string>('');
-  const [nameInput, setNameInput] = useState<string>('');
-  const [gameId, setGameId] = useState<string>('');
-  const [error, setError] = useState<string>('');
-  const [initializing, setInitializing] = useState(true);
-  const [gameNotFound, setGameNotFound] = useState(false);
-
-  // Find game by PIN on mount (one-time query, like quiz player)
-  useEffect(() => {
-    const findGame = async () => {
-      if (!firestore || !gamePin) return;
-
-      try {
-        const gamesRef = collection(firestore, 'games');
-        const q = query(
-          gamesRef,
-          where('gamePin', '==', gamePin.toUpperCase()),
-          where('activityType', '==', 'presentation')
-        );
-        const snapshot = await getDocs(q);
-
-        if (!snapshot.empty) {
-          setGameId(snapshot.docs[0].id);
-        } else {
-          setGameNotFound(true);
-        }
-      } catch (err) {
-        logError(err instanceof Error ? err : new Error(String(err)), { context: 'PresentationPlayer.findGame' });
-        setGameNotFound(true);
-      }
-    };
-
-    // Only find game if we don't already have the ID from session
-    const session = getPlayerSession();
-    if (session && session.gamePin === gamePin) {
-      setGameId(session.gameDocId);
-    } else {
-      findGame();
-    }
-  }, [firestore, gamePin]);
-
-  // Firebase data - use document-based subscription for real-time updates
-  const { game, loading: gameLoading } = usePresentationGame(gameId || null);
-  const { presentation, loading: presentationLoading } = usePresentation(
-    game?.presentationId || ''
-  );
-
-  // Check for existing session
-  const hasValidSession = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    const session = getPlayerSession();
-    return !!(session && session.gamePin === gamePin);
-  }, [gamePin]);
-
-  // State machine for game state synchronization
-  const { state, markSubmitted, setJoined } = usePresentationPlayerStateMachine(
-    gamePin,
-    hasValidSession,
-    game,
-    gameLoading
-  );
-
-  // Initialize player identity on mount
-  useEffect(() => {
-    const session = getPlayerSession();
-    if (session && session.gamePin === gamePin) {
-      setPlayerId(session.playerId);
-      setPlayerName(session.nickname);
-      // gameId is already set in the findGame effect above
-      // State machine will handle the state transition
-      setJoined();
-    } else {
-      setPlayerId(nanoid());
-    }
-    setInitializing(false);
-  }, [gamePin, setJoined]);
-
-  // Join the game
-  const handleJoin = useCallback(async () => {
-    if (!nameInput.trim() || !game) return;
-
-    try {
-      setError('');
-      const trimmedName = nameInput.trim();
-
-      // Create player document
-      // Must include all fields required by Firestore security rules
-      const playerRef = doc(
-        collection(firestore, 'games', game.id, 'players'),
-        playerId
-      );
-      await setDoc(playerRef, {
-        id: playerId,
-        name: trimmedName,
-        score: 0,
-        answers: [],
-        currentStreak: 0,
-        joinedAt: serverTimestamp(),
-      });
-
-      // Save session
-      savePlayerSession(playerId, game.id, gamePin, trimmedName);
-
-      setPlayerName(trimmedName);
-
-      // Notify state machine of successful join
-      setJoined();
-    } catch (err) {
-      logError(err instanceof Error ? err : new Error(String(err)), { context: 'PresentationPlayer.joinGame' });
-      setError('Failed to join. Please try again.');
-    }
-  }, [nameInput, game, playerId, gamePin, firestore, setJoined]);
-
-  // Loading state - wait for game ID to be found or not found
-  if (initializing || (!gameId && !gameNotFound) || gameLoading || presentationLoading) {
-    return <FullPageLoader />;
-  }
-
-  // Game not found - check after loading is complete
-  if (gameNotFound || (!game && !gameLoading)) {
+  if (playerState.loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Game Not Found</CardTitle>
-            <CardDescription>
-              The game with PIN {gamePin} doesn&apos;t exist or has ended.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              className="w-full"
-              onClick={() => router.push('/join')}
-            >
-              Try Another PIN
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-muted-foreground">Connecting...</p>
       </div>
     );
   }
 
-  // Join screen
-  if (state === 'joining') {
+  if (!playerState.game) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Join Presentation</CardTitle>
-            <CardDescription>
-              {presentation?.title || 'Enter your name to participate'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              placeholder="Your name"
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-              autoFocus
-              maxLength={20}
-            />
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
-            <Button
-              className="w-full"
-              onClick={handleJoin}
-              disabled={!nameInput.trim()}
-            >
-              Join
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Game Not Found</h1>
+          <p className="text-muted-foreground">The game with PIN &quot;{gamePin}&quot; does not exist.</p>
+        </div>
       </div>
     );
   }
 
-  // Ended state
-  if (state === 'ended') {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Thanks for Participating!</CardTitle>
-            <CardDescription>
-              The presentation has ended.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              className="w-full"
-              variant="outline"
-              onClick={() => router.push('/join')}
-            >
-              Join Another Session
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Lobby, slide, or submitted states - show presentation player
-  if (!game || !presentation) {
-    return <WaitingScreen presentationTitle="Loading..." />;
-  }
-
-  return (
-    <PresentationPlayer
-      presentationTitle={presentation.title}
-      slides={presentation.slides}
-      currentSlideIndex={game.currentSlideIndex}
-      gameState={game.state}
-      playerId={playerId}
-      playerName={playerName}
-      gameId={gameId}
-      onResponseSubmitted={markSubmitted}
-    />
-  );
+  return <PresentationPlayer {...playerState} />;
 }

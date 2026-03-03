@@ -3,20 +3,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Share2, Copy, Trash2, Loader2, Play, Eye, FileQuestion, Vote, Presentation } from 'lucide-react';
+import { Share2, Copy, Trash2, Loader2, Play, Eye, FileQuestion, Vote } from 'lucide-react';
 import { useFirestore, useUser, useStorage, trackEvent } from '@/firebase';
 import { useSharedQuizzes } from '@/firebase/firestore/use-shared-quizzes';
 import { useSharedPolls } from '@/firebase/firestore/use-shared-polls';
-import { useSharedPresentations } from '@/firebase/firestore/use-shared-presentations';
 import { collection, addDoc, deleteDoc, doc, serverTimestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { ref, getDownloadURL, uploadBytes } from 'firebase/storage';
-import type { QuizShare, Quiz, PollShare, PollActivity, PresentationShare, Presentation as PresentationType, ContentType } from '@/lib/types';
+import type { QuizShare, Quiz, PollShare, PollActivity, ContentType } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { nanoid } from 'nanoid';
 import { QuizPreview } from './quiz-preview';
 import { PollPreview } from './poll-preview';
-import { PresentationPreview } from './presentation-preview';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,8 +37,7 @@ type FilterType = 'all' | ContentType;
 
 type SharedItem =
   | { type: 'quiz'; share: QuizShare & { quiz?: Quiz }; title: string; sharedByEmail: string; createdAt: Date }
-  | { type: 'poll'; share: PollShare & { poll?: PollActivity }; title: string; sharedByEmail: string; createdAt: Date }
-  | { type: 'presentation'; share: PresentationShare & { presentation?: PresentationType }; title: string; sharedByEmail: string; createdAt: Date };
+  | { type: 'poll'; share: PollShare & { poll?: PollActivity }; title: string; sharedByEmail: string; createdAt: Date };
 
 export function SharedContent() {
   const firestore = useFirestore();
@@ -60,14 +57,12 @@ export function SharedContent() {
   // Preview states
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
   const [previewPoll, setPreviewPoll] = useState<PollActivity | null>(null);
-  const [previewPresentation, setPreviewPresentation] = useState<PresentationType | null>(null);
 
   // Fetch shared content
   const { shares: quizShares, loading: quizzesLoading } = useSharedQuizzes();
   const { shares: pollShares, loading: pollsLoading } = useSharedPolls();
-  const { shares: presentationShares, loading: presentationsLoading } = useSharedPresentations();
 
-  const loading = quizzesLoading || pollsLoading || presentationsLoading;
+  const loading = quizzesLoading || pollsLoading;
 
   // Local state for managing removes
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
@@ -89,13 +84,6 @@ export function SharedContent() {
         sharedByEmail: share.sharedByEmail,
         createdAt: share.createdAt,
       })),
-      ...(presentationShares || []).map(share => ({
-        type: 'presentation' as const,
-        share,
-        title: share.presentationTitle,
-        sharedByEmail: share.sharedByEmail,
-        createdAt: share.createdAt,
-      })),
     ];
 
     // Filter out removed items
@@ -103,7 +91,7 @@ export function SharedContent() {
 
     // Sort by createdAt descending (most recent first)
     return filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  }, [quizShares, pollShares, presentationShares, removedIds]);
+  }, [quizShares, pollShares, removedIds]);
 
   // Apply type filter
   const filteredItems = useMemo(() => {
@@ -116,7 +104,6 @@ export function SharedContent() {
     all: allItems.length,
     quiz: allItems.filter(i => i.type === 'quiz').length,
     poll: allItems.filter(i => i.type === 'poll').length,
-    presentation: allItems.filter(i => i.type === 'presentation').length,
   }), [allItems]);
 
   /**
@@ -261,44 +248,14 @@ export function SharedContent() {
     }
   };
 
-  // Presentation handlers
-  const handlePreviewPresentation = (share: PresentationShare & { presentation?: PresentationType }) => {
-    if (share.presentation) {
-      setPreviewPresentation(share.presentation);
-    }
-  };
-
-  const handleHostPresentation = async (share: PresentationShare) => {
-    if (!user) return;
-    setHosting(share.id);
-    try {
-      const gameDoc = await addDoc(collection(firestore, 'games'), {
-        presentationId: share.presentationId,
-        activityType: 'presentation',
-        hostId: user.uid,
-        state: 'lobby',
-        currentSlideIndex: 0,
-        gamePin: nanoid(8).toUpperCase(),
-        createdAt: serverTimestamp(),
-      });
-      router.push(`/host/presentation/lobby/${gameDoc.id}`);
-    } catch (error) {
-      console.error('Error creating presentation game:', error);
-      toast({ variant: 'destructive', title: 'Failed to start presentation' });
-      setHosting(null);
-    }
-  };
-
   // Remove share handler
   const handleRemoveShare = async (item: SharedItem) => {
     try {
       let docPath: string;
       if (item.type === 'quiz') {
         docPath = `quizzes/${item.share.quizId}/shares/${item.share.id}`;
-      } else if (item.type === 'poll') {
-        docPath = `activities/${item.share.pollId}/shares/${item.share.id}`;
       } else {
-        docPath = `presentations/${item.share.presentationId}/shares/${item.share.id}`;
+        docPath = `activities/${item.share.pollId}/shares/${item.share.id}`;
       }
 
       await deleteDoc(doc(firestore, docPath));
@@ -316,7 +273,7 @@ export function SharedContent() {
     switch (type) {
       case 'quiz': return <FileQuestion className="h-4 w-4 text-purple-500" />;
       case 'poll': return <Vote className="h-4 w-4 text-teal-500" />;
-      case 'presentation': return <Presentation className="h-4 w-4 text-indigo-500" />;
+      default: return <FileQuestion className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -346,7 +303,6 @@ export function SharedContent() {
             { value: 'all', label: 'All', icon: null },
             { value: 'quiz', label: 'Quizzes', icon: FileQuestion },
             { value: 'poll', label: 'Polls', icon: Vote },
-            { value: 'presentation', label: 'Presentations', icon: Presentation },
           ].map(({ value, label, icon: Icon }) => {
             const count = counts[value as keyof typeof counts];
             if (value !== 'all' && count === 0) return null;
@@ -404,13 +360,12 @@ export function SharedContent() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-grow flex flex-col justify-end gap-2 p-4 pt-0">
-                {/* Host/Present button */}
+                {/* Host button */}
                 <Button
                   className="w-full"
                   onClick={() => {
                     if (item.type === 'quiz') handleHostQuiz(item.share as QuizShare);
                     else if (item.type === 'poll') handleHostPoll(item.share as PollShare);
-                    else handleHostPresentation(item.share as PresentationShare);
                   }}
                   disabled={hosting === item.share.id}
                 >
@@ -419,7 +374,7 @@ export function SharedContent() {
                   ) : (
                     <Play className="mr-2 h-4 w-4" />
                   )}
-                  {item.type === 'presentation' ? 'Present' : 'Host'}
+                  Host
                 </Button>
 
                 {/* Preview button */}
@@ -430,7 +385,6 @@ export function SharedContent() {
                   onClick={() => {
                     if (item.type === 'quiz') handlePreviewQuiz(item.share as QuizShare & { quiz?: Quiz });
                     else if (item.type === 'poll') handlePreviewPoll(item.share as PollShare & { poll?: PollActivity });
-                    else handlePreviewPresentation(item.share as PresentationShare & { presentation?: PresentationType });
                   }}
                   disabled={loadingPreview}
                 >
@@ -523,15 +477,6 @@ export function SharedContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Presentation Preview Dialog */}
-      <Dialog open={!!previewPresentation} onOpenChange={(open) => !open && setPreviewPresentation(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Presentation Preview</DialogTitle>
-          </DialogHeader>
-          {previewPresentation && <PresentationPreview presentation={previewPresentation} />}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

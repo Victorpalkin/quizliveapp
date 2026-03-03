@@ -11,14 +11,12 @@ import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { ContentShareManager } from '@/components/app/content-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
 import { PollPreview } from '@/components/app/poll-preview';
-import { PresentationPreview } from '@/components/app/presentation-preview';
 import { Loader2, Trash2, XCircle, LogIn, Eye, BarChart3, Cloud, FileQuestion, Gamepad2, ArrowUpDown, Sparkles, RotateCcw, Presentation, Vote } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateDropdown } from './components/create-dropdown';
 import { QuizCard } from './components/quiz-card';
 import { PollCard } from './components/poll-card';
 import { ActivityCard } from './components/activity-card';
-import { PresentationCard } from './components/presentation-card';
 import { CompletedActivityCard } from './components/completed-activity-card';
 import { EmptyContentState } from './components/empty-content-state';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
@@ -28,11 +26,13 @@ import { ref, deleteObject } from 'firebase/storage';
 import { nanoid } from 'nanoid';
 import { useToast } from '@/hooks/use-toast';
 import type { Quiz, Game, ThoughtsGatheringActivity, EvaluationActivity, PollActivity, Presentation as PresentationType } from '@/lib/types';
-import { usePresentations, usePresentationMutations, useCreatePresentationGame } from '@/firebase/presentation';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { quizConverter, gameConverter, thoughtsGatheringActivityConverter, evaluationActivityConverter, pollActivityConverter } from '@/firebase/converters';
+import { PresentationCard } from './components/presentation-card';
+import { usePresentations, usePresentationMutations } from '@/firebase/presentation/use-presentation';
+import { useCreatePresentationGame } from '@/firebase/presentation/use-presentation-game';
 
 type Activity = ThoughtsGatheringActivity | EvaluationActivity | PollActivity;
 import {
@@ -91,23 +91,16 @@ export default function HostDashboardPage() {
   // State for share dialogs
   const [shareDialogQuiz, setShareDialogQuiz] = useState<{ id: string; title: string } | null>(null);
   const [shareDialogPoll, setShareDialogPoll] = useState<{ id: string; title: string } | null>(null);
-  const [shareDialogPresentation, setShareDialogPresentation] = useState<{ id: string; title: string } | null>(null);
 
   // State for preview dialogs
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
   const [previewPoll, setPreviewPoll] = useState<PollActivity | null>(null);
-  const [previewPresentation, setPreviewPresentation] = useState<PresentationType | null>(null);
 
   // Filter and sort state
   type FilterType = 'all' | 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation' | 'poll';
   type SortType = 'recent' | 'alphabetical' | 'created';
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [sortType, setSortType] = useState<SortType>('recent');
-
-  // Presentations
-  const { presentations, loading: presentationsLoading } = usePresentations();
-  const { deletePresentation } = usePresentationMutations();
-  const { createGame: createPresentationGame } = useCreatePresentationGame();
 
   const quizzesQuery = useMemoFirebase(() =>
     user ? query(collection(firestore, 'quizzes').withConverter(quizConverter), where('hostId', '==', user.uid)) as Query<Quiz> : null
@@ -154,6 +147,11 @@ export default function HostDashboardPage() {
 
   const { data: pollActivities, loading: pollLoading } = useCollection<PollActivity>(pollQuery);
 
+  // Fetch presentations
+  const { presentations, loading: presentationsLoading } = usePresentations();
+  const { deletePresentation } = usePresentationMutations();
+  const { createGame: createPresentationGame } = useCreatePresentationGame();
+
   // Combine activities for display
   const activities: Activity[] = [
     ...(thoughtsGatheringActivities || []),
@@ -175,21 +173,20 @@ export default function HostDashboardPage() {
   // Only redirect once data has fully loaded and confirmed empty
   useEffect(() => {
     // Wait for all data to finish loading
-    if (quizzesLoading || activitiesLoading || presentationsLoading || !user) return;
+    if (quizzesLoading || activitiesLoading || !user) return;
 
-    // quizzes/activities/presentations will be null/undefined while loading, then an array when loaded
+    // quizzes/activities will be null/undefined while loading, then an array when loaded
     // Only redirect if we have confirmed empty arrays (not null/undefined)
     const quizzesLoaded = Array.isArray(quizzes);
     const activitiesLoaded = Array.isArray(activities);
-    const presentationsLoaded = Array.isArray(presentations);
 
-    if (!quizzesLoaded || !activitiesLoaded || !presentationsLoaded) return;
+    if (!quizzesLoaded || !activitiesLoaded) return;
 
-    const hasNoContent = quizzes.length === 0 && activities.length === 0 && presentations.length === 0;
+    const hasNoContent = quizzes.length === 0 && activities.length === 0 && (!presentations || presentations.length === 0);
     if (hasNoContent) {
       router.push('/host/create');
     }
-  }, [quizzes, activities, presentations, quizzesLoading, activitiesLoading, presentationsLoading, user, router]);
+  }, [quizzes, activities, quizzesLoading, activitiesLoading, user, router]);
 
   const handleHostGame = async (quizId: string) => {
     if (!user) return;
@@ -311,6 +308,8 @@ export default function HostDashboardPage() {
             router.push(`/host/evaluation/game/${game.id}`);
         } else if (game.activityType === 'poll') {
             router.push(`/host/poll/lobby/${game.id}`);
+        } else if (game.activityType === 'presentation') {
+            router.push(`/host/presentation/lobby/${game.id}`);
         } else {
             router.push(`/host/quiz/lobby/${game.id}`);
         }
@@ -321,6 +320,8 @@ export default function HostDashboardPage() {
             router.push(`/host/evaluation/game/${game.id}`);
         } else if (game.activityType === 'poll') {
             router.push(`/host/poll/game/${game.id}`);
+        } else if (game.activityType === 'presentation') {
+            router.push(`/host/presentation/present/${game.id}`);
         } else {
             router.push(`/host/quiz/game/${game.id}`);
         }
@@ -359,35 +360,23 @@ export default function HostDashboardPage() {
   const handleHostPresentation = async (presentationId: string) => {
     if (!user) return;
     try {
-      const gameId = await createPresentationGame(presentationId, user.uid);
+      const pres = presentations?.find(p => p.id === presentationId);
+      if (!pres) return;
+      const gameId = await createPresentationGame(presentationId, user.uid, pres.settings);
       router.push(`/host/presentation/lobby/${gameId}`);
-    } catch (error) {
-      console.error('Error creating presentation game:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not start the presentation. Please try again.',
-      });
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not create game.' });
     }
   };
 
   const handleDeletePresentation = async (presentationId: string) => {
     try {
       await deletePresentation(presentationId);
-      toast({
-        title: 'Presentation Deleted',
-        description: 'The presentation has been successfully removed.',
-      });
-    } catch (error) {
-      console.error('Error deleting presentation:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not delete the presentation. Please try again.',
-      });
+      toast({ title: 'Presentation deleted' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not delete presentation.' });
     }
   };
-
 
   if (userLoading || !user) {
     return <FullPageLoader />;
@@ -408,7 +397,7 @@ export default function HostDashboardPage() {
       return activities.find(a => a.id === game.activityId)?.title || 'Poll';
     }
     if (game.activityType === 'presentation') {
-      return presentations?.find(p => p.id === game.presentationId)?.title || 'Presentation';
+      return 'Presentation';
     }
     return quizzes?.find(q => q.id === game.quizId)?.title || 'Quiz';
   };
@@ -488,7 +477,7 @@ export default function HostDashboardPage() {
             <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <h1 className="text-3xl font-semibold">My Content</h1>
-                    {!quizzesLoading && !activitiesLoading && !presentationsLoading && (quizzes?.length || 0) + (activities?.length || 0) + (presentations?.length || 0) > 0 && (
+                    {!quizzesLoading && !activitiesLoading && (quizzes?.length || 0) + (activities?.length || 0) + (presentations?.length || 0) > 0 && (
                         <span className="px-3 py-1 text-sm font-medium bg-muted text-muted-foreground rounded-full">
                             {(quizzes?.length || 0) + (activities?.length || 0) + (presentations?.length || 0)}
                         </span>
@@ -548,7 +537,7 @@ export default function HostDashboardPage() {
                 </Select>
             </div>
 
-            {(quizzesLoading || activitiesLoading || presentationsLoading) ? (
+            {(quizzesLoading || activitiesLoading) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[...Array(3)].map((_, i) => (
                         <Card key={i}>
@@ -590,7 +579,7 @@ export default function HostDashboardPage() {
                     ...(presentations?.map(p => ({
                         type: 'presentation' as const,
                         data: p,
-                        title: p.title || 'Untitled Presentation',
+                        title: p.title,
                         updatedAt: p.updatedAt,
                         createdAt: p.createdAt,
                     })) || []),
@@ -644,19 +633,6 @@ export default function HostDashboardPage() {
                                     />
                                 );
                             }
-                            if (item.type === 'presentation') {
-                                const presentation = item.data as PresentationType;
-                                return (
-                                    <PresentationCard
-                                        key={presentation.id}
-                                        presentation={presentation}
-                                        onHost={handleHostPresentation}
-                                        onPreview={setPreviewPresentation}
-                                        onShare={setShareDialogPresentation}
-                                        onDelete={handleDeletePresentation}
-                                    />
-                                );
-                            }
                             if (item.type === 'poll') {
                                 const poll = item.data as PollActivity;
                                 return (
@@ -667,6 +643,17 @@ export default function HostDashboardPage() {
                                         onPreview={setPreviewPoll}
                                         onShare={setShareDialogPoll}
                                         onDelete={handleDeleteActivity}
+                                    />
+                                );
+                            }
+                            if (item.type === 'presentation') {
+                                const pres = item.data as PresentationType;
+                                return (
+                                    <PresentationCard
+                                        key={pres.id}
+                                        presentation={pres}
+                                        onHost={handleHostPresentation}
+                                        onDelete={handleDeletePresentation}
                                     />
                                 );
                             }
@@ -754,25 +741,6 @@ export default function HostDashboardPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Share Presentation Dialog */}
-        <Dialog open={!!shareDialogPresentation} onOpenChange={(open) => !open && setShareDialogPresentation(null)}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl shadow-xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-semibold">Share Presentation</DialogTitle>
-              <DialogDescription className="text-base">
-                Share "{shareDialogPresentation?.title}" with other hosts by entering their email address
-              </DialogDescription>
-            </DialogHeader>
-            {shareDialogPresentation && (
-              <ContentShareManager
-                contentId={shareDialogPresentation.id}
-                contentTitle={shareDialogPresentation.title}
-                contentType="presentation"
-              />
-            )}
-          </DialogContent>
-        </Dialog>
-
         {/* Preview Quiz Dialog */}
         <Dialog open={!!previewQuiz} onOpenChange={(open) => !open && setPreviewQuiz(null)}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl">
@@ -790,16 +758,6 @@ export default function HostDashboardPage() {
               <DialogTitle className="text-2xl font-semibold">Poll Preview</DialogTitle>
             </DialogHeader>
             {previewPoll && <PollPreview poll={previewPoll} />}
-          </DialogContent>
-        </Dialog>
-
-        {/* Preview Presentation Dialog */}
-        <Dialog open={!!previewPresentation} onOpenChange={(open) => !open && setPreviewPresentation(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-semibold">Presentation Preview</DialogTitle>
-            </DialogHeader>
-            {previewPresentation && <PresentationPreview presentation={previewPresentation} />}
           </DialogContent>
         </Dialog>
 

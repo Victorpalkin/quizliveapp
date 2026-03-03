@@ -1,10 +1,10 @@
 import { onDocumentDeleted } from 'firebase-functions/v2/firestore';
-import { getStorage } from 'firebase-admin/storage';
+import * as admin from 'firebase-admin';
 import { REGION } from '../config';
 
 /**
- * Cloud Function triggered when a presentation document is deleted.
- * Cleans up all slide images from Firebase Storage.
+ * Cloud Function trigger: when a presentation document is deleted,
+ * clean up associated storage files (images) and shares.
  */
 export const onPresentationDeleted = onDocumentDeleted(
   {
@@ -13,34 +13,37 @@ export const onPresentationDeleted = onDocumentDeleted(
   },
   async (event) => {
     const presentationId = event.params.presentationId;
-    console.log(`[Cleanup] Presentation ${presentationId} deleted, cleaning up images...`);
+    const data = event.data?.data();
 
+    if (!data) return;
+
+    const bucket = admin.storage().bucket();
+    const db = admin.firestore();
+
+    // Delete associated storage files
     try {
-      const bucket = getStorage().bucket();
-      const prefix = `presentations/${presentationId}/`;
+      const [files] = await bucket.getFiles({
+        prefix: `presentations/${presentationId}/`,
+      });
 
-      // List all files with this prefix
-      const [files] = await bucket.getFiles({ prefix });
-
-      if (files.length === 0) {
-        console.log(`[Cleanup] No images found for presentation ${presentationId}`);
-        return;
+      if (files.length > 0) {
+        await Promise.all(files.map((file) => file.delete()));
       }
-
-      // Delete all files
-      await Promise.all(
-        files.map(async (file) => {
-          try {
-            await file.delete();
-          } catch (error) {
-            console.error(`[Cleanup] Failed to delete file ${file.name}:`, error);
-          }
-        })
-      );
-
-      console.log(`[Cleanup] Deleted ${files.length} images for presentation ${presentationId}`);
     } catch (error) {
-      console.error(`[Cleanup] Failed to delete images for presentation ${presentationId}:`, error);
+      // Storage cleanup is best-effort
+      console.error(`Error cleaning up storage for presentation ${presentationId}:`, error);
+    }
+
+    // Delete shares subcollection
+    try {
+      const sharesSnap = await db.collection(`presentations/${presentationId}/shares`).get();
+      if (!sharesSnap.empty) {
+        const batch = db.batch();
+        sharesSnap.docs.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+      }
+    } catch (error) {
+      console.error(`Error cleaning up shares for presentation ${presentationId}:`, error);
     }
   }
 );

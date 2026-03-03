@@ -11,7 +11,7 @@ import {
   Player,
   QuizShare,
   PollShare,
-  PresentationShare,
+
   ThoughtsGatheringActivity,
   ThoughtSubmission,
   EvaluationActivity,
@@ -171,30 +171,6 @@ export const pollShareConverter: FirestoreDataConverter<PollShare> = {
   }
 };
 
-export const presentationShareConverter: FirestoreDataConverter<PresentationShare> = {
-  toFirestore(share: PresentationShare): DocumentData {
-    const { id, ...data } = share;
-    return removeUndefined({
-      ...data,
-      createdAt: data.createdAt instanceof Date ? Timestamp.fromDate(data.createdAt) : data.createdAt,
-    });
-  },
-  fromFirestore(
-    snapshot: QueryDocumentSnapshot,
-    options: SnapshotOptions
-  ): PresentationShare {
-    const data = snapshot.data(options);
-    return {
-      id: snapshot.id,
-      presentationId: data.presentationId,
-      presentationTitle: data.presentationTitle,
-      sharedWith: data.sharedWith,
-      sharedBy: data.sharedBy,
-      sharedByEmail: data.sharedByEmail,
-      createdAt: toDateSafe(data.createdAt) || new Date(),
-    };
-  }
-};
 
 // ==========================================
 // Thoughts Gathering Activity Converters

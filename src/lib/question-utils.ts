@@ -5,7 +5,6 @@ import type {
   SliderQuestion,
   FreeResponseQuestion,
   Answer,
-  PresentationSlide,
 } from './types';
 import { isSingleChoice, isMultipleChoice, hasAnswers } from './type-guards';
 
@@ -70,19 +69,6 @@ export function extractAnswerKeyEntry(q: Question): AnswerKeyEntry {
       // Polls and slides don't have correct answers
       return base;
   }
-}
-
-/**
- * Extracts answer key data from a presentation slide.
- * For quiz/poll slides, uses the embedded question.
- * For other slides, returns minimal type info.
- */
-export function extractSlideAnswerKeyEntry(slide: PresentationSlide): AnswerKeyEntry {
-  if ((slide.type === 'quiz' || slide.type === 'poll') && slide.question) {
-    return extractAnswerKeyEntry(slide.question);
-  }
-  // Non-scorable slides (content, thoughts, rating, etc.)
-  return { type: slide.type, timeLimit: 0 };
 }
 
 /**

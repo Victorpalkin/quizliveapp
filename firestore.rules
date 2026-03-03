@@ -113,12 +113,11 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/presentations/$(presentationId)/shares/$(request.auth.token.email));
     }
 
-    // Presentations collection (for hybrid presentations with interactive slides)
+    // Presentations collection (canvas-based WYSIWYG presentations)
     match /presentations/{presentationId} {
-      // Readable by anyone - required because unauthenticated players need to
-      // read presentation data (slides) during live games.
-      // Note: Quiz answer correctAnswerIndex is exposed here. Server-side scoring
-      // via the answerKey aggregate (which IS restricted) mitigates cheating.
+      // Readable by anyone - players need slide data during live games.
+      // Note: Quiz correctAnswerIndex is exposed in slide elements. Server-side
+      // scoring via the answerKey aggregate (restricted) mitigates cheating.
       allow read: if true;
 
       // Only authenticated hosts can create presentations
@@ -131,21 +130,16 @@ service cloud.firestore {
 
       // Presentation shares subcollection
       match /shares/{shareId} {
-        // Owner can read all shares for their presentation
-        // Recipient can read shares where sharedWith matches their email
         allow read: if request.auth != null &&
                       (request.auth.uid == get(/databases/$(database)/documents/presentations/$(presentationId)).data.hostId ||
                        request.auth.token.email == resource.data.sharedWith);
 
-        // Only presentation owner can create shares
-        // Document ID (shareId) must match the sharedWith email
         allow create: if request.auth != null &&
                         request.auth.uid == get(/databases/$(database)/documents/presentations/$(presentationId)).data.hostId &&
                         request.resource.data.sharedBy == request.auth.uid &&
                         request.resource.data.presentationId == presentationId &&
                         shareId == request.resource.data.sharedWith;
 
-        // Owner can delete their shares, recipient can also delete (to cancel)
         allow delete: if request.auth != null &&
                         (request.auth.uid == resource.data.sharedBy ||
                          request.auth.token.email == resource.data.sharedWith);
@@ -295,13 +289,6 @@ service cloud.firestore {
                             request.resource.data.rawText.size() >= 1 &&
                             request.resource.data.rawText.size() <= 1000)
                            ||
-                           // Presentation thoughts slides (with slideId)
-                           (get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
-                            get(/databases/$(database)/documents/games/$(gameId)).data.state == 'presenting' &&
-                            request.resource.data.rawText is string &&
-                            request.resource.data.rawText.size() >= 1 &&
-                            request.resource.data.rawText.size() <= 1000 &&
-                            request.resource.data.slideId is string)
                          );
 
         // Only host can update submissions (for AI evaluation results)
@@ -358,36 +345,68 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      // Slide responses subcollection - for presentation rating/poll submissions
-      // Document ID format: {slideId}_{playerId}
-      match /slideResponses/{responseId} {
-        // Readable by game host (authenticated) and game participants
-        // Note: Players are unauthenticated so we can't restrict beyond game scope.
-        // The parent game document is already scoped, so only people who know the gameId can read.
+      // Presentation responses subcollection
+      // Document ID format: {elementId}_{playerId}
+      match /responses/{responseId} {
         allow read: if true;
 
-        // Players can create their own responses during presentation
-        // Document ID must match slideId_playerId to prevent overwrites
+        // Players can create responses during active presentation
         allow create: if get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
-                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'presenting' &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'active' &&
                          request.resource.data.playerId is string &&
-                         request.resource.data.slideId is string &&
-                         responseId == request.resource.data.slideId + '_' + request.resource.data.playerId &&
-                         exists(/databases/$(database)/documents/games/$(gameId)/players/$(request.resource.data.playerId)) &&
-                         (
-                           // Rating submissions (rating field present, client validates range per slide config)
-                           request.resource.data.rating is number
-                           ||
-                           // Poll/other submissions (no rating field required)
-                           request.resource.data.rating == null
-                         );
+                         request.resource.data.elementId is string &&
+                         responseId == request.resource.data.elementId + '_' + request.resource.data.playerId &&
+                         exists(/databases/$(database)/documents/games/$(gameId)/players/$(request.resource.data.playerId));
 
-        // Players can update their own response (only during active presentation)
+        // Players can update their own response during active presentation
         allow update: if request.resource.data.playerId == resource.data.playerId &&
-                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'presenting';
+                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'active';
 
-        // No client-side deletes
         allow delete: if false;
+      }
+
+      // Live reactions subcollection (ephemeral - rate-limited on client)
+      match /reactions/{reactionId} {
+        allow read: if true;
+
+        // Players can send reactions during active presentation
+        allow create: if get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'active' &&
+                         request.resource.data.playerId is string &&
+                         request.resource.data.emoji is string &&
+                         request.resource.data.emoji.size() <= 4;
+
+        allow update, delete: if false;
+      }
+
+      // Q&A questions subcollection
+      match /questions/{questionId} {
+        allow read: if true;
+
+        // Players can submit questions during active presentation
+        allow create: if get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'active' &&
+                         request.resource.data.playerId is string &&
+                         request.resource.data.text is string &&
+                         request.resource.data.text.size() >= 1 &&
+                         request.resource.data.text.size() <= 500 &&
+                         request.resource.data.upvotes == 0 &&
+                         request.resource.data.answered == false;
+
+        // Players can upvote (increment upvotes, add to upvotedBy[])
+        // Host can mark as answered/pinned
+        allow update: if (
+                         // Player upvoting
+                         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'upvotedBy']) &&
+                          request.resource.data.upvotes == resource.data.upvotes + 1)
+                         ||
+                         // Host moderation (answered, pinned)
+                         (request.auth != null &&
+                          request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId)
+                       );
+
+        allow delete: if request.auth != null &&
+                         request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId;
       }
     }
   }

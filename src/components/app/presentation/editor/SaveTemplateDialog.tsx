@@ -3,101 +3,76 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, Copy } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useTemplates } from '@/firebase/presentation';
+import { BookmarkPlus } from 'lucide-react';
+import type { PresentationSlide, PresentationSettings, PresentationTheme } from '@/lib/types';
 
 interface SaveTemplateDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  slideCount: number;
-  onSave: (name: string, description: string) => Promise<void>;
+  slides: PresentationSlide[];
+  settings: PresentationSettings;
+  theme: PresentationTheme;
 }
 
-export function SaveTemplateDialog({
-  open,
-  onOpenChange,
-  slideCount,
-  onSave,
-}: SaveTemplateDialogProps) {
-  const [templateName, setTemplateName] = useState('');
-  const [templateDescription, setTemplateDescription] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+export function SaveTemplateDialog({ slides, settings, theme }: SaveTemplateDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+  const { saveTemplate } = useTemplates();
 
   const handleSave = async () => {
-    if (!templateName.trim()) return;
-    setIsSaving(true);
+    if (!title.trim()) return;
+    setSaving(true);
     try {
-      await onSave(templateName.trim(), templateDescription.trim());
-      setTemplateName('');
-      setTemplateDescription('');
-      onOpenChange(false);
+      await saveTemplate(title.trim(), slides, settings, theme);
+      toast({ title: 'Template saved' });
+      setOpen(false);
+      setTitle('');
+    } catch {
+      toast({ variant: 'destructive', title: 'Failed to save template' });
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm">
+          <BookmarkPlus className="h-4 w-4 mr-1.5" />
+          Save as Template
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Save as Template</DialogTitle>
-          <DialogDescription>
-            Save this presentation as a reusable template for future use.
-          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="template-name">Template Name</Label>
-            <Input
-              id="template-name"
-              value={templateName}
-              onChange={(e) => setTemplateName(e.target.value)}
-              placeholder="My Template"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="template-description">Description (optional)</Label>
-            <Textarea
-              id="template-description"
-              value={templateDescription}
-              onChange={(e) => setTemplateDescription(e.target.value)}
-              placeholder="Describe what this template is for..."
-              rows={3}
-            />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            This template will include {slideCount} slide{slideCount !== 1 ? 's' : ''}.
-          </p>
+
+        <div className="py-2">
+          <Label className="text-sm">Template Name</Label>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="My template"
+            className="mt-1"
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+          />
         </div>
+
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSaving}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving || !templateName.trim()}>
-            {isSaving ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4 mr-2" />
-                Save Template
-              </>
-            )}
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleSave} disabled={!title.trim() || saving}>
+            {saving ? 'Saving...' : 'Save'}
           </Button>
         </DialogFooter>
       </DialogContent>

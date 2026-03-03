@@ -1,141 +1,104 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { SlideRenderer } from '../core';
+import { useRouter } from 'next/navigation';
+import { usePresentationById } from '@/firebase/presentation/use-presentation';
+import { usePresentationControls } from '@/firebase/presentation/use-presentation-game';
+import { HostSlideCanvas } from './HostSlideCanvas';
 import { HostOverlay } from './HostOverlay';
 import { HostControls } from './HostControls';
-import { PresentationSlide, Presentation, PresentationGame } from '@/lib/types';
-import { usePacingStatus } from '@/hooks/presentation/use-pacing-status';
-import { useAutoHide } from '@/hooks/presentation/use-auto-hide';
+import { ReactionOverlay } from './ReactionOverlay';
+import type { PresentationGame } from '@/lib/types';
 
-interface PresentationHostProps {
-  gameId: string;
-  gamePin: string;
-  slides: PresentationSlide[];
-  currentSlideIndex: number;
-  playerCount: number;
-  presentation: Presentation;
-  game: PresentationGame;
-  onSlideChange: (index: number) => void;
-  onCancel?: () => void;
+interface Player {
+  id: string;
+  name: string;
+  score: number;
+  streak: number;
+  maxStreak: number;
+  joinedAt: Date;
 }
 
-export function PresentationHost({
-  gameId,
-  gamePin,
-  slides,
-  currentSlideIndex,
-  playerCount,
-  presentation,
-  game,
-  onSlideChange,
-  onCancel,
-}: PresentationHostProps) {
-  const currentSlide = slides[currentSlideIndex];
+interface PresentationHostProps {
+  game: PresentationGame;
+  players: Player[];
+}
 
-  // Shared auto-hide logic for controls and overlay
-  const { isVisible: isControlsVisible } = useAutoHide(3000);
+export function PresentationHost({ game, players }: PresentationHostProps) {
+  const router = useRouter();
+  const { presentation, loading } = usePresentationById(game.presentationId);
+  const controls = usePresentationControls(game.id);
 
-  // Pacing status for current slide
-  const pacingStatus = usePacingStatus(
-    gameId,
-    currentSlide?.id,
-    currentSlide,
-    presentation,
-    playerCount
-  );
-
-  // Determine if pacing blocks navigation
-  const isPacingBlocked =
-    pacingStatus.isInteractiveSlide &&
-    pacingStatus.pacingMode !== 'none' &&
-    !pacingStatus.thresholdMet;
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        if (!isPacingBlocked && currentSlideIndex < slides.length - 1) {
-          onSlideChange(currentSlideIndex + 1);
-        }
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        if (currentSlideIndex > 0) {
-          onSlideChange(currentSlideIndex - 1);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentSlideIndex, slides.length, onSlideChange, isPacingBlocked]);
-
-  const handlePrevious = useCallback(() => {
-    if (currentSlideIndex > 0) {
-      onSlideChange(currentSlideIndex - 1);
-    }
-  }, [currentSlideIndex, onSlideChange]);
-
-  const handleNext = useCallback(() => {
-    if (currentSlideIndex < slides.length - 1) {
-      onSlideChange(currentSlideIndex + 1);
-    }
-  }, [currentSlideIndex, slides.length, onSlideChange]);
-
-  if (!currentSlide) {
+  if (loading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-background">
-        <p className="text-xl text-muted-foreground">No slides in this presentation</p>
+      <div className="flex items-center justify-center h-screen bg-black text-white">
+        Loading presentation...
       </div>
     );
   }
 
+  if (!presentation) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-black text-white">
+        Presentation not found
+      </div>
+    );
+  }
+
+  const currentSlide = presentation.slides[game.currentSlideIndex];
+  if (!currentSlide) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-black text-white">
+        Invalid slide index
+      </div>
+    );
+  }
+
+  const playerNames = players.map((p) => p.name);
+
+  const handleEnd = () => {
+    controls.endPresentation();
+    router.push('/host');
+  };
+
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-background">
-      {/* Slide content - full screen */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentSlide.id}
-          className="absolute inset-0"
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -50 }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-        >
-          <SlideRenderer
+    <div className="relative w-screen h-screen bg-black overflow-hidden">
+      {/* 16:9 canvas centered */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative w-full h-full max-w-[177.78vh] max-h-[56.25vw]">
+          <HostSlideCanvas
             slide={currentSlide}
-            presentation={presentation}
-            game={game}
-            slideIndex={currentSlideIndex}
-            totalSlides={slides.length}
-            playerCount={playerCount}
-            responseCount={pacingStatus.responseCount}
+            slides={presentation.slides}
+            gameId={game.id}
+            playerCount={players.length}
+            playerNames={playerNames}
           />
-        </motion.div>
-      </AnimatePresence>
 
-      {/* Host overlay (top bar with PIN, etc.) */}
-      <HostOverlay
-        gamePin={gamePin}
-        currentSlide={currentSlideIndex + 1}
-        totalSlides={slides.length}
-        playerCount={playerCount}
-        isVisible={isControlsVisible}
-        onCancel={onCancel}
-        pacingStatus={pacingStatus}
-      />
+          {/* Overlay: PIN, slide counter, player count */}
+          <HostOverlay
+            gamePin={game.gamePin}
+            slideIndex={game.currentSlideIndex}
+            totalSlides={presentation.slides.length}
+            playerCount={players.length}
+          />
 
-      {/* Floating navigation controls */}
-      <HostControls
-        currentSlide={currentSlideIndex}
-        totalSlides={slides.length}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        isVisible={isControlsVisible}
-        pacingStatus={pacingStatus}
-      />
+          {/* Reactions floating up */}
+          {game.settings.enableReactions && (
+            <ReactionOverlay gameId={game.id} />
+          )}
+
+          {/* Navigation controls (show on hover) */}
+          <HostControls
+            slideIndex={game.currentSlideIndex}
+            totalSlides={presentation.slides.length}
+            gameState={game.state}
+            onNextSlide={() => controls.nextSlide(game.currentSlideIndex, presentation.slides.length)}
+            onPrevSlide={() => controls.prevSlide(game.currentSlideIndex)}
+            onPause={controls.pausePresentation}
+            onResume={controls.startPresentation}
+            onEnd={handleEnd}
+          />
+        </div>
+      </div>
     </div>
   );
 }

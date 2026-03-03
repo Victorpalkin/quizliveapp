@@ -1,85 +1,27 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { useUser } from '@/firebase';
-import { usePresentationMutations, useUserTemplates } from '@/firebase/presentation';
-import { TemplateSelector } from '@/components/app/presentation/editor/TemplateSelector';
-import { PresentationSlide } from '@/lib/types';
-import { Header } from '@/components/app/header';
+import { PresentationEditor } from '@/components/app/presentation/editor/PresentationEditor';
 
 export default function CreatePresentationPage() {
+  const { user, loading } = useUser();
   const router = useRouter();
-  const { user, loading: userLoading } = useUser();
-  const { createPresentation } = usePresentationMutations();
-  const { templates: userTemplates } = useUserTemplates();
-  const [showTemplateSelector, setShowTemplateSelector] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
 
-  // Redirect if not authenticated
   useEffect(() => {
-    if (!userLoading && !user) {
+    if (!loading && !user) {
       router.push('/login');
     }
-  }, [user, userLoading, router]);
+  }, [user, loading, router]);
 
-  // Handle template selection
-  const handleSelectTemplate = useCallback(
-    async (slides: PresentationSlide[], templateName?: string) => {
-      if (!user || isCreating) return;
-
-      setIsCreating(true);
-      setShowTemplateSelector(false);
-
-      try {
-        const title = templateName
-          ? `${templateName} - Copy`
-          : 'Untitled Presentation';
-
-        const presentationId = await createPresentation({
-          title,
-          description: '',
-          slides,
-        });
-
-        router.replace(`/host/presentation/edit/${presentationId}`);
-      } catch (error) {
-        console.error('Failed to create presentation:', error);
-        router.push('/host');
-      }
-    },
-    [user, isCreating, createPresentation, router]
-  );
-
-  // Handle dialog close (go back to dashboard)
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        router.push('/host');
-      }
-      setShowTemplateSelector(open);
-    },
-    [router]
-  );
-
-  if (userLoading) {
-    return <FullPageLoader />;
+  if (loading || !user) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
   }
 
-  if (isCreating) {
-    return <FullPageLoader />;
-  }
-
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <TemplateSelector
-        open={showTemplateSelector}
-        onOpenChange={handleOpenChange}
-        onSelectTemplate={handleSelectTemplate}
-        userTemplates={userTemplates}
-      />
-    </div>
-  );
+  return <PresentationEditor />;
 }

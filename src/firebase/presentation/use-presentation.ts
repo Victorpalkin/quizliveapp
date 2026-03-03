@@ -1,79 +1,66 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   collection,
   doc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
   addDoc,
   updateDoc,
   deleteDoc,
+  onSnapshot,
   serverTimestamp,
-  DocumentReference,
+  query,
+  where,
+  Timestamp,
 } from 'firebase/firestore';
-import { useFirestore } from '../provider';
-import { useUser } from '../auth/use-user';
-import { Presentation, PresentationSlide } from '@/lib/types';
-import { logError } from '@/lib/error-logging';
+import { useFirestore, useUser } from '@/firebase';
+import type {
+  Presentation,
+  PresentationSlide,
+  PresentationSettings,
+  PresentationTheme,
+} from '@/lib/types';
 
-/**
- * Hook to get a single presentation by ID
- */
-export function usePresentation(presentationId: string | null | undefined) {
-  const firestore = useFirestore();
-  const [presentation, setPresentation] = useState<Presentation | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+const DEFAULT_SETTINGS: PresentationSettings = {
+  enableReactions: true,
+  enableQA: true,
+  enableStreaks: true,
+  enableSoundEffects: true,
+  defaultTimerSeconds: 20,
+  pacingMode: 'free',
+  pacingThreshold: 80,
+};
 
-  const presentationRef = useMemo(() => {
-    if (!firestore || !presentationId) return null;
-    return doc(firestore, 'presentations', presentationId) as DocumentReference<Presentation>;
-  }, [firestore, presentationId]);
+const DEFAULT_THEME: PresentationTheme = {
+  preset: 'default',
+};
 
-  useEffect(() => {
-    if (!presentationRef) {
-      setPresentation(null);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    const unsubscribe = onSnapshot(
-      presentationRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          setPresentation({ ...snapshot.data(), id: snapshot.id } as Presentation);
-        } else {
-          setPresentation(null);
-        }
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
-        logError(err instanceof Error ? err : new Error(String(err)), { context: 'usePresentation' });
-        setError(err);
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [presentationRef]);
-
-  return { presentation, loading, error, presentationRef };
+function toDate(val: unknown): Date {
+  if (val instanceof Timestamp) return val.toDate();
+  if (val instanceof Date) return val;
+  return new Date();
 }
 
-/**
- * Hook to get all presentations for the current user
- */
+function docToPresentation(id: string, data: Record<string, unknown>): Presentation {
+  return {
+    id,
+    title: (data.title as string) || 'Untitled Presentation',
+    description: data.description as string | undefined,
+    hostId: data.hostId as string,
+    slides: (data.slides as PresentationSlide[]) || [],
+    settings: (data.settings as PresentationSettings) || { ...DEFAULT_SETTINGS },
+    theme: (data.theme as PresentationTheme) || { ...DEFAULT_THEME },
+    createdAt: toDate(data.createdAt),
+    updatedAt: toDate(data.updatedAt),
+  };
+}
+
+/** Hook to list all presentations for the current user */
 export function usePresentations() {
   const firestore = useFirestore();
   const { user } = useUser();
   const [presentations, setPresentations] = useState<Presentation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (!firestore || !user) {
@@ -82,138 +69,94 @@ export function usePresentations() {
       return;
     }
 
-    setLoading(true);
-    const presentationsQuery = query(
+    const q = query(
       collection(firestore, 'presentations'),
-      where('hostId', '==', user.uid),
-      orderBy('updatedAt', 'desc')
+      where('hostId', '==', user.uid)
     );
 
-    const unsubscribe = onSnapshot(
-      presentationsQuery,
-      (snapshot) => {
-        const docs = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Presentation[];
-        setPresentations(docs);
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
-        logError(err instanceof Error ? err : new Error(String(err)), { context: 'usePresentations' });
-        setError(err);
-        setLoading(false);
-      }
-    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map((d) => docToPresentation(d.id, d.data()));
+      setPresentations(items);
+      setLoading(false);
+    });
 
     return () => unsubscribe();
   }, [firestore, user]);
 
-  return { presentations, loading, error };
+  return { presentations, loading };
 }
 
-/**
- * Hook to create, update, and delete presentations
- */
+/** Hook to load a single presentation by ID */
+export function usePresentationById(presentationId: string | null) {
+  const firestore = useFirestore();
+  const [presentation, setPresentation] = useState<Presentation | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!firestore || !presentationId) {
+      setPresentation(null);
+      setLoading(false);
+      return;
+    }
+
+    const docRef = doc(firestore, 'presentations', presentationId);
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setPresentation(docToPresentation(snapshot.id, snapshot.data()));
+      } else {
+        setPresentation(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [firestore, presentationId]);
+
+  return { presentation, loading };
+}
+
+/** Hook for presentation CRUD mutations */
 export function usePresentationMutations() {
   const firestore = useFirestore();
   const { user } = useUser();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
 
   const createPresentation = useCallback(
-    async (data: Partial<Omit<Presentation, 'id' | 'hostId' | 'createdAt' | 'updatedAt'>>) => {
+    async (title: string, slides: PresentationSlide[] = []): Promise<string> => {
       if (!firestore || !user) throw new Error('Not authenticated');
 
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const presentationData = {
-          title: data.title || 'Untitled Presentation',
-          description: data.description || '',
-          slides: data.slides || [],
-          hostId: user.uid,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        };
-
-        const docRef = await addDoc(
-          collection(firestore, 'presentations'),
-          presentationData
-        );
-
-        return docRef.id;
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error('Failed to create presentation');
-        setError(error);
-        throw error;
-      } finally {
-        setIsLoading(false);
-      }
+      const docRef = await addDoc(collection(firestore, 'presentations'), {
+        title,
+        hostId: user.uid,
+        slides,
+        settings: DEFAULT_SETTINGS,
+        theme: DEFAULT_THEME,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      return docRef.id;
     },
     [firestore, user]
   );
 
   const updatePresentation = useCallback(
-    async (presentationId: string, data: Partial<Omit<Presentation, 'id' | 'hostId' | 'createdAt'>>) => {
+    async (id: string, data: Partial<Pick<Presentation, 'title' | 'description' | 'slides' | 'settings' | 'theme'>>) => {
       if (!firestore) throw new Error('Firestore not initialized');
 
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const presentationRef = doc(firestore, 'presentations', presentationId);
-        await updateDoc(presentationRef, {
-          ...data,
-          updatedAt: serverTimestamp(),
-        });
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error('Failed to update presentation');
-        setError(error);
-        throw error;
-      } finally {
-        setIsLoading(false);
-      }
+      await updateDoc(doc(firestore, 'presentations', id), {
+        ...data,
+        updatedAt: serverTimestamp(),
+      });
     },
     [firestore]
   );
 
   const deletePresentation = useCallback(
-    async (presentationId: string) => {
+    async (id: string) => {
       if (!firestore) throw new Error('Firestore not initialized');
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const presentationRef = doc(firestore, 'presentations', presentationId);
-        await deleteDoc(presentationRef);
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error('Failed to delete presentation');
-        setError(error);
-        throw error;
-      } finally {
-        setIsLoading(false);
-      }
+      await deleteDoc(doc(firestore, 'presentations', id));
     },
     [firestore]
   );
 
-  const updateSlides = useCallback(
-    async (presentationId: string, slides: PresentationSlide[]) => {
-      return updatePresentation(presentationId, { slides });
-    },
-    [updatePresentation]
-  );
-
-  return {
-    createPresentation,
-    updatePresentation,
-    deletePresentation,
-    updateSlides,
-    isLoading,
-    error,
-  };
+  return { createPresentation, updatePresentation, deletePresentation };
 }

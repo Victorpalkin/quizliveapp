@@ -1,194 +1,131 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { httpsCallable } from 'firebase/functions';
+import { use, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
-import { Users, Play } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Users, Play, Loader2 } from 'lucide-react';
 import { GameHeader } from '@/components/app/game-header';
-import { TipBanner, ReadinessChecklist } from '@/components/app/host-action-hint';
-import { useUser, useFunctions } from '@/firebase';
-import {
-  usePresentationGame,
-  usePresentationPlayers,
-  usePresentationGameControls,
-  usePresentation,
-} from '@/firebase/presentation';
-import { Skeleton } from '@/components/ui/skeleton';
-import { saveHostSession, clearHostSession } from '@/lib/host-session';
-import { FullPageLoader } from '@/components/ui/full-page-loader';
+import { ReadinessChecklist } from '@/components/app/host-action-hint';
+import { useUser } from '@/firebase';
+import { usePresentationGame, usePresentationControls } from '@/firebase/presentation/use-presentation-game';
+import { saveHostSession } from '@/lib/host-session';
 
-export default function PresentationLobbyPage() {
-  const params = useParams();
-  const gameId = params.gameId as string;
+export default function PresentationLobbyPage({ params }: { params: Promise<{ gameId: string }> }) {
+  const { gameId } = use(params);
   const router = useRouter();
-  const functions = useFunctions();
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: authLoading } = useUser();
+  const { game, players, loading: gameLoading } = usePresentationGame(gameId);
+  const controls = usePresentationControls(gameId);
 
-  const { game, loading: gameLoading } = usePresentationGame(gameId);
-  const { players, loading: playersLoading } = usePresentationPlayers(gameId);
-  const { startPresentation, cancelGame } = usePresentationGameControls(gameId);
-  const { presentation } = usePresentation(game?.presentationId || '');
-
-  // Redirect if not authenticated
+  // Save host session
   useEffect(() => {
-    if (!userLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, userLoading, router]);
-
-  // Save host session when lobby is loaded
-  useEffect(() => {
-    if (game && presentation && user) {
+    if (game && user) {
       saveHostSession(
         gameId,
         game.gamePin,
         game.presentationId,
-        presentation.title,
+        'Presentation',
         user.uid,
         'presentation',
         'lobby',
         `/host/presentation/lobby/${gameId}`
       );
     }
-  }, [gameId, game, presentation, user]);
+  }, [gameId, game, user]);
 
-  // Redirect if game already started
+  // Redirect when game starts
   useEffect(() => {
-    if (game?.state === 'presenting') {
+    if (game?.state === 'active') {
       router.push(`/host/presentation/present/${gameId}`);
     }
   }, [game?.state, gameId, router]);
 
-  const handleStartPresentation = async () => {
-    if (!presentation) return;
-
-    // Initialize answer key and leaderboard server-side via Cloud Function
-    const initGame = httpsCallable(functions, 'initPresentationGame');
-    await initGame({ gameId });
-
-    await startPresentation();
-    router.push(`/host/presentation/present/${gameId}`);
-  };
-
-  const handleCancelGame = async () => {
-    clearHostSession();
-    await cancelGame();
-    router.push('/host');
-  };
-
-  if (userLoading || gameLoading) {
-    return <FullPageLoader />;
-  }
-
-  if (!game) {
+  if (authLoading || gameLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <h1 className="text-2xl font-bold mb-4">Game not found</h1>
-        <button
-          onClick={() => router.push('/host')}
-          className="text-primary underline"
-        >
-          Back to dashboard
-        </button>
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
+  if (!user) {
+    router.replace('/login');
+    return null;
+  }
+
+  if (!game) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-muted-foreground">Game not found</p>
+      </div>
+    );
+  }
+
+  const handleStart = async () => {
+    await controls.startPresentation();
+    router.push(`/host/presentation/present/${gameId}`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <main className="container mx-auto p-4 md:p-8">
-        <div className="w-full max-w-4xl mx-auto space-y-6">
-          {/* Game Header with PIN, QR, and Cancel */}
-          <GameHeader
-            gamePin={game.gamePin}
-            playerCount={players.length}
-            activityType="presentation"
-            title={presentation?.title}
-            onCancel={handleCancelGame}
-            isLive={false}
-          />
+      <GameHeader
+        gamePin={game.gamePin}
+        playerCount={players.length}
+        activityType="presentation"
+      />
 
-          {/* Tips and Readiness */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <TipBanner>
-              Share the PIN or scan the QR code with your audience to let them join
-            </TipBanner>
-            <ReadinessChecklist
-              items={[
-                {
-                  label: 'Players joined',
-                  isReady: players.length > 0,
-                  detail: `${players.length} player${players.length !== 1 ? 's' : ''}`,
-                },
-              ]}
-            />
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Players List */}
-            <Card className="lg:col-span-2 border border-card-border shadow-sm">
-              <div className="p-6 pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-xl">Players</CardTitle>
+      <div className="max-w-2xl mx-auto p-6 space-y-6">
+        {/* Player list */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Players ({players.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {players.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Waiting for players to join...
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {players.map((player) => (
+                  <div
+                    key={player.id}
+                    className="bg-primary/10 text-primary rounded-full px-3 py-1 text-sm font-medium animate-in fade-in slide-in-from-bottom-2"
+                  >
+                    {player.name}
                   </div>
-                  <span className="text-2xl font-bold text-primary">
-                    {playersLoading ? '...' : players.length}
-                  </span>
-                </div>
+                ))}
               </div>
-              <CardContent>
-                {playersLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                ) : players.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    Waiting for players to join...
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto">
-                    {players.map((player) => (
-                      <span
-                        key={player.id}
-                        className="px-3 py-1.5 bg-muted rounded-full text-sm font-medium"
-                      >
-                        {player.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            )}
+          </CardContent>
+        </Card>
 
-            {/* Start Presentation Card */}
-            <Card className="border-2 border-primary/20 shadow-sm bg-gradient-to-br from-primary/5 to-accent/5">
-              <CardContent className="p-6 flex flex-col items-center justify-center h-full text-center gap-4">
-                <div>
-                  <CardTitle className="text-xl mb-2">Ready to Present?</CardTitle>
-                  <CardDescription>
-                    {presentation?.slides.length || 0} slides in this presentation
-                  </CardDescription>
-                </div>
-                <Button
-                  onClick={handleStartPresentation}
-                  size="lg"
-                  className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
-                >
-                  <Play className="h-5 w-5 mr-2" />
-                  Start Presentation
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </main>
+        {/* Readiness checklist */}
+        <ReadinessChecklist
+          items={[
+            {
+              label: 'At least 1 player joined',
+              isReady: players.length > 0,
+            },
+          ]}
+        />
+
+        {/* Start button */}
+        <Button
+          onClick={handleStart}
+          disabled={players.length === 0}
+          size="lg"
+          variant="gradient"
+          className="w-full h-14 text-lg"
+        >
+          <Play className="h-5 w-5 mr-2" />
+          Start Presentation
+        </Button>
+      </div>
     </div>
   );
 }

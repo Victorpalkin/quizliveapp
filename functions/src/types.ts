@@ -20,9 +20,6 @@ export interface SubmitAnswerRequest {
   // Question metadata
   questionType: 'single-choice' | 'multiple-choice' | 'slider' | 'free-response' | 'poll-single' | 'poll-multiple';
   questionTimeLimit?: number;
-
-  // Presentation context (optional)
-  slideId?: string;  // For presentation slides - identifies which slide this answer is for
 }
 
 /**
@@ -84,7 +81,6 @@ export interface PlayerAnswer {
   points: number;
   isCorrect: boolean;
   wasTimeout: boolean;
-  slideId?: string;  // For presentation slides
 }
 
 /**
@@ -527,118 +523,3 @@ export interface PollPlayerAnswer {
   textAnswer?: string;
 }
 
-// ==========================================
-// Presentation Analytics Types
-// ==========================================
-
-/**
- * Slide type enum (subset from client types)
- */
-export type PresentationSlideType =
-  | 'content'
-  | 'quiz'
-  | 'poll'
-  | 'quiz-results'
-  | 'poll-results'
-  | 'thoughts-collect'
-  | 'thoughts-results'
-  | 'rating-describe'
-  | 'rating-input'
-  | 'rating-results'
-  | 'rating-summary'
-  | 'leaderboard';
-
-/**
- * Pre-computed analytics for a completed presentation.
- * Stored at: games/{gameId}/aggregates/analytics
- */
-export interface PresentationAnalytics {
-  gameId: string;
-  presentationId: string;
-  presentationTitle: string;
-  totalSlides: number;
-  interactiveSlides: number;
-  totalPlayers: number;
-  computedAt: admin.firestore.FieldValue;
-
-  slideStats: PresentationSlideStats[];
-  playerEngagement: PlayerEngagementStats[];
-  summary: PresentationAnalyticsSummary;
-  slideTypeBreakdown: SlideTypeStats[];
-}
-
-export interface PresentationSlideStats {
-  slideIndex: number;
-  slideId: string;
-  slideType: PresentationSlideType;
-  title?: string;
-
-  totalResponded: number;
-  responseRate: number;
-
-  // For quiz slides
-  correctCount?: number;
-  correctRate?: number;
-  avgPoints?: number;
-  answerDistribution?: { label: string; count: number; isCorrect: boolean }[];
-
-  // For poll slides
-  pollDistribution?: { label: string; count: number; percentage: number }[];
-
-  // For rating slides
-  avgRating?: number;
-  ratingDistribution?: number[];
-
-  // For thoughts slides
-  submissionCount?: number;
-  topicsCount?: number;
-}
-
-export interface PlayerEngagementStats {
-  playerId: string;
-  playerName: string;
-  engagementScore: number;
-  responsesSubmitted: number;
-  totalInteractiveSlides: number;
-  responseRate: number;
-
-  totalScore?: number;
-  correctAnswers?: number;
-  avgResponseTime?: number;
-}
-
-export interface PresentationAnalyticsSummary {
-  avgResponseRate: number;
-  avgEngagementScore: number;
-  mostEngagedSlide: { index: number; responseRate: number } | null;
-  leastEngagedSlide: { index: number; responseRate: number } | null;
-  avgQuizAccuracy?: number;
-  avgRating?: number;
-}
-
-export interface SlideTypeStats {
-  type: PresentationSlideType;
-  count: number;
-  avgResponseRate: number;
-  label: string;
-}
-
-/**
- * Request interface for computePresentationAnalytics Cloud Function
- */
-export interface ComputePresentationAnalyticsRequest {
-  gameId: string;
-}
-
-/**
- * Result returned from computePresentationAnalytics function
- */
-export interface ComputePresentationAnalyticsResult {
-  success: boolean;
-  message: string;
-  analytics?: {
-    totalPlayers: number;
-    totalSlides: number;
-    interactiveSlides: number;
-  };
-}

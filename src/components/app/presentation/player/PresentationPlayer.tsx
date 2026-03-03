@@ -1,105 +1,185 @@
 'use client';
 
-import { motion, AnimatePresence } from 'motion/react';
-import { PlayerSlideRenderer } from '../core';
-import { WaitingScreen } from './WaitingScreen';
-import { PresentationSlide, PresentationGameState } from '@/lib/types';
-import { getSlideType } from '../slide-types';
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { PlayerHeader } from './PlayerHeader';
+import { ReactionBar } from './ReactionBar';
+import { IdleView } from './IdleView';
+import { PlayerQuiz } from './elements/PlayerQuiz';
+import { PlayerPoll } from './elements/PlayerPoll';
+import { PlayerThoughts } from './elements/PlayerThoughts';
+import { PlayerRating } from './elements/PlayerRating';
+import type { PresentationGame, PresentationSlide, SlideElement } from '@/lib/types';
 
-interface PresentationPlayerProps {
-  presentationTitle: string;
-  slides: PresentationSlide[];
-  currentSlideIndex: number;
-  gameState: PresentationGameState;
+interface PlayerSession {
   playerId: string;
   playerName: string;
   gameId: string;
-  onResponseSubmitted?: () => void;
+}
+
+interface PresentationPlayerProps {
+  state: 'joining' | 'lobby' | 'active' | 'ended';
+  game: PresentationGame | null;
+  session: PlayerSession | null;
+  currentSlide: PresentationSlide | null;
+  interactiveElement: SlideElement | null;
+  slides: PresentationSlide[];
+  playerScore: number;
+  playerStreak: number;
+  joinGame: (name: string) => Promise<void>;
+  markResponded: (elementId: string) => void;
+  hasResponded: (elementId: string) => boolean;
 }
 
 export function PresentationPlayer({
-  presentationTitle,
-  slides,
-  currentSlideIndex,
-  gameState,
-  playerId,
-  playerName,
-  gameId,
-  onResponseSubmitted,
+  state,
+  game,
+  session,
+  currentSlide,
+  interactiveElement,
+  playerScore,
+  playerStreak,
+  joinGame,
+  markResponded,
+  hasResponded,
 }: PresentationPlayerProps) {
-  const currentSlide = slides[currentSlideIndex];
+  const [name, setName] = useState('');
+  const [joining, setJoining] = useState(false);
 
-  // Show waiting screen during lobby
-  if (gameState === 'lobby') {
-    return (
-      <WaitingScreen
-        presentationTitle={presentationTitle}
-        message="Waiting for the presentation to start..."
-      />
-    );
-  }
+  const handleJoin = async () => {
+    if (!name.trim()) return;
+    setJoining(true);
+    try {
+      await joinGame(name.trim());
+    } finally {
+      setJoining(false);
+    }
+  };
 
-  // Show ended screen
-  if (gameState === 'ended') {
+  // Joining screen
+  if (state === 'joining') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-6">
-        <motion.div
-          className="text-center space-y-4"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-        >
-          <h1 className="text-3xl font-bold text-foreground">
-            Thanks for participating!
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            The presentation has ended
-          </p>
-        </motion.div>
+      <div className="flex items-center justify-center h-screen p-4">
+        <div className="w-full max-w-sm space-y-4">
+          <h1 className="text-2xl font-bold text-center">Join Game</h1>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            maxLength={20}
+            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+            autoFocus
+          />
+          <Button
+            onClick={handleJoin}
+            disabled={!name.trim() || joining}
+            className="w-full"
+            variant="gradient"
+          >
+            {joining ? 'Joining...' : 'Join'}
+          </Button>
+        </div>
       </div>
     );
   }
 
-  // No current slide
-  if (!currentSlide) {
-    return <WaitingScreen presentationTitle={presentationTitle} />;
-  }
-
-  // Check if slide type is interactive
-  const slideType = getSlideType(currentSlide.type);
-  const isInteractive = slideType?.isInteractive !== false;
-
-  // Show waiting screen for non-interactive slides (content)
-  if (!isInteractive) {
+  // Lobby screen
+  if (state === 'lobby') {
     return (
-      <WaitingScreen
-        presentationTitle={presentationTitle}
-        message="Waiting for the next activity..."
-      />
+      <div className="flex items-center justify-center h-screen p-4">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <span className="text-2xl">🎯</span>
+          </div>
+          <h1 className="text-2xl font-bold">You&apos;re in!</h1>
+          <p className="text-lg text-muted-foreground">{session?.playerName}</p>
+          <p className="text-sm text-muted-foreground">Waiting for the host to start...</p>
+        </div>
+      </div>
     );
   }
 
-  // Show interactive slide
+  // Ended screen
+  if (state === 'ended') {
+    return (
+      <div className="flex items-center justify-center h-screen p-4">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold">Game Over!</h1>
+          <div className="text-4xl font-bold text-primary">{playerScore.toLocaleString()}</div>
+          <p className="text-muted-foreground">points</p>
+          {playerStreak > 0 && (
+            <p className="text-sm text-muted-foreground">Best streak: {playerStreak}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Active state
+  const responded = interactiveElement ? hasResponded(interactiveElement.id) : false;
+
   return (
-    <div className="min-h-screen bg-background">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentSlide.id}
-          className="min-h-screen"
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -30 }}
-          transition={{ duration: 0.25 }}
-        >
-          <PlayerSlideRenderer
-            slide={currentSlide}
-            playerId={playerId}
-            playerName={playerName}
-            gameId={gameId}
-            slideIndex={currentSlideIndex}
-            onResponseSubmitted={onResponseSubmitted}
+    <div className="flex flex-col h-screen">
+      <PlayerHeader
+        playerName={session?.playerName || ''}
+        score={playerScore}
+        streak={playerStreak}
+      />
+
+      <div className="flex-1 overflow-y-auto">
+        {interactiveElement && !responded ? (
+          // Show interactive element UI
+          <div className="p-4">
+            {interactiveElement.type === 'quiz' && game && session && (
+              <PlayerQuiz
+                element={interactiveElement}
+                gameId={game.id}
+                playerId={session.playerId}
+                playerName={session.playerName}
+                onSubmitted={() => markResponded(interactiveElement.id)}
+              />
+            )}
+            {interactiveElement.type === 'poll' && game && session && (
+              <PlayerPoll
+                element={interactiveElement}
+                gameId={game.id}
+                playerId={session.playerId}
+                playerName={session.playerName}
+                onSubmitted={() => markResponded(interactiveElement.id)}
+              />
+            )}
+            {interactiveElement.type === 'thoughts' && game && session && (
+              <PlayerThoughts
+                element={interactiveElement}
+                gameId={game.id}
+                playerId={session.playerId}
+                playerName={session.playerName}
+                onSubmitted={() => markResponded(interactiveElement.id)}
+              />
+            )}
+            {interactiveElement.type === 'rating' && game && session && (
+              <PlayerRating
+                element={interactiveElement}
+                gameId={game.id}
+                playerId={session.playerId}
+                playerName={session.playerName}
+                onSubmitted={() => markResponded(interactiveElement.id)}
+              />
+            )}
+          </div>
+        ) : (
+          <IdleView
+            currentSlide={currentSlide}
+            responded={responded}
           />
-        </motion.div>
-      </AnimatePresence>
+        )}
+      </div>
+
+      {/* Reaction bar always visible during active state */}
+      {game?.settings.enableReactions && game && (
+        <ReactionBar gameId={game.id} playerId={session?.playerId || ''} />
+      )}
     </div>
   );
 }

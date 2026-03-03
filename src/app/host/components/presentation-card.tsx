@@ -35,8 +35,12 @@ export function PresentationCard({ presentation, onHost, onPreview, onShare, onD
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const slideCount = presentation.slides?.length || 0;
-  const firstContentSlide = presentation.slides?.find((s) => s.type === 'content' && s.imageUrl);
-  const interactiveSlideCount = presentation.slides?.filter((s) => s.type !== 'content').length || 0;
+  const interactiveSlideCount = presentation.slides?.filter(
+    (s) => s.elements?.some((el) => ['quiz', 'poll', 'thoughts', 'rating'].includes(el.type))
+  ).length || 0;
+  const firstImageElement = presentation.slides
+    ?.flatMap((s) => s.elements || [])
+    .find((el) => el.type === 'image' && el.imageUrl);
 
   return (
     <>
@@ -96,9 +100,9 @@ export function PresentationCard({ presentation, onHost, onPreview, onShare, onD
         {/* Thumbnail preview */}
         <div className="px-4">
           <div className="aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center">
-            {firstContentSlide?.imageUrl ? (
+            {firstImageElement?.imageUrl ? (
               <img
-                src={firstContentSlide.imageUrl}
+                src={firstImageElement.imageUrl}
                 alt="First slide"
                 className="w-full h-full object-cover"
               />

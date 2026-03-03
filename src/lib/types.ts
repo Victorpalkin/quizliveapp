@@ -427,93 +427,6 @@ export interface PollQuestionStats {
   }[];
 }
 
-// ==========================================
-// Presentation Analytics Types
-// ==========================================
-
-/**
- * Pre-computed analytics for a completed presentation.
- * Stored at: games/{gameId}/aggregates/analytics
- */
-export interface PresentationAnalytics {
-  gameId: string;
-  presentationId: string;
-  presentationTitle: string;
-  totalSlides: number;
-  interactiveSlides: number;  // Slides that collected responses
-  totalPlayers: number;
-  computedAt: Timestamp;
-
-  // Per-slide statistics
-  slideStats: PresentationSlideStats[];
-
-  // Player engagement data
-  playerEngagement: PlayerEngagementStats[];
-
-  // Aggregated summary
-  summary: PresentationAnalyticsSummary;
-
-  // Slide type breakdown
-  slideTypeBreakdown: SlideTypeStats[];
-}
-
-export interface PresentationSlideStats {
-  slideIndex: number;
-  slideId: string;
-  slideType: PresentationSlideType;
-  title?: string;  // From slide content
-
-  // Response metrics
-  totalResponded: number;
-  responseRate: number;  // percentage
-
-  // For quiz slides
-  correctCount?: number;
-  correctRate?: number;
-  avgPoints?: number;
-  answerDistribution?: { label: string; count: number; isCorrect: boolean }[];
-
-  // For poll slides
-  pollDistribution?: { label: string; count: number; percentage: number }[];
-
-  // For rating slides
-  avgRating?: number;
-  ratingDistribution?: number[];  // count at each value
-
-  // For thoughts slides
-  submissionCount?: number;
-  topicsCount?: number;
-}
-
-export interface PlayerEngagementStats {
-  playerId: string;
-  playerName: string;
-  engagementScore: number;  // 0-100 based on participation
-  responsesSubmitted: number;
-  totalInteractiveSlides: number;
-  responseRate: number;  // percentage
-
-  // For scored presentations
-  totalScore?: number;
-  correctAnswers?: number;
-  avgResponseTime?: number;
-}
-
-export interface PresentationAnalyticsSummary {
-  avgResponseRate: number;
-  avgEngagementScore: number;
-  mostEngagedSlide: { index: number; responseRate: number } | null;
-  leastEngagedSlide: { index: number; responseRate: number } | null;
-  avgQuizAccuracy?: number;  // If quiz slides exist
-  avgRating?: number;  // If rating slides exist
-}
-
-export interface SlideTypeStats {
-  type: PresentationSlideType;
-  count: number;
-  avgResponseRate: number;
-  label: string;  // Human-readable label
-}
 
 // ==========================================
 // Thoughts Gathering Activity Types
@@ -772,164 +685,182 @@ export interface PollQuestionResult {
 }
 
 // ==========================================
-// Presentation Mode Types
+// Presentation Mode Types (Canvas-based WYSIWYG)
 // ==========================================
 
 /**
- * Slide types for hybrid presentations
+ * Element types that can be placed on a slide canvas.
+ * Content elements: text, image, shape
+ * Interactive elements (max 1 per slide): quiz, poll, thoughts, rating
+ * Results elements: quiz-results, poll-results, thoughts-results, rating-results
+ * Special elements: leaderboard, qa, spin-wheel
  */
-export type PresentationSlideType =
-  | 'content'           // Imported slide (image) or text content
-  | 'quiz'              // Quiz question (scored)
-  | 'poll'              // Poll question (no scoring)
-  | 'quiz-results'      // Quiz: show results from one or more quiz slides
-  | 'poll-results'      // Poll: show results from one or more poll slides
-  | 'thoughts-collect'  // Thoughts gathering: collection prompt
-  | 'thoughts-results'  // Thoughts gathering: word cloud display
-  | 'rating-describe'   // Rating: item description (presenter explains)
-  | 'rating-input'      // Rating: players submit their rating
-  | 'rating-results'    // Rating: show aggregate results (optional)
-  | 'rating-summary'    // Rating: summary with charts/heatmap/matrix
-  | 'leaderboard';      // Leaderboard: show player rankings
+export type SlideElementType =
+  // Content
+  | 'text'
+  | 'image'
+  | 'shape'
+  // Interactive (max 1 per slide, player interacts with these)
+  | 'quiz'
+  | 'poll'
+  | 'thoughts'
+  | 'rating'
+  // Results (display-only, reference a source element)
+  | 'quiz-results'
+  | 'poll-results'
+  | 'thoughts-results'
+  | 'rating-results'
+  // Special elements
+  | 'leaderboard'
+  | 'qa'
+  | 'spin-wheel';
+
+/** Which element types are interactive (player submits a response) */
+export const INTERACTIVE_ELEMENT_TYPES: SlideElementType[] = ['quiz', 'poll', 'thoughts', 'rating'];
 
 /**
- * Rating metric configuration for rating slides
+ * Canvas element positioned on a slide.
+ * All coordinates are percentages of slide dimensions for responsive rendering.
  */
-export interface PresentationRatingMetric {
-  type: 'stars' | 'numeric' | 'labels';
-  min: number;
-  max: number;
-  labels?: string[];         // For 'labels' type
-  question?: string;         // e.g., "How important is this?"
+export interface SlideElement {
+  id: string;
+  type: SlideElementType;
+  x: number;      // % of slide width (0-100)
+  y: number;      // % of slide height (0-100)
+  width: number;  // % of slide width
+  height: number; // % of slide height
+  rotation?: number;
+  zIndex: number;
+  opacity?: number;
+  locked?: boolean;
+
+  // === Text properties ===
+  content?: string;
+  fontSize?: number;
+  fontWeight?: 'normal' | 'bold';
+  fontStyle?: 'normal' | 'italic';
+  fontFamily?: string;
+  textAlign?: 'left' | 'center' | 'right';
+  color?: string;
+  lineHeight?: number;
+
+  // === Image properties ===
+  imageUrl?: string;
+  objectFit?: 'cover' | 'contain' | 'fill';
+  borderRadius?: number;
+
+  // === Shape properties ===
+  shapeType?: 'rectangle' | 'circle' | 'rounded-rect' | 'line';
+  backgroundColor?: string;
+  borderColor?: string;
+  borderWidth?: number;
+
+  // === Interactive element configs ===
+  quizConfig?: {
+    question: string;
+    answers: { text: string }[];
+    correctAnswerIndex: number;
+    timeLimit: number;
+    pointValue: number;
+  };
+
+  pollConfig?: {
+    question: string;
+    options: { text: string }[];
+    allowMultiple: boolean;
+  };
+
+  thoughtsConfig?: {
+    prompt: string;
+    maxPerPlayer: number;
+    timeLimit?: number;
+  };
+
+  ratingConfig?: {
+    itemTitle: string;
+    itemDescription?: string;
+    itemImageUrl?: string;
+    metricType: 'stars' | 'slider' | 'emoji';
+    min: number;
+    max: number;
+    question?: string;
+  };
+
+  qaConfig?: {
+    topic?: string;
+    moderationEnabled: boolean;
+  };
+
+  spinWheelConfig?: {
+    mode: 'players' | 'custom';
+    segments?: { label: string; color?: string }[];
+    action?: string;
+  };
+
+  leaderboardConfig?: {
+    maxDisplay: number;
+    showScores: boolean;
+  };
+
+  // Results elements - reference source
+  sourceElementId?: string;
+  sourceSlideId?: string;
 }
 
-/**
- * Rating item configuration for rating-describe slides
- */
-export interface PresentationRatingItem {
-  title: string;             // Item name
-  description?: string;      // Item description (shown to players)
-  imageUrl?: string;         // Optional item image
+/** Slide background configuration */
+export interface SlideBackground {
+  type: 'solid' | 'gradient' | 'image';
+  color?: string;
+  gradient?: string;
+  imageUrl?: string;
 }
 
-/**
- * A single slide in a presentation
- */
+/** A single slide in the presentation (canvas-based) */
 export interface PresentationSlide {
   id: string;
-  type: PresentationSlideType;
   order: number;
-
-  // For 'content' type
-  imageUrl?: string;           // Firebase Storage URL (imported or uploaded)
-  imagePrompt?: string;        // AI-suggested prompt for image generation
-  googleSlideId?: string;      // Google Slides page ID (for re-import)
-  title?: string;              // Optional text content
-  description?: string;        // Optional text content
-
-  // For 'quiz' and 'poll' types
-  question?: Question;         // Reuse existing Question type
-
-  // For 'thoughts-collect' type - word cloud collection
-  thoughtsPrompt?: string;     // e.g., "What challenges do you face?"
-  thoughtsMaxPerPlayer?: number; // Default: 3
-  thoughtsTimeLimit?: number;  // Optional time limit in seconds
-
-  // For 'rating-describe' type - item description
-  ratingItem?: PresentationRatingItem;
-
-  // For 'rating-input' type - rating input
-  sourceDescribeSlideId?: string; // Links to the 'rating-describe' slide this input belongs to
-  ratingMetric?: PresentationRatingMetric;
-
-  // For 'thoughts-results' and 'rating-results' types
-  sourceSlideId?: string;      // Which collection/input slide this shows results for
-
-  // For 'rating-results' type - results display mode
-  ratingResultsMode?: 'single' | 'comparison' | 'live';
-  // 'single' - Show one item with detailed distribution (default)
-  // 'comparison' - Show all rated items ranked side-by-side
-  // 'live' - Show real-time updating results with animations
-  comparisonSlideIds?: string[]; // For 'comparison' mode - which rating-input slides to compare
-
-  // For 'rating-summary' type - shows all items with full visualizations
-  summaryTitle?: string;         // Custom title (default: "Rating Summary")
-  summaryDefaultView?: 'ranking' | 'chart' | 'heatmap' | 'matrix';
-  // 'ranking' - Ranked list with progress bars (default)
-  // 'chart' - Bar chart visualization
-  // 'heatmap' - Distribution heatmap
-  // 'matrix' - Comparison matrix
-
-  // For 'leaderboard' type
-  leaderboardMode?: 'standard' | 'podium';
-  // 'standard' - Simple list view (default, top 10)
-  // 'podium' - Final leaderboard with podium styling (top 20)
-  leaderboardMaxDisplay?: number; // How many players to show (default: 10 for standard, 20 for podium)
-  leaderboardTitle?: string;      // Custom title (default: "Leaderboard")
-
-  // For 'quiz-results' and 'poll-results' types
-  sourceSlideIds?: string[];      // Array of quiz/poll slide IDs to show results for
-  resultsTitle?: string;          // Optional custom title
-  resultsDisplayMode?: 'individual' | 'combined';
-  // 'individual' - Show each question's results separately (default)
-  // 'combined' - Aggregate view with all questions in compact grid
-
-  // Audience pacing settings (per-slide, overrides presentation defaults)
-  pacingMode?: 'none' | 'threshold' | 'all';
-  // 'none' - Host can advance anytime (default)
-  // 'threshold' - Wait for X% of players to respond
-  // 'all' - Wait for all players to respond
-  pacingThreshold?: number; // 0-100, percentage of players required (for 'threshold' mode)
+  elements: SlideElement[];
+  background?: SlideBackground;
+  notes?: string;
+  transition?: 'fade' | 'slide' | 'zoom' | 'none';
 }
 
-/**
- * Presentation style settings for consistent AI generation
- * Guides AI to produce visually cohesive slides and images
- */
-export interface PresentationStyle {
-  imageStyle?: string;      // Art style, color palette, mood for AI-generated images
-  headerTemplate?: string;  // Standard header format (e.g., "Workshop: {title}")
-  footerTemplate?: string;  // Standard footer format (e.g., "Company Name | 2024")
-  fontStyle?: string;       // Typography hints (e.g., "Clean sans-serif, bold headings")
-  layoutHints?: string;     // Layout preferences (e.g., "Centered titles, generous whitespace")
+/** Presentation settings */
+export interface PresentationSettings {
+  enableReactions: boolean;
+  enableQA: boolean;
+  enableStreaks: boolean;
+  enableSoundEffects: boolean;
+  defaultTimerSeconds: number;
+  pacingMode: 'free' | 'threshold' | 'all';
+  pacingThreshold: number;
 }
 
-/**
- * Presentation activity stored in /presentations/{presentationId}
- */
+/** Visual theme */
+export interface PresentationTheme {
+  preset: 'default' | 'vibrant' | 'elegant' | 'dark' | 'playful' | 'custom';
+  primaryColor?: string;
+  accentColor?: string;
+  fontFamily?: string;
+}
+
+/** Presentation document stored in /presentations/{presentationId} */
 export interface Presentation {
   id: string;
   title: string;
   description?: string;
   hostId: string;
   slides: PresentationSlide[];
-
-  // Google Slides import tracking
-  googleSlidesId?: string;     // Source presentation ID
-  lastImportedAt?: Date;
-
-  // Default pacing settings (applies to all interactive slides unless overridden)
-  defaultPacingMode?: 'none' | 'threshold' | 'all';
-  defaultPacingThreshold?: number; // 0-100, default: 80
-
-  // AI-generated or user-defined presentation style
-  style?: PresentationStyle;
-
+  settings: PresentationSettings;
+  theme: PresentationTheme;
   createdAt: Date;
   updatedAt: Date;
 }
 
-/**
- * Presentation game states
- */
-export type PresentationGameState =
-  | 'lobby'      // Players joining
-  | 'presenting' // Active presentation (content or activity slide)
-  | 'ended';     // Presentation finished
+/** Presentation game states */
+export type PresentationGameState = 'lobby' | 'active' | 'paused' | 'ended';
 
-/**
- * Extended Game type for presentations
- */
+/** Game session for a live presentation */
 export interface PresentationGame {
   id: string;
   hostId: string;
@@ -938,38 +869,49 @@ export interface PresentationGame {
   presentationId: string;
   state: PresentationGameState;
   currentSlideIndex: number;
-  createdAt?: Date;
+  settings: PresentationSettings;
+  createdAt: Date;
 }
 
-/**
- * Player response for a presentation slide
- */
-export interface PresentationSlideResponse {
+/** Player response for a presentation element */
+export interface PresentationElementResponse {
   id: string;
+  elementId: string;
   slideId: string;
   playerId: string;
   playerName: string;
-  slideType: PresentationSlideType;
   submittedAt: Timestamp;
+  timeRemaining?: number;
 
-  // For quiz/poll slides
+  // Answer data (type-specific)
   answerIndex?: number;
   answerIndices?: number[];
-
-  // For thoughts-collect slides
-  thoughts?: string[];
-
-  // For rating-input slides
-  rating?: number;
+  textAnswers?: string[];
+  ratingValue?: number;
 }
 
-// ==========================================
-// Presentation Templates
-// ==========================================
+/** Live reaction from a player */
+export interface PresentationReaction {
+  id: string;
+  playerId: string;
+  emoji: string;
+  timestamp: Timestamp;
+}
 
-/**
- * Template category for organization
- */
+/** Q&A question from a player */
+export interface PresentationQuestion {
+  id: string;
+  text: string;
+  playerId: string;
+  playerName: string;
+  upvotes: number;
+  upvotedBy: string[];
+  answered: boolean;
+  pinned: boolean;
+  createdAt: Timestamp;
+}
+
+/** Template category for organization */
 export type PresentationTemplateCategory =
   | 'workshop'
   | 'training'
@@ -977,18 +919,19 @@ export type PresentationTemplateCategory =
   | 'meeting'
   | 'custom';
 
-/**
- * Presentation template for quick starts
- */
+/** Presentation template for quick starts */
 export interface PresentationTemplate {
   id: string;
   name: string;
+  title: string;
   description: string;
   category: PresentationTemplateCategory;
-  thumbnail?: string;              // Preview image URL
-  slides: PresentationSlide[];     // Template slides
-  isBuiltIn: boolean;              // System template vs user-created
-  createdBy?: string;              // hostId for user templates
+  thumbnail?: string;
+  slides: PresentationSlide[];
+  settings: PresentationSettings;
+  theme: PresentationTheme;
+  isBuiltIn: boolean;
+  createdBy?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
