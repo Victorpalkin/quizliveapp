@@ -243,13 +243,15 @@ service cloud.firestore {
         allow read: if true;
 
         // Only allow creating player with initial score of 0, empty answers, and streak 0
-        allow create: if request.resource.data.score == 0 &&
+        allow create: if request.resource.data.keys().hasOnly(['id', 'name', 'score', 'answers', 'currentStreak', 'maxStreak', 'joinedAt']) &&
+                        request.resource.data.score == 0 &&
                         request.resource.data.id == playerId &&
                         request.resource.data.name is string &&
                         request.resource.data.name.size() >= 2 &&
                         request.resource.data.name.size() <= 20 &&
                         request.resource.data.answers == [] &&
-                        request.resource.data.currentStreak == 0;
+                        request.resource.data.currentStreak == 0 &&
+                        request.resource.data.maxStreak == 0;
 
         // All player updates (score, answers, streak) are handled by Cloud Functions only
         // Cloud Functions use admin privileges and bypass these rules
@@ -262,7 +264,6 @@ service cloud.firestore {
       // Submissions subcollection - used for:
       // 1. Quiz crowdsource questions (questionText, answers, correctAnswerIndex)
       // 2. Standalone Thoughts Gathering submissions (rawText)
-      // 3. Presentation Thoughts slides (rawText + slideId)
       match /submissions/{submissionId} {
         // Anyone can read submissions (for display in lobby)
         allow read: if true;
@@ -288,7 +289,6 @@ service cloud.firestore {
                             request.resource.data.rawText is string &&
                             request.resource.data.rawText.size() >= 1 &&
                             request.resource.data.rawText.size() <= 1000)
-                           ||
                          );
 
         // Only host can update submissions (for AI evaluation results)
@@ -360,6 +360,8 @@ service cloud.firestore {
 
         // Players can update their own response during active presentation
         allow update: if request.resource.data.playerId == resource.data.playerId &&
+                         request.resource.data.elementId == resource.data.elementId &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
                          get(/databases/$(database)/documents/games/$(gameId)).data.state == 'active';
 
         allow delete: if false;
