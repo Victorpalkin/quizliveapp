@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirestore, useFunctions } from '@/firebase';
+import { removeUndefined } from '@/lib/firestore-utils';
 import type { PresentationGame, PresentationGameState, PresentationSettings } from '@/lib/types';
 import { nanoid } from 'nanoid';
 
@@ -33,7 +34,7 @@ export function useCreatePresentationGame() {
     async (presentationId: string, hostId: string, settings: PresentationSettings): Promise<string> => {
       if (!firestore) throw new Error('Firestore not initialized');
 
-      const gameDoc = await addDoc(collection(firestore, 'games'), {
+      const gameDoc = await addDoc(collection(firestore, 'games'), removeUndefined({
         hostId,
         gamePin: nanoid(8).toUpperCase(),
         activityType: 'presentation',
@@ -42,7 +43,7 @@ export function useCreatePresentationGame() {
         currentSlideIndex: 0,
         settings,
         createdAt: serverTimestamp(),
-      });
+      }));
 
       // Initialize answer key and leaderboard via Cloud Function
       if (functions) {

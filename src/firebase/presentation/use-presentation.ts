@@ -14,6 +14,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
+import { removeUndefined } from '@/lib/firestore-utils';
 import type {
   Presentation,
   PresentationSlide,
@@ -124,7 +125,7 @@ export function usePresentationMutations() {
     async (title: string, slides: PresentationSlide[] = []): Promise<string> => {
       if (!firestore || !user) throw new Error('Not authenticated');
 
-      const docRef = await addDoc(collection(firestore, 'presentations'), {
+      const docRef = await addDoc(collection(firestore, 'presentations'), removeUndefined({
         title,
         hostId: user.uid,
         slides,
@@ -132,7 +133,7 @@ export function usePresentationMutations() {
         theme: DEFAULT_THEME,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      }));
       return docRef.id;
     },
     [firestore, user]
@@ -142,10 +143,10 @@ export function usePresentationMutations() {
     async (id: string, data: Partial<Pick<Presentation, 'title' | 'description' | 'slides' | 'settings' | 'theme'>>) => {
       if (!firestore) throw new Error('Firestore not initialized');
 
-      await updateDoc(doc(firestore, 'presentations', id), {
+      await updateDoc(doc(firestore, 'presentations', id), removeUndefined({
         ...data,
         updatedAt: serverTimestamp(),
-      });
+      }));
     },
     [firestore]
   );

@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirestore, useFunctions } from '@/firebase';
+import { removeUndefined } from '@/lib/firestore-utils';
 import type { PresentationElementResponse } from '@/lib/types';
 
 /** Hook to submit and read responses for presentation interactive elements */
@@ -104,10 +105,10 @@ export function useResponses(gameId: string | null) {
       if (!firestore || !gameId) throw new Error('Not connected');
 
       const responseId = `${data.elementId}_${data.playerId}`;
-      await setDoc(doc(firestore, 'games', gameId, 'responses', responseId), {
+      await setDoc(doc(firestore, 'games', gameId, 'responses', responseId), removeUndefined({
         ...data,
         submittedAt: serverTimestamp(),
-      });
+      }));
     },
     [firestore, gameId]
   );

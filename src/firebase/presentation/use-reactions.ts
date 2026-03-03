@@ -11,6 +11,7 @@ import {
   limitToLast,
 } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { removeUndefined } from '@/lib/firestore-utils';
 import type { PresentationReaction } from '@/lib/types';
 
 const RATE_LIMIT_MS = 2000; // 1 reaction per 2 seconds per player
@@ -60,11 +61,11 @@ export function useReactions(gameId: string | null) {
       if (now - lastSentRef.current < RATE_LIMIT_MS) return;
       lastSentRef.current = now;
 
-      await addDoc(collection(firestore, 'games', gameId, 'reactions'), {
+      await addDoc(collection(firestore, 'games', gameId, 'reactions'), removeUndefined({
         playerId,
         emoji,
         timestamp: serverTimestamp(),
-      });
+      }));
     },
     [firestore, gameId]
   );

@@ -12,6 +12,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
+import { removeUndefined } from '@/lib/firestore-utils';
 import type { PresentationTemplate, PresentationSlide, PresentationSettings, PresentationTheme } from '@/lib/types';
 
 const DEFAULT_SETTINGS: PresentationSettings = {
@@ -84,7 +85,7 @@ export function useTemplates() {
     ): Promise<string> => {
       if (!firestore || !user) throw new Error('Not authenticated');
 
-      const docRef = await addDoc(collection(firestore, 'templates'), {
+      const docRef = await addDoc(collection(firestore, 'templates'), removeUndefined({
         name: title,
         title,
         description: '',
@@ -96,7 +97,7 @@ export function useTemplates() {
         createdBy: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      }));
       return docRef.id;
     },
     [firestore, user]

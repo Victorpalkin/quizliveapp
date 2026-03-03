@@ -15,6 +15,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { removeUndefined } from '@/lib/firestore-utils';
 import type { PresentationQuestion } from '@/lib/types';
 
 /** Hook for Q&A question submission, upvoting, and moderation */
@@ -63,7 +64,7 @@ export function useQuestions(gameId: string | null) {
     async (playerId: string, playerName: string, text: string) => {
       if (!firestore || !gameId) return;
 
-      await addDoc(collection(firestore, 'games', gameId, 'questions'), {
+      await addDoc(collection(firestore, 'games', gameId, 'questions'), removeUndefined({
         text: text.trim(),
         playerId,
         playerName,
@@ -72,7 +73,7 @@ export function useQuestions(gameId: string | null) {
         answered: false,
         pinned: false,
         createdAt: serverTimestamp(),
-      });
+      }));
     },
     [firestore, gameId]
   );
