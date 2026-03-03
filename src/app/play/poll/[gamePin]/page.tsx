@@ -1,476 +1,79 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useFunctions, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, setDoc, getDocs, getDoc, DocumentReference } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
 import { useWakeLock } from '@/hooks/use-wake-lock';
-import { nanoid } from 'nanoid';
-import type { Game, Player, PollActivity } from '@/lib/types';
-import { gameConverter, pollActivityConverter, playerConverter } from '@/firebase/converters';
 import { ThemeToggle } from '@/components/app/theme-toggle';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Send, CheckCircle, Home, Vote, Clock } from 'lucide-react';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
-import { getPlayerSession, savePlayerSession, clearPlayerSession, sessionMatchesPin } from '@/lib/player-session';
-import { logError } from '@/lib/error-logging';
-
-type PlayerState = 'joining' | 'reconnecting' | 'lobby' | 'answering' | 'waiting' | 'results' | 'ended';
+import { Card, CardContent } from '@/components/ui/card';
+import { Vote } from 'lucide-react';
+import { usePlayerPoll } from './hooks/use-player-poll';
+import { JoiningScreen } from './components/joining-screen';
+import { LobbyScreen } from './components/lobby-screen';
+import { AnsweringScreen } from './components/answering-screen';
+import { WaitingScreen } from './components/waiting-screen';
+import { EndedScreen } from './components/ended-screen';
 
 export default function PollPlayerPage() {
-  const params = useParams();
-  const gamePin = params.gamePin as string;
-  const firestore = useFirestore();
-  const functions = useFunctions();
-  const router = useRouter();
-  const { toast } = useToast();
-
-  // Session-aware player state initialization
-  const storedSession = useRef(getPlayerSession());
-  const hasValidSession = storedSession.current && sessionMatchesPin(gamePin);
-  const [playerId] = useState(() => hasValidSession ? storedSession.current!.playerId : nanoid());
-  const [nickname, setNickname] = useState(() => hasValidSession ? storedSession.current!.nickname : '');
-  const [gameDocId, setGameDocId] = useState<string | null>(() => hasValidSession ? storedSession.current!.gameDocId : null);
-  const [player, setPlayer] = useState<Player | null>(null);
-  const [state, setState] = useState<PlayerState>(() => hasValidSession ? 'reconnecting' : 'joining');
-  const [isJoining, setIsJoining] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Answer state
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
-  const [textAnswer, setTextAnswer] = useState('');
-  const [hasAnswered, setHasAnswered] = useState(false);
-
-  // Track current question and answered questions (for reconnection)
-  const lastQuestionIndexRef = useRef<number>(-1);
-  const answeredQuestionsRef = useRef<Set<number>>(new Set());
-
-  // Game data
-  const gameRef = useMemoFirebase(
-    () => gameDocId ? doc(firestore, 'games', gameDocId).withConverter(gameConverter) as DocumentReference<Game> : null,
-    [firestore, gameDocId]
-  );
-  const { data: game, loading: gameLoading } = useDoc(gameRef);
-
-  // Activity data
-  const activityRef = useMemoFirebase(
-    () => game?.activityId
-      ? doc(firestore, 'activities', game.activityId).withConverter(pollActivityConverter) as DocumentReference<PollActivity>
-      : null,
-    [firestore, game?.activityId]
-  );
-  const { data: poll } = useDoc(activityRef);
+  const {
+    state,
+    player,
+    nickname,
+    setNickname,
+    isJoining,
+    isSubmitting,
+    game,
+    poll,
+    selectedIndex,
+    setSelectedIndex,
+    selectedIndices,
+    textAnswer,
+    setTextAnswer,
+    handleJoinGame,
+    handleSubmitAnswer,
+    toggleMultipleChoice,
+    isAnswerValid,
+    router,
+  } = usePlayerPoll();
 
   // Keep awake
   const shouldKeepAwake = ['answering', 'waiting', 'results'].includes(state);
   useWakeLock(shouldKeepAwake);
 
-  // Find game by PIN on mount (skip if already have gameDocId from session)
-  useEffect(() => {
-    if (gameDocId) return;
-    const findGame = async () => {
-      const gamesRef = collection(firestore, 'games');
-      const q = query(gamesRef, where('gamePin', '==', gamePin));
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        setGameDocId(snapshot.docs[0].id);
-      }
-    };
-    findGame();
-  }, [firestore, gamePin, gameDocId]);
-
-  // Reconnection logic: check if player document still exists
-  useEffect(() => {
-    if (state !== 'reconnecting' || !gameDocId) return;
-
-    const attemptReconnect = async () => {
-      try {
-        const playerDocRef = doc(firestore, 'games', gameDocId, 'players', playerId).withConverter(playerConverter);
-        const playerDoc = await getDoc(playerDocRef);
-
-        if (playerDoc.exists()) {
-          const playerData = playerDoc.data();
-          setPlayer(playerData);
-          setNickname(playerData.name);
-
-          // Check which questions the player has already answered to restore hasAnswered state
-          // This will be synced properly once game data loads via the state sync useEffect
-          const answeredQuestions = new Set(playerData.answers.map(a => a.questionIndex));
-          answeredQuestionsRef.current = answeredQuestions;
-        } else {
-          // Player doc doesn't exist anymore, clear session and start fresh
-          clearPlayerSession();
-          setState('joining');
-        }
-      } catch (error) {
-        logError(error as Error, { context: 'PollPlayer:reconnect', gameId: gameDocId });
-        clearPlayerSession();
-        setState('joining');
-      }
-    };
-    attemptReconnect();
-  }, [state, gameDocId, firestore, playerId]);
-
-  // Sync state with game state
-  useEffect(() => {
-    if (!game || !player) return;
-
-    // Detect new question
-    if (game.currentQuestionIndex !== lastQuestionIndexRef.current) {
-      lastQuestionIndexRef.current = game.currentQuestionIndex;
-
-      // Check if this question was already answered (handles reconnection)
-      const alreadyAnswered = answeredQuestionsRef.current.has(game.currentQuestionIndex);
-      if (alreadyAnswered) {
-        setHasAnswered(true);
-      } else {
-        // Reset answer state for new question
-        setSelectedIndex(null);
-        setSelectedIndices([]);
-        setTextAnswer('');
-        setHasAnswered(false);
-      }
-    }
-
-    switch (game.state) {
-      case 'lobby':
-        setState('lobby');
-        break;
-      case 'question':
-        setState(hasAnswered ? 'waiting' : 'answering');
-        break;
-      case 'results':
-        setState('results');
-        break;
-      case 'ended':
-        setState('ended');
-        clearPlayerSession();
-        break;
-    }
-  }, [game?.state, game?.currentQuestionIndex, player, hasAnswered]);
-
-  // Handle joining
-  const handleJoinGame = async () => {
-    if (!gameDocId) return;
-
-    // For anonymous polls, name can be empty
-    const playerName = nickname.trim() || 'Anonymous';
-
-    setIsJoining(true);
-
-    try {
-      const playerData: Omit<Player, 'id'> = {
-        name: playerName,
-        score: 0,
-        answers: [],
-        currentStreak: 0,
-      };
-
-      await setDoc(doc(firestore, 'games', gameDocId, 'players', playerId), {
-        id: playerId,
-        ...playerData,
-      });
-
-      setPlayer({ id: playerId, ...playerData });
-      savePlayerSession(playerId, gameDocId, gamePin, playerName);
-      setState('lobby');
-    } catch (error) {
-      logError(error as Error, { context: 'PollPlayer:join', gameId: gameDocId });
-    } finally {
-      setIsJoining(false);
-    }
-  };
-
-  // Handle submitting answer via Cloud Function
-  const handleSubmitAnswer = async () => {
-    if (!gameDocId || !player || !game || !poll) return;
-
-    const currentQuestion = poll.questions[game.currentQuestionIndex];
-    if (!currentQuestion) return;
-
-    // Validate answer before submitting
-    if (currentQuestion.type === 'poll-single' && selectedIndex === null) {
-      return;
-    }
-    if (currentQuestion.type === 'poll-multiple' && selectedIndices.length === 0) {
-      return;
-    }
-    if (currentQuestion.type === 'poll-free-text' && !textAnswer.trim()) {
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Build request for Cloud Function
-      const request: {
-        gameId: string;
-        playerId: string;
-        questionIndex: number;
-        questionType: string;
-        answerIndex?: number;
-        answerIndices?: number[];
-        textAnswer?: string;
-      } = {
-        gameId: gameDocId,
-        playerId,
-        questionIndex: game.currentQuestionIndex,
-        questionType: currentQuestion.type,
-      };
-
-      if (currentQuestion.type === 'poll-single') {
-        request.answerIndex = selectedIndex!;
-      } else if (currentQuestion.type === 'poll-multiple') {
-        request.answerIndices = selectedIndices;
-      } else if (currentQuestion.type === 'poll-free-text') {
-        request.textAnswer = textAnswer.trim();
-      }
-
-      // Submit via Cloud Function
-      const submitPollAnswerFn = httpsCallable(functions, 'submitPollAnswer');
-      await submitPollAnswerFn(request);
-
-      setHasAnswered(true);
-      answeredQuestionsRef.current.add(game.currentQuestionIndex);
-      setState('waiting');
-    } catch (error: unknown) {
-      logError(error as Error, { context: 'PollPlayer:submit', gameId: gameDocId || undefined });
-
-      // Show user-friendly error message
-      const errorCode = (error as { code?: string })?.code;
-      if (errorCode === 'functions/failed-precondition') {
-        toast({
-          variant: 'destructive',
-          title: 'Already Answered',
-          description: 'You have already submitted a response for this question.',
-        });
-        // Still mark as answered since they already submitted
-        setHasAnswered(true);
-        setState('waiting');
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Submission Error',
-          description: 'Failed to submit your response. Please try again.',
-        });
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Toggle selection for multiple choice
-  const toggleMultipleChoice = (index: number) => {
-    setSelectedIndices(prev =>
-      prev.includes(index)
-        ? prev.filter(i => i !== index)
-        : [...prev, index]
-    );
-  };
-
-  // Check if answer is valid
-  const isAnswerValid = () => {
-    if (!poll || !game) return false;
-    const currentQuestion = poll.questions[game.currentQuestionIndex];
-    if (!currentQuestion) return false;
-
-    switch (currentQuestion.type) {
-      case 'poll-single':
-        return selectedIndex !== null;
-      case 'poll-multiple':
-        return selectedIndices.length > 0;
-      case 'poll-free-text':
-        return textAnswer.trim().length > 0;
-      default:
-        return false;
-    }
-  };
-
-  // Render content based on state
   const renderContent = () => {
     switch (state) {
       case 'joining':
-        const allowAnonymous = poll?.config.allowAnonymous ?? false;
-
         return (
-          <Card className="w-full max-w-md shadow-2xl">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-teal-500 text-white">
-                <Vote className="h-8 w-8" />
-              </div>
-              <CardTitle className="text-3xl">Join Poll</CardTitle>
-              <CardDescription>
-                {allowAnonymous
-                  ? 'Enter your name (optional for anonymous response)'
-                  : 'Enter your name to participate'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleJoinGame();
-                }}
-                className="space-y-6"
-              >
-                <Input
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  placeholder={allowAnonymous ? "Your Name (optional)" : "Your Name"}
-                  className="h-14 text-center text-xl"
-                  maxLength={20}
-                  minLength={allowAnonymous ? 0 : 2}
-                  required={!allowAnonymous}
-                  autoComplete="name"
-                  autoCapitalize="words"
-                />
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={isJoining || (!allowAnonymous && nickname.trim().length < 2)}
-                  className="w-full bg-gradient-to-r from-teal-500 to-cyan-500 text-lg"
-                >
-                  {isJoining ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Joining...
-                    </>
-                  ) : (
-                    'Join Poll'
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+          <JoiningScreen
+            nickname={nickname}
+            setNickname={setNickname}
+            isJoining={isJoining}
+            allowAnonymous={poll?.config.allowAnonymous ?? false}
+            handleJoinGame={handleJoinGame}
+          />
         );
 
       case 'lobby':
-        return (
-          <Card className="w-full max-w-md text-center shadow-2xl">
-            <CardContent className="p-8">
-              <Vote className="h-16 w-16 mx-auto mb-4 text-teal-500" />
-              <h2 className="text-2xl font-bold mb-2">You&apos;re In!</h2>
-              <p className="text-muted-foreground mb-4">
-                Welcome, {player?.name || 'Anonymous'}!
-              </p>
-              <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                <Clock className="h-5 w-5 animate-pulse" />
-                <span>Waiting for the poll to start...</span>
-              </div>
-            </CardContent>
-          </Card>
-        );
+        return <LobbyScreen playerName={player?.name || 'Anonymous'} />;
 
       case 'answering':
         if (!poll || !game) return <FullPageLoader />;
-
-        const currentQuestion = poll.questions[game.currentQuestionIndex];
-        if (!currentQuestion) return <FullPageLoader />;
-
         return (
-          <div className="w-full max-w-lg space-y-6">
-            <Card className="shadow-2xl">
-              <CardHeader className="text-center">
-                <div className="text-sm text-muted-foreground mb-2">
-                  Question {game.currentQuestionIndex + 1} of {poll.questions.length}
-                </div>
-                <CardTitle className="text-2xl">{currentQuestion.text}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {currentQuestion.type === 'poll-single' && 'answers' in currentQuestion && (
-                  <div className="space-y-3">
-                    {currentQuestion.answers.map((answer, index) => (
-                      <Button
-                        key={index}
-                        variant={selectedIndex === index ? "default" : "outline"}
-                        className={`w-full py-6 text-left justify-start text-lg ${
-                          selectedIndex === index ? 'bg-teal-500 hover:bg-teal-600' : ''
-                        }`}
-                        onClick={() => setSelectedIndex(index)}
-                      >
-                        <span className="w-8 h-8 flex items-center justify-center bg-muted rounded-full mr-3 text-sm font-medium">
-                          {String.fromCharCode(65 + index)}
-                        </span>
-                        {answer.text}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-
-                {currentQuestion.type === 'poll-multiple' && 'answers' in currentQuestion && (
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground text-center">Select all that apply</p>
-                    {currentQuestion.answers.map((answer, index) => (
-                      <div
-                        key={index}
-                        className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                          selectedIndices.includes(index)
-                            ? 'border-teal-500 bg-teal-500/10'
-                            : 'border-border hover:border-muted-foreground'
-                        }`}
-                        onClick={() => toggleMultipleChoice(index)}
-                      >
-                        <Checkbox
-                          checked={selectedIndices.includes(index)}
-                          onCheckedChange={() => toggleMultipleChoice(index)}
-                        />
-                        <span className="text-lg">{answer.text}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {currentQuestion.type === 'poll-free-text' && (
-                  <div className="space-y-3">
-                    <Textarea
-                      value={textAnswer}
-                      onChange={(e) => setTextAnswer(e.target.value)}
-                      placeholder={currentQuestion.placeholder || 'Share your thoughts...'}
-                      className="min-h-[150px] text-lg"
-                      maxLength={currentQuestion.maxLength || 500}
-                    />
-                    <div className="text-right text-sm text-muted-foreground">
-                      {textAnswer.length}/{currentQuestion.maxLength || 500}
-                    </div>
-                  </div>
-                )}
-
-                <Button
-                  onClick={handleSubmitAnswer}
-                  disabled={isSubmitting || !isAnswerValid()}
-                  className="w-full py-6 text-lg bg-gradient-to-r from-teal-500 to-cyan-500"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Send className="mr-2 h-5 w-5" /> Submit
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+          <AnsweringScreen
+            poll={poll}
+            game={game}
+            selectedIndex={selectedIndex}
+            setSelectedIndex={setSelectedIndex}
+            selectedIndices={selectedIndices}
+            toggleMultipleChoice={toggleMultipleChoice}
+            textAnswer={textAnswer}
+            setTextAnswer={setTextAnswer}
+            isSubmitting={isSubmitting}
+            isAnswerValid={isAnswerValid}
+            handleSubmitAnswer={handleSubmitAnswer}
+          />
         );
 
       case 'waiting':
-        return (
-          <Card className="w-full max-w-md text-center shadow-2xl">
-            <CardContent className="p-8">
-              <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-500" />
-              <h2 className="text-2xl font-bold mb-2">Response Submitted!</h2>
-              <p className="text-muted-foreground">
-                Waiting for others to respond...
-              </p>
-            </CardContent>
-          </Card>
-        );
+        return <WaitingScreen />;
 
       case 'results':
         return (
@@ -490,22 +93,10 @@ export default function PollPlayerPage() {
 
       case 'ended':
         return (
-          <Card className="w-full max-w-md text-center shadow-2xl">
-            <CardContent className="p-8">
-              <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-500" />
-              <h2 className="text-2xl font-bold mb-2">Poll Complete!</h2>
-              <p className="text-muted-foreground mb-6">
-                Thanks for participating, {player?.name || 'Anonymous'}!
-              </p>
-              <Button
-                onClick={() => router.push('/')}
-                size="lg"
-                className="w-full"
-              >
-                <Home className="mr-2 h-5 w-5" /> Return Home
-              </Button>
-            </CardContent>
-          </Card>
+          <EndedScreen
+            playerName={player?.name || 'Anonymous'}
+            onReturnHome={() => router.push('/')}
+          />
         );
 
       default:
@@ -515,7 +106,6 @@ export default function PollPlayerPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background relative">
-      {/* Theme Toggle */}
       <div className="absolute top-6 right-6 z-20">
         <ThemeToggle />
       </div>
