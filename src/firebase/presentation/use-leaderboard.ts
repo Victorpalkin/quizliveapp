@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 interface LeaderboardEntry {
@@ -45,7 +45,7 @@ export function useLeaderboard(gameId: string | null) {
             streak: (p.streak as number) ?? 0,
             rank: i + 1,
           })),
-          lastUpdated: data.lastUpdated?.toDate() || null,
+          lastUpdated: data.lastUpdated instanceof Timestamp ? data.lastUpdated.toDate() : null,
         });
       }
       setLoading(false);

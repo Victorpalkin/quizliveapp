@@ -9,12 +9,19 @@ import {
   onSnapshot,
   serverTimestamp,
   deleteDoc,
+  Timestamp,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirestore, useFunctions } from '@/firebase';
 import { removeUndefined } from '@/lib/firestore-utils';
 import type { PresentationGame, PresentationGameState, PresentationSettings } from '@/lib/types';
 import { nanoid } from 'nanoid';
+
+function toDate(val: unknown): Date {
+  if (val instanceof Timestamp) return val.toDate();
+  if (val instanceof Date) return val;
+  return new Date();
+}
 
 interface Player {
   id: string;
@@ -86,7 +93,7 @@ export function usePresentationGame(gameId: string | null) {
           state: data.state,
           currentSlideIndex: data.currentSlideIndex ?? 0,
           settings: data.settings,
-          createdAt: data.createdAt?.toDate() || new Date(),
+          createdAt: toDate(data.createdAt),
         });
       } else {
         setGame(null);
@@ -115,7 +122,7 @@ export function usePresentationGame(gameId: string | null) {
             score: data.score ?? 0,
             streak: data.currentStreak ?? 0,
             maxStreak: data.maxStreak ?? 0,
-            joinedAt: data.joinedAt?.toDate() || new Date(),
+            joinedAt: toDate(data.joinedAt),
           };
         });
         setPlayers(playerList);

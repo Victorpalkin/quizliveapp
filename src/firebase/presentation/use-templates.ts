@@ -10,6 +10,7 @@ import {
   serverTimestamp,
   query,
   where,
+  Timestamp,
 } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { removeUndefined } from '@/lib/firestore-utils';
@@ -64,8 +65,8 @@ export function useTemplates() {
           theme: data.theme || DEFAULT_THEME,
           isBuiltIn: false,
           createdBy: data.createdBy,
-          createdAt: data.createdAt?.toDate(),
-          updatedAt: data.updatedAt?.toDate(),
+          createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : undefined,
+          updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : undefined,
         } as PresentationTemplate;
       });
       setTemplates(items);
