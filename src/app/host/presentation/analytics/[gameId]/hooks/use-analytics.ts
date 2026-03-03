@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 interface ElementStats {
@@ -59,7 +59,7 @@ export function useAnalytics(gameId: string) {
           averageScore: data.averageScore ?? 0,
           elementStats: data.elementStats || [],
           playerEngagement: data.playerEngagement || [],
-          completedAt: data.completedAt?.toDate(),
+          completedAt: data.completedAt instanceof Timestamp ? data.completedAt.toDate() : undefined,
         });
       }
       setLoading(false);

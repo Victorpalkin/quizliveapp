@@ -9,6 +9,7 @@ import {
   setDoc,
   onSnapshot,
   serverTimestamp,
+  Timestamp,
 } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { nanoid } from 'nanoid';
@@ -77,7 +78,7 @@ export function usePlayerStateMachine(gamePin: string) {
         state: data.state,
         currentSlideIndex: data.currentSlideIndex ?? 0,
         settings: data.settings,
-        createdAt: data.createdAt?.toDate() || new Date(),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
       });
     });
 
