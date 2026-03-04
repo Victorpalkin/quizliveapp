@@ -23,8 +23,20 @@ interface PlayerSession {
   gameId: string;
 }
 
+export interface QuizResult {
+  isCorrect: boolean;
+  points: number;
+  wasTimeout: boolean;
+}
+
 const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating'];
 const SESSION_KEY = 'zivo-pres-player-session';
+
+function toDate(val: unknown): Date | undefined {
+  if (val instanceof Timestamp) return val.toDate();
+  if (val instanceof Date) return val;
+  return undefined;
+}
 
 export function usePlayerStateMachine(gamePin: string) {
   const firestore = useFirestore();
@@ -36,6 +48,8 @@ export function usePlayerStateMachine(gamePin: string) {
   const [playerStreak, setPlayerStreak] = useState(0);
   const [loading, setLoading] = useState(true);
   const respondedRef = useRef<Set<string>>(new Set());
+  const quizResultsRef = useRef<Map<string, QuizResult>>(new Map());
+  const [quizResultsVersion, setQuizResultsVersion] = useState(0);
 
   // Restore session from localStorage
   useEffect(() => {
@@ -79,6 +93,8 @@ export function usePlayerStateMachine(gamePin: string) {
         currentSlideIndex: data.currentSlideIndex ?? 0,
         settings: data.settings,
         createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+        timerStartedAt: toDate(data.timerStartedAt),
+        timerElementId: data.timerElementId ?? undefined,
       });
     });
 
@@ -163,6 +179,14 @@ export function usePlayerStateMachine(gamePin: string) {
     (el) => INTERACTIVE_TYPES.includes(el.type)
   ) || null;
 
+  // Detect quiz-results and leaderboard elements on current slide
+  const resultsElement: SlideElement | null = currentSlide?.elements.find(
+    (el) => el.type === 'quiz-results'
+  ) || null;
+  const leaderboardElement: SlideElement | null = currentSlide?.elements.find(
+    (el) => el.type === 'leaderboard'
+  ) || null;
+
   // Track responded elements
   const markResponded = useCallback((elementId: string) => {
     respondedRef.current.add(elementId);
@@ -172,12 +196,39 @@ export function usePlayerStateMachine(gamePin: string) {
     return respondedRef.current.has(elementId);
   }, []);
 
+  // Store quiz result for an element
+  const storeQuizResult = useCallback((elementId: string, result: QuizResult) => {
+    quizResultsRef.current.set(elementId, result);
+    setQuizResultsVersion((v) => v + 1);
+  }, []);
+
+  // Handle timeout (player didn't answer in time)
+  const handleTimeout = useCallback((elementId: string) => {
+    if (!respondedRef.current.has(elementId)) {
+      respondedRef.current.add(elementId);
+      quizResultsRef.current.set(elementId, {
+        isCorrect: false,
+        points: 0,
+        wasTimeout: true,
+      });
+      setQuizResultsVersion((v) => v + 1);
+    }
+  }, []);
+
+  // Get quiz result for an element
+  const getQuizResult = useCallback((elementId: string): QuizResult | null => {
+    return quizResultsRef.current.get(elementId) ?? null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quizResultsVersion]);
+
   return {
     state,
     game,
     session,
     currentSlide,
     interactiveElement,
+    resultsElement,
+    leaderboardElement,
     slides,
     playerScore,
     playerStreak,
@@ -185,5 +236,8 @@ export function usePlayerStateMachine(gamePin: string) {
     joinGame,
     markResponded,
     hasResponded,
+    storeQuizResult,
+    handleTimeout,
+    getQuizResult,
   };
 }

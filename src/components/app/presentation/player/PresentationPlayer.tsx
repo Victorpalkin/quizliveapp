@@ -11,7 +11,10 @@ import { PlayerQuiz } from './elements/PlayerQuiz';
 import { PlayerPoll } from './elements/PlayerPoll';
 import { PlayerThoughts } from './elements/PlayerThoughts';
 import { PlayerRating } from './elements/PlayerRating';
+import { PlayerQuizResult } from './elements/PlayerQuizResult';
+import { PlayerLeaderboardView } from './elements/PlayerLeaderboardView';
 import type { PresentationGame, PresentationSlide, SlideElement } from '@/lib/types';
+import type { QuizResult } from '@/app/play/presentation/[gamePin]/hooks/use-player-state-machine';
 
 interface PlayerSession {
   playerId: string;
@@ -25,12 +28,17 @@ interface PresentationPlayerProps {
   session: PlayerSession | null;
   currentSlide: PresentationSlide | null;
   interactiveElement: SlideElement | null;
+  resultsElement: SlideElement | null;
+  leaderboardElement: SlideElement | null;
   slides: PresentationSlide[];
   playerScore: number;
   playerStreak: number;
   joinGame: (name: string) => Promise<void>;
   markResponded: (elementId: string) => void;
   hasResponded: (elementId: string) => boolean;
+  storeQuizResult: (elementId: string, result: QuizResult) => void;
+  handleTimeout: (elementId: string) => void;
+  getQuizResult: (elementId: string) => QuizResult | null;
 }
 
 function AnimatedScore({ value }: { value: number }) {
@@ -63,11 +71,16 @@ export function PresentationPlayer({
   session,
   currentSlide,
   interactiveElement,
+  resultsElement,
+  leaderboardElement,
   playerScore,
   playerStreak,
   joinGame,
   markResponded,
   hasResponded,
+  storeQuizResult,
+  handleTimeout,
+  getQuizResult,
 }: PresentationPlayerProps) {
   const [name, setName] = useState('');
   const [joining, setJoining] = useState(false);
@@ -263,7 +276,10 @@ export function PresentationPlayer({
                       gameId={game.id}
                       playerId={session.playerId}
                       playerName={session.playerName}
+                      timerStartedAt={game.timerStartedAt ?? null}
                       onSubmitted={() => markResponded(interactiveElement.id)}
+                      onResult={storeQuizResult}
+                      onTimeout={handleTimeout}
                     />
                   )}
                   {interactiveElement.type === 'poll' && game && session && (
@@ -293,6 +309,38 @@ export function PresentationPlayer({
                       onSubmitted={() => markResponded(interactiveElement.id)}
                     />
                   )}
+                </motion.div>
+              ) : resultsElement?.sourceElementId && game && session ? (
+                <motion.div
+                  key={`results-${resultsElement.id}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="h-full"
+                >
+                  <PlayerQuizResult
+                    sourceElementId={resultsElement.sourceElementId}
+                    getQuizResult={getQuizResult}
+                    playerScore={playerScore}
+                    playerStreak={playerStreak}
+                  />
+                </motion.div>
+              ) : leaderboardElement && game && session ? (
+                <motion.div
+                  key={`leaderboard-${leaderboardElement.id}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="h-full"
+                >
+                  <PlayerLeaderboardView
+                    gameId={game.id}
+                    playerId={session.playerId}
+                    playerScore={playerScore}
+                    playerStreak={playerStreak}
+                  />
                 </motion.div>
               ) : (
                 <motion.div

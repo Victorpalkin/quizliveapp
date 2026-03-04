@@ -1,19 +1,27 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Clock } from 'lucide-react';
 import { ANSWER_COLORS } from '@/lib/constants';
 import { useResponseCount } from '@/firebase/presentation';
+import { usePresentationTimer } from '@/hooks/use-presentation-timer';
+import { CircularTimer } from '@/components/app/circular-timer';
 import type { SlideElement } from '@/lib/types';
 
 interface HostQuizElementProps {
   element: SlideElement;
   gameId: string;
   playerCount: number;
+  timerStartedAt: Date | null;
 }
 
-export function HostQuizElement({ element, gameId, playerCount }: HostQuizElementProps) {
+export function HostQuizElement({ element, gameId, playerCount, timerStartedAt }: HostQuizElementProps) {
   const config = element.quizConfig;
   const count = useResponseCount(gameId, element.id);
+  const { timeRemaining, isExpired } = usePresentationTimer(
+    timerStartedAt,
+    config?.timeLimit ?? 0
+  );
 
   if (!config) return null;
 
@@ -22,7 +30,7 @@ export function HostQuizElement({ element, gameId, playerCount }: HostQuizElemen
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <div className="w-full h-full flex flex-col p-4">
+    <div className="w-full h-full flex flex-col p-4 relative">
       {/* Question */}
       <motion.h2
         initial={{ opacity: 0, y: -10 }}
@@ -48,7 +56,7 @@ export function HostQuizElement({ element, gameId, playerCount }: HostQuizElemen
         ))}
       </div>
 
-      {/* Response counter with progress ring */}
+      {/* Response counter + timer */}
       <div className="flex items-center justify-between mt-3 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="relative w-10 h-10">
@@ -70,11 +78,52 @@ export function HostQuizElement({ element, gameId, playerCount }: HostQuizElemen
           <span className="text-sm text-muted-foreground">/ {playerCount} answered</span>
         </div>
         {config.timeLimit > 0 && (
-          <span className="font-mono text-lg font-bold text-foreground">
-            {config.timeLimit}s
-          </span>
+          <CircularTimer
+            time={timeRemaining}
+            timeLimit={config.timeLimit}
+            size={48}
+            strokeWidth={3}
+          />
         )}
       </div>
+
+      {/* Time's Up overlay */}
+      <AnimatePresence>
+        {isExpired && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-xl z-10"
+          >
+            <div className="text-center">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
+              >
+                <Clock className="w-16 h-16 text-orange-400 mx-auto mb-3" />
+              </motion.div>
+              <motion.h3
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-3xl font-bold text-white"
+              >
+                Time&apos;s Up!
+              </motion.h3>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="text-white/70 mt-2"
+              >
+                {count} of {playerCount} answered
+              </motion.p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

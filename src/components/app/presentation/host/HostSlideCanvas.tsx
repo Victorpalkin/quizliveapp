@@ -23,9 +23,11 @@ interface HostSlideCanvasProps {
   gameId: string;
   playerCount: number;
   playerNames: string[];
+  timerStartedAt: Date | null;
+  timerElementId: string | null;
 }
 
-export function HostSlideCanvas({ slide, slides, gameId, playerCount, playerNames }: HostSlideCanvasProps) {
+export function HostSlideCanvas({ slide, slides, gameId, playerCount, playerNames, timerStartedAt, timerElementId }: HostSlideCanvasProps) {
   const bgStyle: React.CSSProperties = {};
   if (slide.background) {
     if (slide.background.type === 'solid' && slide.background.color) {
@@ -66,7 +68,7 @@ export function HostSlideCanvas({ slide, slides, gameId, playerCount, playerName
           {element.type === 'text' && <HostTextElement element={element} />}
           {element.type === 'image' && <HostImageElement element={element} />}
           {element.type === 'shape' && <HostShapeElement element={element} />}
-          {element.type === 'quiz' && <HostQuizElement element={element} gameId={gameId} playerCount={playerCount} />}
+          {element.type === 'quiz' && <HostQuizElement element={element} gameId={gameId} playerCount={playerCount} timerStartedAt={timerElementId === element.id ? timerStartedAt : null} />}
           {element.type === 'poll' && <HostPollElement element={element} gameId={gameId} playerCount={playerCount} />}
           {element.type === 'thoughts' && <HostThoughtsElement element={element} gameId={gameId} playerCount={playerCount} />}
           {element.type === 'rating' && <HostRatingElement element={element} gameId={gameId} playerCount={playerCount} />}

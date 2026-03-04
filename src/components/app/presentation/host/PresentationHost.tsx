@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { usePresentationById } from '@/firebase/presentation/use-presentation';
@@ -28,6 +29,33 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
   const router = useRouter();
   const { presentation, loading } = usePresentationById(game.presentationId);
   const controls = usePresentationControls(game.id);
+
+  // Auto-start/clear timer when slide changes
+  const timerStartedForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!presentation || game.state !== 'active') return;
+
+    const slide = presentation.slides[game.currentSlideIndex];
+    if (!slide) return;
+
+    const quizElement = slide.elements.find(
+      (el) => el.type === 'quiz' && el.quizConfig && el.quizConfig.timeLimit > 0
+    );
+
+    if (quizElement) {
+      // Only start timer if we haven't started it for this element already
+      if (timerStartedForRef.current !== quizElement.id) {
+        timerStartedForRef.current = quizElement.id;
+        controls.startSlideTimer(quizElement.id);
+      }
+    } else {
+      // Non-quiz slide — clear timer if one was running
+      if (timerStartedForRef.current) {
+        timerStartedForRef.current = null;
+        controls.clearSlideTimer();
+      }
+    }
+  }, [game.currentSlideIndex, game.state, presentation, controls]);
 
   if (loading) {
     return (
@@ -88,6 +116,8 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
                 gameId={game.id}
                 playerCount={players.length}
                 playerNames={playerNames}
+                timerStartedAt={game.timerStartedAt ?? null}
+                timerElementId={game.timerElementId ?? null}
               />
             </motion.div>
           </AnimatePresence>

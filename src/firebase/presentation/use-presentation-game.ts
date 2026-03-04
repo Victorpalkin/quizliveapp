@@ -9,6 +9,7 @@ import {
   onSnapshot,
   serverTimestamp,
   deleteDoc,
+  deleteField,
   Timestamp,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -94,6 +95,8 @@ export function usePresentationGame(gameId: string | null) {
           currentSlideIndex: data.currentSlideIndex ?? 0,
           settings: data.settings,
           createdAt: toDate(data.createdAt),
+          timerStartedAt: data.timerStartedAt ? toDate(data.timerStartedAt) : undefined,
+          timerElementId: data.timerElementId ?? undefined,
         });
       } else {
         setGame(null);
@@ -185,6 +188,25 @@ export function usePresentationControls(gameId: string | null) {
     await updateState('ended');
   }, [updateState]);
 
+  const startSlideTimer = useCallback(
+    async (elementId: string) => {
+      if (!firestore || !gameId) return;
+      await updateDoc(doc(firestore, 'games', gameId), {
+        timerStartedAt: serverTimestamp(),
+        timerElementId: elementId,
+      });
+    },
+    [firestore, gameId]
+  );
+
+  const clearSlideTimer = useCallback(async () => {
+    if (!firestore || !gameId) return;
+    await updateDoc(doc(firestore, 'games', gameId), {
+      timerStartedAt: deleteField(),
+      timerElementId: deleteField(),
+    });
+  }, [firestore, gameId]);
+
   const deleteGame = useCallback(async () => {
     if (!firestore || !gameId) return;
     await deleteDoc(doc(firestore, 'games', gameId));
@@ -197,6 +219,8 @@ export function usePresentationControls(gameId: string | null) {
     nextSlide,
     prevSlide,
     goToSlide,
+    startSlideTimer,
+    clearSlideTimer,
     deleteGame,
   };
 }

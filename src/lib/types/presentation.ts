@@ -187,6 +187,8 @@ export interface PresentationGame {
   currentSlideIndex: number;
   settings: PresentationSettings;
   createdAt: Date;
+  timerStartedAt?: Date;    // Server timestamp when quiz timer started
+  timerElementId?: string;  // Which quiz element the timer is for
 }
 
 /** Player response for a presentation element */
