@@ -151,5 +151,4 @@ For detailed monitoring documentation, see the [Deployment Guide](docs/deploymen
 |----------|-------------|
 | **[Deployment Guide](docs/deployment/DEPLOYMENT.md)** | Complete deployment setup for dev/prod environments |
 | **[Architecture Blueprint](docs/architecture/blueprint.md)** | System design, state management, timer sync, security |
-| **[Bug Fixes & Solutions](docs/development/FIXES_AND_SOLUTIONS.md)** | Technical solutions and lessons learned |
 | **[Feature Backlog](docs/development/BACKLOG.md)** | Planned features and improvements |

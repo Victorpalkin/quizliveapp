@@ -106,6 +106,10 @@ export const submitPresentationAnswer = onCall(
         throw new HttpsError('not-found', 'Player not found');
       }
 
+      // Read leaderboard before any writes (Firestore requires all reads before writes)
+      const leaderboardRef = db.doc(`games/${gameId}/aggregates/leaderboard`);
+      const leaderboardDoc = await transaction.get(leaderboardRef);
+
       const playerData = playerDoc.data()!;
       const currentStreak = playerData.currentStreak || 0;
 
@@ -148,8 +152,6 @@ export const submitPresentationAnswer = onCall(
       });
 
       // Update leaderboard (simplified - update in-place)
-      const leaderboardRef = db.doc(`games/${gameId}/aggregates/leaderboard`);
-      const leaderboardDoc = await transaction.get(leaderboardRef);
       const topPlayers: Array<{ playerId: string; playerName: string; score: number; streak: number }> =
         leaderboardDoc.exists ? leaderboardDoc.data()!.topPlayers || [] : [];
 
