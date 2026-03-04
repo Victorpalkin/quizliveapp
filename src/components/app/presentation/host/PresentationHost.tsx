@@ -9,6 +9,7 @@ import { HostSlideCanvas } from './HostSlideCanvas';
 import { HostOverlay } from './HostOverlay';
 import { HostControls } from './HostControls';
 import { ReactionOverlay } from './ReactionOverlay';
+import { ReactionCountBar } from './ReactionCountBar';
 import type { PresentationGame } from '@/lib/types';
 
 interface Player {
@@ -130,9 +131,12 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
             playerCount={players.length}
           />
 
-          {/* Reactions floating up */}
+          {/* Reactions floating up + counts bar */}
           {game.settings.enableReactions && (
-            <ReactionOverlay gameId={game.id} />
+            <>
+              <ReactionOverlay gameId={game.id} />
+              <ReactionCountBar gameId={game.id} />
+            </>
           )}
 
           {/* Navigation controls (show on hover) */}

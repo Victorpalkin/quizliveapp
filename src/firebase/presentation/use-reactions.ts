@@ -31,7 +31,7 @@ export function useReactions(gameId: string | null) {
 
     const q = query(
       collection(firestore, 'games', gameId, 'reactions'),
-      orderBy('timestamp', 'desc'),
+      orderBy('timestamp', 'asc'),
       limitToLast(50)
     );
 
@@ -71,4 +71,33 @@ export function useReactions(gameId: string | null) {
   );
 
   return { reactions, sendReaction };
+}
+
+/** Hook to get accumulated reaction counts (all-time, not limited to 50) */
+export function useReactionCounts(gameId: string | null): Map<string, number> {
+  const firestore = useFirestore();
+  const [counts, setCounts] = useState<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    if (!firestore || !gameId) {
+      setCounts(new Map());
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      collection(firestore, 'games', gameId, 'reactions'),
+      (snapshot) => {
+        const map = new Map<string, number>();
+        for (const doc of snapshot.docs) {
+          const emoji = doc.data().emoji as string;
+          map.set(emoji, (map.get(emoji) ?? 0) + 1);
+        }
+        setCounts(map);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [firestore, gameId]);
+
+  return counts;
 }

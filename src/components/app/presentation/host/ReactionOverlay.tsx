@@ -19,26 +19,38 @@ interface ReactionOverlayProps {
 export function ReactionOverlay({ gameId }: ReactionOverlayProps) {
   const { reactions } = useReactions(gameId);
   const [floating, setFloating] = useState<FloatingEmoji[]>([]);
-  const lastProcessedRef = useRef<string | null>(null);
+  const processedIdsRef = useRef<Set<string>>(new Set());
 
   // Convert incoming reactions to floating emojis
   useEffect(() => {
     if (reactions.length === 0) return;
 
-    const latest = reactions[reactions.length - 1];
-    if (latest.id === lastProcessedRef.current) return;
-    lastProcessedRef.current = latest.id;
+    const now = Date.now();
+    const newEmojis: FloatingEmoji[] = [];
 
-    const newEmoji: FloatingEmoji = {
-      id: `${latest.id}-${Date.now()}`,
-      emoji: latest.emoji,
-      x: 10 + Math.random() * 80,
-      size: 1.5 + Math.random() * 1.5,
-      drift: -20 + Math.random() * 40,
-      createdAt: Date.now(),
-    };
+    for (const reaction of reactions) {
+      if (processedIdsRef.current.has(reaction.id)) continue;
+      processedIdsRef.current.add(reaction.id);
 
-    setFloating((prev) => [...prev.slice(-20), newEmoji]);
+      newEmojis.push({
+        id: `${reaction.id}-${now}`,
+        emoji: reaction.emoji,
+        x: 10 + Math.random() * 80,
+        size: 1.5 + Math.random() * 1.5,
+        drift: -20 + Math.random() * 40,
+        createdAt: now,
+      });
+    }
+
+    if (newEmojis.length > 0) {
+      setFloating((prev) => [...prev, ...newEmojis].slice(-30));
+    }
+
+    // Cap the processed set to prevent unbounded growth
+    if (processedIdsRef.current.size > 200) {
+      const ids = Array.from(processedIdsRef.current);
+      processedIdsRef.current = new Set(ids.slice(-100));
+    }
   }, [reactions]);
 
   // Clean up old emojis
