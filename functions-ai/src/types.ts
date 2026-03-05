@@ -214,6 +214,7 @@ export interface GeneratePresentationRequest {
   prompt: string;
   conversationHistory?: ChatMessage[];
   currentPresentation?: GeneratedPresentation;
+  attachedContent?: string;
 }
 
 // Response from generate presentation

@@ -19,6 +19,72 @@ import { HostQAElement } from './elements/HostQAElement';
 import { HostSpinWheelElement } from './elements/HostSpinWheelElement';
 import type { PresentationSlide } from '@/lib/types';
 
+// Light-mode theme values (from :root in globals.css) — used on light slide backgrounds
+const LIGHT_BG_VARS: Record<string, string> = {
+  '--foreground': '0 0% 9%',
+  '--background': '0 0% 100%',
+  '--muted': '0 0% 96%',
+  '--muted-foreground': '0 0% 45%',
+  '--border': '0 0% 93%',
+  '--card-foreground': '0 0% 9%',
+  '--secondary': '0 0% 96%',
+  '--secondary-foreground': '0 0% 9%',
+  '--input': '0 0% 90%',
+};
+
+// Dark-mode theme values (from .dark in globals.css) — used on dark slide backgrounds
+const DARK_BG_VARS: Record<string, string> = {
+  '--foreground': '0 0% 98%',
+  '--background': '222 47% 11%',
+  '--muted': '217 33% 21%',
+  '--muted-foreground': '0 0% 65%',
+  '--border': '217 33% 25%',
+  '--card-foreground': '0 0% 98%',
+  '--secondary': '217 33% 21%',
+  '--secondary-foreground': '0 0% 98%',
+  '--input': '217 33% 21%',
+};
+
+/** Parse a hex color (#rgb or #rrggbb) to [r, g, b] in 0–1 range */
+function hexToRgb(hex: string): [number, number, number] {
+  hex = hex.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  return [r, g, b];
+}
+
+/** Compute WCAG relative luminance from linear RGB values */
+function relativeLuminance(r: number, g: number, b: number): number {
+  const toLinear = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+}
+
+/** Determine the luminance of a slide background (0 = black, 1 = white) */
+function getBackgroundLuminance(background?: PresentationSlide['background']): number {
+  if (!background) return 1; // default white
+
+  if (background.type === 'solid' && background.color) {
+    const [r, g, b] = hexToRgb(background.color);
+    return relativeLuminance(r, g, b);
+  }
+
+  if (background.type === 'gradient' && background.gradient) {
+    // Extract the first hex color from the gradient string
+    const hexMatch = background.gradient.match(/#[0-9a-fA-F]{3,6}/);
+    if (hexMatch) {
+      const [r, g, b] = hexToRgb(hexMatch[0]);
+      return relativeLuminance(r, g, b);
+    }
+  }
+
+  // Image backgrounds — assume light (most common)
+  return 1;
+}
+
 interface HostSlideCanvasProps {
   slide: PresentationSlide;
   slides: PresentationSlide[];
@@ -45,11 +111,14 @@ export function HostSlideCanvas({ slide, slides, gameId, playerCount, playerName
     bgStyle.backgroundColor = '#ffffff';
   }
 
+  // Pick light or dark theme overrides based on slide background luminance
+  const themeVars = getBackgroundLuminance(slide.background) < 0.5 ? DARK_BG_VARS : LIGHT_BG_VARS;
+
   // Sort elements by zIndex for proper layering
   const sortedElements = [...slide.elements].sort((a, b) => a.zIndex - b.zIndex);
 
   return (
-    <div className="relative w-full h-full" style={bgStyle}>
+    <div className="relative w-full h-full" style={{ ...bgStyle, ...themeVars } as React.CSSProperties}>
       {sortedElements.map((element, i) => (
         <motion.div
           key={element.id}

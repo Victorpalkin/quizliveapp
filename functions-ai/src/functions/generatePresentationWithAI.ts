@@ -219,7 +219,8 @@ When the user asks to modify an existing presentation:
 function buildContents(
   prompt: string,
   conversationHistory?: ChatMessage[],
-  currentPresentation?: GeneratedPresentation
+  currentPresentation?: GeneratedPresentation,
+  attachedContent?: string
 ): Array<{ role: string; parts: Array<{ text: string }> }> {
   const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
 
@@ -234,10 +235,14 @@ function buildContents(
   }
 
   // Build current user message
-  let userMessage = prompt;
-  if (currentPresentation) {
-    userMessage = `Current presentation state:\n${JSON.stringify(currentPresentation, null, 2)}\n\nUser request: ${prompt}`;
+  let userMessage = '';
+  if (attachedContent) {
+    userMessage += `Reference content provided by the user:\n${attachedContent}\n\n`;
   }
+  if (currentPresentation) {
+    userMessage += `Current presentation state:\n${JSON.stringify(currentPresentation, null, 2)}\n\n`;
+  }
+  userMessage += currentPresentation || attachedContent ? `User request: ${prompt}` : prompt;
 
   contents.push({
     role: 'user',
@@ -537,6 +542,14 @@ export const generatePresentationWithAI = onCall(
       );
     }
 
+    // Validate attached content
+    if (data.attachedContent && typeof data.attachedContent === 'string' && data.attachedContent.length > 50000) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Attached content must be less than 50,000 characters'
+      );
+    }
+
     try {
       // Initialize Gemini client with Vertex AI
       const client = new GoogleGenAI({
@@ -549,7 +562,8 @@ export const generatePresentationWithAI = onCall(
       const contents = buildContents(
         data.prompt,
         data.conversationHistory,
-        data.currentPresentation
+        data.currentPresentation,
+        data.attachedContent
       );
 
       // Call Gemini
