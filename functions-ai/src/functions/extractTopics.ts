@@ -8,6 +8,7 @@ import { findSimilarAgents, getTopMatureAgents, MatchingAgent } from '../utils/v
 interface ExtractTopicsRequest {
   gameId: string;
   slideId?: string; // Optional: for presentation slides - filter by slide and skip state updates
+  elementId?: string; // Optional: for presentation elements - read from responses collection filtered by elementId
 }
 
 interface ExtractTopicsResponse {
@@ -173,8 +174,8 @@ export const extractTopics = onCall(
       throw new HttpsError('permission-denied', 'Only the game host can process submissions');
     }
 
-    // Verify this is a Thoughts Gathering game OR a presentation (when slideId is provided)
-    const isPresentation = !!data.slideId;
+    // Verify this is a Thoughts Gathering game OR a presentation (when slideId/elementId is provided)
+    const isPresentation = !!data.slideId || !!data.elementId;
     if (!isPresentation && gameData?.activityType !== 'thoughts-gathering') {
       throw new HttpsError('failed-precondition', 'This game is not a Thoughts Gathering activity');
     }
@@ -188,49 +189,90 @@ export const extractTopics = onCall(
       }
     }
 
-    // Get submissions for this game (optionally filtered by slideId for presentations)
-    let submissionsQuery: admin.firestore.Query = db
-      .collection('games')
-      .doc(data.gameId)
-      .collection('submissions');
+    // Determine topics document ID
+    const topicsDocId = data.elementId
+      ? `topics-${data.elementId}`
+      : data.slideId
+        ? `topics-${data.slideId}`
+        : 'topics';
 
-    if (data.slideId) {
-      submissionsQuery = submissionsQuery.where('slideId', '==', data.slideId);
-    }
+    let submissions: InterestSubmission[];
 
-    const submissionsSnapshot = await submissionsQuery.get();
+    if (data.elementId) {
+      // For presentation elements: read from responses collection filtered by elementId
+      const responsesQuery = db
+        .collection('games')
+        .doc(data.gameId)
+        .collection('responses')
+        .where('elementId', '==', data.elementId);
 
-    // Determine topics document ID based on whether this is for a specific slide
-    const topicsDocId = data.slideId ? `topics-${data.slideId}` : 'topics';
+      const responsesSnapshot = await responsesQuery.get();
 
-    if (submissionsSnapshot.empty) {
-      // No submissions - update game state (only for standalone, not presentations)
-      if (!isPresentation) {
-        await db.collection('games').doc(data.gameId).update({
-          state: 'display',
+      if (responsesSnapshot.empty) {
+        await db.collection('games').doc(data.gameId).collection('aggregates').doc(topicsDocId).set({
+          topics: [],
+          totalSubmissions: 0,
+          processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          elementId: data.elementId,
+        });
+        return { success: true, topicCount: 0, submissionCount: 0 };
+      }
+
+      // Convert responses' textAnswers[] into individual submission-like objects
+      submissions = [];
+      for (const docSnap of responsesSnapshot.docs) {
+        const respData = docSnap.data();
+        const textAnswers: string[] = respData.textAnswers || [];
+        textAnswers.forEach((text: string, idx: number) => {
+          submissions.push({
+            id: `${docSnap.id}-${idx}`,
+            playerId: respData.playerId,
+            playerName: respData.playerName,
+            rawText: text,
+          });
         });
       }
 
-      // Write empty topics aggregate
-      await db.collection('games').doc(data.gameId).collection('aggregates').doc(topicsDocId).set({
-        topics: [],
-        totalSubmissions: 0,
-        processedAt: admin.firestore.FieldValue.serverTimestamp(),
-        ...(data.slideId && { slideId: data.slideId }),
-      });
+      if (submissions.length === 0) {
+        await db.collection('games').doc(data.gameId).collection('aggregates').doc(topicsDocId).set({
+          topics: [],
+          totalSubmissions: 0,
+          processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          elementId: data.elementId,
+        });
+        return { success: true, topicCount: 0, submissionCount: 0 };
+      }
+    } else {
+      // Original path: read from submissions collection
+      let submissionsQuery: admin.firestore.Query = db
+        .collection('games')
+        .doc(data.gameId)
+        .collection('submissions');
 
-      return {
-        success: true,
-        topicCount: 0,
-        submissionCount: 0,
-      };
+      if (data.slideId) {
+        submissionsQuery = submissionsQuery.where('slideId', '==', data.slideId);
+      }
+
+      const submissionsSnapshot = await submissionsQuery.get();
+
+      if (submissionsSnapshot.empty) {
+        if (!isPresentation) {
+          await db.collection('games').doc(data.gameId).update({ state: 'display' });
+        }
+        await db.collection('games').doc(data.gameId).collection('aggregates').doc(topicsDocId).set({
+          topics: [],
+          totalSubmissions: 0,
+          processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          ...(data.slideId && { slideId: data.slideId }),
+        });
+        return { success: true, topicCount: 0, submissionCount: 0 };
+      }
+
+      submissions = submissionsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data() as Omit<InterestSubmission, 'id'>,
+      }));
     }
-
-    // Prepare submissions for topic extraction
-    const submissions: InterestSubmission[] = submissionsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data() as Omit<InterestSubmission, 'id'>,
-    }));
 
     // Build the extraction request
     const submissionsForAI = submissions.map(s => ({
@@ -290,6 +332,7 @@ Create meaningful groups based on the specific subject matter of each response. 
         totalSubmissions: submissions.length,
         processedAt: admin.firestore.FieldValue.serverTimestamp(),
         ...(data.slideId && { slideId: data.slideId }),
+        ...(data.elementId && { elementId: data.elementId }),
       };
 
       // If agentic use cases collection is enabled, match topics with AI agents

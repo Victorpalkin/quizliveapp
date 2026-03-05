@@ -18,8 +18,8 @@ interface SlideCanvasProps {
   theme: PresentationTheme;
 }
 
-const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating'];
-const RESULTS_TYPES = ['quiz-results', 'poll-results', 'thoughts-results', 'rating-results'];
+const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
+const RESULTS_TYPES = ['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results'];
 const SPECIAL_TYPES = ['leaderboard', 'qa', 'spin-wheel'];
 
 function ElementRenderer({

@@ -16,6 +16,7 @@ export { computeEvaluationResults } from './functions/computeEvaluationResults';
 export { initPresentationGame } from './functions/initPresentationGame';
 export { submitPresentationAnswer } from './functions/submitPresentationAnswer';
 export { computePresentationAnalytics } from './functions/computePresentationAnalytics';
+export { computePresentationEvaluationResults } from './functions/computePresentationEvaluationResults';
 
 // Export Cleanup Triggers
 export { onGameDeleted } from './functions/cleanupSubmissions';

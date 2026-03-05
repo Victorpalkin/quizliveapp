@@ -21,18 +21,20 @@ export type SlideElementType =
   | 'poll'
   | 'thoughts'
   | 'rating'
+  | 'evaluation'
   // Results (display-only, reference a source element)
   | 'quiz-results'
   | 'poll-results'
   | 'thoughts-results'
   | 'rating-results'
+  | 'evaluation-results'
   // Special elements
   | 'leaderboard'
   | 'qa'
   | 'spin-wheel';
 
 /** Which element types are interactive (player submits a response) */
-export const INTERACTIVE_ELEMENT_TYPES: SlideElementType[] = ['quiz', 'poll', 'thoughts', 'rating'];
+export const INTERACTIVE_ELEMENT_TYPES: SlideElementType[] = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
 
 /**
  * Canvas element positioned on a slide.
@@ -105,6 +107,23 @@ export interface SlideElement {
   qaConfig?: {
     topic?: string;
     moderationEnabled: boolean;
+  };
+
+  evaluationConfig?: {
+    title: string;
+    description?: string;
+    items: { id: string; text: string; description?: string }[];
+    metrics: {
+      id: string;
+      name: string;
+      description?: string;
+      scaleType: 'stars' | 'numeric' | 'labels';
+      scaleMin: number;
+      scaleMax: number;
+      scaleLabels?: string[];
+      weight: number;
+      lowerIsBetter: boolean;
+    }[];
   };
 
   spinWheelConfig?: {
@@ -206,6 +225,7 @@ export interface PresentationElementResponse {
   answerIndices?: number[];
   textAnswers?: string[];
   ratingValue?: number;
+  evaluationRatings?: Record<string, Record<string, number>>; // itemId -> metricId -> value
 }
 
 /** Live reaction from a player */

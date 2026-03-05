@@ -12,6 +12,7 @@ const RESULTS_CONFIG: Record<string, { label: string; color: string }> = {
   'poll-results': { label: 'Poll Results', color: 'text-teal-500' },
   'thoughts-results': { label: 'Thoughts Results', color: 'text-blue-500' },
   'rating-results': { label: 'Rating Results', color: 'text-orange-500' },
+  'evaluation-results': { label: 'Evaluation Results', color: 'text-indigo-500' },
 };
 
 export function ResultsElement({ element }: ResultsElementProps) {

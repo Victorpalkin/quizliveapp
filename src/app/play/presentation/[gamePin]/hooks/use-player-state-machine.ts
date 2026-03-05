@@ -29,7 +29,7 @@ export interface QuizResult {
   wasTimeout: boolean;
 }
 
-const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating'];
+const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
 const SESSION_KEY = 'zivo-pres-player-session';
 
 function toDate(val: unknown): Date | undefined {
@@ -179,9 +179,10 @@ export function usePlayerStateMachine(gamePin: string) {
     (el) => INTERACTIVE_TYPES.includes(el.type)
   ) || null;
 
-  // Detect quiz-results and leaderboard elements on current slide
+  // Detect results elements on current slide
+  const RESULTS_TYPES = ['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results'];
   const resultsElement: SlideElement | null = currentSlide?.elements.find(
-    (el) => el.type === 'quiz-results'
+    (el) => RESULTS_TYPES.includes(el.type)
   ) || null;
   const leaderboardElement: SlideElement | null = currentSlide?.elements.find(
     (el) => el.type === 'leaderboard'

@@ -11,7 +11,7 @@ import type {
   PresentationTheme,
 } from '@/lib/types';
 
-const INTERACTIVE_TYPES: SlideElementType[] = ['quiz', 'poll', 'thoughts', 'rating'];
+const INTERACTIVE_TYPES: SlideElementType[] = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
 
 interface EditorState {
   slides: PresentationSlide[];
@@ -236,6 +236,8 @@ export function useEditorState(initial?: {
         'poll-results': { x: 10, y: 10, width: 80, height: 70 },
         'thoughts-results': { x: 10, y: 10, width: 80, height: 70 },
         'rating-results': { x: 10, y: 10, width: 80, height: 70 },
+        evaluation: { x: 5, y: 10, width: 90, height: 75 },
+        'evaluation-results': { x: 5, y: 5, width: 90, height: 85 },
         leaderboard: { x: 10, y: 5, width: 80, height: 90 },
         qa: { x: 10, y: 10, width: 80, height: 70 },
         'spin-wheel': { x: 20, y: 10, width: 60, height: 80 },
@@ -264,6 +266,18 @@ export function useEditorState(initial?: {
         }),
         ...(type === 'rating' && {
           ratingConfig: { itemTitle: 'Rate this item', metricType: 'stars' as const, min: 1, max: 5 },
+        }),
+        ...(type === 'evaluation' && {
+          evaluationConfig: {
+            title: 'Evaluate items',
+            items: [
+              { id: nanoid(), text: 'Item 1' },
+              { id: nanoid(), text: 'Item 2' },
+            ],
+            metrics: [
+              { id: nanoid(), name: 'Rating', scaleType: 'stars' as const, scaleMin: 1, scaleMax: 5, weight: 1, lowerIsBetter: false },
+            ],
+          },
         }),
         ...(type === 'leaderboard' && {
           leaderboardConfig: { maxDisplay: 10, showScores: true },

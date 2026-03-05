@@ -1,6 +1,6 @@
 'use client';
 
-import { FileQuestion, Vote, MessageSquare, Star, Trophy, HelpCircle, Disc3 } from 'lucide-react';
+import { FileQuestion, Vote, MessageSquare, Star, Trophy, HelpCircle, Disc3, ClipboardList } from 'lucide-react';
 import type { SlideElement } from '@/lib/types';
 
 interface InteractiveElementProps {
@@ -15,6 +15,7 @@ const CONFIG = {
   leaderboard: { icon: Trophy, label: 'Leaderboard', color: 'bg-yellow-500/10 border-yellow-500/30', textColor: 'text-yellow-600' },
   qa: { icon: HelpCircle, label: 'Q&A', color: 'bg-green-500/10 border-green-500/30', textColor: 'text-green-600' },
   'spin-wheel': { icon: Disc3, label: 'Spin Wheel', color: 'bg-pink-500/10 border-pink-500/30', textColor: 'text-pink-600' },
+  evaluation: { icon: ClipboardList, label: 'Evaluation', color: 'bg-indigo-500/10 border-indigo-500/30', textColor: 'text-indigo-600' },
 };
 
 export function InteractiveElement({ element }: InteractiveElementProps) {
@@ -29,6 +30,7 @@ export function InteractiveElement({ element }: InteractiveElementProps) {
     if (element.type === 'poll' && element.pollConfig) return element.pollConfig.question;
     if (element.type === 'thoughts' && element.thoughtsConfig) return element.thoughtsConfig.prompt;
     if (element.type === 'rating' && element.ratingConfig) return element.ratingConfig.itemTitle;
+    if (element.type === 'evaluation' && element.evaluationConfig) return element.evaluationConfig.title;
     if (element.type === 'leaderboard') return 'Leaderboard';
     if (element.type === 'qa') return element.qaConfig?.topic || 'Q&A';
     if (element.type === 'spin-wheel') return 'Spin the Wheel';
@@ -71,6 +73,22 @@ export function InteractiveElement({ element }: InteractiveElementProps) {
               {opt.text}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Evaluation items preview */}
+      {element.type === 'evaluation' && element.evaluationConfig && (
+        <div className="space-y-0.5 w-full mt-1">
+          {element.evaluationConfig.items.slice(0, 3).map((item, i) => (
+            <div key={i} className="text-[10px] px-2 py-0.5 bg-muted rounded truncate text-muted-foreground">
+              {item.text}
+            </div>
+          ))}
+          {element.evaluationConfig.items.length > 3 && (
+            <div className="text-[10px] px-2 text-muted-foreground/60">
+              +{element.evaluationConfig.items.length - 3} more
+            </div>
+          )}
         </div>
       )}
     </div>

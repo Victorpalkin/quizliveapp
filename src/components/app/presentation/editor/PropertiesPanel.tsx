@@ -12,6 +12,7 @@ import { RatingProperties } from './properties/RatingProperties';
 import { LeaderboardProperties } from './properties/LeaderboardProperties';
 import { QAProperties } from './properties/QAProperties';
 import { SpinWheelProperties } from './properties/SpinWheelProperties';
+import { EvaluationProperties } from './properties/EvaluationProperties';
 import { ResultsProperties } from './properties/ResultsProperties';
 import { SlideProperties } from './properties/SlideProperties';
 
@@ -88,7 +89,10 @@ export function PropertiesPanel({
       {selectedElement.type === 'spin-wheel' && (
         <SpinWheelProperties element={selectedElement} onUpdate={onUpdateElement} />
       )}
-      {['quiz-results', 'poll-results', 'thoughts-results', 'rating-results'].includes(selectedElement.type) && (
+      {selectedElement.type === 'evaluation' && (
+        <EvaluationProperties element={selectedElement} onUpdate={onUpdateElement} />
+      )}
+      {['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results'].includes(selectedElement.type) && (
         <ResultsProperties element={selectedElement} slides={slides} onUpdate={onUpdateElement} />
       )}
     </div>

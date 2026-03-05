@@ -47,6 +47,7 @@ export function useResponses(gameId: string | null) {
             answerIndices: data.answerIndices,
             textAnswers: data.textAnswers,
             ratingValue: data.ratingValue,
+            evaluationRatings: data.evaluationRatings,
           } as PresentationElementResponse;
         });
         setResponses(items);
@@ -89,7 +90,7 @@ export function useResponses(gameId: string | null) {
     [functions]
   );
 
-  /** Submit a non-scored response (poll, thoughts, rating) directly to Firestore */
+  /** Submit a non-scored response (poll, thoughts, rating, evaluation) directly to Firestore */
   const submitResponse = useCallback(
     async (data: {
       elementId: string;
@@ -100,6 +101,7 @@ export function useResponses(gameId: string | null) {
       answerIndices?: number[];
       textAnswers?: string[];
       ratingValue?: number;
+      evaluationRatings?: Record<string, Record<string, number>>;
       timeRemaining?: number;
     }) => {
       if (!firestore || !gameId) throw new Error('Not connected');

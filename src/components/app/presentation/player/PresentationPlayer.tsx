@@ -11,6 +11,7 @@ import { PlayerQuiz } from './elements/PlayerQuiz';
 import { PlayerPoll } from './elements/PlayerPoll';
 import { PlayerThoughts } from './elements/PlayerThoughts';
 import { PlayerRating } from './elements/PlayerRating';
+import { PlayerEvaluation } from './elements/PlayerEvaluation';
 import { PlayerQuizResult } from './elements/PlayerQuizResult';
 import { PlayerLeaderboardView } from './elements/PlayerLeaderboardView';
 import type { PresentationGame, PresentationSlide, SlideElement } from '@/lib/types';
@@ -309,6 +310,15 @@ export function PresentationPlayer({
                       onSubmitted={() => markResponded(interactiveElement.id)}
                     />
                   )}
+                  {interactiveElement.type === 'evaluation' && game && session && (
+                    <PlayerEvaluation
+                      element={interactiveElement}
+                      gameId={game.id}
+                      playerId={session.playerId}
+                      playerName={session.playerName}
+                      onSubmitted={() => markResponded(interactiveElement.id)}
+                    />
+                  )}
                 </motion.div>
               ) : resultsElement?.sourceElementId && game && session ? (
                 <motion.div
@@ -319,12 +329,19 @@ export function PresentationPlayer({
                   transition={{ duration: 0.3 }}
                   className="h-full"
                 >
-                  <PlayerQuizResult
-                    sourceElementId={resultsElement.sourceElementId}
-                    getQuizResult={getQuizResult}
-                    playerScore={playerScore}
-                    playerStreak={playerStreak}
-                  />
+                  {resultsElement.type === 'quiz-results' ? (
+                    <PlayerQuizResult
+                      sourceElementId={resultsElement.sourceElementId}
+                      getQuizResult={getQuizResult}
+                      playerScore={playerScore}
+                      playerStreak={playerStreak}
+                    />
+                  ) : (
+                    <IdleView
+                      currentSlide={currentSlide}
+                      responded={false}
+                    />
+                  )}
                 </motion.div>
               ) : leaderboardElement && game && session ? (
                 <motion.div

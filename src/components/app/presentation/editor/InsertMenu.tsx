@@ -22,6 +22,7 @@ import {
   HelpCircle,
   Disc3,
   BarChart3,
+  ClipboardList,
 } from 'lucide-react';
 import type { SlideElementType } from '@/lib/types';
 
@@ -99,6 +100,12 @@ export function InsertMenu({ onInsert, disableInteractive }: InsertMenuProps) {
           </IconCircle>
           Rating
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsert('evaluation')} disabled={disableInteractive}>
+          <IconCircle className="bg-indigo-500/10 mr-2">
+            <ClipboardList className="h-3.5 w-3.5 text-indigo-500" />
+          </IconCircle>
+          Evaluation
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
@@ -115,6 +122,24 @@ export function InsertMenu({ onInsert, disableInteractive }: InsertMenuProps) {
             <BarChart3 className="h-3.5 w-3.5 text-teal-400" />
           </IconCircle>
           Poll Results
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsert('thoughts-results')}>
+          <IconCircle className="bg-blue-400/10 mr-2">
+            <BarChart3 className="h-3.5 w-3.5 text-blue-400" />
+          </IconCircle>
+          Thoughts Results
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsert('rating-results')}>
+          <IconCircle className="bg-orange-400/10 mr-2">
+            <BarChart3 className="h-3.5 w-3.5 text-orange-400" />
+          </IconCircle>
+          Rating Results
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsert('evaluation-results')}>
+          <IconCircle className="bg-indigo-400/10 mr-2">
+            <BarChart3 className="h-3.5 w-3.5 text-indigo-400" />
+          </IconCircle>
+          Evaluation Results
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsert('leaderboard')}>
           <IconCircle className="bg-yellow-500/10 mr-2">
