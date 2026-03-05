@@ -43,7 +43,7 @@ const PRODUCTION_ORIGINS = [
   'https://gquiz-prod-3r5f-684066064060.europe-west4.run.app',
   'https://gquiz-prod-3r5f-klvaspwmka-ez.a.run.app',
   // Custom domain
-  'https://quiz.palkin.nl',
+  'https://zivo.me',
 ];
 
 // Combine origins based on environment
