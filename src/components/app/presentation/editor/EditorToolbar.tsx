@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import {
   Redo2,
   Play,
   Check,
+  Loader2,
 } from 'lucide-react';
 import { InsertMenu } from './InsertMenu';
 import type { SlideElementType, PresentationSettings, PresentationTheme } from '@/lib/types';
@@ -30,6 +32,7 @@ interface EditorToolbarProps {
   theme: PresentationTheme;
   onUpdateTheme: (theme: Partial<PresentationTheme>) => void;
   presentationId?: string;
+  onPresent?: () => void | Promise<void>;
 }
 
 export function EditorToolbar({
@@ -44,7 +47,9 @@ export function EditorToolbar({
   onAddElement,
   currentSlideHasInteractive,
   presentationId,
+  onPresent,
 }: EditorToolbarProps) {
+  const [isLaunching, setIsLaunching] = useState(false);
   return (
     <div className="flex items-center gap-2 px-3 py-2 backdrop-blur-md bg-background/90 border-b border-border/50">
       {/* Back */}
@@ -98,12 +103,27 @@ export function EditorToolbar({
       <div className="flex-1" />
 
       {/* Present button */}
-      {presentationId && (
-        <Button variant="gradient" size="sm" className="shadow-lg shadow-primary/20" asChild>
-          <Link href={`/host/presentation/edit/${presentationId}`}>
+      {presentationId && onPresent && (
+        <Button
+          variant="gradient"
+          size="sm"
+          className="shadow-lg shadow-primary/20"
+          disabled={isLaunching}
+          onClick={async () => {
+            setIsLaunching(true);
+            try {
+              await onPresent();
+            } catch {
+              setIsLaunching(false);
+            }
+          }}
+        >
+          {isLaunching ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
             <Play className="h-4 w-4 mr-1.5" />
-            Present
-          </Link>
+          )}
+          Present
         </Button>
       )}
     </div>

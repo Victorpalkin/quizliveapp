@@ -3,7 +3,9 @@
 import { useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
 import { usePresentationMutations } from '@/firebase/presentation';
+import { useCreatePresentationGame } from '@/firebase/presentation/use-presentation-game';
 import { useEditorState } from '@/hooks/presentation/use-editor-state';
 import { EditorToolbar } from './EditorToolbar';
 import { SlidePanel } from './SlidePanel';
@@ -19,7 +21,9 @@ interface PresentationEditorProps {
 export function PresentationEditor({ presentation }: PresentationEditorProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useUser();
   const { createPresentation, updatePresentation } = usePresentationMutations();
+  const { createGame: createPresentationGame } = useCreatePresentationGame();
 
   const editor = useEditorState(
     presentation
@@ -61,6 +65,21 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
       toast({ variant: 'destructive', title: 'Failed to save' });
     }
   }, [presentation, editor, createPresentation, updatePresentation, router, toast]);
+
+  // Present handler: auto-save, create game, navigate to lobby
+  const handlePresent = useCallback(async () => {
+    if (!presentation || !user) return;
+    try {
+      if (editor.isDirty) {
+        await handleSave();
+      }
+      const gameId = await createPresentationGame(presentation.id, user.uid, editor.settings);
+      router.push(`/host/presentation/lobby/${gameId}`);
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not start presentation.' });
+      throw new Error('Failed to start presentation');
+    }
+  }, [presentation, user, editor.isDirty, editor.settings, handleSave, createPresentationGame, router, toast]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -125,6 +144,7 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
         theme={editor.theme}
         onUpdateTheme={editor.updateTheme}
         presentationId={presentation?.id}
+        onPresent={presentation ? handlePresent : undefined}
       />
 
       {/* 3-panel layout */}

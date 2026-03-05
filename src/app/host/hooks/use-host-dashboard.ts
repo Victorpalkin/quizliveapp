@@ -116,28 +116,28 @@ export function useHostDashboard() {
       createdAt: serverTimestamp(),
     };
 
-    addDoc(collection(firestore, 'games'), gameData)
-        .then((gameDoc) => {
-            toast({
-                title: 'Game Created!',
-                description: 'Your game lobby is now open.',
-            });
-            router.push(`/host/quiz/lobby/${gameDoc.id}`);
-        })
-        .catch((error) => {
-            console.error("Error creating game: ", error);
-            const permissionError = new FirestorePermissionError({
-              path: '/games',
-              operation: 'create',
-              requestResourceData: gameData
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Could not create the game. Please try again.",
-            });
-        });
+    try {
+      const gameDoc = await addDoc(collection(firestore, 'games'), gameData);
+      toast({
+        title: 'Game Created!',
+        description: 'Your game lobby is now open.',
+      });
+      router.push(`/host/quiz/lobby/${gameDoc.id}`);
+    } catch (error) {
+      console.error("Error creating game: ", error);
+      const permissionError = new FirestorePermissionError({
+        path: '/games',
+        operation: 'create',
+        requestResourceData: gameData
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not create the game. Please try again.",
+      });
+      throw error;
+    }
   };
 
   const deleteQuizImages = async (quizId: string) => {

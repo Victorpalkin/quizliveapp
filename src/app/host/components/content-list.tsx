@@ -32,15 +32,15 @@ interface ContentListProps {
   presentations: PresentationType[] | null;
   quizzesLoading: boolean;
   activitiesLoading: boolean;
-  onHostGame: (quizId: string) => void;
+  onHostGame: (quizId: string) => void | Promise<void>;
   onPreviewQuiz: (quiz: Quiz) => void;
   onShareQuiz: (data: { id: string; title: string }) => void;
   onDeleteQuiz: (quizId: string) => void;
-  onHostActivity: (activityId: string) => void;
+  onHostActivity: (activityId: string) => void | Promise<void>;
   onPreviewPoll: (poll: PollActivity) => void;
   onSharePoll: (data: { id: string; title: string }) => void;
   onDeleteActivity: (activityId: string) => void;
-  onHostPresentation: (presentationId: string) => void;
+  onHostPresentation: (presentationId: string) => void | Promise<void>;
   onDeletePresentation: (presentationId: string) => void;
 }
 

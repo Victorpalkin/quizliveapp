@@ -1,9 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, Trash2, Eye, Pencil, Vote, Share2 } from 'lucide-react';
+import { Gamepad2, Trash2, Eye, Pencil, Vote, Share2, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,13 +21,14 @@ import { formatRelativeTime } from '@/lib/utils/format-date';
 
 interface PollCardProps {
   poll: PollActivity;
-  onHost: (pollId: string) => void;
+  onHost: (pollId: string) => void | Promise<void>;
   onPreview: (poll: PollActivity) => void;
   onShare?: (poll: { id: string; title: string }) => void;
   onDelete: (pollId: string) => void;
 }
 
 export function PollCard({ poll, onHost, onPreview, onShare, onDelete }: PollCardProps) {
+  const [isLaunching, setIsLaunching] = useState(false);
   const dateDisplay = formatRelativeTime(poll.updatedAt || poll.createdAt);
   const questionCount = poll.questions?.length || 0;
 
@@ -87,9 +89,22 @@ export function PollCard({ poll, onHost, onPreview, onShare, onDelete }: PollCar
         <Button
           variant="gradient"
           className="w-full bg-gradient-to-r from-teal-500 to-cyan-500"
-          onClick={() => onHost(poll.id)}
+          disabled={isLaunching}
+          onClick={async () => {
+            setIsLaunching(true);
+            try {
+              await onHost(poll.id);
+            } catch {
+              setIsLaunching(false);
+            }
+          }}
         >
-          <Gamepad2 className="mr-2 h-4 w-4" /> Launch Session
+          {isLaunching ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Gamepad2 className="mr-2 h-4 w-4" />
+          )}
+          Launch Session
         </Button>
         <Button className="w-full" variant="outline" onClick={() => onPreview(poll)}>
           <Eye className="mr-2 h-4 w-4" /> Preview Poll

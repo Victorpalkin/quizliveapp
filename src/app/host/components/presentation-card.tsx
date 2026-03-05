@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Presentation, Play, Pencil, Trash2, MoreVertical, Image as ImageIcon, Eye, Share2 } from 'lucide-react';
+import { Presentation, Play, Pencil, Trash2, MoreVertical, Image as ImageIcon, Eye, Share2, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +25,7 @@ import type { Presentation as PresentationType } from '@/lib/types';
 
 interface PresentationCardProps {
   presentation: PresentationType;
-  onHost: (presentationId: string) => void;
+  onHost: (presentationId: string) => void | Promise<void>;
   onPreview?: (presentation: PresentationType) => void;
   onShare?: (presentation: { id: string; title: string }) => void;
   onDelete: (presentationId: string) => void;
@@ -33,6 +33,7 @@ interface PresentationCardProps {
 
 export function PresentationCard({ presentation, onHost, onPreview, onShare, onDelete }: PresentationCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(false);
 
   const slideCount = presentation.slides?.length || 0;
   const interactiveSlideCount = presentation.slides?.filter(
@@ -119,9 +120,21 @@ export function PresentationCard({ presentation, onHost, onPreview, onShare, onD
           <Button
             variant="gradient"
             className="w-full"
-            onClick={() => onHost(presentation.id)}
+            disabled={isLaunching}
+            onClick={async () => {
+              setIsLaunching(true);
+              try {
+                await onHost(presentation.id);
+              } catch {
+                setIsLaunching(false);
+              }
+            }}
           >
-            <Play className="mr-2 h-4 w-4" />
+            {isLaunching ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="mr-2 h-4 w-4" />
+            )}
             Present
           </Button>
           {onPreview && (
