@@ -1,17 +1,20 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Pause, Play, Square } from 'lucide-react';
-import type { PresentationGameState } from '@/lib/types';
+import { ChevronLeft, ChevronRight, Pause, Play, Square, LayoutGrid } from 'lucide-react';
+import type { PresentationGameState, PresentationSlide } from '@/lib/types';
+import { SlideThumbnail } from '../shared/SlideThumbnail';
 
 interface HostControlsProps {
   slideIndex: number;
   totalSlides: number;
   gameState: PresentationGameState;
+  slides: PresentationSlide[];
   onNextSlide: () => void;
   onPrevSlide: () => void;
+  onGoToSlide: (index: number) => void;
   onPause: () => void;
   onResume: () => void;
   onEnd: () => void;
@@ -21,13 +24,17 @@ export function HostControls({
   slideIndex,
   totalSlides,
   gameState,
+  slides,
   onNextSlide,
   onPrevSlide,
+  onGoToSlide,
   onPause,
   onResume,
   onEnd,
 }: HostControlsProps) {
   const [visible, setVisible] = useState(false);
+  const [navigatorOpen, setNavigatorOpen] = useState(false);
+  const navigatorRef = useRef<HTMLDivElement>(null);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
@@ -39,9 +46,17 @@ export function HostControls({
       onPrevSlide();
     }
     if (e.key === 'Escape') {
-      onEnd();
+      if (navigatorOpen) {
+        setNavigatorOpen(false);
+      } else {
+        onEnd();
+      }
     }
-  }, [onNextSlide, onPrevSlide, onEnd]);
+    if (e.key === 'g' || e.key === 'G') {
+      setNavigatorOpen((prev) => !prev);
+      setVisible(true);
+    }
+  }, [onNextSlide, onPrevSlide, onEnd, navigatorOpen]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -49,14 +64,18 @@ export function HostControls({
   }, [handleKeyDown]);
 
   useEffect(() => {
-    const show = () => setVisible(true);
-    const hide = () => setVisible(false);
     let timer: ReturnType<typeof setTimeout>;
 
-    const handleMove = () => {
-      show();
-      clearTimeout(timer);
-      timer = setTimeout(hide, 3000);
+    const handleMove = (e: MouseEvent) => {
+      const inBottomZone = e.clientY >= window.innerHeight - 80;
+      if (inBottomZone) {
+        setVisible(true);
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          setVisible(false);
+          setNavigatorOpen(false);
+        }, 3000);
+      }
     };
 
     window.addEventListener('mousemove', handleMove);
@@ -65,6 +84,14 @@ export function HostControls({
       clearTimeout(timer);
     };
   }, []);
+
+  // Scroll active thumbnail into view when navigator opens
+  useEffect(() => {
+    if (navigatorOpen && navigatorRef.current) {
+      const activeThumb = navigatorRef.current.querySelector('[data-active="true"]');
+      activeThumb?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [navigatorOpen, slideIndex]);
 
   // Show dots for up to 20 slides; beyond that, just show the counter
   const showDots = totalSlides <= 20;
@@ -78,7 +105,43 @@ export function HostControls({
           exit={{ opacity: 0, y: 10 }}
           transition={{ duration: 0.2 }}
           className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4 py-3 backdrop-blur-xl bg-black/30 border-t border-white/10"
+          data-controls
         >
+          {/* Slide navigator drawer */}
+          <AnimatePresence>
+            {navigatorOpen && (
+              <motion.div
+                ref={navigatorRef}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="w-full overflow-hidden"
+              >
+                <div className="flex gap-2 overflow-x-auto pb-2 px-1 scrollbar-thin scrollbar-thumb-white/20">
+                  {slides.map((slide, i) => (
+                    <button
+                      key={slide.id}
+                      data-active={i === slideIndex}
+                      className="flex-shrink-0 w-32 cursor-pointer rounded-md transition-all hover:ring-2 hover:ring-white/40"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onGoToSlide(i);
+                        setNavigatorOpen(false);
+                      }}
+                    >
+                      <SlideThumbnail
+                        slide={slide}
+                        index={i}
+                        isActive={i === slideIndex}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Slide progress dots */}
           {showDots && (
             <div className="flex items-center gap-1.5">
@@ -102,7 +165,7 @@ export function HostControls({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onPrevSlide}
+              onClick={(e) => { e.stopPropagation(); onPrevSlide(); }}
               disabled={slideIndex <= 0}
               className="text-white hover:bg-white/20 h-10 w-10"
             >
@@ -110,11 +173,11 @@ export function HostControls({
             </Button>
 
             {gameState === 'paused' ? (
-              <Button variant="ghost" size="icon" onClick={onResume} className="text-white hover:bg-white/20 h-10 w-10">
+              <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onResume(); }} className="text-white hover:bg-white/20 h-10 w-10">
                 <Play className="h-5 w-5" />
               </Button>
             ) : (
-              <Button variant="ghost" size="icon" onClick={onPause} className="text-white hover:bg-white/20 h-10 w-10">
+              <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onPause(); }} className="text-white hover:bg-white/20 h-10 w-10">
                 <Pause className="h-5 w-5" />
               </Button>
             )}
@@ -122,7 +185,7 @@ export function HostControls({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onNextSlide}
+              onClick={(e) => { e.stopPropagation(); onNextSlide(); }}
               disabled={slideIndex >= totalSlides - 1}
               className="text-white hover:bg-white/20 h-10 w-10"
             >
@@ -131,7 +194,16 @@ export function HostControls({
 
             <div className="w-px h-6 bg-white/20 mx-1" />
 
-            <Button variant="ghost" size="icon" onClick={onEnd} className="text-white hover:bg-white/20 h-10 w-10">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => { e.stopPropagation(); setNavigatorOpen((prev) => !prev); }}
+              className={`text-white hover:bg-white/20 h-10 w-10 ${navigatorOpen ? 'bg-white/20' : ''}`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+
+            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEnd(); }} className="text-white hover:bg-white/20 h-10 w-10">
               <Square className="h-4 w-4" />
             </Button>
           </div>

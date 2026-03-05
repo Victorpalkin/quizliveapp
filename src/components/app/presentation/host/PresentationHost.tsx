@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { usePresentationById } from '@/firebase/presentation/use-presentation';
@@ -97,11 +97,25 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
     router.push('/host');
   };
 
+  const handleCanvasClick = useCallback(
+    (e: React.MouseEvent) => {
+      // Only advance on left-click, ignore clicks on interactive controls
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('button, a, [role="button"], [data-controls]')) return;
+      controls.nextSlide(game.currentSlideIndex, presentation.slides.length);
+    },
+    [controls, game.currentSlideIndex, presentation.slides.length]
+  );
+
   return (
     <div className="relative w-screen h-screen bg-black overflow-hidden">
       {/* 16:9 canvas centered */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative w-full h-full max-w-[177.78vh] max-h-[56.25vw]">
+        <div
+          className="relative w-full h-full max-w-[177.78vh] max-h-[56.25vw] cursor-pointer"
+          onClick={handleCanvasClick}
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key={game.currentSlideIndex}
@@ -144,8 +158,10 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
             slideIndex={game.currentSlideIndex}
             totalSlides={presentation.slides.length}
             gameState={game.state}
+            slides={presentation.slides}
             onNextSlide={() => controls.nextSlide(game.currentSlideIndex, presentation.slides.length)}
             onPrevSlide={() => controls.prevSlide(game.currentSlideIndex)}
+            onGoToSlide={controls.goToSlide}
             onPause={controls.pausePresentation}
             onResume={controls.startPresentation}
             onEnd={handleEnd}

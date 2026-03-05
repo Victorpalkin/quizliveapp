@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Users } from 'lucide-react';
 
@@ -14,25 +14,32 @@ interface HostOverlayProps {
 export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: HostOverlayProps) {
   const [visible, setVisible] = useState(true);
 
-  const showOverlay = useCallback(() => {
-    setVisible(true);
-  }, []);
-
+  // Show briefly when slide changes
   useEffect(() => {
+    setVisible(true);
     const timer = setTimeout(() => setVisible(false), 4000);
     return () => clearTimeout(timer);
   }, [slideIndex]);
 
+  // Show when mouse enters top zone
   useEffect(() => {
-    window.addEventListener('mousemove', showOverlay);
-    return () => window.removeEventListener('mousemove', showOverlay);
-  }, [showOverlay]);
+    let timer: ReturnType<typeof setTimeout>;
 
-  useEffect(() => {
-    if (!visible) return;
-    const timer = setTimeout(() => setVisible(false), 4000);
-    return () => clearTimeout(timer);
-  }, [visible]);
+    const handleMove = (e: MouseEvent) => {
+      const inTopZone = e.clientY <= 80;
+      if (inTopZone) {
+        setVisible(true);
+        clearTimeout(timer);
+        timer = setTimeout(() => setVisible(false), 4000);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      clearTimeout(timer);
+    };
+  }, []);
 
   const progress = totalSlides > 1 ? ((slideIndex + 1) / totalSlides) * 100 : 100;
 
