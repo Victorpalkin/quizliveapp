@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore } from '../provider';
+import { useUser } from '../auth/use-user';
 import { collectionGroup, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import type { QuizShare, Quiz } from '@/lib/types';
 
@@ -21,8 +22,13 @@ export function useSharedQuizzes() {
         setLoading(true);
 
         // Query all shares subcollections where sharedWith matches user email
+        // and the document has quizId (indicating it's a quiz share, not poll/presentation)
         const sharesRef = collectionGroup(firestore, 'shares');
-        const q = query(sharesRef, where('sharedWith', '==', user.email!.toLowerCase()));
+        const q = query(
+          sharesRef,
+          where('sharedWith', '==', user.email!.toLowerCase()),
+          where('quizId', '!=', null)
+        );
         const querySnapshot = await getDocs(q);
 
         const fetchedShares: (QuizShare & { quiz?: Quiz })[] = [];

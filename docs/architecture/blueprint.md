@@ -1,6 +1,6 @@
 # Zivo - Architecture Blueprint
 
-**Last Updated:** 2025-12-02
+**Last Updated:** 2026-03-02
 
 Comprehensive architecture documentation covering system design, state management, security, and synchronization.
 
@@ -23,7 +23,7 @@ Comprehensive architecture documentation covering system design, state managemen
 ## System Overview
 
 ### Product Description
-Zivo is a real-time audience engagement platform for interactive sessions. Hosts create activities (quizzes, interest clouds, prioritization rankings) and launch live games with unique PINs. Players join via their devices and participate in synchronized real-time activities with immediate feedback and live results.
+Zivo is a real-time audience engagement platform for interactive sessions. Hosts create activities (quizzes, polls, presentations, thoughts gathering, evaluations) and launch live games with unique PINs. Players join via their devices and participate in synchronized real-time activities with immediate feedback and live results.
 
 ### Core Features
 - **Quiz Creation**: Multiple question types (single/multiple choice, slider, polls), time limits, images
@@ -229,9 +229,9 @@ const submitAnswer = useCallback(async (answerIndex: number) => {
 ```
 
 **Files:**
-- `src/app/play/[gameId]/hooks/use-player-state-machine.ts` - State machine logic
-- `src/app/play/[gameId]/hooks/use-answer-submission.ts` - Answer submission with deduplication
-- `src/app/play/[gameId]/page.tsx` - Player UI and state resets
+- `src/app/play/quiz/[gamePin]/hooks/use-player-state-machine.ts` - State machine logic
+- `src/app/play/quiz/[gamePin]/hooks/use-answer-submission.ts` - Answer submission with deduplication
+- `src/app/play/quiz/[gamePin]/page.tsx` - Player UI and state resets
 
 ---
 
@@ -384,8 +384,8 @@ useEffect(() => {
 **Files:**
 - `src/hooks/use-question-timer.ts` - Shared timer hook (all phases)
 - `src/lib/utils/clock-sync.ts` - NTP-like clock sync algorithm
-- `src/app/play/[gameId]/hooks/use-question-timer.ts` - Player wrapper
-- `src/app/host/game/[gameId]/hooks/use-question-timer.ts` - Host wrapper
+- `src/app/play/quiz/[gamePin]/hooks/use-question-timer.ts` - Player wrapper
+- `src/app/host/quiz/game/[gameId]/hooks/use-question-timer.ts` - Host wrapper
 
 ---
 
@@ -1011,11 +1011,10 @@ Submissions are automatically cleaned up:
 
 | File | Purpose |
 |------|---------|
-| `src/lib/types.ts` | CrowdsourceSettings, CrowdsourceState, QuestionSubmission types |
-| `src/components/app/quiz-form.tsx` | Crowdsource settings in quiz editor |
-| `src/app/play/[gameId]/components/question-submission-form.tsx` | Player submission form |
-| `src/app/play/[gameId]/components/screens/lobby-screen.tsx` | Lobby with submission UI |
-| `src/app/host/lobby/[gameId]/components/submissions-panel.tsx` | Host review panel |
+| `src/lib/types/quiz.ts` | CrowdsourceSettings, CrowdsourceState, QuestionSubmission types |
+| `src/components/app/quiz-form/` | Quiz form components including crowdsource settings |
+| `src/app/play/quiz/[gamePin]/components/question-submission-form.tsx` | Player submission form |
+| `src/app/host/quiz/lobby/[gameId]/components/submissions-panel.tsx` | Host review panel |
 | `functions-ai/src/functions/evaluateSubmissions.ts` | AI evaluation Cloud Function |
 | `functions/src/functions/cleanupSubmissions.ts` | Firestore triggers for cleanup |
 | `functions/src/functions/cleanupOldGames.ts` | Scheduled cleanup function |
@@ -1119,78 +1118,121 @@ src/
 ├── app/
 │   ├── host/
 │   │   ├── page.tsx                           # Host dashboard
-│   │   ├── create/page.tsx                    # Create quiz
-│   │   ├── edit/[quizId]/page.tsx            # Edit quiz
-│   │   ├── lobby/[gameId]/
-│   │   │   ├── page.tsx                       # Game lobby
-│   │   │   └── components/
-│   │   │       └── submissions-panel.tsx      # Crowdsource review panel
-│   │   └── game/[gameId]/
-│   │       ├── page.tsx                       # Live game host view
-│   │       └── hooks/
-│   │           ├── use-game-controls.ts       # Game state control
-│   │           └── use-question-timer.ts      # Host timer wrapper
-│   └── play/[gameId]/
-│       ├── page.tsx                           # Player game view
-│       ├── components/
-│       │   ├── question-submission-form.tsx   # Player question submission
-│       │   └── screens/
-│       │       └── lobby-screen.tsx           # Lobby with crowdsource UI
-│       └── hooks/
-│           ├── use-player-state-machine.ts    # State synchronization
-│           ├── use-answer-submission.ts       # Answer handling
-│           └── use-question-timer.ts          # Player timer wrapper
+│   │   ├── quiz/
+│   │   │   ├── create/page.tsx                # Create quiz
+│   │   │   ├── create-ai/page.tsx             # Create quiz with AI
+│   │   │   ├── [quizId]/page.tsx              # Edit quiz
+│   │   │   ├── lobby/[gameId]/
+│   │   │   │   ├── page.tsx                   # Game lobby
+│   │   │   │   └── components/
+│   │   │   │       └── submissions-panel.tsx  # Crowdsource review panel
+│   │   │   └── game/[gameId]/
+│   │   │       ├── page.tsx                   # Live quiz host view
+│   │   │       └── hooks/
+│   │   │           └── use-game-controls.ts   # Game state control
+│   │   ├── poll/
+│   │   │   ├── create/page.tsx                # Create poll
+│   │   │   ├── [activityId]/page.tsx          # Poll detail
+│   │   │   └── lobby/[gameId]/page.tsx        # Poll lobby
+│   │   ├── presentation/
+│   │   │   ├── create/page.tsx                # Create presentation
+│   │   │   └── edit/[presentationId]/page.tsx # Edit presentation
+│   │   ├── thoughts-gathering/
+│   │   │   ├── create/page.tsx                # Create thoughts gathering
+│   │   │   └── game/[gameId]/
+│   │   │       ├── page.tsx                   # Live session
+│   │   │       └── components/
+│   │   │           └── mature-agents-card.tsx  # Top mature AI agents card
+│   │   └── evaluation/
+│   │       ├── create/page.tsx                # Create evaluation
+│   │       ├── create-from-thoughts/page.tsx  # Create from thoughts session
+│   │       ├── edit/[activityId]/page.tsx     # Edit evaluation
+│   │       └── game/[gameId]/page.tsx         # Live evaluation session
+│   └── play/
+│       ├── [gameId]/page.tsx                  # Auto-route to activity type
+│       ├── quiz/[gamePin]/
+│       │   ├── page.tsx                       # Quiz player view
+│       │   └── hooks/
+│       │       ├── use-player-state-machine.ts
+│       │       ├── use-answer-submission.ts
+│       │       └── use-reconnection.ts
+│       ├── poll/[gamePin]/page.tsx            # Poll player view
+│       ├── presentation/[gamePin]/page.tsx    # Presentation player view
+│       ├── thoughts-gathering/[gamePin]/page.tsx
+│       └── evaluation/[gamePin]/page.tsx
 │
 ├── components/
 │   ├── app/
-│   │   ├── quiz-share-manager.tsx            # Share quiz UI
-│   │   ├── shared-quizzes.tsx                # Shared quizzes display
-│   │   └── quiz-preview.tsx                  # Preview before hosting
-│   └── ui/                                    # ShadCN components
+│   │   ├── header.tsx                        # App header
+│   │   ├── quiz-form/                        # Quiz form components
+│   │   │   ├── schemas.ts                    # Zod validation schemas & QuizFormData type
+│   │   ├── evaluation-form-fields.tsx        # Shared evaluation form components
+│   │   ├── evaluation-results-display.tsx    # Shared evaluation results
+│   │   ├── presentation/                     # Presentation components
+│   │   │   ├── editor/                       # Presentation editor
+│   │   │   ├── host/                         # Host-side components
+│   │   │   ├── player/                       # Player-side components
+│   │   │   └── slide-types/                  # Per-slide-type components
+│   │   ├── shared-content.tsx                # Unified content sharing
+│   │   └── content-share-manager.tsx         # Share management
+│   └── ui/                                    # shadcn/ui primitives
 │
 ├── hooks/
 │   └── use-question-timer.ts                 # Shared timer (5-phase sync)
 │
 ├── lib/
-│   ├── types.ts                              # TypeScript definitions (incl. Crowdsource types)
-│   ├── scoring.ts                            # Scoring algorithms
+│   ├── types/                                # Shared TypeScript types (split by domain)
+│   │   ├── index.ts                          # Barrel re-export
+│   │   ├── shared.ts                         # HostProfile, share types, ContentType
+│   │   ├── quiz.ts                           # Question types, Quiz, CrowdsourceSettings
+│   │   ├── game.ts                           # Player, Game, Leaderboard, state types
+│   │   ├── analytics.ts                      # GameAnalytics, PollAnalytics
+│   │   ├── thoughts-gathering.ts             # Topics, agents, submissions
+│   │   ├── evaluation.ts                     # Metrics, items, ratings, results
+│   │   ├── poll.ts                           # PollActivity, PollConfig, PollQuestionResult
+│   │   └── presentation.ts                   # Slides, elements, templates
+│   ├── error-logging.ts                      # Structured error logging
 │   ├── constants.ts                          # App constants
+│   ├── question-handlers/                    # Question type registry
 │   └── utils/
 │       ├── clock-sync.ts                     # NTP-like sync algorithm
-│       ├── game-utils.ts                     # Game helper functions
 │       └── error-utils.ts                    # Error handling
 │
 ├── firebase/
 │   ├── config.ts                             # Firebase initialization
 │   ├── provider.tsx                          # Firebase context
+│   ├── converters.ts                         # Firestore data converters
 │   ├── auth/                                 # Auth hooks
-│   └── firestore/                            # Firestore hooks
+│   ├── firestore/                            # Firestore hooks
+│   └── presentation/                         # Presentation-specific hooks
 │
-functions/
+functions/                                     # Firebase Cloud Functions
 └── src/
-    ├── index.ts                              # Cloud Functions exports
+    ├── index.ts
     └── functions/
         ├── submitAnswer.ts                   # Answer validation & scoring
         ├── computeQuestionResults.ts         # Leaderboard aggregation
-        ├── cleanupSubmissions.ts             # Firestore triggers for cleanup
-        └── cleanupOldGames.ts                # Scheduled cleanup (daily)
-│
-functions-ai/
+        └── cleanupOldGames.ts                # Scheduled cleanup
+
+functions-ai/                                  # AI Cloud Functions (Vertex AI)
 └── src/
-    ├── index.ts                              # AI Functions exports
+    ├── index.ts
     └── functions/
         ├── generateQuizWithAI.ts             # Quiz generation
+        ├── generatePollWithAI.ts             # Poll generation
+        ├── generatePresentationWithAI.ts     # Presentation generation
         ├── generateQuestionImage.ts          # Image generation
         └── evaluateSubmissions.ts            # Crowdsource evaluation
 
 docs/
-├── architecture/
-│   └── blueprint.md                          # This file
+├── architecture/blueprint.md                 # This file
 ├── development/
+│   ├── BACKLOG.md                            # Feature backlog
 │   ├── FIXES_AND_SOLUTIONS.md               # Bug fixes reference
-│   └── BACKLOG.md                            # Feature backlog
+│   └── TESTING_STRATEGY.md                  # Testing plan
 └── deployment/
-    └── DEPLOYMENT.md                         # Deployment guide
+    ├── DEPLOYMENT.md                         # Deployment guide
+    └── AI_AGENTS_SETUP.md                   # AI agent configuration
 ```
 
 ---

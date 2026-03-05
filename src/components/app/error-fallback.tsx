@@ -13,11 +13,10 @@ import {
   XCircle,
   Home,
   RefreshCw,
-  LayoutDashboard,
   Info,
 } from 'lucide-react';
 
-export type ErrorVariant = 'game' | 'dashboard' | 'auth' | 'generic';
+export type ErrorVariant = 'game' | 'dashboard' | 'auth' | 'generic' | 'editor' | 'player';
 
 export interface ErrorFallbackProps {
   error: Error;
@@ -77,6 +76,18 @@ export function ErrorFallback({
       iconColor: 'text-destructive',
       defaultTitle: 'Something went wrong',
       defaultMessage: 'An unexpected error occurred. Please try again.',
+    },
+    editor: {
+      icon: AlertTriangle,
+      iconColor: 'text-warning',
+      defaultTitle: 'Editor Error',
+      defaultMessage: 'Could not load the editor. Please try again.',
+    },
+    player: {
+      icon: XCircle,
+      iconColor: 'text-destructive',
+      defaultTitle: 'Player Error',
+      defaultMessage: 'Something went wrong. Please try rejoining.',
     },
   };
 

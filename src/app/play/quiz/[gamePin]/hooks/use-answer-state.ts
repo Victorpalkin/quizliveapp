@@ -59,7 +59,6 @@ export function useAnswerState({
   // Reset answer state when preparing for new question
   useEffect(() => {
     if (state === 'preparing') {
-      console.log('[Player State] Resetting for new question');
       setAnswerSelected(false);
       setTimedOut(false);
       setLastAnswer(null);
@@ -72,7 +71,6 @@ export function useAnswerState({
   useEffect(() => {
     if (state === 'question' && game?.currentQuestionIndex !== undefined) {
       lastQuestionIndexShownRef.current = game.currentQuestionIndex;
-      console.log('[Player State] Now showing question index:', game.currentQuestionIndex);
     }
   }, [state, game?.currentQuestionIndex]);
 
@@ -131,15 +129,12 @@ export function useAnswerState({
       // Only apply forced result if player actually saw this question in 'question' state
       // This prevents false positives when transitioning through states quickly
       if (lastQuestionIndexShownRef.current !== game.currentQuestionIndex) {
-        console.log('[Player State] Skipping forced result - player never saw question', game.currentQuestionIndex);
         return;
       }
 
       // Check if already answered this question in answers array
       const hasAnswered = player?.answers?.some(a => a.questionIndex === game.currentQuestionIndex);
       if (hasAnswered) return;
-
-      console.log('[Player State] Forced to result without answering - showing "No answer"');
 
       // Mark as answered to prevent re-triggering
       setAnswerSelected(true);

@@ -3,9 +3,12 @@ import { GoogleGenAI } from '@google/genai';
 import * as admin from 'firebase-admin';
 import { ALLOWED_ORIGINS, REGION, GEMINI_MODEL, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
+import { findSimilarAgents, getTopMatureAgents, MatchingAgent } from '../utils/vectorSearch';
 
 interface ExtractTopicsRequest {
   gameId: string;
+  slideId?: string; // Optional: for presentation slides - filter by slide and skip state updates
+  elementId?: string; // Optional: for presentation elements - read from responses collection filtered by elementId
 }
 
 interface ExtractTopicsResponse {
@@ -29,51 +32,68 @@ interface InterestSubmission {
   rawText: string;
 }
 
+interface TopicAgentMatch {
+  topicName: string;
+  matchingAgents: MatchingAgent[];
+}
+
+interface ThoughtsGatheringConfig {
+  prompt: string;
+  maxSubmissionsPerPlayer: number;
+  allowMultipleRounds: boolean;
+  agenticUseCasesCollection?: boolean;
+}
+
 // System prompt for grouping similar submissions
-const EXTRACTION_PROMPT = `You are analyzing free-form text submissions from participants. Your task is to GROUP SEMANTICALLY SIMILAR submissions together and provide a summary for each group.
+const EXTRACTION_PROMPT = `You are analyzing free-form text submissions from participants who were asked to respond to a specific prompt. Your task is to GROUP submissions into DISTINCT CATEGORIES based on their specific content.
 
-IMPORTANT: Focus on the MEANING and INTENT of submissions, not just keywords. Group submissions that:
-- Ask about the same thing (even if worded differently)
-- Express similar ideas or concepts
-- Share common concerns or themes
-- Would naturally belong together in a discussion
+CRITICAL: Avoid creating groups that simply restate the original collection prompt. Instead, identify the SPECIFIC sub-categories, instances, or variations within the responses.
 
-Auto-detect the type of content (questions, ideas, feedback, concerns, suggestions, etc.) and adapt your grouping accordingly.
+For example:
+- If the prompt was "What AI use cases interest you?"
+- DON'T create: "AI Use Cases" (too generic, just restates prompt)
+- DO create: "Customer Service Automation", "Document Processing", "Predictive Analytics" (specific sub-categories)
+
+GROUPING STRATEGY:
+1. First, understand what the collection prompt was asking for
+2. Identify the DISTINCT types/categories/instances in the submissions
+3. Group by SPECIFIC subject matter, not the generic theme
+4. Use descriptive names that differentiate each group
 
 Respond ONLY with valid JSON in this exact format:
 {
   "topics": [
     {
-      "topic": "State Management Best Practices",
-      "description": "Several participants are asking about the best approaches to handle application state, including when to use different state management solutions and how to avoid common pitfalls.",
+      "topic": "Customer Service Chatbots",
+      "description": "Submissions focused on using AI for automated customer support, virtual assistants, and chat-based interactions with customers.",
       "count": 5,
-      "variations": ["How do you handle state?", "Best way to manage app state", "Redux vs Context - which is better?"],
+      "variations": ["AI chatbot for support tickets", "Virtual assistant for FAQ", "Automated customer responses"],
       "submissionIds": ["id1", "id2", "id3", "id4", "id5"]
     },
     {
-      "topic": "Team Communication Improvements",
-      "description": "Multiple submissions suggest ways to improve how the team communicates, with focus on async communication and reducing unnecessary meetings.",
+      "topic": "Document Processing Automation",
+      "description": "Ideas around using AI to extract, classify, and process documents like invoices, contracts, and forms.",
       "count": 3,
-      "variations": ["We need fewer meetings", "More Slack, less Zoom", "Async updates would help"],
+      "variations": ["Invoice data extraction", "Contract analysis", "Form digitization"],
       "submissionIds": ["id6", "id7", "id8"]
     }
   ]
 }
 
 Guidelines:
-- **topic**: A short, descriptive title (3-8 words, Title Case) summarizing the group
-- **description**: A 1-2 sentence summary explaining what the grouped submissions have in common and their key themes
+- **topic**: A specific, descriptive title (6-10 words, Title Case) that DIFFERENTIATES this group from others and answers the initial prompt to the participants
+- **description**: 2-3 sentences explaining the specific focus of this group
 - **count**: Number of submissions in this group
-- **variations**: 2-5 representative excerpts or paraphrases from the submissions (not keywords)
+- **variations**: 2-5 representative excerpts showing the range of ideas in this group
 - **submissionIds**: IDs of all submissions in this group
 
 Grouping rules:
-- Each submission should belong to exactly ONE group (no overlap)
+- Each submission can belong to multiple groups
 - Create 3-15 groups depending on content diversity
-- Similar submissions MUST be grouped together even if only 2-3 items
-- Unique submissions that don't fit elsewhere should form their own small groups
+- Groups should represent DISTINCT categories, not overlapping themes
+- Unique submissions can form their own small groups
 - Order groups by count (highest first)
-- If a submission is truly unique, it can be a group of 1`;
+- NEVER create a group that just restates the collection prompt`;
 
 /**
  * Parse the AI topic extraction response
@@ -154,43 +174,105 @@ export const extractTopics = onCall(
       throw new HttpsError('permission-denied', 'Only the game host can process submissions');
     }
 
-    // Verify this is a Thoughts Gathering game
-    if (gameData?.activityType !== 'thoughts-gathering') {
+    // Verify this is a Thoughts Gathering game OR a presentation (when slideId/elementId is provided)
+    const isPresentation = !!data.slideId || !!data.elementId;
+    if (!isPresentation && gameData?.activityType !== 'thoughts-gathering') {
       throw new HttpsError('failed-precondition', 'This game is not a Thoughts Gathering activity');
     }
 
-    // Get all submissions for this game
-    const submissionsSnapshot = await db
-      .collection('games')
-      .doc(data.gameId)
-      .collection('submissions')
-      .get();
-
-    if (submissionsSnapshot.empty) {
-      // No submissions - update game state and return
-      await db.collection('games').doc(data.gameId).update({
-        state: 'display',
-      });
-
-      // Write empty topics aggregate
-      await db.collection('games').doc(data.gameId).collection('aggregates').doc('topics').set({
-        topics: [],
-        totalSubmissions: 0,
-        processedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      return {
-        success: true,
-        topicCount: 0,
-        submissionCount: 0,
-      };
+    // Fetch activity config to check for agentic use cases feature
+    let activityConfig: ThoughtsGatheringConfig | null = null;
+    if (gameData?.activityId) {
+      const activityDoc = await db.collection('activities').doc(gameData.activityId).get();
+      if (activityDoc.exists) {
+        activityConfig = activityDoc.data()?.config as ThoughtsGatheringConfig;
+      }
     }
 
-    // Prepare submissions for topic extraction
-    const submissions: InterestSubmission[] = submissionsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data() as Omit<InterestSubmission, 'id'>,
-    }));
+    // Determine topics document ID
+    const topicsDocId = data.elementId
+      ? `topics-${data.elementId}`
+      : data.slideId
+        ? `topics-${data.slideId}`
+        : 'topics';
+
+    let submissions: InterestSubmission[];
+
+    if (data.elementId) {
+      // For presentation elements: read from responses collection filtered by elementId
+      const responsesQuery = db
+        .collection('games')
+        .doc(data.gameId)
+        .collection('responses')
+        .where('elementId', '==', data.elementId);
+
+      const responsesSnapshot = await responsesQuery.get();
+
+      if (responsesSnapshot.empty) {
+        await db.collection('games').doc(data.gameId).collection('aggregates').doc(topicsDocId).set({
+          topics: [],
+          totalSubmissions: 0,
+          processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          elementId: data.elementId,
+        });
+        return { success: true, topicCount: 0, submissionCount: 0 };
+      }
+
+      // Convert responses' textAnswers[] into individual submission-like objects
+      submissions = [];
+      for (const docSnap of responsesSnapshot.docs) {
+        const respData = docSnap.data();
+        const textAnswers: string[] = respData.textAnswers || [];
+        textAnswers.forEach((text: string, idx: number) => {
+          submissions.push({
+            id: `${docSnap.id}-${idx}`,
+            playerId: respData.playerId,
+            playerName: respData.playerName,
+            rawText: text,
+          });
+        });
+      }
+
+      if (submissions.length === 0) {
+        await db.collection('games').doc(data.gameId).collection('aggregates').doc(topicsDocId).set({
+          topics: [],
+          totalSubmissions: 0,
+          processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          elementId: data.elementId,
+        });
+        return { success: true, topicCount: 0, submissionCount: 0 };
+      }
+    } else {
+      // Original path: read from submissions collection
+      let submissionsQuery: admin.firestore.Query = db
+        .collection('games')
+        .doc(data.gameId)
+        .collection('submissions');
+
+      if (data.slideId) {
+        submissionsQuery = submissionsQuery.where('slideId', '==', data.slideId);
+      }
+
+      const submissionsSnapshot = await submissionsQuery.get();
+
+      if (submissionsSnapshot.empty) {
+        if (!isPresentation) {
+          await db.collection('games').doc(data.gameId).update({ state: 'display' });
+        }
+        await db.collection('games').doc(data.gameId).collection('aggregates').doc(topicsDocId).set({
+          topics: [],
+          totalSubmissions: 0,
+          processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          ...(data.slideId && { slideId: data.slideId }),
+        });
+        return { success: true, topicCount: 0, submissionCount: 0 };
+      }
+
+      submissions = submissionsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data() as Omit<InterestSubmission, 'id'>,
+      }));
+    }
 
     // Build the extraction request
     const submissionsForAI = submissions.map(s => ({
@@ -207,12 +289,15 @@ export const extractTopics = onCall(
         location: 'global',
       });
 
-      // Build the prompt
-      const userPrompt = `Group these ${submissions.length} submissions by semantic similarity. Each submission should belong to exactly one group.
+      // Build the prompt with activity context
+      const collectionPrompt = activityConfig?.prompt || 'Share your thoughts';
+      const userPrompt = `The participants were asked: "${collectionPrompt}"
+
+Group these ${submissions.length} responses into DISTINCT CATEGORIES. Focus on the SPECIFIC topics, not the general theme of the question.
 
 ${JSON.stringify(submissionsForAI, null, 2)}
 
-Create meaningful groups based on shared themes, questions, or ideas. Provide a short title and summary description for each group.`;
+Create meaningful groups based on the specific subject matter of each response. Each group should represent a distinct category of responses.`;
 
       // Call Gemini
       const response = await client.models.generateContent({
@@ -220,7 +305,7 @@ Create meaningful groups based on shared themes, questions, or ideas. Provide a 
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         config: {
           systemInstruction: EXTRACTION_PROMPT,
-          temperature: 0.3,
+          temperature: 0.5,
           topP: 0.8,
           maxOutputTokens: 65536,
         },
@@ -234,19 +319,75 @@ Create meaningful groups based on shared themes, questions, or ideas. Provide a 
       // Parse topic extraction results
       const topics = parseExtractionResponse(responseText);
 
-      // Write topics to aggregates collection
-      await db.collection('games').doc(data.gameId).collection('aggregates').doc('topics').set({
+      // Initialize result object
+      const topicsResult: {
+        topics: TopicEntry[];
+        totalSubmissions: number;
+        processedAt: admin.firestore.FieldValue;
+        slideId?: string;
+        agentMatches?: TopicAgentMatch[];
+        topMatureAgents?: MatchingAgent[];
+      } = {
         topics,
         totalSubmissions: submissions.length,
         processedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+        ...(data.slideId && { slideId: data.slideId }),
+        ...(data.elementId && { elementId: data.elementId }),
+      };
 
-      // Update game state to display
-      await db.collection('games').doc(data.gameId).update({
-        state: 'display',
-      });
+      // If agentic use cases collection is enabled, match topics with AI agents
+      if (activityConfig?.agenticUseCasesCollection) {
+        console.log('Agentic use cases collection enabled - matching topics with AI agents...');
 
-      console.log(`Extracted ${topics.length} topics from ${submissions.length} submissions for game ${data.gameId}`);
+        const agentMatches: TopicAgentMatch[] = [];
+        const allMatchedAgents: MatchingAgent[] = [];
+
+        for (const topic of topics) {
+          try {
+            // Create search text from topic name and description
+            const searchText = `${topic.topic} ${topic.description}`;
+            const matchingAgents = await findSimilarAgents(searchText, 3);
+
+            agentMatches.push({
+              topicName: topic.topic,
+              matchingAgents,
+            });
+
+            // Collect all agents for top 5 calculation
+            allMatchedAgents.push(...matchingAgents);
+
+            console.log(`Matched ${matchingAgents.length} agents for topic: ${topic.topic}`);
+          } catch (error) {
+            console.error(`Error matching agents for topic "${topic.topic}":`, error);
+            // Continue with other topics if one fails
+            agentMatches.push({
+              topicName: topic.topic,
+              matchingAgents: [],
+            });
+          }
+        }
+
+        // Calculate top 5 most mature agents across all matches
+        const topMatureAgents = getTopMatureAgents(allMatchedAgents, 5);
+
+        topicsResult.agentMatches = agentMatches;
+        topicsResult.topMatureAgents = topMatureAgents;
+
+        console.log(`Found ${topMatureAgents.length} top mature agents across all topics`);
+      }
+
+      // Write topics to aggregates collection
+      await db.collection('games').doc(data.gameId).collection('aggregates').doc(topicsDocId).set(topicsResult);
+
+      // Update game state to display (only for standalone, not presentations)
+      if (!isPresentation) {
+        await db.collection('games').doc(data.gameId).update({
+          state: 'display',
+        });
+      }
+
+      const logContext = data.slideId ? `slide ${data.slideId} in` : '';
+      console.log(`Extracted ${topics.length} topics from ${submissions.length} submissions for ${logContext}game ${data.gameId}`);
 
       return {
         success: true,
@@ -256,10 +397,12 @@ Create meaningful groups based on shared themes, questions, or ideas. Provide a 
     } catch (error) {
       console.error('Error extracting topics:', error);
 
-      // Revert game state on error
-      await db.collection('games').doc(data.gameId).update({
-        state: 'collecting',
-      });
+      // Revert game state on error (only for standalone, not presentations)
+      if (!isPresentation) {
+        await db.collection('games').doc(data.gameId).update({
+          state: 'collecting',
+        });
+      }
 
       if (error instanceof HttpsError) {
         throw error;

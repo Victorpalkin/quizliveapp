@@ -121,7 +121,6 @@ export default function CreateQuizPage() {
         }
       } catch (error) {
         // Temp folder might not exist if no AI images were generated
-        console.log('No temp images to move or error moving:', error);
       }
 
       // Clean up deleted images from storage

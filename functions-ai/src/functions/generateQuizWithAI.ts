@@ -2,6 +2,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { GoogleGenAI } from '@google/genai';
 import { ALLOWED_ORIGINS, REGION, GEMINI_MODEL, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
+import { enforceRateLimitInMemory } from '../utils/rateLimit';
 import {
   GenerateQuizRequest,
   GenerateQuizResponse,
@@ -252,8 +253,13 @@ export const generateQuizWithAI = onCall(
     enforceAppCheck: true,
   },
   async (request): Promise<GenerateQuizResponse> => {
-    // Verify App Check token (monitoring mode - allows requests without token)
+    // Verify App Check token
     verifyAppCheck(request);
+
+    // Rate limiting: 10 requests per hour per user (high cost operation)
+    if (request.auth?.uid) {
+      enforceRateLimitInMemory(request.auth.uid, 10, 3600);
+    }
 
     // Verify user is authenticated
     if (!request.auth) {

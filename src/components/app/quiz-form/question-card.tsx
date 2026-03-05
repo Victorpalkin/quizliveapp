@@ -5,7 +5,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, GripVertical, ChevronDown, ChevronRight, CheckCircle2, ListChecks, SlidersHorizontal, FileText, MessageSquare, Vote, ListTodo, Copy } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Trash2, GripVertical, ChevronDown, ChevronRight, CheckCircle2, ListChecks, SlidersHorizontal, FileText, MessageSquare, Vote, ListTodo, Copy, HelpCircle, BarChart2 } from 'lucide-react';
 import { QuestionTypeTooltip } from '@/components/ui/feature-tooltip';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -30,6 +32,9 @@ const TYPE_LABELS: Record<string, string> = {
   'poll-single': 'Poll (Single)',
   'poll-multiple': 'Poll (Multiple)',
 };
+
+// Question types that support live results display (have discrete answer options)
+const LIVE_RESULTS_TYPES = ['single-choice', 'multiple-choice', 'poll-single', 'poll-multiple'];
 
 type Question = SingleChoiceQuestion | MultipleChoiceQuestion | SliderQuestion | SlideQuestion | FreeResponseQuestion | PollSingleQuestion | PollMultipleQuestion;
 
@@ -268,6 +273,48 @@ export function QuestionCard({
             )}
           />
         </div>
+
+        {/* Live Results Toggle - only for choice-based questions */}
+        {LIVE_RESULTS_TYPES.includes(question.type) && (
+          <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
+            <div className="flex items-center gap-2">
+              <BarChart2 className="h-4 w-4 text-muted-foreground" />
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium">Show live results</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Display answer distribution in real-time on the host screen while players are answering.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <p className="text-xs text-muted-foreground">Show answer distribution while players answer</p>
+              </div>
+            </div>
+            <FormField
+              control={control}
+              name={`questions.${questionIndex}.showLiveResults`}
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2">
+                  <FormControl>
+                    <Switch
+                      checked={field.value || false}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        onUpdateQuestion(questionIndex, { ...question, showLiveResults: checked });
+                      }}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
         {/* Question Type Specific Editor */}
         {question.type === 'single-choice' && (

@@ -49,7 +49,6 @@ export function useReconnection({
       try {
         // No game document ID means invalid session
         if (!gameDocId) {
-          console.log('[Reconnect] No game reference, clearing session');
           sessionManager.clearSession();
           setState('session-invalid');
           return;
@@ -60,7 +59,6 @@ export function useReconnection({
 
         // Game doesn't exist anymore
         if (!game) {
-          console.log('[Reconnect] Game not found, clearing session');
           sessionManager.clearSession();
           setState('session-invalid');
           toast({
@@ -73,7 +71,6 @@ export function useReconnection({
 
         // Game has ended
         if (game.state === 'ended') {
-          console.log('[Reconnect] Game has ended');
           sessionManager.clearSession();
           setState('ended');
           return;
@@ -89,7 +86,6 @@ export function useReconnection({
 
         if (playerDoc.empty) {
           // Recreate player document if missing
-          console.log('[Reconnect] Player document missing, attempting to recreate');
           const newPlayer: Player = {
             id: playerId,
             name: nickname,

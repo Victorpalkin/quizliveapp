@@ -24,8 +24,8 @@
 .DS_Store
 *.pem
 
-# AI assistant files
-CLAUDE.md
+# Data files
+*.tsv
 
 # debug
 npm-debug.log*

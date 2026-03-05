@@ -27,7 +27,7 @@ export function useGameControls(
     );
   }, [gameRef]);
 
-  // Reset leaderboard aggregate for new question (clear answerCounts and totalAnswered)
+  // Reset leaderboard aggregate for new question (clear answerCounts, liveAnswerCounts, and totalAnswered)
   const resetLeaderboardForNewQuestion = useCallback(async () => {
     if (!gameRef) return;
     const firestore = getFirestore();
@@ -35,11 +35,11 @@ export function useGameControls(
     try {
       await updateDoc(leaderboardRef, {
         answerCounts: [],
+        liveAnswerCounts: {},  // Clear real-time answer counts for new question
         totalAnswered: 0,
       });
     } catch (error) {
       // If document doesn't exist yet, that's fine - it will be created on first answer
-      console.log('[Leaderboard] Reset skipped - aggregate may not exist yet');
     }
   }, [gameRef, gameId]);
 

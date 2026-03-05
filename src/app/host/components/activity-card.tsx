@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, Trash2, Cloud, Pencil, BarChart3 } from 'lucide-react';
+import { Gamepad2, Trash2, Cloud, Pencil, BarChart3, Vote } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,10 +15,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { ThoughtsGatheringActivity, EvaluationActivity } from '@/lib/types';
+import type { ThoughtsGatheringActivity, EvaluationActivity, PollActivity } from '@/lib/types';
 import { formatRelativeTime } from '@/lib/utils/format-date';
 
-type Activity = ThoughtsGatheringActivity | EvaluationActivity;
+type Activity = ThoughtsGatheringActivity | EvaluationActivity | PollActivity;
 
 interface ActivityCardProps {
   activity: Activity;
@@ -28,15 +28,18 @@ interface ActivityCardProps {
 export function ActivityCard({ activity, onDelete }: ActivityCardProps) {
   const isEvaluation = activity.type === 'evaluation';
   const isThoughtsGathering = activity.type === 'thoughts-gathering';
+  const isPoll = activity.type === 'poll';
 
   // Determine icon, colors, and routes based on activity type
-  const Icon = isEvaluation ? BarChart3 : Cloud;
-  const iconColor = isEvaluation ? 'text-orange-500' : 'text-blue-500';
+  const Icon = isEvaluation ? BarChart3 : isPoll ? Vote : Cloud;
+  const iconColor = isEvaluation ? 'text-orange-500' : isPoll ? 'text-teal-500' : 'text-blue-500';
   const gradientClass = isEvaluation
     ? 'from-orange-500 to-red-500'
+    : isPoll
+    ? 'from-teal-500 to-cyan-500'
     : 'from-blue-500 to-purple-500';
-  const activityTypePath = isEvaluation ? 'evaluation' : 'thoughts-gathering';
-  const activityLabel = isEvaluation ? 'Evaluation' : 'Thoughts Gathering';
+  const activityTypePath = isEvaluation ? 'evaluation' : isPoll ? 'poll' : 'thoughts-gathering';
+  const activityLabel = isEvaluation ? 'Evaluation' : isPoll ? 'Poll' : 'Thoughts Gathering';
 
   // Get config summary based on activity type
   const getConfigSummary = (): string => {
@@ -52,6 +55,11 @@ export function ActivityCard({ activity, onDelete }: ActivityCardProps) {
         return `"${prompt.substring(0, 30)}..."`;
       }
       return prompt ? `"${prompt}"` : '';
+    }
+    if (isPoll) {
+      const pollActivity = activity as PollActivity;
+      const questionCount = pollActivity.questions?.length || 0;
+      return `${questionCount} question${questionCount !== 1 ? 's' : ''}`;
     }
     return '';
   };

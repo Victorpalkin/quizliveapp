@@ -6,4 +6,5 @@ export * from './slider';
 export * from './slide';
 export * from './poll-single';
 export * from './poll-multiple';
+export * from './poll-free-text';
 export * from './registry';

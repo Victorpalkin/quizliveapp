@@ -10,8 +10,9 @@ export interface HostSession {
   quizTitle: string;
   hostId: string;
   timestamp: number; // When session was last updated
-  activityType?: ActivityType; // 'quiz' | 'thoughts-gathering' | 'evaluation'
+  activityType?: ActivityType; // 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation' | 'poll'
   gameState?: string; // Current game state for routing (e.g., 'lobby', 'question', 'collecting')
+  returnPath: string; // The path to return to when rejoining (e.g., '/host/presentation/present/abc123')
 }
 
 const SESSION_KEY = 'gquiz_host_session';
@@ -30,7 +31,8 @@ export function saveHostSession(
   quizTitle: string,
   hostId: string,
   activityType: ActivityType = 'quiz',
-  gameState?: string
+  gameState?: string,
+  returnPath?: string
 ): void {
   if (!isBrowser) return;
   try {
@@ -43,6 +45,7 @@ export function saveHostSession(
       timestamp: Date.now(),
       activityType,
       gameState,
+      returnPath: returnPath || `/host/${activityType}/${gameState === 'lobby' ? 'lobby' : 'game'}/${gameId}`,
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } catch (error) {
@@ -109,7 +112,8 @@ export function refreshHostSessionTimestamp(): void {
       session.quizTitle,
       session.hostId,
       session.activityType || 'quiz',
-      session.gameState
+      session.gameState,
+      session.returnPath
     );
   }
 }

@@ -53,12 +53,10 @@ async function loadAnalytics(): Promise<void> {
     // Check if analytics is supported in this environment
     const supported = await isSupported();
     if (!supported) {
-      console.log('[Analytics] Not supported in this environment');
       return;
     }
 
     analyticsInstance = getAnalytics(firebaseApp);
-    console.log('[Analytics] Initialized');
 
     // Flush queued events
     flushEventQueue();

@@ -70,6 +70,21 @@ function createOptimisticAnswer(
 }
 
 /**
+ * Configuration for a type-specific answer submission
+ */
+interface SubmissionConfig {
+  questionType: QuestionType;
+  answerData: Partial<PlayerAnswer>;
+  optimisticAnswer: AnswerResult;
+  serverPayloadExtra: Record<string, any>;
+  isPoll: boolean;
+  processResponse?: (data: SubmitAnswerResponse) => {
+    lastAnswer: Partial<AnswerResult>;
+    playerUpdate: (p: Player) => Player;
+  };
+}
+
+/**
  * Unified answer submission hook with reduced duplication.
  *
  * Features:
@@ -92,297 +107,155 @@ export function useAnswerSubmission(
   const functions = useFunctions();
   const { toast } = useToast();
 
+  /**
+   * Generic answer submission handler that contains all shared logic:
+   * guard clause, analytics, optimistic UI, Cloud Function call, response handling, error handling.
+   */
+  const submitAnswerGeneric = useCallback(async (config: SubmissionConfig) => {
+    if (!gameDocId || answerSubmittedRef.current) return;
+    answerSubmittedRef.current = true;
+
+    // Track answer submission
+    trackEvent('answer_submitted', {
+      question_type: config.questionType,
+      has_time_bonus: !config.isPoll && (config.serverPayloadExtra.timeRemaining > 0),
+    });
+
+    // Optimistic UI update
+    setLastAnswer(config.optimisticAnswer);
+
+    const optimisticAnswer = createOptimisticAnswer(
+      currentQuestionIndex,
+      config.questionType,
+      0,
+      false,
+      config.answerData
+    );
+
+    setPlayer(p => p ? {
+      ...p,
+      answers: [...(p.answers || []), optimisticAnswer]
+    } : null);
+
+    // Server submission
+    try {
+      const submitAnswerFn = httpsCallable<any, SubmitAnswerResponse>(functions, 'submitAnswer');
+      const result = await submitAnswerFn({
+        gameId: gameDocId,
+        playerId,
+        questionIndex: currentQuestionIndex,
+        questionType: config.questionType,
+        ...config.serverPayloadExtra,
+      });
+
+      // Process server response (scored questions update score/correctness; polls skip)
+      if (!config.isPoll && config.processResponse) {
+        const { lastAnswer, playerUpdate } = config.processResponse(result.data);
+        setLastAnswer(prev => prev ? { ...prev, ...lastAnswer } : null);
+        setPlayer(p => p ? playerUpdate(p) : null);
+      }
+    } catch (error: any) {
+      handleSubmissionError(error, toast, config.isPoll);
+    }
+  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+
+  /**
+   * Standard response processor for scored questions.
+   * Updates lastAnswer and player score/answers based on server response.
+   */
+  const processScoredResponse = (
+    answerCorrectMapper: (data: SubmitAnswerResponse) => Partial<AnswerResult>
+  ) => (data: SubmitAnswerResponse) => {
+    const { points: actualPoints, newScore, isCorrect } = data;
+    return {
+      lastAnswer: {
+        points: actualPoints,
+        ...answerCorrectMapper(data),
+      },
+      playerUpdate: (p: Player) => {
+        const updatedAnswers = p.answers.map(a =>
+          a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints, isCorrect } : a
+        );
+        return { ...p, score: newScore, answers: updatedAnswers };
+      },
+    };
+  };
+
   // Submit single choice answer
-  // Note: Correct answer is no longer available client-side - we wait for server response
   const submitSingleChoice = useCallback(async (
     answerIndex: number,
     question: SingleChoiceQuestion,
     timeRemaining: number,
     timeLimit: number
   ) => {
-    if (!gameDocId || answerSubmittedRef.current) return;
-    answerSubmittedRef.current = true;
-
-    // Track answer submission
-    trackEvent('answer_submitted', {
-      question_type: 'single-choice',
-      has_time_bonus: timeRemaining > 0,
+    await submitAnswerGeneric({
+      questionType: 'single-choice',
+      answerData: { answerIndex },
+      optimisticAnswer: { selected: answerIndex, correct: [], points: 0, wasTimeout: false },
+      serverPayloadExtra: { answerIndex, timeRemaining, questionTimeLimit: question.timeLimit },
+      isPoll: false,
+      processResponse: processScoredResponse(({ isCorrect }) => ({
+        correct: isCorrect ? [answerIndex] : [],
+      })),
     });
-
-    // Optimistic UI - show "waiting for server" state
-    // Since we don't have the correct answer, we can't calculate score locally
-    setLastAnswer({
-      selected: answerIndex,
-      correct: [], // Will be updated by server
-      points: 0, // Will be updated by server
-      wasTimeout: false
-    });
-
-    const optimisticAnswer = createOptimisticAnswer(
-      currentQuestionIndex,
-      'single-choice',
-      0, // Will be updated by server
-      false, // Will be updated by server
-      { answerIndex }
-    );
-
-    setPlayer(p => p ? {
-      ...p,
-      answers: [...(p.answers || []), optimisticAnswer]
-    } : null);
-
-    // Server submission
-    try {
-      const submitAnswerFn = httpsCallable<any, SubmitAnswerResponse>(functions, 'submitAnswer');
-      const result = await submitAnswerFn({
-        gameId: gameDocId,
-        playerId,
-        questionIndex: currentQuestionIndex,
-        answerIndex,
-        timeRemaining,
-        questionType: 'single-choice',
-        questionTimeLimit: question.timeLimit,
-      });
-
-      const { points: actualPoints, newScore, isCorrect } = result.data;
-
-      // Update with server values
-      setLastAnswer(prev => prev ? {
-        ...prev,
-        points: actualPoints,
-        correct: isCorrect ? [answerIndex] : [] // If correct, our answer was the correct one
-      } : null);
-
-      setPlayer(p => {
-        if (!p) return null;
-        const updatedAnswers = p.answers.map(a =>
-          a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints, isCorrect } : a
-        );
-        return { ...p, score: newScore, answers: updatedAnswers };
-      });
-    } catch (error: any) {
-      handleSubmissionError(error, toast);
-    }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+  }, [submitAnswerGeneric]);
 
   // Submit multiple choice answer
-  // Note: Correct answers are no longer available client-side - we wait for server response
   const submitMultipleChoice = useCallback(async (
     answerIndices: number[],
     question: MultipleChoiceQuestion,
     timeRemaining: number,
     timeLimit: number
   ) => {
-    if (!gameDocId || answerSubmittedRef.current) return;
-    answerSubmittedRef.current = true;
-
-    // Track answer submission
-    trackEvent('answer_submitted', {
-      question_type: 'multiple-choice',
-      has_time_bonus: timeRemaining > 0,
-    });
-
-    // Optimistic UI - show "waiting for server" state
-    setLastAnswer({
-      selected: 0, // Will be updated by server
-      correct: [1],
-      points: 0, // Will be updated by server
-      wasTimeout: false,
-      isPartiallyCorrect: false
-    });
-
-    const optimisticAnswer = createOptimisticAnswer(
-      currentQuestionIndex,
-      'multiple-choice',
-      0, // Will be updated by server
-      false, // Will be updated by server
-      { answerIndices }
-    );
-
-    setPlayer(p => p ? {
-      ...p,
-      answers: [...(p.answers || []), optimisticAnswer]
-    } : null);
-
-    // Server submission
-    try {
-      const submitAnswerFn = httpsCallable<any, SubmitAnswerResponse>(functions, 'submitAnswer');
-      const result = await submitAnswerFn({
-        gameId: gameDocId,
-        playerId,
-        questionIndex: currentQuestionIndex,
-        answerIndices,
-        timeRemaining,
-        questionType: 'multiple-choice',
-        questionTimeLimit: question.timeLimit,
-      });
-
-      const { points: actualPoints, newScore, isCorrect, isPartiallyCorrect: serverPartiallyCorrect } = result.data;
-
-      // Update with server values
-      setLastAnswer(prev => prev ? {
-        ...prev,
-        points: actualPoints,
+    await submitAnswerGeneric({
+      questionType: 'multiple-choice',
+      answerData: { answerIndices },
+      optimisticAnswer: { selected: 0, correct: [1], points: 0, wasTimeout: false, isPartiallyCorrect: false },
+      serverPayloadExtra: { answerIndices, timeRemaining, questionTimeLimit: question.timeLimit },
+      isPoll: false,
+      processResponse: processScoredResponse(({ isCorrect, isPartiallyCorrect: serverPartiallyCorrect }) => ({
         selected: isCorrect ? 1 : 0,
-        isPartiallyCorrect: serverPartiallyCorrect
-      } : null);
-
-      setPlayer(p => {
-        if (!p) return null;
-        const updatedAnswers = p.answers.map(a =>
-          a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints, isCorrect } : a
-        );
-        return { ...p, score: newScore, answers: updatedAnswers };
-      });
-    } catch (error: any) {
-      handleSubmissionError(error, toast);
-    }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+        isPartiallyCorrect: serverPartiallyCorrect,
+      })),
+    });
+  }, [submitAnswerGeneric]);
 
   // Submit slider answer
-  // Note: Correct value is no longer available client-side - we wait for server response
   const submitSlider = useCallback(async (
     sliderValue: number,
     question: SliderQuestion,
     timeRemaining: number
   ) => {
-    if (!gameDocId || answerSubmittedRef.current) return;
-    answerSubmittedRef.current = true;
-
-    // Track answer submission
-    trackEvent('answer_submitted', {
-      question_type: 'slider',
-      has_time_bonus: timeRemaining > 0,
+    await submitAnswerGeneric({
+      questionType: 'slider',
+      answerData: { sliderValue },
+      optimisticAnswer: { selected: 0, correct: [1], points: 0, wasTimeout: false },
+      serverPayloadExtra: { sliderValue, timeRemaining, questionTimeLimit: question.timeLimit },
+      isPoll: false,
+      processResponse: processScoredResponse(({ isCorrect }) => ({
+        selected: isCorrect ? 1 : 0,
+      })),
     });
-
-    // Optimistic UI - show "waiting for server" state
-    setLastAnswer({
-      selected: 0, // Will be updated by server
-      correct: [1],
-      points: 0, // Will be updated by server
-      wasTimeout: false
-    });
-
-    const optimisticAnswer = createOptimisticAnswer(
-      currentQuestionIndex,
-      'slider',
-      0, // Will be updated by server
-      false, // Will be updated by server
-      { sliderValue }
-    );
-
-    setPlayer(p => p ? {
-      ...p,
-      answers: [...(p.answers || []), optimisticAnswer]
-    } : null);
-
-    // Server submission
-    try {
-      const submitAnswerFn = httpsCallable<any, SubmitAnswerResponse>(functions, 'submitAnswer');
-      const result = await submitAnswerFn({
-        gameId: gameDocId,
-        playerId,
-        questionIndex: currentQuestionIndex,
-        sliderValue,
-        timeRemaining,
-        questionType: 'slider',
-        questionTimeLimit: question.timeLimit,
-      });
-
-      const { points: actualPoints, newScore, isCorrect } = result.data;
-
-      // Update with server values
-      setLastAnswer(prev => prev ? {
-        ...prev,
-        points: actualPoints,
-        selected: isCorrect ? 1 : 0
-      } : null);
-
-      setPlayer(p => {
-        if (!p) return null;
-        const updatedAnswers = p.answers.map(a =>
-          a.questionIndex === currentQuestionIndex ? { ...a, points: actualPoints, isCorrect } : a
-        );
-        return { ...p, score: newScore, answers: updatedAnswers };
-      });
-    } catch (error: any) {
-      handleSubmissionError(error, toast);
-    }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+  }, [submitAnswerGeneric]);
 
   // Submit free-response answer
-  // Note: Correct answer is no longer available client-side - we wait for server response
   const submitFreeResponse = useCallback(async (
     textAnswer: string,
     question: FreeResponseQuestion,
     timeRemaining: number,
     timeLimit: number
   ) => {
-    if (!gameDocId || answerSubmittedRef.current) return;
-    answerSubmittedRef.current = true;
-
-    // Track answer submission
-    trackEvent('answer_submitted', {
-      question_type: 'free-response',
-      has_time_bonus: timeRemaining > 0,
+    await submitAnswerGeneric({
+      questionType: 'free-response',
+      answerData: { textAnswer },
+      optimisticAnswer: { selected: 0, correct: [1], points: 0, wasTimeout: false },
+      serverPayloadExtra: { textAnswer, timeRemaining, questionTimeLimit: question.timeLimit },
+      isPoll: false,
+      processResponse: processScoredResponse(({ isCorrect }) => ({
+        selected: isCorrect ? 1 : 0,
+      })),
     });
-
-    // Optimistic UI - show "waiting for server" state
-    setLastAnswer({
-      selected: 0, // Will be updated by server
-      correct: [1],
-      points: 0, // Will be updated by server
-      wasTimeout: false
-    });
-
-    const optimisticAnswer = createOptimisticAnswer(
-      currentQuestionIndex,
-      'free-response',
-      0, // Will be updated by server
-      false, // Will be updated by server
-      { textAnswer }
-    );
-
-    setPlayer(p => p ? {
-      ...p,
-      answers: [...(p.answers || []), optimisticAnswer]
-    } : null);
-
-    // Server submission for fuzzy matching
-    try {
-      const submitAnswerFn = httpsCallable<any, SubmitAnswerResponse>(functions, 'submitAnswer');
-      const result = await submitAnswerFn({
-        gameId: gameDocId,
-        playerId,
-        questionIndex: currentQuestionIndex,
-        textAnswer,
-        timeRemaining,
-        questionType: 'free-response',
-        questionTimeLimit: question.timeLimit,
-      });
-
-      const { points: actualPoints, newScore, isCorrect } = result.data;
-
-      // Update with server values
-      setLastAnswer(prev => prev ? {
-        ...prev,
-        points: actualPoints,
-        selected: isCorrect ? 1 : 0
-      } : null);
-
-      setPlayer(p => {
-        if (!p) return null;
-        const updatedAnswers = p.answers.map(a =>
-          a.questionIndex === currentQuestionIndex
-            ? { ...a, points: actualPoints, isCorrect }
-            : a
-        );
-        return { ...p, score: newScore, answers: updatedAnswers };
-      });
-    } catch (error: any) {
-      handleSubmissionError(error, toast);
-    }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+  }, [submitAnswerGeneric]);
 
   // Submit poll single choice answer (no scoring)
   const submitPollSingle = useCallback(async (
@@ -391,51 +264,14 @@ export function useAnswerSubmission(
     timeRemaining: number,
     _timeLimit: number
   ) => {
-    if (!gameDocId || answerSubmittedRef.current) return;
-    answerSubmittedRef.current = true;
-
-    // Track poll response
-    trackEvent('answer_submitted', {
-      question_type: 'poll-single',
-      has_time_bonus: false,
+    await submitAnswerGeneric({
+      questionType: 'poll-single',
+      answerData: { answerIndex },
+      optimisticAnswer: { selected: answerIndex, correct: [], points: 0, wasTimeout: false },
+      serverPayloadExtra: { answerIndex, timeRemaining, questionTimeLimit: question.timeLimit },
+      isPoll: true,
     });
-
-    // Polls don't have correct answers - always 0 points
-    setLastAnswer({
-      selected: answerIndex,
-      correct: [],
-      points: 0,
-      wasTimeout: false
-    });
-
-    const optimisticAnswer = createOptimisticAnswer(
-      currentQuestionIndex,
-      'poll-single',
-      0,
-      false,
-      { answerIndex }
-    );
-
-    setPlayer(p => p ? {
-      ...p,
-      answers: [...(p.answers || []), optimisticAnswer]
-    } : null);
-
-    try {
-      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
-      await submitAnswerFn({
-        gameId: gameDocId,
-        playerId,
-        questionIndex: currentQuestionIndex,
-        answerIndex,
-        timeRemaining,
-        questionType: 'poll-single',
-        questionTimeLimit: question.timeLimit,
-      });
-    } catch (error: any) {
-      handleSubmissionError(error, toast, true);
-    }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+  }, [submitAnswerGeneric]);
 
   // Submit poll multiple choice answer (no scoring)
   const submitPollMultiple = useCallback(async (
@@ -444,51 +280,14 @@ export function useAnswerSubmission(
     timeRemaining: number,
     _timeLimit: number
   ) => {
-    if (!gameDocId || answerSubmittedRef.current) return;
-    answerSubmittedRef.current = true;
-
-    // Track poll response
-    trackEvent('answer_submitted', {
-      question_type: 'poll-multiple',
-      has_time_bonus: false,
+    await submitAnswerGeneric({
+      questionType: 'poll-multiple',
+      answerData: { answerIndices },
+      optimisticAnswer: { selected: 0, correct: [], points: 0, wasTimeout: false },
+      serverPayloadExtra: { answerIndices, timeRemaining, questionTimeLimit: question.timeLimit },
+      isPoll: true,
     });
-
-    // Polls don't have correct answers - always 0 points
-    setLastAnswer({
-      selected: 0,
-      correct: [],
-      points: 0,
-      wasTimeout: false
-    });
-
-    const optimisticAnswer = createOptimisticAnswer(
-      currentQuestionIndex,
-      'poll-multiple',
-      0,
-      false,
-      { answerIndices }
-    );
-
-    setPlayer(p => p ? {
-      ...p,
-      answers: [...(p.answers || []), optimisticAnswer]
-    } : null);
-
-    try {
-      const submitAnswerFn = httpsCallable(functions, 'submitAnswer');
-      await submitAnswerFn({
-        gameId: gameDocId,
-        playerId,
-        questionIndex: currentQuestionIndex,
-        answerIndices,
-        timeRemaining,
-        questionType: 'poll-multiple',
-        questionTimeLimit: question.timeLimit,
-      });
-    } catch (error: any) {
-      handleSubmissionError(error, toast, true);
-    }
-  }, [gameDocId, playerId, currentQuestionIndex, functions, toast, answerSubmittedRef, setLastAnswer, setPlayer]);
+  }, [submitAnswerGeneric]);
 
   // Note: submitTimeout removed - timeout handling is now purely client-side
   // When a player times out:

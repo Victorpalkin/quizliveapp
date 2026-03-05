@@ -64,13 +64,10 @@ export function useQuestionTimer({
   useEffect(() => {
     if (isActive && !finishedRef.current && onAutoFinish && effectiveTotalPlayers > 0) {
       if (effectiveTotalAnswered >= effectiveTotalPlayers) {
-        console.log('[Timer] All players answered - delaying auto-finish by 1.5s for in-flight submissions');
-
         // Delay auto-finish to allow in-flight answers to reach the server
         const timeoutId = setTimeout(() => {
           if (!finishedRef.current) {
             finishedRef.current = true;
-            console.log('[Timer] Auto-finishing after delay');
             onAutoFinish();
           }
         }, AUTO_FINISH_DELAY_MS);
@@ -89,7 +86,6 @@ export function useQuestionTimer({
 
       // Start at full time limit for all players/host
       // questionStartTime is used for synchronization, but grace period in Cloud Function handles timing
-      console.log(`[Timer] Starting at full time: ${timeLimit}s`);
       setTime(timeLimit);
 
       // Start countdown immediately

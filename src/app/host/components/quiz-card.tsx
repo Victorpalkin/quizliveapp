@@ -1,9 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, Trash2, Eye, Edit, Share2, FileQuestion } from 'lucide-react';
+import { Gamepad2, Trash2, Eye, Edit, Share2, FileQuestion, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,13 +21,14 @@ import { formatRelativeTime } from '@/lib/utils/format-date';
 
 interface QuizCardProps {
   quiz: Quiz;
-  onHost: (quizId: string) => void;
+  onHost: (quizId: string) => void | Promise<void>;
   onPreview: (quiz: Quiz) => void;
   onShare: (quiz: { id: string; title: string }) => void;
   onDelete: (quizId: string) => void;
 }
 
 export function QuizCard({ quiz, onHost, onPreview, onShare, onDelete }: QuizCardProps) {
+  const [isHosting, setIsHosting] = useState(false);
   const dateDisplay = formatRelativeTime(quiz.updatedAt || quiz.createdAt);
 
   return (
@@ -84,9 +86,22 @@ export function QuizCard({ quiz, onHost, onPreview, onShare, onDelete }: QuizCar
         <Button
           variant="gradient"
           className="w-full"
-          onClick={() => onHost(quiz.id)}
+          disabled={isHosting}
+          onClick={async () => {
+            setIsHosting(true);
+            try {
+              await onHost(quiz.id);
+            } catch {
+              setIsHosting(false);
+            }
+          }}
         >
-          <Gamepad2 className="mr-2 h-4 w-4" /> Host Game
+          {isHosting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Gamepad2 className="mr-2 h-4 w-4" />
+          )}
+          Host Game
         </Button>
         <Button className="w-full" variant="outline" onClick={() => onPreview(quiz)}>
           <Eye className="mr-2 h-4 w-4" /> Preview Quiz

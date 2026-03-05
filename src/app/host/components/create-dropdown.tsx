@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PlusCircle, Sparkles, FileText, Cloud, ChevronDown, BarChart3, LayoutGrid } from 'lucide-react';
+import { PlusCircle, Sparkles, FileText, Cloud, ChevronDown, BarChart3, LayoutGrid, Presentation, Vote } from 'lucide-react';
 
 export function CreateDropdown() {
   return (
@@ -62,11 +62,47 @@ export function CreateDropdown() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/host/poll/create" className="flex items-center">
+            <Vote className="mr-2 h-4 w-4 text-teal-500" />
+            <div className="flex flex-col">
+              <span>Poll</span>
+              <span className="text-xs text-muted-foreground">Gather opinions</span>
+            </div>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/host/poll/create-ai" className="flex items-center">
+            <Sparkles className="mr-2 h-4 w-4 text-teal-500" />
+            <div className="flex flex-col">
+              <span>Poll with AI</span>
+              <span className="text-xs text-muted-foreground">AI-generated questions</span>
+            </div>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer">
           <Link href="/host/evaluation/create" className="flex items-center">
             <BarChart3 className="mr-2 h-4 w-4 text-orange-500" />
             <div className="flex flex-col">
               <span>Evaluation</span>
               <span className="text-xs text-muted-foreground">Prioritize with metrics</span>
+            </div>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/host/presentation/create" className="flex items-center">
+            <Presentation className="mr-2 h-4 w-4 text-indigo-500" />
+            <div className="flex flex-col">
+              <span>Presentation</span>
+              <span className="text-xs text-muted-foreground">Interactive slides</span>
+            </div>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/host/presentation/create-ai" className="flex items-center">
+            <Sparkles className="mr-2 h-4 w-4 text-indigo-500" />
+            <div className="flex flex-col">
+              <span>Presentation with AI</span>
+              <span className="text-xs text-muted-foreground">AI-generated slides</span>
             </div>
           </Link>
         </DropdownMenuItem>

@@ -61,7 +61,7 @@ print_info() {
 wait_for_test() {
     if [ "$AUTO_MODE" != "true" ]; then
         echo ""
-        echo -e "${YELLOW}>>> Test your application now: https://quiz.palkin.nl/host ${NC}"
+        echo -e "${YELLOW}>>> Test your application now: https://zivo.me/host ${NC}"
         echo -e "${YELLOW}>>> Press ENTER to continue to next rule, or 'r' to rollback this rule${NC}"
         read -r response
         if [ "$response" = "r" ] || [ "$response" = "R" ]; then

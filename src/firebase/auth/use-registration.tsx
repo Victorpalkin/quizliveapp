@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useFunctions, useAuth } from '@/firebase';
+import { useFunctions, useAuth } from '../provider';
 import { httpsCallable } from 'firebase/functions';
 import { signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { validateEmailDomain } from '@/lib/validation';

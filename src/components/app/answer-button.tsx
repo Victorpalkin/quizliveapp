@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { ANSWER_COLOR_GRADIENTS } from '@/lib/colors';
 import { Check } from 'lucide-react';
 
 interface AnswerButtonProps {
@@ -12,67 +13,11 @@ interface AnswerButtonProps {
   onClick?: () => void;
   className?: string;
   colorIndex?: number;
+  // Live results display (host view)
+  showLiveCount?: boolean;
+  count?: number;
+  totalCount?: number;
 }
-
-// 8 subtle color gradients for answer options
-const colorGradients = [
-  {
-    bg: 'from-purple-500/15 to-purple-500/8',
-    border: 'border-purple-200 dark:border-purple-900',
-    badge: 'from-purple-500 to-purple-600',
-    selectedBg: 'from-purple-500/20 to-transparent',
-    selectedBorder: 'before:from-purple-500 before:to-purple-600',
-  },
-  {
-    bg: 'from-blue-500/15 to-blue-500/8',
-    border: 'border-blue-200 dark:border-blue-900',
-    badge: 'from-blue-500 to-blue-600',
-    selectedBg: 'from-blue-500/20 to-transparent',
-    selectedBorder: 'before:from-blue-500 before:to-blue-600',
-  },
-  {
-    bg: 'from-green-500/15 to-green-500/8',
-    border: 'border-green-200 dark:border-green-900',
-    badge: 'from-green-500 to-green-600',
-    selectedBg: 'from-green-500/20 to-transparent',
-    selectedBorder: 'before:from-green-500 before:to-green-600',
-  },
-  {
-    bg: 'from-amber-500/15 to-amber-500/8',
-    border: 'border-amber-200 dark:border-amber-900',
-    badge: 'from-amber-500 to-amber-600',
-    selectedBg: 'from-amber-500/20 to-transparent',
-    selectedBorder: 'before:from-amber-500 before:to-amber-600',
-  },
-  {
-    bg: 'from-rose-500/15 to-rose-500/8',
-    border: 'border-rose-200 dark:border-rose-900',
-    badge: 'from-rose-500 to-rose-600',
-    selectedBg: 'from-rose-500/20 to-transparent',
-    selectedBorder: 'before:from-rose-500 before:to-rose-600',
-  },
-  {
-    bg: 'from-cyan-500/15 to-cyan-500/8',
-    border: 'border-cyan-200 dark:border-cyan-900',
-    badge: 'from-cyan-500 to-cyan-600',
-    selectedBg: 'from-cyan-500/20 to-transparent',
-    selectedBorder: 'before:from-cyan-500 before:to-cyan-600',
-  },
-  {
-    bg: 'from-indigo-500/15 to-indigo-500/8',
-    border: 'border-indigo-200 dark:border-indigo-900',
-    badge: 'from-indigo-500 to-indigo-600',
-    selectedBg: 'from-indigo-500/20 to-transparent',
-    selectedBorder: 'before:from-indigo-500 before:to-indigo-600',
-  },
-  {
-    bg: 'from-pink-500/15 to-pink-500/8',
-    border: 'border-pink-200 dark:border-pink-900',
-    badge: 'from-pink-500 to-pink-600',
-    selectedBg: 'from-pink-500/20 to-transparent',
-    selectedBorder: 'before:from-pink-500 before:to-pink-600',
-  },
-];
 
 export function AnswerButton({
   letter,
@@ -83,8 +28,14 @@ export function AnswerButton({
   onClick,
   className,
   colorIndex = 0,
+  showLiveCount = false,
+  count = 0,
+  totalCount = 0,
 }: AnswerButtonProps) {
-  const colors = colorGradients[colorIndex % colorGradients.length];
+  const colors = ANSWER_COLOR_GRADIENTS[colorIndex % ANSWER_COLOR_GRADIENTS.length];
+
+  // Calculate percentage for progress bar
+  const percentage = showLiveCount && totalCount > 0 ? (count / totalCount) * 100 : 0;
 
   return (
     <button
@@ -100,9 +51,12 @@ export function AnswerButton({
         colors.border,
         'border',
 
+        // Relative positioning for progress bar overlay
+        showLiveCount && 'relative overflow-hidden',
+
         // Interactive states
         !disabled && 'hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] cursor-pointer',
-        disabled && !selected && 'opacity-50 cursor-not-allowed',
+        disabled && !selected && !showLiveCount && 'opacity-50 cursor-not-allowed',
 
         // Selected state - gradient left border with pop animation
         selected && [
@@ -123,7 +77,24 @@ export function AnswerButton({
         animation: 'confirmPop 0.3s ease-out',
       } : undefined}
     >
-      <div className="flex items-center gap-4">
+      {/* Live Results Progress Bar - absolute positioned background */}
+      {showLiveCount && (
+        <div
+          className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none"
+          aria-hidden="true"
+        >
+          <div
+            className={cn(
+              'h-full transition-all duration-300 ease-out',
+              `bg-gradient-to-r ${colors.badge}`,
+              'opacity-20'
+            )}
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+      )}
+
+      <div className="flex items-center gap-4 relative z-10">
         {/* Letter Badge - shows checkmark when selected for single-choice */}
         <div className={cn(
           'flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center',
@@ -146,6 +117,18 @@ export function AnswerButton({
         )}>
           {text}
         </div>
+
+        {/* Live Count Display */}
+        {showLiveCount && (
+          <div className="flex-shrink-0 min-w-[3rem] text-right">
+            <span className={cn(
+              'text-2xl font-bold tabular-nums transition-all duration-300',
+              count > 0 ? 'text-foreground' : 'text-muted-foreground'
+            )}>
+              {count}
+            </span>
+          </div>
+        )}
 
         {/* Checkmark for multiple-choice selected */}
         {showCheck && selected && (

@@ -170,9 +170,27 @@ export const submitAnswer = onCall(
       // This is much faster than read-modify-write and has no race conditions
       // Note: Rank is now computed in computeQuestionResults and read from aggregate
       const leaderboardRef = db.collection('games').doc(gameId).collection('aggregates').doc('leaderboard');
-      await leaderboardRef.set({
+
+      // Build update object with totalAnswered and liveAnswerCounts
+      const leaderboardUpdate: Record<string, admin.firestore.FieldValue> = {
         totalAnswered: admin.firestore.FieldValue.increment(1),
-      }, { merge: true });
+      };
+
+      // Add live answer counts for choice-based questions (enables real-time distribution display)
+      if (questionType === 'single-choice' || questionType === 'poll-single') {
+        if (data.answerIndex !== undefined && data.answerIndex >= 0) {
+          leaderboardUpdate[`liveAnswerCounts.${data.answerIndex}`] = admin.firestore.FieldValue.increment(1);
+        }
+      } else if (questionType === 'multiple-choice' || questionType === 'poll-multiple') {
+        if (data.answerIndices && data.answerIndices.length > 0) {
+          for (const idx of data.answerIndices) {
+            leaderboardUpdate[`liveAnswerCounts.${idx}`] = admin.firestore.FieldValue.increment(1);
+          }
+        }
+      }
+      // Note: slider and free-response don't have discrete answer options, so no liveAnswerCounts
+
+      await leaderboardRef.set(leaderboardUpdate, { merge: true });
 
       // Return result to client
       // Note: rank, totalPlayers, and currentStreak removed - now computed in computeQuestionResults

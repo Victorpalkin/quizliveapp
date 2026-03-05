@@ -3,7 +3,7 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import type { MultipleChoiceQuestion } from '@/lib/types';
-import type { QuizFormData } from '../../quiz-form';
+import type { QuizFormData } from '../schemas';
 import { AnswerList } from '../shared/answer-list';
 
 interface MultipleChoiceEditorProps {

@@ -15,7 +15,7 @@ interface UseHostSessionResult {
   /** Whether we're checking if the session is still valid */
   isValidating: boolean;
   /** Save a new host session */
-  saveSession: (gameId: string, gamePin: string, quizId: string, quizTitle: string) => void;
+  saveSession: (gameId: string, gamePin: string, quizId: string, quizTitle: string, returnPath: string) => void;
   /** Clear the current session */
   clearSession: () => void;
   /** Check if there's a valid session for the current user */
@@ -63,19 +63,16 @@ export function useHostSession(): UseHostSessionResult {
 
         if (!gameSnap.exists()) {
           // Game was deleted
-          console.log('[HostSession] Game no longer exists, clearing session');
           clearHostSession();
           setSession(null);
         } else {
           const game = gameSnap.data();
           if (game.state === 'ended') {
             // Game has ended
-            console.log('[HostSession] Game has ended, clearing session');
             clearHostSession();
             setSession(null);
           } else {
             // Session is valid
-            console.log('[HostSession] Valid session found for game:', storedSession.gamePin);
             setSession(storedSession);
           }
         }
@@ -95,11 +92,12 @@ export function useHostSession(): UseHostSessionResult {
     gameId: string,
     gamePin: string,
     quizId: string,
-    quizTitle: string
+    quizTitle: string,
+    returnPath: string
   ) => {
     if (!user) return;
 
-    saveHostSession(gameId, gamePin, quizId, quizTitle, user.uid);
+    saveHostSession(gameId, gamePin, quizId, quizTitle, user.uid, 'quiz', undefined, returnPath);
     setSession({
       gameId,
       gamePin,
@@ -107,6 +105,7 @@ export function useHostSession(): UseHostSessionResult {
       quizTitle,
       hostId: user.uid,
       timestamp: Date.now(),
+      returnPath,
     });
   }, [user]);
 

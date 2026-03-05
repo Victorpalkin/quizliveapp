@@ -76,6 +76,7 @@ function extractContextFromUrl(): {
   // Generate human-readable context from path
   const contextMap: Record<string, string> = {
     'play': 'Player Game',
+    'play/presentation': 'Player Presentation',
     'join': 'Join Game',
     'host': 'Host Dashboard',
     'host/game': 'Host Game',
@@ -83,15 +84,20 @@ function extractContextFromUrl(): {
     'host/edit': 'Quiz Editor',
     'host/create': 'Quiz Creator',
     'host/create-ai': 'AI Quiz Creator',
+    'host/presentation/edit': 'Presentation Editor',
+    'host/presentation/create': 'Presentation Creator',
+    'host/presentation/present': 'Host Presentation',
+    'host/presentation/lobby': 'Presentation Lobby',
     'login': 'Login',
     'register': 'Registration',
     'forgot-password': 'Password Reset',
     'verify-email': 'Email Verification',
   };
 
-  // Try to match path patterns
-  const pathKey = segments.slice(0, 2).join('/');
-  const context = contextMap[pathKey] || contextMap[segments[0]] || 'Page';
+  // Try to match path patterns (check 3-segment paths first, then 2-segment, then 1-segment)
+  const pathKey3 = segments.slice(0, 3).join('/');
+  const pathKey2 = segments.slice(0, 2).join('/');
+  const context = contextMap[pathKey3] || contextMap[pathKey2] || contextMap[segments[0]] || 'Page';
 
   return { context: `${context} Error`, gameId, quizId };
 }

@@ -1,4 +1,4 @@
-import type { TopicEntry, ThoughtSubmission } from './types';
+import type { TopicEntry, ThoughtSubmission, TopicAgentMatch, MatchingAgent } from './types';
 
 /**
  * Formats thoughts gathering results as a Markdown string
@@ -8,7 +8,9 @@ export function exportThoughtsToMarkdown(
   topics: TopicEntry[],
   submissions: ThoughtSubmission[],
   playerCount: number,
-  processedAt?: Date
+  processedAt?: Date,
+  agentMatches?: TopicAgentMatch[],
+  topMatureAgents?: MatchingAgent[]
 ): string {
   const date = processedAt || new Date();
   const formattedDate = date.toLocaleDateString('en-US', {
@@ -22,6 +24,12 @@ export function exportThoughtsToMarkdown(
   // Create submission lookup map
   const submissionMap = new Map<string, ThoughtSubmission>();
   submissions.forEach(sub => submissionMap.set(sub.id, sub));
+
+  // Create agent match lookup map
+  const agentMatchMap = new Map<string, MatchingAgent[]>();
+  if (agentMatches) {
+    agentMatches.forEach(match => agentMatchMap.set(match.topicName, match.matchingAgents));
+  }
 
   // Sort topics by count (descending)
   const sortedTopics = [...topics].sort((a, b) => b.count - a.count);
@@ -64,6 +72,27 @@ export function exportThoughtsToMarkdown(
       });
       md += '\n';
     }
+
+    // Add matched agents
+    const matchedAgents = agentMatchMap.get(topic.topic);
+    if (matchedAgents && matchedAgents.length > 0) {
+      md += `**Related AI Agents:**\n`;
+      matchedAgents.forEach(agent => {
+        const link = agent.referenceLink ? ` ([link](${agent.referenceLink}))` : '';
+        md += `- **${agent.agentName}**${link} - Maturity: ${agent.maturity}\n`;
+        if (agent.summary) {
+          const shortSummary = agent.summary.length > 150
+            ? agent.summary.substring(0, 150) + '...'
+            : agent.summary;
+          md += `  ${shortSummary}\n`;
+        }
+        const details = [agent.functionalArea, agent.industry].filter(Boolean).join(' | ');
+        if (details) {
+          md += `  *${details}*\n`;
+        }
+      });
+      md += '\n';
+    }
   });
 
   // Add raw submissions table
@@ -83,6 +112,25 @@ export function exportThoughtsToMarkdown(
     const escapedText = sub.rawText.replace(/\|/g, '\\|').replace(/\n/g, ' ');
     md += `| ${index + 1} | ${sub.playerName} | ${escapedText} | ${time} |\n`;
   });
+
+  // Add top mature agents section if available
+  if (topMatureAgents && topMatureAgents.length > 0) {
+    md += `\n---\n\n## Top Mature AI Agents\n\n`;
+    md += `The following are the most mature AI agents matching your collected topics:\n\n`;
+
+    topMatureAgents.forEach((agent, index) => {
+      const link = agent.referenceLink ? ` ([link](${agent.referenceLink}))` : '';
+      md += `### ${index + 1}. ${agent.agentName}${link}\n\n`;
+      md += `**Maturity Score:** ${agent.maturity} | **Score:** ${agent.score}\n\n`;
+      if (agent.summary) {
+        md += `${agent.summary}\n\n`;
+      }
+      const details = [agent.functionalArea, agent.industry].filter(Boolean).join(' | ');
+      if (details) {
+        md += `*${details}*\n\n`;
+      }
+    });
+  }
 
   return md;
 }

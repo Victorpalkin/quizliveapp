@@ -65,6 +65,12 @@ service cloud.firestore {
       }
     }
 
+    // Helper function to check if user has poll access via share
+    function hasPollAccess(activityId) {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/activities/$(activityId)/shares/$(request.auth.token.email));
+    }
+
     // Activities collection (for non-quiz activities like Interest Cloud)
     match /activities/{activityId} {
       // Anyone can read activity details (needed for players to see activity info)
@@ -77,6 +83,94 @@ service cloud.firestore {
       // Only the activity owner can update or delete
       allow update, delete: if request.auth != null &&
                               request.auth.uid == resource.data.hostId;
+
+      // Activity shares subcollection (for polls)
+      match /shares/{shareId} {
+        // Owner can read all shares for their activity
+        // Recipient can read shares where sharedWith matches their email
+        allow read: if request.auth != null &&
+                      (request.auth.uid == get(/databases/$(database)/documents/activities/$(activityId)).data.hostId ||
+                       request.auth.token.email == resource.data.sharedWith);
+
+        // Only activity owner can create shares
+        // Document ID (shareId) must match the sharedWith email
+        allow create: if request.auth != null &&
+                        request.auth.uid == get(/databases/$(database)/documents/activities/$(activityId)).data.hostId &&
+                        request.resource.data.sharedBy == request.auth.uid &&
+                        request.resource.data.pollId == activityId &&
+                        shareId == request.resource.data.sharedWith;
+
+        // Owner can delete their shares, recipient can also delete (to cancel)
+        allow delete: if request.auth != null &&
+                        (request.auth.uid == resource.data.sharedBy ||
+                         request.auth.token.email == resource.data.sharedWith);
+      }
+    }
+
+    // Helper function to check if user has presentation access via share
+    function hasPresentationAccess(presentationId) {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/presentations/$(presentationId)/shares/$(request.auth.token.email));
+    }
+
+    // Presentations collection (canvas-based WYSIWYG presentations)
+    match /presentations/{presentationId} {
+      // Readable by anyone - players need slide data during live games.
+      // Note: Quiz correctAnswerIndex is exposed in slide elements. Server-side
+      // scoring via the answerKey aggregate (restricted) mitigates cheating.
+      allow read: if true;
+
+      // Only authenticated hosts can create presentations
+      allow create: if request.auth != null &&
+                      request.auth.uid == request.resource.data.hostId;
+
+      // Only the presentation owner can update or delete
+      allow update, delete: if request.auth != null &&
+                              request.auth.uid == resource.data.hostId;
+
+      // Presentation shares subcollection
+      match /shares/{shareId} {
+        allow read: if request.auth != null &&
+                      (request.auth.uid == get(/databases/$(database)/documents/presentations/$(presentationId)).data.hostId ||
+                       request.auth.token.email == resource.data.sharedWith);
+
+        allow create: if request.auth != null &&
+                        request.auth.uid == get(/databases/$(database)/documents/presentations/$(presentationId)).data.hostId &&
+                        request.resource.data.sharedBy == request.auth.uid &&
+                        request.resource.data.presentationId == presentationId &&
+                        shareId == request.resource.data.sharedWith;
+
+        allow delete: if request.auth != null &&
+                        (request.auth.uid == resource.data.sharedBy ||
+                         request.auth.token.email == resource.data.sharedWith);
+      }
+    }
+
+    // Templates collection (for user-created presentation templates)
+    match /templates/{templateId} {
+      // Users can read their own templates
+      allow read: if request.auth != null &&
+                    resource.data.createdBy == request.auth.uid;
+
+      // Users can create templates with their own UID
+      allow create: if request.auth != null &&
+                      request.resource.data.createdBy == request.auth.uid &&
+                      request.resource.data.isBuiltIn == false;
+
+      // Users can update their own templates
+      allow update: if request.auth != null &&
+                      resource.data.createdBy == request.auth.uid &&
+                      request.resource.data.createdBy == request.auth.uid;
+
+      // Users can delete their own templates
+      allow delete: if request.auth != null &&
+                      resource.data.createdBy == request.auth.uid;
+    }
+
+    // Helper function to check if user owns a presentation
+    function ownsPresentation(presentationId) {
+      return request.auth != null &&
+             request.auth.uid == get(/databases/$(database)/documents/presentations/$(presentationId)).data.hostId;
     }
 
     // Helper function to check if user owns an activity
@@ -93,6 +187,7 @@ service cloud.firestore {
       // Authenticated hosts can create games:
       // - For quiz games: must own the quiz OR have shared access
       // - For activity games: must own the activity
+      // - For presentation games: must own the presentation
       allow create: if request.auth != null &&
                       request.auth.uid == request.resource.data.hostId &&
                       (
@@ -101,10 +196,22 @@ service cloud.firestore {
                          (request.auth.uid == get(/databases/$(database)/documents/quizzes/$(request.resource.data.quizId)).data.hostId ||
                           hasQuizAccess(request.resource.data.quizId)))
                         ||
-                        // Activity-based games (Interest Cloud, etc.)
-                        (request.resource.data.activityType != 'quiz' &&
+                        // Activity-based games (ThoughtsGathering, Evaluation)
+                        (request.resource.data.activityType in ['thoughts-gathering', 'evaluation'] &&
                          request.resource.data.activityId != null &&
                          ownsActivity(request.resource.data.activityId))
+                        ||
+                        // Poll-based games (own or shared)
+                        (request.resource.data.activityType == 'poll' &&
+                         request.resource.data.activityId != null &&
+                         (ownsActivity(request.resource.data.activityId) ||
+                          hasPollAccess(request.resource.data.activityId)))
+                        ||
+                        // Presentation-based games (own or shared)
+                        (request.resource.data.activityType == 'presentation' &&
+                         request.resource.data.presentationId != null &&
+                         (ownsPresentation(request.resource.data.presentationId) ||
+                          hasPresentationAccess(request.resource.data.presentationId)))
                       );
 
       // Only the host can update or delete the game
@@ -136,13 +243,15 @@ service cloud.firestore {
         allow read: if true;
 
         // Only allow creating player with initial score of 0, empty answers, and streak 0
-        allow create: if request.resource.data.score == 0 &&
+        allow create: if request.resource.data.keys().hasOnly(['id', 'name', 'score', 'answers', 'currentStreak', 'maxStreak', 'joinedAt']) &&
+                        request.resource.data.score == 0 &&
                         request.resource.data.id == playerId &&
                         request.resource.data.name is string &&
                         request.resource.data.name.size() >= 2 &&
                         request.resource.data.name.size() <= 20 &&
                         request.resource.data.answers == [] &&
-                        request.resource.data.currentStreak == 0;
+                        request.resource.data.currentStreak == 0 &&
+                        request.resource.data.maxStreak == 0;
 
         // All player updates (score, answers, streak) are handled by Cloud Functions only
         // Cloud Functions use admin privileges and bypass these rules
@@ -152,9 +261,9 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      // Submissions subcollection - used for both:
+      // Submissions subcollection - used for:
       // 1. Quiz crowdsource questions (questionText, answers, correctAnswerIndex)
-      // 2. Interest Cloud submissions (rawText)
+      // 2. Standalone Thoughts Gathering submissions (rawText)
       match /submissions/{submissionId} {
         // Anyone can read submissions (for display in lobby)
         allow read: if true;
@@ -174,7 +283,7 @@ service cloud.firestore {
                             request.resource.data.correctAnswerIndex >= 0 &&
                             request.resource.data.correctAnswerIndex <= 3)
                            ||
-                           // Thoughts Gathering submissions (during collecting state)
+                           // Standalone Thoughts Gathering submissions (during collecting state)
                            (get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'thoughts-gathering' &&
                             get(/databases/$(database)/documents/games/$(gameId)).data.state == 'collecting' &&
                             request.resource.data.rawText is string &&
@@ -234,6 +343,72 @@ service cloud.firestore {
 
         // No client-side deletes
         allow delete: if false;
+      }
+
+      // Presentation responses subcollection
+      // Document ID format: {elementId}_{playerId}
+      match /responses/{responseId} {
+        allow read: if true;
+
+        // Players can create responses during active presentation
+        allow create: if get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'active' &&
+                         request.resource.data.playerId is string &&
+                         request.resource.data.elementId is string &&
+                         responseId == request.resource.data.elementId + '_' + request.resource.data.playerId &&
+                         exists(/databases/$(database)/documents/games/$(gameId)/players/$(request.resource.data.playerId));
+
+        // Players can update their own response during active presentation
+        allow update: if request.resource.data.playerId == resource.data.playerId &&
+                         request.resource.data.elementId == resource.data.elementId &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'active';
+
+        allow delete: if false;
+      }
+
+      // Live reactions subcollection (ephemeral - rate-limited on client)
+      match /reactions/{reactionId} {
+        allow read: if true;
+
+        // Players can send reactions during active presentation
+        allow create: if get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'active' &&
+                         request.resource.data.playerId is string &&
+                         request.resource.data.emoji is string &&
+                         request.resource.data.emoji.size() <= 4;
+
+        allow update, delete: if false;
+      }
+
+      // Q&A questions subcollection
+      match /questions/{questionId} {
+        allow read: if true;
+
+        // Players can submit questions during active presentation
+        allow create: if get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
+                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'active' &&
+                         request.resource.data.playerId is string &&
+                         request.resource.data.text is string &&
+                         request.resource.data.text.size() >= 1 &&
+                         request.resource.data.text.size() <= 500 &&
+                         request.resource.data.upvotes == 0 &&
+                         request.resource.data.answered == false;
+
+        // Players can upvote (increment upvotes, add to upvotedBy[])
+        // Host can mark as answered/pinned
+        allow update: if (
+                         // Player upvoting
+                         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'upvotedBy']) &&
+                          request.resource.data.upvotes == resource.data.upvotes + 1)
+                         ||
+                         // Host moderation (answered, pinned)
+                         (request.auth != null &&
+                          request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId)
+                       );
+
+        allow delete: if request.auth != null &&
+                         request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId;
       }
     }
   }

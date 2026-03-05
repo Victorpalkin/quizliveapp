@@ -1,7 +1,7 @@
 import { Control } from 'react-hook-form';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import type { PollSingleQuestion } from '@/lib/types';
-import type { QuizFormData } from '../../quiz-form';
+import type { QuizFormData } from '../schemas';
 import { AnswerList } from '../shared/answer-list';
 
 interface PollSingleEditorProps {
