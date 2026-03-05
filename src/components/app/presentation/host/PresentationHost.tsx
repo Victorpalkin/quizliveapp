@@ -58,6 +58,17 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
     }
   }, [game.currentSlideIndex, game.state, presentation, controls]);
 
+  const handleCanvasClick = useCallback(
+    (e: React.MouseEvent) => {
+      // Only advance on left-click, ignore clicks on interactive controls
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('button, a, [role="button"], [data-controls]')) return;
+      controls.nextSlide(game.currentSlideIndex, presentation?.slides.length ?? 0);
+    },
+    [controls, game.currentSlideIndex, presentation?.slides.length]
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-black text-white">
@@ -96,17 +107,6 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
     controls.endPresentation();
     router.push('/host');
   };
-
-  const handleCanvasClick = useCallback(
-    (e: React.MouseEvent) => {
-      // Only advance on left-click, ignore clicks on interactive controls
-      if (e.button !== 0) return;
-      const target = e.target as HTMLElement;
-      if (target.closest('button, a, [role="button"], [data-controls]')) return;
-      controls.nextSlide(game.currentSlideIndex, presentation.slides.length);
-    },
-    [controls, game.currentSlideIndex, presentation.slides.length]
-  );
 
   return (
     <div className="relative w-screen h-screen bg-black overflow-hidden">
