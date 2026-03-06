@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bold, Italic, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import type { SlideElement } from '@/lib/types';
 
 interface TextPropertiesProps {
@@ -68,6 +68,14 @@ export function TextProperties({ element, onUpdate }: TextPropertiesProps) {
             onClick={() => onUpdate({ fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })}
           >
             <Italic className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={element.textDecoration === 'underline' ? 'default' : 'outline'}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onUpdate({ textDecoration: element.textDecoration === 'underline' ? 'none' : 'underline' })}
+          >
+            <Underline className="h-4 w-4" />
           </Button>
           <div className="w-px bg-border mx-1" />
           <Button

@@ -31,6 +31,21 @@ export function ShapeElement({ element }: ShapeElementProps) {
       style.top = '50%';
       style.transform = 'translateY(-50%)';
       break;
+    case 'triangle':
+      style.backgroundColor = 'transparent';
+      style.borderWidth = 0;
+      style.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
+      style.backgroundColor = element.backgroundColor || '#e2e8f0';
+      break;
+    case 'arrow-right':
+      style.backgroundColor = 'transparent';
+      style.borderWidth = 0;
+      style.clipPath = 'polygon(0% 20%, 60% 20%, 60% 0%, 100% 50%, 60% 100%, 60% 80%, 0% 80%)';
+      style.backgroundColor = element.backgroundColor || '#e2e8f0';
+      break;
+    case 'diamond':
+      style.transform = 'rotate(45deg)';
+      break;
     default:
       break;
   }

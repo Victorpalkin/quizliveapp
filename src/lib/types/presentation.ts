@@ -67,8 +67,11 @@ export interface SlideElement {
   objectFit?: 'cover' | 'contain' | 'fill';
   borderRadius?: number;
 
+  // === Text decoration ===
+  textDecoration?: 'none' | 'underline';
+
   // === Shape properties ===
-  shapeType?: 'rectangle' | 'circle' | 'rounded-rect' | 'line';
+  shapeType?: 'rectangle' | 'circle' | 'rounded-rect' | 'line' | 'triangle' | 'arrow-right' | 'diamond';
   backgroundColor?: string;
   borderColor?: string;
   borderWidth?: number;

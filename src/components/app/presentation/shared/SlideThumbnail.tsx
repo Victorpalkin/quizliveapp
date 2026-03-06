@@ -96,6 +96,14 @@ export function ElementPreview({ element }: { element: SlideElement }) {
               : element.shapeType === 'rounded-rect'
                 ? '4px'
                 : undefined,
+          clipPath:
+            element.shapeType === 'triangle'
+              ? 'polygon(50% 0%, 0% 100%, 100% 100%)'
+              : element.shapeType === 'arrow-right'
+                ? 'polygon(0% 20%, 60% 20%, 60% 0%, 100% 50%, 60% 100%, 60% 80%, 0% 80%)'
+                : undefined,
+          transform:
+            element.shapeType === 'diamond' ? 'rotate(45deg)' : undefined,
         }}
       />
     );

@@ -14,6 +14,8 @@ import {
   Trash2,
   MoreHorizontal,
   GripVertical,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import type { PresentationSlide } from '@/lib/types';
 import { SlideThumbnail } from '../shared/SlideThumbnail';
@@ -143,6 +145,14 @@ export function SlidePanel({
   onReorderSlides,
 }: SlidePanelProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('slide-panel-expanded') === 'true';
+    }
+    return false;
+  });
+
+  const panelWidth = expanded ? 260 : 180;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -177,8 +187,29 @@ export function SlidePanel({
     ? slides.findIndex((s) => s.id === activeId)
     : -1;
 
+  const toggleExpanded = () => {
+    const next = !expanded;
+    setExpanded(next);
+    localStorage.setItem('slide-panel-expanded', String(next));
+  };
+
   return (
-    <div className="w-[180px] flex-shrink-0 bg-background border-r overflow-y-auto p-2 space-y-1.5">
+    <div
+      className="flex-shrink-0 bg-background border-r overflow-y-auto p-2 space-y-1.5 transition-all duration-200"
+      style={{ width: `${panelWidth}px` }}
+    >
+      {/* Expand/collapse toggle */}
+      <div className="flex justify-end mb-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5"
+          onClick={toggleExpanded}
+          title={expanded ? 'Compact view' : 'Expanded view'}
+        >
+          {expanded ? <PanelLeftClose className="h-3 w-3" /> : <PanelLeftOpen className="h-3 w-3" />}
+        </Button>
+      </div>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}

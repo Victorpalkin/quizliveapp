@@ -17,6 +17,7 @@ interface EditorState {
   slides: PresentationSlide[];
   currentSlideIndex: number;
   selectedElementId: string | null;
+  selectedElementIds: string[];
   title: string;
   description: string;
   settings: PresentationSettings;
@@ -64,6 +65,7 @@ export function useEditorState(initial?: {
     slides: initial?.slides?.length ? initial.slides : [createDefaultSlide(0)],
     currentSlideIndex: 0,
     selectedElementId: null,
+    selectedElementIds: [],
     title: initial?.title || 'Untitled Presentation',
     description: initial?.description || '',
     settings: initial?.settings || { ...DEFAULT_SETTINGS },
@@ -71,20 +73,49 @@ export function useEditorState(initial?: {
     isDirty: false,
   });
 
-  // Undo/redo history
-  const historyRef = useRef<HistoryEntry[]>([]);
-  const historyIndexRef = useRef(-1);
+  // Undo/redo stacks (two-stack approach for correctness)
+  const undoStackRef = useRef<HistoryEntry[]>([]);
+  const redoStackRef = useRef<HistoryEntry[]>([]);
+  // Version counter triggers re-renders when history changes
+  const [historyVersion, setHistoryVersion] = useState(0);
+  // Refs to read current state without stale closures
+  const slidesRef = useRef(state.slides);
+  const currentSlideIndexRef = useRef(state.currentSlideIndex);
+  slidesRef.current = state.slides;
+  currentSlideIndexRef.current = state.currentSlideIndex;
+
+  // Drag state: prevents pushing history on every pixel during drag
+  const isDraggingRef = useRef(false);
+  // Debounce: prevents pushing history on every keystroke for property changes
+  const lastHistoryPushRef = useRef(0);
 
   const pushHistory = useCallback(() => {
-    const entry: HistoryEntry = {
-      slides: JSON.parse(JSON.stringify(state.slides)),
-      currentSlideIndex: state.currentSlideIndex,
-    };
-    // Trim future history
-    historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
-    historyRef.current.push(entry);
-    historyIndexRef.current = historyRef.current.length - 1;
-  }, [state.slides, state.currentSlideIndex]);
+    undoStackRef.current.push({
+      slides: JSON.parse(JSON.stringify(slidesRef.current)),
+      currentSlideIndex: currentSlideIndexRef.current,
+    });
+    redoStackRef.current = [];
+    setHistoryVersion((v) => v + 1);
+    lastHistoryPushRef.current = Date.now();
+  }, []);
+
+  // Push history with 300ms debounce (for property panel changes)
+  const pushHistoryDebounced = useCallback(() => {
+    const now = Date.now();
+    if (now - lastHistoryPushRef.current > 300) {
+      pushHistory();
+    }
+  }, [pushHistory]);
+
+  // Drag operation helpers
+  const startDrag = useCallback(() => {
+    pushHistory();
+    isDraggingRef.current = true;
+  }, [pushHistory]);
+
+  const endDrag = useCallback(() => {
+    isDraggingRef.current = false;
+  }, []);
 
   // --- Current slide helpers ---
   const currentSlide = state.slides[state.currentSlideIndex] || null;
@@ -92,6 +123,10 @@ export function useEditorState(initial?: {
   const selectedElement = currentSlide?.elements.find(
     (el) => el.id === state.selectedElementId
   ) || null;
+
+  const selectedElements = currentSlide?.elements.filter(
+    (el) => state.selectedElementIds.includes(el.id)
+  ) || [];
 
   // --- Title/description ---
   const setTitle = useCallback((title: string) => {
@@ -108,6 +143,7 @@ export function useEditorState(initial?: {
       ...s,
       currentSlideIndex: Math.max(0, Math.min(index, s.slides.length - 1)),
       selectedElementId: null,
+      selectedElementIds: [],
     }));
   }, []);
 
@@ -126,6 +162,7 @@ export function useEditorState(initial?: {
         slides: newSlides,
         currentSlideIndex: insertAt,
         selectedElementId: null,
+        selectedElementIds: [],
         isDirty: true,
       };
     });
@@ -158,6 +195,7 @@ export function useEditorState(initial?: {
         slides: newSlides,
         currentSlideIndex: newIndex,
         selectedElementId: null,
+        selectedElementIds: [],
         isDirty: true,
       };
     });
@@ -253,7 +291,7 @@ export function useEditorState(initial?: {
         zIndex: maxZ + 1,
         ...defaults,
         // Default configs for interactive elements
-        ...(type === 'text' && { content: 'Click to edit text', fontSize: 24, textAlign: 'center' as const, color: '#000000' }),
+        ...(type === 'text' && { content: '', fontSize: 24, textAlign: 'center' as const, color: '#000000' }),
         ...(type === 'shape' && { shapeType: 'rectangle' as const, backgroundColor: '#e2e8f0', borderColor: '#94a3b8', borderWidth: 2 }),
         ...(type === 'quiz' && {
           quizConfig: { question: 'Enter your question', answers: [{ text: 'Option A' }, { text: 'Option B' }, { text: 'Option C' }, { text: 'Option D' }], correctAnswerIndex: 0, timeLimit: 20, pointValue: 1000 },
@@ -301,12 +339,17 @@ export function useEditorState(initial?: {
         ...s,
         slides: newSlides,
         selectedElementId: newElement.id,
+        selectedElementIds: [newElement.id],
         isDirty: true,
       };
     });
   }, [pushHistory]);
 
   const updateElement = useCallback((elementId: string, updates: Partial<SlideElement>) => {
+    // Push history for property changes (debounced), but not during drag
+    if (!isDraggingRef.current) {
+      pushHistoryDebounced();
+    }
     setState((s) => {
       const slide = s.slides[s.currentSlideIndex];
       if (!slide) return s;
@@ -319,7 +362,23 @@ export function useEditorState(initial?: {
       newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
       return { ...s, slides: newSlides, isDirty: true };
     });
-  }, []);
+  }, [pushHistoryDebounced]);
+
+  const updateElements = useCallback((elementIds: string[], updates: Partial<SlideElement>) => {
+    pushHistoryDebounced();
+    setState((s) => {
+      const slide = s.slides[s.currentSlideIndex];
+      if (!slide) return s;
+
+      const newElements = slide.elements.map((el) =>
+        elementIds.includes(el.id) ? { ...el, ...updates } : el
+      );
+
+      const newSlides = [...s.slides];
+      newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
+      return { ...s, slides: newSlides, isDirty: true };
+    });
+  }, [pushHistoryDebounced]);
 
   const deleteElement = useCallback((elementId: string) => {
     pushHistory();
@@ -336,13 +395,52 @@ export function useEditorState(initial?: {
         ...s,
         slides: newSlides,
         selectedElementId: s.selectedElementId === elementId ? null : s.selectedElementId,
+        selectedElementIds: s.selectedElementIds.filter((id) => id !== elementId),
+        isDirty: true,
+      };
+    });
+  }, [pushHistory]);
+
+  const deleteElements = useCallback((elementIds: string[]) => {
+    pushHistory();
+    setState((s) => {
+      const slide = s.slides[s.currentSlideIndex];
+      if (!slide) return s;
+
+      const newSlides = [...s.slides];
+      newSlides[s.currentSlideIndex] = {
+        ...slide,
+        elements: slide.elements.filter((el) => !elementIds.includes(el.id)),
+      };
+      return {
+        ...s,
+        slides: newSlides,
+        selectedElementId: null,
+        selectedElementIds: [],
         isDirty: true,
       };
     });
   }, [pushHistory]);
 
   const selectElement = useCallback((elementId: string | null) => {
-    setState((s) => ({ ...s, selectedElementId: elementId }));
+    setState((s) => ({
+      ...s,
+      selectedElementId: elementId,
+      selectedElementIds: elementId ? [elementId] : [],
+    }));
+  }, []);
+
+  const toggleSelectElement = useCallback((elementId: string) => {
+    setState((s) => {
+      const ids = s.selectedElementIds.includes(elementId)
+        ? s.selectedElementIds.filter((id) => id !== elementId)
+        : [...s.selectedElementIds, elementId];
+      return {
+        ...s,
+        selectedElementIds: ids,
+        selectedElementId: ids.length > 0 ? ids[0] : null,
+      };
+    });
   }, []);
 
   // --- Z-order ---
@@ -350,10 +448,11 @@ export function useEditorState(initial?: {
     pushHistory();
     setState((s) => {
       const slide = s.slides[s.currentSlideIndex];
-      if (!slide || !s.selectedElementId) return s;
+      if (!slide || s.selectedElementIds.length === 0) return s;
       const maxZ = slide.elements.reduce((max, el) => Math.max(max, el.zIndex), 0);
+      let nextZ = maxZ + 1;
       const newElements = slide.elements.map((el) =>
-        el.id === s.selectedElementId ? { ...el, zIndex: maxZ + 1 } : el
+        s.selectedElementIds.includes(el.id) ? { ...el, zIndex: nextZ++ } : el
       );
       const newSlides = [...s.slides];
       newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
@@ -365,10 +464,11 @@ export function useEditorState(initial?: {
     pushHistory();
     setState((s) => {
       const slide = s.slides[s.currentSlideIndex];
-      if (!slide || !s.selectedElementId) return s;
+      if (!slide || s.selectedElementIds.length === 0) return s;
       const minZ = slide.elements.reduce((min, el) => Math.min(min, el.zIndex), Infinity);
+      let nextZ = minZ - s.selectedElementIds.length;
       const newElements = slide.elements.map((el) =>
-        el.id === s.selectedElementId ? { ...el, zIndex: minZ - 1 } : el
+        s.selectedElementIds.includes(el.id) ? { ...el, zIndex: nextZ++ } : el
       );
       const newSlides = [...s.slides];
       newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
@@ -451,7 +551,7 @@ export function useEditorState(initial?: {
       };
       const newSlides = [...s.slides];
       newSlides[s.currentSlideIndex] = { ...slide, elements: [...slide.elements, pasted] };
-      return { ...s, slides: newSlides, selectedElementId: pasted.id, isDirty: true };
+      return { ...s, slides: newSlides, selectedElementId: pasted.id, selectedElementIds: [pasted.id], isDirty: true };
     });
   }, [pushHistory]);
 
@@ -478,7 +578,7 @@ export function useEditorState(initial?: {
       };
       const newSlides = [...s.slides];
       newSlides[s.currentSlideIndex] = { ...currentSlide, elements: [...currentSlide.elements, dup] };
-      return { ...s, slides: newSlides, selectedElementId: dup.id, isDirty: true };
+      return { ...s, slides: newSlides, selectedElementId: dup.id, selectedElementIds: [dup.id], isDirty: true };
     });
   }, [state.slides, state.currentSlideIndex, state.selectedElementId, pushHistory]);
 
@@ -522,6 +622,7 @@ export function useEditorState(initial?: {
       theme: { ...data.theme },
       currentSlideIndex: 0,
       selectedElementId: null,
+      selectedElementIds: [],
       isDirty: true,
     }));
   }, [pushHistory]);
@@ -535,36 +636,48 @@ export function useEditorState(initial?: {
     setState((s) => ({ ...s, theme: { ...s.theme, ...theme }, isDirty: true }));
   }, []);
 
-  // --- Undo/Redo ---
+  // --- Undo/Redo (two-stack approach) ---
   const undo = useCallback(() => {
-    if (historyIndexRef.current < 0) return;
-    const entry = historyRef.current[historyIndexRef.current];
-    historyIndexRef.current--;
+    if (undoStackRef.current.length === 0) return;
+    // Save current state to redo stack
+    redoStackRef.current.push({
+      slides: JSON.parse(JSON.stringify(slidesRef.current)),
+      currentSlideIndex: currentSlideIndexRef.current,
+    });
+    const entry = undoStackRef.current.pop()!;
+    setHistoryVersion((v) => v + 1);
     setState((s) => ({
       ...s,
       slides: JSON.parse(JSON.stringify(entry.slides)),
       currentSlideIndex: entry.currentSlideIndex,
       selectedElementId: null,
+      selectedElementIds: [],
       isDirty: true,
     }));
   }, []);
 
   const redo = useCallback(() => {
-    if (historyIndexRef.current >= historyRef.current.length - 2) return;
-    historyIndexRef.current++;
-    const entry = historyRef.current[historyIndexRef.current + 1];
-    if (!entry) return;
+    if (redoStackRef.current.length === 0) return;
+    // Save current state to undo stack
+    undoStackRef.current.push({
+      slides: JSON.parse(JSON.stringify(slidesRef.current)),
+      currentSlideIndex: currentSlideIndexRef.current,
+    });
+    const entry = redoStackRef.current.pop()!;
+    setHistoryVersion((v) => v + 1);
     setState((s) => ({
       ...s,
       slides: JSON.parse(JSON.stringify(entry.slides)),
       currentSlideIndex: entry.currentSlideIndex,
       selectedElementId: null,
+      selectedElementIds: [],
       isDirty: true,
     }));
   }, []);
 
-  const canUndo = historyIndexRef.current >= 0;
-  const canRedo = historyIndexRef.current < historyRef.current.length - 2;
+  // Reactive canUndo/canRedo (historyVersion forces re-evaluation)
+  const canUndo = historyVersion >= 0 && undoStackRef.current.length > 0;
+  const canRedo = historyVersion >= 0 && redoStackRef.current.length > 0;
 
   const markClean = useCallback(() => {
     setState((s) => ({ ...s, isDirty: false }));
@@ -586,6 +699,7 @@ export function useEditorState(initial?: {
     ...state,
     currentSlide,
     selectedElement,
+    selectedElements,
     interactiveElementCount,
     currentSlideHasInteractive,
     canUndo,
@@ -610,8 +724,11 @@ export function useEditorState(initial?: {
     // Element operations
     addElement,
     updateElement,
+    updateElements,
     deleteElement,
+    deleteElements,
     selectElement,
+    toggleSelectElement,
 
     // Z-order
     bringToFront,
@@ -638,5 +755,9 @@ export function useEditorState(initial?: {
     undo,
     redo,
     markClean,
+
+    // Drag operations
+    startDrag,
+    endDrag,
   };
 }

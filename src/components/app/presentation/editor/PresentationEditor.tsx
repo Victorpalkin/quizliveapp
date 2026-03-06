@@ -1,16 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { usePresentationMutations } from '@/firebase/presentation';
 import { useCreatePresentationGame } from '@/firebase/presentation/use-presentation-game';
 import { useEditorState } from '@/hooks/presentation/use-editor-state';
+import { useUnsavedChangesWarning } from '@/hooks/use-unsaved-changes-warning';
 import { EditorToolbar } from './EditorToolbar';
 import { SlidePanel } from './SlidePanel';
 import { SlideCanvas } from './SlideCanvas';
 import { PropertiesPanel } from './PropertiesPanel';
+import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog';
+import { Keyboard, Minus, Plus, Maximize } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { Presentation } from '@/lib/types';
 
 interface PresentationEditorProps {
@@ -36,6 +40,19 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
         }
       : undefined
   );
+
+  // --- Phase 1: Unsaved changes warning ---
+  useUnsavedChangesWarning(editor.isDirty);
+
+  // --- Auto-save state ---
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // --- Zoom state ---
+  const [zoom, setZoom] = useState(1);
+
+  // --- Keyboard shortcuts dialog ---
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   // Save handler
   const handleSave = useCallback(async () => {
@@ -66,6 +83,26 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
     }
   }, [presentation, editor, createPresentation, updatePresentation, router, toast]);
 
+  // --- Phase 1: Auto-save with 30-second debounce ---
+  useEffect(() => {
+    if (editor.isDirty) {
+      autoSaveTimerRef.current = setTimeout(async () => {
+        setIsAutoSaving(true);
+        try {
+          await handleSave();
+        } finally {
+          setIsAutoSaving(false);
+        }
+      }, 30000);
+    }
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+    };
+  }, [editor.isDirty, editor.slides, handleSave]);
+
   // Present handler: auto-save, create game, navigate to lobby
   const handlePresent = useCallback(async () => {
     if (!presentation || !user) return;
@@ -80,6 +117,11 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
       throw new Error('Failed to start presentation');
     }
   }, [presentation, user, editor.isDirty, editor.settings, handleSave, createPresentationGame, router, toast]);
+
+  // Back navigation handler
+  const handleBack = useCallback(() => {
+    router.push('/host');
+  }, [router]);
 
   // Inline editing state
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
@@ -97,6 +139,19 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
     setEditingElementId(null);
   }, []);
 
+  // Zoom helpers
+  const handleZoomIn = useCallback(() => {
+    setZoom((z) => Math.min(2, z + 0.25));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((z) => Math.max(0.25, z - 0.25));
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setZoom(1);
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -107,7 +162,10 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
       }
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (editor.selectedElementId) {
+        if (editor.selectedElementIds.length > 1) {
+          e.preventDefault();
+          editor.deleteElements(editor.selectedElementIds);
+        } else if (editor.selectedElementId) {
           e.preventDefault();
           editor.deleteElement(editor.selectedElementId);
         }
@@ -152,11 +210,28 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
         if (e.key === 'ArrowRight') updates.x = (editor.selectedElement?.x ?? 0) + delta;
         editor.updateElement(editor.selectedElementId, updates);
       }
+      // Zoom shortcuts
+      if ((e.metaKey || e.ctrlKey) && e.key === '0') {
+        e.preventDefault();
+        handleZoomReset();
+      }
+      // ? for keyboard shortcuts
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShortcutsOpen(true);
+      }
     };
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [editor, handleSave]);
+  }, [editor, handleSave, handleZoomReset]);
+
+  // Selected element type label for status bar
+  const selectedTypeLabel = editor.selectedElementIds.length > 1
+    ? `${editor.selectedElementIds.length} elements selected`
+    : editor.selectedElement
+      ? `${editor.selectedElement.type} selected`
+      : null;
 
   return (
     <div className="flex flex-col h-screen bg-muted/30">
@@ -180,6 +255,9 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
         onApplyTemplate={editor.applyTemplate}
         presentationId={presentation?.id}
         onPresent={presentation ? handlePresent : undefined}
+        onBack={handleBack}
+        description={editor.description}
+        onDescriptionChange={editor.setDescription}
       />
 
       {/* 3-panel layout */}
@@ -199,22 +277,37 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
         <SlideCanvas
           slide={editor.currentSlide}
           selectedElementId={editor.selectedElementId}
+          selectedElementIds={editor.selectedElementIds}
           onSelectElement={editor.selectElement}
+          onToggleSelectElement={editor.toggleSelectElement}
           onUpdateElement={editor.updateElement}
           onDeleteElement={editor.deleteElement}
+          onAddElement={editor.addElement}
+          onBringToFront={editor.bringToFront}
+          onSendToBack={editor.sendToBack}
+          onCopyElement={editor.copyElement}
+          onPasteElement={editor.pasteElement}
+          onDuplicateElement={editor.duplicateElement}
           theme={editor.theme}
           editingElementId={editingElementId}
           onStartEditing={handleStartEditing}
           onStopEditing={handleStopEditing}
+          zoom={zoom}
+          onZoomChange={setZoom}
+          onStartDrag={editor.startDrag}
+          onEndDrag={editor.endDrag}
         />
 
         {/* Right: Properties panel */}
         <PropertiesPanel
           selectedElement={editor.selectedElement}
+          selectedElements={editor.selectedElements}
           slide={editor.currentSlide}
           slides={editor.slides}
           onUpdateElement={(updates) => {
-            if (editor.selectedElementId) {
+            if (editor.selectedElementIds.length > 1) {
+              editor.updateElements(editor.selectedElementIds, updates);
+            } else if (editor.selectedElementId) {
               editor.updateElement(editor.selectedElementId, updates);
             }
           }}
@@ -231,17 +324,64 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
 
       {/* Status bar */}
       <div className="flex items-center justify-between px-4 py-1.5 text-xs text-muted-foreground glass-subtle">
-        <span>
+        <span className="flex items-center gap-2">
           Slide {editor.currentSlideIndex + 1}/{editor.slides.length}
+          {selectedTypeLabel && (
+            <> &middot; <span className="capitalize">{selectedTypeLabel}</span></>
+          )}
+          {editor.selectedElement && (
+            <span className="text-muted-foreground/70">
+              x:{Math.round(editor.selectedElement.x)}% y:{Math.round(editor.selectedElement.y)}%
+              w:{Math.round(editor.selectedElement.width)}% h:{Math.round(editor.selectedElement.height)}%
+            </span>
+          )}
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className={`inline-block w-1.5 h-1.5 rounded-full ${editor.isDirty ? 'bg-orange-400' : 'bg-green-400'}`} />
-          {editor.isDirty ? 'Unsaved changes' : 'All changes saved'}
+        <span className="flex items-center gap-2">
+          {/* Zoom controls */}
+          <span className="flex items-center gap-0.5">
+            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleZoomOut}>
+              <Minus className="h-3 w-3" />
+            </Button>
+            <button
+              className="text-xs hover:text-foreground transition-colors min-w-[3rem] text-center"
+              onClick={handleZoomReset}
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleZoomIn}>
+              <Plus className="h-3 w-3" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setZoom(1)} title="Fit to view">
+              <Maximize className="h-3 w-3" />
+            </Button>
+          </span>
+
+          <div className="w-px h-3 bg-border/50" />
+
+          <span className="flex items-center gap-1.5">
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${editor.isDirty ? 'bg-orange-400' : 'bg-green-400'}`} />
+            {isAutoSaving ? 'Auto-saving...' : editor.isDirty ? 'Unsaved changes' : 'All changes saved'}
+          </span>
           {editor.interactiveElementCount > 0 && (
             <> &middot; {editor.interactiveElementCount} interactive</>
           )}
+
+          <div className="w-px h-3 bg-border/50" />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5"
+            onClick={() => setShortcutsOpen(true)}
+            title="Keyboard shortcuts (?)"
+          >
+            <Keyboard className="h-3 w-3" />
+          </Button>
         </span>
       </div>
+
+      {/* Keyboard shortcuts dialog */}
+      <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </div>
   );
 }

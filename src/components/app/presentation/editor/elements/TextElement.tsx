@@ -58,6 +58,7 @@ export function TextElement({
     textAlign: element.textAlign || 'left',
     color: element.color || '#000000',
     lineHeight: element.lineHeight || 1.4,
+    textDecoration: element.textDecoration === 'underline' ? 'underline' : undefined,
   };
 
   if (isEditing) {
@@ -91,7 +92,7 @@ export function TextElement({
       }}
     >
       <div className="w-full whitespace-pre-wrap break-words">
-        {element.content || 'Click to edit text'}
+        {element.content || 'Double-click to edit'}
       </div>
     </div>
   );

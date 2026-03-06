@@ -28,6 +28,9 @@ export function ShapeProperties({ element, onUpdate }: ShapePropertiesProps) {
             <SelectItem value="circle">Circle</SelectItem>
             <SelectItem value="rounded-rect">Rounded Rectangle</SelectItem>
             <SelectItem value="line">Line</SelectItem>
+            <SelectItem value="triangle">Triangle</SelectItem>
+            <SelectItem value="arrow-right">Arrow</SelectItem>
+            <SelectItem value="diamond">Diamond</SelectItem>
           </SelectContent>
         </Select>
       </div>
