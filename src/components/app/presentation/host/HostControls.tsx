@@ -3,7 +3,17 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Pause, Play, Square, LayoutGrid } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ChevronLeft, ChevronRight, Pause, Play, Square, LayoutGrid, Maximize, Minimize } from 'lucide-react';
 import type { PresentationGameState, PresentationSlide } from '@/lib/types';
 import { SlideThumbnail } from '../shared/SlideThumbnail';
 
@@ -18,6 +28,8 @@ interface HostControlsProps {
   onPause: () => void;
   onResume: () => void;
   onEnd: () => void;
+  onToggleFullscreen?: () => void;
+  isFullscreen?: boolean;
 }
 
 export function HostControls({
@@ -31,9 +43,12 @@ export function HostControls({
   onPause,
   onResume,
   onEnd,
+  onToggleFullscreen,
+  isFullscreen,
 }: HostControlsProps) {
   const [visible, setVisible] = useState(false);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
   const navigatorRef = useRef<HTMLDivElement>(null);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -48,15 +63,20 @@ export function HostControls({
     if (e.key === 'Escape') {
       if (navigatorOpen) {
         setNavigatorOpen(false);
+      } else if (isFullscreen) {
+        document.exitFullscreen?.();
       } else {
-        onEnd();
+        setShowEndConfirm(true);
       }
     }
     if (e.key === 'g' || e.key === 'G') {
       setNavigatorOpen((prev) => !prev);
       setVisible(true);
     }
-  }, [onNextSlide, onPrevSlide, onEnd, navigatorOpen]);
+    if ((e.key === 'f' || e.key === 'F') && onToggleFullscreen) {
+      onToggleFullscreen();
+    }
+  }, [onNextSlide, onPrevSlide, navigatorOpen, isFullscreen, onToggleFullscreen]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -203,12 +223,44 @@ export function HostControls({
               <LayoutGrid className="h-4 w-4" />
             </Button>
 
-            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEnd(); }} className="text-white hover:bg-white/20 h-10 w-10">
+            {onToggleFullscreen && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => { e.stopPropagation(); onToggleFullscreen(); }}
+                className="text-white hover:bg-white/20 h-10 w-10"
+              >
+                {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              </Button>
+            )}
+
+            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setShowEndConfirm(true); }} className="text-white hover:bg-white/20 h-10 w-10">
               <Square className="h-4 w-4" />
             </Button>
           </div>
         </motion.div>
       )}
+
+      {/* End presentation confirmation dialog */}
+      <AlertDialog open={showEndConfirm} onOpenChange={setShowEndConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>End this presentation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will end the session for all players.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onEnd}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Yes, End
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AnimatePresence>
   );
 }
