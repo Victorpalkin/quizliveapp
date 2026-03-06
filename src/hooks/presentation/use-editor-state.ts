@@ -345,6 +345,174 @@ export function useEditorState(initial?: {
     setState((s) => ({ ...s, selectedElementId: elementId }));
   }, []);
 
+  // --- Z-order ---
+  const bringToFront = useCallback(() => {
+    setState((s) => {
+      const slide = s.slides[s.currentSlideIndex];
+      if (!slide || !s.selectedElementId) return s;
+      const maxZ = slide.elements.reduce((max, el) => Math.max(max, el.zIndex), 0);
+      const newElements = slide.elements.map((el) =>
+        el.id === s.selectedElementId ? { ...el, zIndex: maxZ + 1 } : el
+      );
+      const newSlides = [...s.slides];
+      newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
+      return { ...s, slides: newSlides, isDirty: true };
+    });
+  }, []);
+
+  const sendToBack = useCallback(() => {
+    setState((s) => {
+      const slide = s.slides[s.currentSlideIndex];
+      if (!slide || !s.selectedElementId) return s;
+      const minZ = slide.elements.reduce((min, el) => Math.min(min, el.zIndex), Infinity);
+      const newElements = slide.elements.map((el) =>
+        el.id === s.selectedElementId ? { ...el, zIndex: minZ - 1 } : el
+      );
+      const newSlides = [...s.slides];
+      newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
+      return { ...s, slides: newSlides, isDirty: true };
+    });
+  }, []);
+
+  const moveForward = useCallback(() => {
+    setState((s) => {
+      const slide = s.slides[s.currentSlideIndex];
+      if (!slide || !s.selectedElementId) return s;
+      const el = slide.elements.find((e) => e.id === s.selectedElementId);
+      if (!el) return s;
+      const sorted = [...slide.elements].sort((a, b) => a.zIndex - b.zIndex);
+      const idx = sorted.findIndex((e) => e.id === s.selectedElementId);
+      if (idx >= sorted.length - 1) return s;
+      const swapTarget = sorted[idx + 1];
+      const newElements = slide.elements.map((e) => {
+        if (e.id === el.id) return { ...e, zIndex: swapTarget.zIndex };
+        if (e.id === swapTarget.id) return { ...e, zIndex: el.zIndex };
+        return e;
+      });
+      const newSlides = [...s.slides];
+      newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
+      return { ...s, slides: newSlides, isDirty: true };
+    });
+  }, []);
+
+  const moveBackward = useCallback(() => {
+    setState((s) => {
+      const slide = s.slides[s.currentSlideIndex];
+      if (!slide || !s.selectedElementId) return s;
+      const el = slide.elements.find((e) => e.id === s.selectedElementId);
+      if (!el) return s;
+      const sorted = [...slide.elements].sort((a, b) => a.zIndex - b.zIndex);
+      const idx = sorted.findIndex((e) => e.id === s.selectedElementId);
+      if (idx <= 0) return s;
+      const swapTarget = sorted[idx - 1];
+      const newElements = slide.elements.map((e) => {
+        if (e.id === el.id) return { ...e, zIndex: swapTarget.zIndex };
+        if (e.id === swapTarget.id) return { ...e, zIndex: el.zIndex };
+        return e;
+      });
+      const newSlides = [...s.slides];
+      newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
+      return { ...s, slides: newSlides, isDirty: true };
+    });
+  }, []);
+
+  // --- Clipboard (copy/paste/duplicate) ---
+  const clipboardRef = useRef<SlideElement | null>(null);
+
+  const copyElement = useCallback(() => {
+    setState((s) => {
+      const slide = s.slides[s.currentSlideIndex];
+      if (!slide || !s.selectedElementId) return s;
+      const el = slide.elements.find((e) => e.id === s.selectedElementId);
+      if (el) clipboardRef.current = JSON.parse(JSON.stringify(el));
+      return s;
+    });
+  }, []);
+
+  const pasteElement = useCallback(() => {
+    if (!clipboardRef.current) return;
+    pushHistory();
+    setState((s) => {
+      const slide = s.slides[s.currentSlideIndex];
+      if (!slide) return s;
+      const maxZ = slide.elements.reduce((max, el) => Math.max(max, el.zIndex), 0);
+      const pasted: SlideElement = {
+        ...JSON.parse(JSON.stringify(clipboardRef.current)),
+        id: nanoid(),
+        x: Math.min((clipboardRef.current!.x || 0) + 3, 90),
+        y: Math.min((clipboardRef.current!.y || 0) + 3, 90),
+        zIndex: maxZ + 1,
+      };
+      const newSlides = [...s.slides];
+      newSlides[s.currentSlideIndex] = { ...slide, elements: [...slide.elements, pasted] };
+      return { ...s, slides: newSlides, selectedElementId: pasted.id, isDirty: true };
+    });
+  }, [pushHistory]);
+
+  const duplicateElement = useCallback(() => {
+    setState((s) => {
+      const slide = s.slides[s.currentSlideIndex];
+      if (!slide || !s.selectedElementId) return s;
+      const el = slide.elements.find((e) => e.id === s.selectedElementId);
+      if (!el) return s;
+      pushHistory();
+      const maxZ = slide.elements.reduce((max, e) => Math.max(max, e.zIndex), 0);
+      const dup: SlideElement = {
+        ...JSON.parse(JSON.stringify(el)),
+        id: nanoid(),
+        x: Math.min(el.x + 3, 90),
+        y: Math.min(el.y + 3, 90),
+        zIndex: maxZ + 1,
+      };
+      const newSlides = [...s.slides];
+      newSlides[s.currentSlideIndex] = { ...slide, elements: [...slide.elements, dup] };
+      return { ...s, slides: newSlides, selectedElementId: dup.id, isDirty: true };
+    });
+  }, [pushHistory]);
+
+  // --- Alignment ---
+  const alignElement = useCallback((alignment: 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom') => {
+    setState((s) => {
+      const slide = s.slides[s.currentSlideIndex];
+      if (!slide || !s.selectedElementId) return s;
+      const el = slide.elements.find((e) => e.id === s.selectedElementId);
+      if (!el) return s;
+      const updates: Partial<SlideElement> = {};
+      switch (alignment) {
+        case 'left': updates.x = 0; break;
+        case 'center-h': updates.x = (100 - el.width) / 2; break;
+        case 'right': updates.x = 100 - el.width; break;
+        case 'top': updates.y = 0; break;
+        case 'center-v': updates.y = (100 - el.height) / 2; break;
+        case 'bottom': updates.y = 100 - el.height; break;
+      }
+      const newElements = slide.elements.map((e) =>
+        e.id === s.selectedElementId ? { ...e, ...updates } : e
+      );
+      const newSlides = [...s.slides];
+      newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
+      return { ...s, slides: newSlides, isDirty: true };
+    });
+  }, []);
+
+  // --- Apply template ---
+  const applyTemplate = useCallback((data: {
+    slides: PresentationSlide[];
+    settings: PresentationSettings;
+    theme: PresentationTheme;
+  }) => {
+    pushHistory();
+    setState((s) => ({
+      ...s,
+      slides: JSON.parse(JSON.stringify(data.slides)),
+      settings: { ...data.settings },
+      theme: { ...data.theme },
+      currentSlideIndex: 0,
+      selectedElementId: null,
+      isDirty: true,
+    }));
+  }, [pushHistory]);
+
   // --- Settings/Theme ---
   const updateSettings = useCallback((settings: Partial<PresentationSettings>) => {
     setState((s) => ({ ...s, settings: { ...s.settings, ...settings }, isDirty: true }));
@@ -431,6 +599,23 @@ export function useEditorState(initial?: {
     updateElement,
     deleteElement,
     selectElement,
+
+    // Z-order
+    bringToFront,
+    sendToBack,
+    moveForward,
+    moveBackward,
+
+    // Clipboard
+    copyElement,
+    pasteElement,
+    duplicateElement,
+
+    // Alignment
+    alignElement,
+
+    // Template
+    applyTemplate,
 
     // Settings/Theme
     updateSettings,

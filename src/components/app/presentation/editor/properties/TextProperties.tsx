@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Bold, Italic, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import type { SlideElement } from '@/lib/types';
 
@@ -106,12 +107,47 @@ export function TextProperties({ element, onUpdate }: TextPropertiesProps) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="inherit">Default</SelectItem>
-            <SelectItem value="Inter, sans-serif">Inter</SelectItem>
-            <SelectItem value="Georgia, serif">Georgia</SelectItem>
-            <SelectItem value="monospace">Monospace</SelectItem>
+            <SelectGroup>
+              <SelectLabel>Sans-Serif</SelectLabel>
+              <SelectItem value="inherit">Default</SelectItem>
+              <SelectItem value="Inter, sans-serif">Inter</SelectItem>
+              <SelectItem value="Roboto, sans-serif">Roboto</SelectItem>
+              <SelectItem value="'Open Sans', sans-serif">Open Sans</SelectItem>
+              <SelectItem value="Lato, sans-serif">Lato</SelectItem>
+              <SelectItem value="Montserrat, sans-serif">Montserrat</SelectItem>
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>Serif</SelectLabel>
+              <SelectItem value="Georgia, serif">Georgia</SelectItem>
+              <SelectItem value="'Playfair Display', serif">Playfair Display</SelectItem>
+              <SelectItem value="Merriweather, serif">Merriweather</SelectItem>
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>Monospace</SelectLabel>
+              <SelectItem value="'Courier New', monospace">Courier New</SelectItem>
+              <SelectItem value="'Fira Code', monospace">Fira Code</SelectItem>
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>Display</SelectLabel>
+              <SelectItem value="'Comic Neue', cursive">Comic Neue</SelectItem>
+            </SelectGroup>
           </SelectContent>
         </Select>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Line Height</Label>
+          <span className="text-xs text-muted-foreground">{element.lineHeight || 1.4}</span>
+        </div>
+        <Slider
+          value={[element.lineHeight || 1.4]}
+          onValueChange={([v]) => onUpdate({ lineHeight: v })}
+          min={0.8}
+          max={3}
+          step={0.1}
+          className="mt-1"
+        />
       </div>
     </div>
   );

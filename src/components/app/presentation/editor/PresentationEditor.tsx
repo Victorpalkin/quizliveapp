@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
@@ -81,10 +81,21 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
     }
   }, [presentation, user, editor.isDirty, editor.settings, handleSave, createPresentationGame, router, toast]);
 
+  // Inline editing state
+  const [editingElementId, setEditingElementId] = useState<string | null>(null);
+
+  const handleStartEditing = useCallback((elementId: string) => {
+    setEditingElementId(elementId);
+  }, []);
+
+  const handleStopEditing = useCallback(() => {
+    setEditingElementId(null);
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Ignore when typing in inputs
+      // Ignore when typing in inputs or inline editing
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return;
@@ -107,6 +118,23 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
         handleSave();
+      }
+      // Copy/Paste/Duplicate
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+        if (editor.selectedElementId) {
+          e.preventDefault();
+          editor.copyElement();
+        }
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        e.preventDefault();
+        editor.pasteElement();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+        if (editor.selectedElementId) {
+          e.preventDefault();
+          editor.duplicateElement();
+        }
       }
       // Arrow key nudge
       if (editor.selectedElementId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
@@ -143,6 +171,8 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
         onUpdateSettings={editor.updateSettings}
         theme={editor.theme}
         onUpdateTheme={editor.updateTheme}
+        slides={editor.slides}
+        onApplyTemplate={editor.applyTemplate}
         presentationId={presentation?.id}
         onPresent={presentation ? handlePresent : undefined}
       />
@@ -168,6 +198,9 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
           onUpdateElement={editor.updateElement}
           onDeleteElement={editor.deleteElement}
           theme={editor.theme}
+          editingElementId={editingElementId}
+          onStartEditing={handleStartEditing}
+          onStopEditing={handleStopEditing}
         />
 
         {/* Right: Properties panel */}
@@ -183,6 +216,11 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
           onUpdateBackground={editor.updateSlideBackground}
           onUpdateNotes={editor.updateSlideNotes}
           onUpdateTransition={editor.updateSlideTransition}
+          onBringToFront={editor.bringToFront}
+          onSendToBack={editor.sendToBack}
+          onMoveForward={editor.moveForward}
+          onMoveBackward={editor.moveBackward}
+          onAlignElement={editor.alignElement}
         />
       </div>
 

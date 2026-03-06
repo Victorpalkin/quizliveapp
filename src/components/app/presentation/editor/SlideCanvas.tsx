@@ -16,6 +16,9 @@ interface SlideCanvasProps {
   onUpdateElement: (elementId: string, updates: Partial<SlideElement>) => void;
   onDeleteElement: (elementId: string) => void;
   theme: PresentationTheme;
+  editingElementId: string | null;
+  onStartEditing: (elementId: string) => void;
+  onStopEditing: () => void;
 }
 
 const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
@@ -26,13 +29,30 @@ function ElementRenderer({
   element,
   isSelected,
   onSelect,
+  isEditing,
+  onStartEditing,
+  onStopEditing,
+  onUpdateContent,
 }: {
   element: SlideElement;
   isSelected: boolean;
   onSelect: () => void;
+  isEditing?: boolean;
+  onStartEditing?: () => void;
+  onStopEditing?: () => void;
+  onUpdateContent?: (content: string) => void;
 }) {
   if (element.type === 'text') {
-    return <TextElement element={element} isSelected={isSelected} />;
+    return (
+      <TextElement
+        element={element}
+        isSelected={isSelected}
+        isEditing={isEditing}
+        onStartEditing={onStartEditing}
+        onStopEditing={onStopEditing}
+        onUpdateContent={onUpdateContent}
+      />
+    );
   }
   if (element.type === 'image') {
     return <ImageElement element={element} />;
@@ -61,6 +81,9 @@ export function SlideCanvas({
   onUpdateElement,
   onDeleteElement,
   theme,
+  editingElementId,
+  onStartEditing,
+  onStopEditing,
 }: SlideCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -100,6 +123,7 @@ export function SlideCanvas({
 
   const handleMouseDown = (e: React.MouseEvent, element: SlideElement) => {
     if (element.locked) return;
+    if (editingElementId === element.id) return;
     e.stopPropagation();
     onSelectElement(element.id);
 
@@ -195,6 +219,10 @@ export function SlideCanvas({
                 element={element}
                 isSelected={isSelected}
                 onSelect={() => onSelectElement(element.id)}
+                isEditing={editingElementId === element.id}
+                onStartEditing={() => onStartEditing(element.id)}
+                onStopEditing={onStopEditing}
+                onUpdateContent={(content) => onUpdateElement(element.id, { content })}
               />
               {/* Hover indicator (thin dashed border before selection) */}
               {!isSelected && !element.locked && (

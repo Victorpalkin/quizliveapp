@@ -14,7 +14,11 @@ import {
   Loader2,
 } from 'lucide-react';
 import { InsertMenu } from './InsertMenu';
-import type { SlideElementType, PresentationSettings, PresentationTheme } from '@/lib/types';
+import { ThemeSelector } from './ThemeSelector';
+import { TemplateSelector } from './TemplateSelector';
+import { PresentationSettingsDialog } from './PresentationSettingsDialog';
+import { SaveTemplateDialog } from './SaveTemplateDialog';
+import type { SlideElementType, PresentationSlide, PresentationSettings, PresentationTheme } from '@/lib/types';
 
 interface EditorToolbarProps {
   title: string;
@@ -31,6 +35,8 @@ interface EditorToolbarProps {
   onUpdateSettings: (settings: Partial<PresentationSettings>) => void;
   theme: PresentationTheme;
   onUpdateTheme: (theme: Partial<PresentationTheme>) => void;
+  slides: PresentationSlide[];
+  onApplyTemplate: (data: { slides: PresentationSlide[]; settings: PresentationSettings; theme: PresentationTheme }) => void;
   presentationId?: string;
   onPresent?: () => void | Promise<void>;
 }
@@ -46,6 +52,12 @@ export function EditorToolbar({
   isDirty,
   onAddElement,
   currentSlideHasInteractive,
+  settings,
+  onUpdateSettings,
+  theme,
+  onUpdateTheme,
+  slides,
+  onApplyTemplate,
   presentationId,
   onPresent,
 }: EditorToolbarProps) {
@@ -98,6 +110,15 @@ export function EditorToolbar({
         onInsert={onAddElement}
         disableInteractive={currentSlideHasInteractive}
       />
+
+      {/* Divider */}
+      <div className="w-px h-6 bg-border/50" />
+
+      {/* Theme, Templates, Settings */}
+      <ThemeSelector theme={theme} onUpdate={onUpdateTheme} />
+      <TemplateSelector onApply={onApplyTemplate} />
+      <SaveTemplateDialog slides={slides} settings={settings} theme={theme} />
+      <PresentationSettingsDialog settings={settings} onUpdate={onUpdateSettings} />
 
       {/* Spacer */}
       <div className="flex-1" />
