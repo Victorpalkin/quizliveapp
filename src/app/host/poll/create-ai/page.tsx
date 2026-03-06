@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { SettingToggle } from '@/components/app/setting-toggle';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { Header } from '@/components/app/header';
 import { PollPreview } from '@/components/app/poll-preview';
@@ -403,19 +402,13 @@ export default function CreatePollWithAIPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="anonymous">Allow Anonymous Responses</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Participants can respond without entering their name
-                      </p>
-                    </div>
-                    <Switch
-                      id="anonymous"
-                      checked={allowAnonymous}
-                      onCheckedChange={setAllowAnonymous}
-                    />
-                  </div>
+                  <SettingToggle
+                    id="anonymous"
+                    label="Allow Anonymous Responses"
+                    description="Participants can respond without entering their name"
+                    checked={allowAnonymous}
+                    onCheckedChange={setAllowAnonymous}
+                  />
                 </CardContent>
               </Card>
             )}

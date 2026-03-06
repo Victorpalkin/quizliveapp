@@ -9,16 +9,21 @@ import {
   ScoreBin,
   LeaderboardWithStats,
   GameAnalyticsSummary,
-  CrowdsourceAnalytics,
+  Game,
   Player,
   PlayerAnswer,
 } from '../types';
 import { ALLOWED_ORIGINS, REGION } from '../config';
+import {
+  buildSingleChoiceDistribution,
+  buildMultipleChoiceDistribution,
+  buildSliderDistribution,
+  buildFreeResponseDistribution,
+} from '../utils/questionDistributions';
+import { buildCrowdsourceStats, type QuestionSubmission } from '../utils/crowdsourceAnalytics';
 
-/**
- * Question interface (subset of client Quiz types)
- */
-interface Question {
+/** Question shape as stored in Firestore (subset of client Quiz types) */
+interface AnalyticsQuestion {
   type: string;
   text: string;
   imageUrl?: string;
@@ -35,33 +40,16 @@ interface Question {
   timeLimit?: number;
 }
 
-/**
- * Quiz interface (subset for analytics)
- */
-interface Quiz {
+/** Quiz document subset needed for analytics */
+interface AnalyticsQuiz {
   title: string;
-  questions: Question[];
+  questions: AnalyticsQuestion[];
 }
 
-/**
- * Game interface (subset for analytics)
- */
-interface Game {
-  quizId: string;
-  hostId: string;
-  state: string;
-  questions?: Question[];  // Override questions if crowdsourced
-}
-
-/**
- * QuestionSubmission interface
- */
-interface QuestionSubmission {
-  playerId: string;
-  playerName: string;
-  questionText: string;
-  aiSelected?: boolean;
-}
+/** Game with optional crowdsourced questions override */
+type AnalyticsGame = Game & {
+  questions?: AnalyticsQuestion[];
+};
 
 /**
  * Cloud Function to compute comprehensive analytics for a completed game.
@@ -93,7 +81,7 @@ export const computeGameAnalytics = onCall(
         throw new HttpsError('not-found', 'Game not found');
       }
 
-      const game = gameDoc.data() as Game;
+      const game = gameDoc.data() as AnalyticsGame;
 
       // 2. Verify caller is the game host
       if (!request.auth?.uid) {
@@ -114,7 +102,7 @@ export const computeGameAnalytics = onCall(
       if (!quizDoc.exists) {
         throw new HttpsError('not-found', 'Quiz not found');
       }
-      const quiz = quizDoc.data() as Quiz;
+      const quiz = quizDoc.data() as AnalyticsQuiz;
 
       // Use game.questions if available (crowdsourced), otherwise use quiz.questions
       const questions = game.questions || quiz.questions;
@@ -205,7 +193,20 @@ export const computeGameAnalytics = onCall(
 /**
  * Build question-level statistics
  */
-function buildQuestionStats(questions: Question[], players: (Player & { id: string })[]): QuestionStats[] {
+function buildQuestionStats(questions: AnalyticsQuestion[], players: (Player & { id: string })[]): QuestionStats[] {
+  // Pre-index player answers by questionIndex for O(1) lookup
+  const answersByQuestion = new Map<number, PlayerAnswer[]>();
+  for (const player of players) {
+    for (const answer of (player.answers || [])) {
+      let arr = answersByQuestion.get(answer.questionIndex);
+      if (!arr) {
+        arr = [];
+        answersByQuestion.set(answer.questionIndex, arr);
+      }
+      arr.push(answer);
+    }
+  }
+
   return questions.map((question, index) => {
     // Skip slide questions entirely
     if (question.type === 'slide') {
@@ -225,104 +226,45 @@ function buildQuestionStats(questions: Question[], players: (Player & { id: stri
       };
     }
 
-    // Collect answers for this question
-    const answers: PlayerAnswer[] = [];
-    players.forEach(player => {
-      const answer = player.answers?.find(a => a.questionIndex === index);
-      if (answer) {
-        answers.push(answer);
-      }
-    });
-
+    const answers = answersByQuestion.get(index) || [];
     const totalAnswered = answers.filter(a => !a.wasTimeout).length;
     const totalTimeout = answers.filter(a => a.wasTimeout).length;
     const timeoutRate = players.length > 0
       ? ((players.length - totalAnswered) / players.length) * 100
       : 0;
 
-    // For scored questions, compute correct rate
     const isScored = !['poll-single', 'poll-multiple'].includes(question.type);
     const correctCount = isScored ? answers.filter(a => a.isCorrect).length : 0;
     const correctRate = isScored && totalAnswered > 0
       ? (correctCount / totalAnswered) * 100
       : 0;
 
-    // Note: avgResponseTime would require storing response time in PlayerAnswer
-    // For now, we set it to 0 as this data isn't available
     const avgResponseTime = 0;
-
-    // Compute average points
     const totalPoints = answers.reduce((sum, a) => sum + a.points, 0);
     const avgPoints = totalAnswered > 0 ? totalPoints / totalAnswered : 0;
 
-    // Build answer distribution based on question type
-    let answerDistribution: { label: string; count: number; isCorrect: boolean }[] | undefined;
-    let sliderDistribution: QuestionStats['sliderDistribution'] | undefined;
-    let freeResponseDistribution: { text: string; count: number; isCorrect: boolean }[] | undefined;
+    // Build type-specific distributions
+    let answerDistribution: QuestionStats['answerDistribution'];
+    let sliderDistribution: QuestionStats['sliderDistribution'];
+    let freeResponseDistribution: QuestionStats['freeResponseDistribution'];
 
     if (question.type === 'single-choice' || question.type === 'poll-single') {
-      const answerCounts = new Map<number, number>();
-      answers.forEach(a => {
-        if (a.answerIndex !== undefined) {
-          answerCounts.set(a.answerIndex, (answerCounts.get(a.answerIndex) || 0) + 1);
-        }
-      });
-
-      answerDistribution = (question.answers || []).map((ans, i) => ({
-        label: ans.text,
-        count: answerCounts.get(i) || 0,
-        isCorrect: question.type === 'single-choice' && question.correctAnswerIndex === i,
-      }));
+      answerDistribution = buildSingleChoiceDistribution(
+        answers, question.answers || [], question.correctAnswerIndex, isScored
+      );
     } else if (question.type === 'multiple-choice' || question.type === 'poll-multiple') {
-      const answerCounts = new Map<number, number>();
-      answers.forEach(a => {
-        (a.answerIndices || []).forEach(idx => {
-          answerCounts.set(idx, (answerCounts.get(idx) || 0) + 1);
-        });
-      });
-
-      const correctIndices = new Set(question.correctAnswerIndices || []);
-      answerDistribution = (question.answers || []).map((ans, i) => ({
-        label: ans.text,
-        count: answerCounts.get(i) || 0,
-        isCorrect: question.type === 'multiple-choice' && correctIndices.has(i),
-      }));
+      answerDistribution = buildMultipleChoiceDistribution(
+        answers, question.answers || [], question.correctAnswerIndices, isScored
+      );
     } else if (question.type === 'slider') {
-      const playerValues = answers
-        .filter(a => a.sliderValue !== undefined)
-        .map(a => a.sliderValue as number);
-
-      sliderDistribution = {
-        correctValue: question.correctValue || 0,
-        minValue: question.minValue || 0,
-        maxValue: question.maxValue || 100,
-        ...(question.unit && { unit: question.unit }),
-        playerValues,
-      };
+      sliderDistribution = buildSliderDistribution(
+        answers, question.correctValue || 0, question.minValue || 0,
+        question.maxValue || 100, question.unit
+      );
     } else if (question.type === 'free-response') {
-      const textCounts = new Map<string, { count: number; isCorrect: boolean }>();
-      const correctAnswer = (question.correctAnswer || '').toLowerCase().trim();
-      const alternatives = (question.alternativeAnswers || []).map(a => a.toLowerCase().trim());
-
-      answers.forEach(a => {
-        const text = (a.textAnswer || '').trim();
-        const lowerText = text.toLowerCase();
-        const isCorrect = lowerText === correctAnswer || alternatives.includes(lowerText);
-
-        if (!textCounts.has(text)) {
-          textCounts.set(text, { count: 0, isCorrect });
-        }
-        textCounts.get(text)!.count++;
-      });
-
-      freeResponseDistribution = Array.from(textCounts.entries())
-        .map(([text, data]) => ({
-          text,
-          count: data.count,
-          isCorrect: data.isCorrect,
-        }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 20);  // Limit to top 20 responses
+      freeResponseDistribution = buildFreeResponseDistribution(
+        answers, question.correctAnswer || '', question.alternativeAnswers || []
+      );
     }
 
     return {
@@ -351,7 +293,7 @@ function buildQuestionStats(questions: Question[], players: (Player & { id: stri
  * "fallers" (started high, ended low)
  */
 function buildPositionHistory(
-  questions: Question[],
+  questions: AnalyticsQuestion[],
   players: (Player & { id: string })[]
 ): PositionHistoryEntry[] {
   // Track who was ever in top 20 and all player positions
@@ -449,7 +391,7 @@ function buildScoreDistribution(players: (Player & { id: string })[]): ScoreBin[
  */
 function buildFullLeaderboard(
   players: (Player & { id: string })[],
-  _questions: Question[]
+  _questions: AnalyticsQuestion[]
 ): LeaderboardWithStats[] {
   // Sort by score descending
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
@@ -546,43 +488,3 @@ function computeSummary(
   };
 }
 
-/**
- * Build crowdsource analytics
- */
-function buildCrowdsourceStats(submissions: QuestionSubmission[]): CrowdsourceAnalytics {
-  const totalSubmissions = submissions.length;
-  const submissionsUsed = submissions.filter(s => s.aiSelected).length;
-
-  // Count submissions and used per player
-  const playerStats = new Map<string, { submissionCount: number; usedCount: number }>();
-
-  submissions.forEach(s => {
-    if (!playerStats.has(s.playerName)) {
-      playerStats.set(s.playerName, { submissionCount: 0, usedCount: 0 });
-    }
-    const stats = playerStats.get(s.playerName)!;
-    stats.submissionCount++;
-    if (s.aiSelected) {
-      stats.usedCount++;
-    }
-  });
-
-  // Get top contributors (sorted by used count, then submission count)
-  const topContributors = Array.from(playerStats.entries())
-    .map(([playerName, stats]) => ({
-      playerName,
-      submissionCount: stats.submissionCount,
-      usedCount: stats.usedCount,
-    }))
-    .sort((a, b) => {
-      if (b.usedCount !== a.usedCount) return b.usedCount - a.usedCount;
-      return b.submissionCount - a.submissionCount;
-    })
-    .slice(0, 10);  // Top 10 contributors
-
-  return {
-    totalSubmissions,
-    submissionsUsed,
-    topContributors,
-  };
-}
