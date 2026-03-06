@@ -63,7 +63,7 @@ export function EditorToolbar({
 }: EditorToolbarProps) {
   const [isLaunching, setIsLaunching] = useState(false);
   return (
-    <div className="flex items-center gap-2 px-3 py-2 backdrop-blur-md bg-background/90 border-b border-border/50">
+    <div className="flex items-center gap-2 px-3 py-2 backdrop-blur-md bg-background/90 border-b border-border/50 overflow-x-auto">
       {/* Back */}
       <Button variant="ghost" size="icon" asChild>
         <Link href="/host">
@@ -114,11 +114,13 @@ export function EditorToolbar({
       {/* Divider */}
       <div className="w-px h-6 bg-border/50" />
 
-      {/* Theme, Templates, Settings */}
-      <ThemeSelector theme={theme} onUpdate={onUpdateTheme} />
-      <TemplateSelector onApply={onApplyTemplate} />
-      <SaveTemplateDialog slides={slides} settings={settings} theme={theme} />
-      <PresentationSettingsDialog settings={settings} onUpdate={onUpdateSettings} />
+      {/* Theme, Templates, Settings — hidden on small screens */}
+      <div className="hidden md:flex items-center gap-2">
+        <ThemeSelector theme={theme} onUpdate={onUpdateTheme} />
+        <TemplateSelector onApply={onApplyTemplate} />
+        <SaveTemplateDialog slides={slides} settings={settings} theme={theme} />
+        <PresentationSettingsDialog settings={settings} onUpdate={onUpdateSettings} />
+      </div>
 
       {/* Spacer */}
       <div className="flex-1" />

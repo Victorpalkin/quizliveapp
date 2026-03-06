@@ -91,18 +91,6 @@ export function ImageProperties({ element, onUpdate }: ImagePropertiesProps) {
           className="mt-2"
         />
       </div>
-
-      <div>
-        <Label className="text-xs">Opacity</Label>
-        <Slider
-          value={[element.opacity ?? 1]}
-          onValueChange={([v]) => onUpdate({ opacity: v })}
-          min={0}
-          max={1}
-          step={0.05}
-          className="mt-2"
-        />
-      </div>
     </div>
   );
 }

@@ -84,6 +84,11 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
   // Inline editing state
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
 
+  // Clear inline editing when switching slides
+  useEffect(() => {
+    setEditingElementId(null);
+  }, [editor.currentSlideIndex]);
+
   const handleStartEditing = useCallback((elementId: string) => {
     setEditingElementId(elementId);
   }, []);

@@ -347,6 +347,7 @@ export function useEditorState(initial?: {
 
   // --- Z-order ---
   const bringToFront = useCallback(() => {
+    pushHistory();
     setState((s) => {
       const slide = s.slides[s.currentSlideIndex];
       if (!slide || !s.selectedElementId) return s;
@@ -358,9 +359,10 @@ export function useEditorState(initial?: {
       newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
       return { ...s, slides: newSlides, isDirty: true };
     });
-  }, []);
+  }, [pushHistory]);
 
   const sendToBack = useCallback(() => {
+    pushHistory();
     setState((s) => {
       const slide = s.slides[s.currentSlideIndex];
       if (!slide || !s.selectedElementId) return s;
@@ -372,9 +374,10 @@ export function useEditorState(initial?: {
       newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
       return { ...s, slides: newSlides, isDirty: true };
     });
-  }, []);
+  }, [pushHistory]);
 
   const moveForward = useCallback(() => {
+    pushHistory();
     setState((s) => {
       const slide = s.slides[s.currentSlideIndex];
       if (!slide || !s.selectedElementId) return s;
@@ -393,9 +396,10 @@ export function useEditorState(initial?: {
       newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
       return { ...s, slides: newSlides, isDirty: true };
     });
-  }, []);
+  }, [pushHistory]);
 
   const moveBackward = useCallback(() => {
+    pushHistory();
     setState((s) => {
       const slide = s.slides[s.currentSlideIndex];
       if (!slide || !s.selectedElementId) return s;
@@ -414,20 +418,17 @@ export function useEditorState(initial?: {
       newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
       return { ...s, slides: newSlides, isDirty: true };
     });
-  }, []);
+  }, [pushHistory]);
 
   // --- Clipboard (copy/paste/duplicate) ---
   const clipboardRef = useRef<SlideElement | null>(null);
 
   const copyElement = useCallback(() => {
-    setState((s) => {
-      const slide = s.slides[s.currentSlideIndex];
-      if (!slide || !s.selectedElementId) return s;
-      const el = slide.elements.find((e) => e.id === s.selectedElementId);
-      if (el) clipboardRef.current = JSON.parse(JSON.stringify(el));
-      return s;
-    });
-  }, []);
+    const slide = state.slides[state.currentSlideIndex];
+    if (!slide || !state.selectedElementId) return;
+    const el = slide.elements.find((e) => e.id === state.selectedElementId);
+    if (el) clipboardRef.current = JSON.parse(JSON.stringify(el));
+  }, [state.slides, state.currentSlideIndex, state.selectedElementId]);
 
   const pasteElement = useCallback(() => {
     if (!clipboardRef.current) return;
@@ -435,6 +436,11 @@ export function useEditorState(initial?: {
     setState((s) => {
       const slide = s.slides[s.currentSlideIndex];
       if (!slide) return s;
+      // Block pasting interactive element if slide already has one
+      if (INTERACTIVE_TYPES.includes(clipboardRef.current!.type)) {
+        const hasInteractive = slide.elements.some((el) => INTERACTIVE_TYPES.includes(el.type));
+        if (hasInteractive) return s;
+      }
       const maxZ = slide.elements.reduce((max, el) => Math.max(max, el.zIndex), 0);
       const pasted: SlideElement = {
         ...JSON.parse(JSON.stringify(clipboardRef.current)),
@@ -450,13 +456,19 @@ export function useEditorState(initial?: {
   }, [pushHistory]);
 
   const duplicateElement = useCallback(() => {
+    const slide = state.slides[state.currentSlideIndex];
+    const el = slide?.elements.find((e) => e.id === state.selectedElementId);
+    if (!el) return;
+    // Block duplicating interactive element if slide already has one
+    if (INTERACTIVE_TYPES.includes(el.type)) {
+      const hasInteractive = slide.elements.some((e) => e.id !== el.id && INTERACTIVE_TYPES.includes(e.type));
+      if (hasInteractive) return;
+    }
+    pushHistory();
     setState((s) => {
-      const slide = s.slides[s.currentSlideIndex];
-      if (!slide || !s.selectedElementId) return s;
-      const el = slide.elements.find((e) => e.id === s.selectedElementId);
-      if (!el) return s;
-      pushHistory();
-      const maxZ = slide.elements.reduce((max, e) => Math.max(max, e.zIndex), 0);
+      const currentSlide = s.slides[s.currentSlideIndex];
+      if (!currentSlide) return s;
+      const maxZ = currentSlide.elements.reduce((max, e) => Math.max(max, e.zIndex), 0);
       const dup: SlideElement = {
         ...JSON.parse(JSON.stringify(el)),
         id: nanoid(),
@@ -465,13 +477,14 @@ export function useEditorState(initial?: {
         zIndex: maxZ + 1,
       };
       const newSlides = [...s.slides];
-      newSlides[s.currentSlideIndex] = { ...slide, elements: [...slide.elements, dup] };
+      newSlides[s.currentSlideIndex] = { ...currentSlide, elements: [...currentSlide.elements, dup] };
       return { ...s, slides: newSlides, selectedElementId: dup.id, isDirty: true };
     });
-  }, [pushHistory]);
+  }, [state.slides, state.currentSlideIndex, state.selectedElementId, pushHistory]);
 
   // --- Alignment ---
   const alignElement = useCallback((alignment: 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom') => {
+    pushHistory();
     setState((s) => {
       const slide = s.slides[s.currentSlideIndex];
       if (!slide || !s.selectedElementId) return s;
@@ -493,7 +506,7 @@ export function useEditorState(initial?: {
       newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
       return { ...s, slides: newSlides, isDirty: true };
     });
-  }, []);
+  }, [pushHistory]);
 
   // --- Apply template ---
   const applyTemplate = useCallback((data: {

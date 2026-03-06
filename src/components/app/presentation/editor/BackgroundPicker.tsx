@@ -1,14 +1,15 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload } from 'lucide-react';
+import { Upload, Loader2 } from 'lucide-react';
 import { useStorage } from '@/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { nanoid } from 'nanoid';
+import { useToast } from '@/hooks/use-toast';
 import type { SlideBackground } from '@/lib/types';
 
 interface BackgroundPickerProps {
@@ -31,15 +32,24 @@ export function BackgroundPicker({ background, onChange }: BackgroundPickerProps
   const bg = background || { type: 'solid' as const, color: '#ffffff' };
   const storage = useStorage();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !storage) return;
 
-    const imageRef = ref(storage, `presentations/backgrounds/${nanoid()}`);
-    await uploadBytes(imageRef, file);
-    const url = await getDownloadURL(imageRef);
-    onChange({ type: 'image', imageUrl: url });
+    setIsUploading(true);
+    try {
+      const imageRef = ref(storage, `presentations/backgrounds/${nanoid()}`);
+      await uploadBytes(imageRef, file);
+      const url = await getDownloadURL(imageRef);
+      onChange({ type: 'image', imageUrl: url });
+    } catch {
+      toast({ variant: 'destructive', title: 'Upload failed', description: 'Could not upload background image.' });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -129,10 +139,15 @@ export function BackgroundPicker({ background, onChange }: BackgroundPickerProps
               variant="outline"
               size="sm"
               className="w-full mt-1"
+              disabled={isUploading}
               onClick={() => fileInputRef.current?.click()}
             >
-              <Upload className="h-4 w-4 mr-2" />
-              {bg.imageUrl ? 'Replace Image' : 'Upload Image'}
+              {isUploading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
+              {isUploading ? 'Uploading...' : bg.imageUrl ? 'Replace Image' : 'Upload Image'}
             </Button>
           </div>
           <div>
