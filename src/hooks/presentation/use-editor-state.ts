@@ -10,6 +10,10 @@ import type {
   PresentationSettings,
   PresentationTheme,
 } from '@/lib/types';
+import {
+  computeAnchorPosition,
+  computeConnectorBoundingBox,
+} from '@/lib/utils/connector-paths';
 
 const INTERACTIVE_TYPES: SlideElementType[] = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
 
@@ -52,6 +56,69 @@ function createDefaultSlide(order: number): PresentationSlide {
     background: { type: 'solid', color: '#ffffff' },
     transition: 'fade',
   };
+}
+
+/**
+ * Update all connectors attached to a moved/resized element.
+ * Recomputes endpoint positions and bounding boxes.
+ */
+function updateAttachedConnectors(elements: SlideElement[], movedElementId: string): SlideElement[] {
+  const movedEl = elements.find((el) => el.id === movedElementId);
+  if (!movedEl) return elements;
+
+  return elements.map((el) => {
+    if (el.type !== 'connector' || !el.connectorConfig) return el;
+    const cfg = el.connectorConfig;
+    let changed = false;
+    const newCfg = { ...cfg };
+
+    if (cfg.startAttachment?.elementId === movedElementId) {
+      const pos = computeAnchorPosition(movedEl, cfg.startAttachment.anchor);
+      newCfg.startX = pos.x;
+      newCfg.startY = pos.y;
+      changed = true;
+    }
+    if (cfg.endAttachment?.elementId === movedElementId) {
+      const pos = computeAnchorPosition(movedEl, cfg.endAttachment.anchor);
+      newCfg.endX = pos.x;
+      newCfg.endY = pos.y;
+      changed = true;
+    }
+
+    if (!changed) return el;
+
+    const bbox = computeConnectorBoundingBox(newCfg.startX, newCfg.startY, newCfg.endX, newCfg.endY);
+    return {
+      ...el,
+      connectorConfig: newCfg,
+      x: bbox.x,
+      y: bbox.y,
+      width: bbox.width,
+      height: bbox.height,
+    };
+  });
+}
+
+/**
+ * Detach all connectors from a deleted element (keep connectors, remove attachments).
+ */
+function detachConnectorsFromElement(elements: SlideElement[], deletedElementId: string): SlideElement[] {
+  return elements.map((el) => {
+    if (el.type !== 'connector' || !el.connectorConfig) return el;
+    const cfg = el.connectorConfig;
+    const startAttached = cfg.startAttachment?.elementId === deletedElementId;
+    const endAttached = cfg.endAttachment?.elementId === deletedElementId;
+    if (!startAttached && !endAttached) return el;
+
+    return {
+      ...el,
+      connectorConfig: {
+        ...cfg,
+        startAttachment: startAttached ? undefined : cfg.startAttachment,
+        endAttachment: endAttached ? undefined : cfg.endAttachment,
+      },
+    };
+  });
 }
 
 export function useEditorState(initial?: {
@@ -279,6 +346,7 @@ export function useEditorState(initial?: {
         leaderboard: { x: 10, y: 5, width: 80, height: 90 },
         qa: { x: 10, y: 10, width: 80, height: 70 },
         'spin-wheel': { x: 20, y: 10, width: 60, height: 80 },
+        connector: { x: 19, y: 39, width: 62, height: 22 },
       }[type] || {};
 
       const newElement: SlideElement = {
@@ -326,8 +394,29 @@ export function useEditorState(initial?: {
         ...(type === 'spin-wheel' && {
           spinWheelConfig: { mode: 'players' as const },
         }),
+        ...(type === 'connector' && {
+          connectorConfig: {
+            routingType: 'straight' as const,
+            startX: 20, startY: 50, endX: 80, endY: 50,
+            startArrow: 'none' as const,
+            endArrow: 'arrow' as const,
+            strokeColor: '#64748b',
+            strokeWidth: 2,
+            strokeStyle: 'solid' as const,
+          },
+        }),
         ...overrides,
       };
+
+      // Compute bounding box from connector endpoints
+      if (newElement.type === 'connector' && newElement.connectorConfig) {
+        const cfg = newElement.connectorConfig;
+        const bbox = computeConnectorBoundingBox(cfg.startX, cfg.startY, cfg.endX, cfg.endY);
+        newElement.x = bbox.x;
+        newElement.y = bbox.y;
+        newElement.width = bbox.width;
+        newElement.height = bbox.height;
+      }
 
       const newSlides = [...s.slides];
       newSlides[s.currentSlideIndex] = {
@@ -354,9 +443,16 @@ export function useEditorState(initial?: {
       const slide = s.slides[s.currentSlideIndex];
       if (!slide) return s;
 
-      const newElements = slide.elements.map((el) =>
+      let newElements = slide.elements.map((el) =>
         el.id === elementId ? { ...el, ...updates } : el
       );
+
+      // If a non-connector element moved/resized, update attached connectors
+      const movedElement = newElements.find((el) => el.id === elementId);
+      if (movedElement && movedElement.type !== 'connector' &&
+          ('x' in updates || 'y' in updates || 'width' in updates || 'height' in updates)) {
+        newElements = updateAttachedConnectors(newElements, elementId);
+      }
 
       const newSlides = [...s.slides];
       newSlides[s.currentSlideIndex] = { ...slide, elements: newElements };
@@ -386,10 +482,14 @@ export function useEditorState(initial?: {
       const slide = s.slides[s.currentSlideIndex];
       if (!slide) return s;
 
+      // Remove the element, then detach any connectors that were attached to it
+      let remainingElements = slide.elements.filter((el) => el.id !== elementId);
+      remainingElements = detachConnectorsFromElement(remainingElements, elementId);
+
       const newSlides = [...s.slides];
       newSlides[s.currentSlideIndex] = {
         ...slide,
-        elements: slide.elements.filter((el) => el.id !== elementId),
+        elements: remainingElements,
       };
       return {
         ...s,
@@ -407,10 +507,15 @@ export function useEditorState(initial?: {
       const slide = s.slides[s.currentSlideIndex];
       if (!slide) return s;
 
+      let remainingElements = slide.elements.filter((el) => !elementIds.includes(el.id));
+      for (const id of elementIds) {
+        remainingElements = detachConnectorsFromElement(remainingElements, id);
+      }
+
       const newSlides = [...s.slides];
       newSlides[s.currentSlideIndex] = {
         ...slide,
-        elements: slide.elements.filter((el) => !elementIds.includes(el.id)),
+        elements: remainingElements,
       };
       return {
         ...s,

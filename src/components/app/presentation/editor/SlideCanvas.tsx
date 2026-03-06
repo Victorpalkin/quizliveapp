@@ -8,9 +8,11 @@ import type { PresentationSlide, SlideElement, SlideElementType, PresentationThe
 import { TextElement } from './elements/TextElement';
 import { ImageElement } from './elements/ImageElement';
 import { ShapeElement } from './elements/ShapeElement';
+import { ConnectorElement } from './elements/ConnectorElement';
 import { InteractiveElement } from './elements/InteractiveElement';
 import { ResultsElement } from './elements/ResultsElement';
 import { SelectionOverlay } from './elements/SelectionOverlay';
+import { ConnectorSelectionOverlay } from './elements/ConnectorSelectionOverlay';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,6 +104,9 @@ function ElementRenderer({
   if (element.type === 'shape') {
     return <ShapeElement element={element} />;
   }
+  if (element.type === 'connector') {
+    return <ConnectorElement element={element} />;
+  }
   if (INTERACTIVE_TYPES.includes(element.type) || SPECIAL_TYPES.includes(element.type)) {
     return <InteractiveElement element={element} />;
   }
@@ -141,7 +146,10 @@ export function SlideCanvas({
 }: SlideCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef<{ x: number; y: number; elX: number; elY: number } | null>(null);
+  const dragStartRef = useRef<{
+    x: number; y: number; elX: number; elY: number;
+    connectorConfig?: SlideElement['connectorConfig'];
+  } | null>(null);
   const [guideLines, setGuideLines] = useState<GuideLine[]>([]);
   const storage = useStorage();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -274,6 +282,7 @@ export function SlideCanvas({
       y: e.clientY,
       elX: element.x,
       elY: element.y,
+      connectorConfig: element.connectorConfig ? { ...element.connectorConfig } : undefined,
     };
 
     let hasMoved = false;
@@ -298,7 +307,28 @@ export function SlideCanvas({
       );
 
       setGuideLines(guides);
-      onUpdateElement(element.id, { x: snapX, y: snapY });
+
+      // For connectors, translate both endpoints relative to initial config
+      if (element.type === 'connector' && dragStartRef.current.connectorConfig) {
+        const initCfg = dragStartRef.current.connectorConfig;
+        const offsetX = snapX - dragStartRef.current.elX;
+        const offsetY = snapY - dragStartRef.current.elY;
+        onUpdateElement(element.id, {
+          x: snapX,
+          y: snapY,
+          connectorConfig: {
+            ...initCfg,
+            startX: initCfg.startX + offsetX,
+            startY: initCfg.startY + offsetY,
+            endX: initCfg.endX + offsetX,
+            endY: initCfg.endY + offsetY,
+            startAttachment: undefined,
+            endAttachment: undefined,
+          },
+        });
+      } else {
+        onUpdateElement(element.id, { x: snapX, y: snapY });
+      }
     };
 
     const handleMouseUp = () => {
@@ -520,7 +550,15 @@ export function SlideCanvas({
               {!isSelected && !element.locked && (
                 <div className="absolute inset-0 border border-dashed border-transparent group-hover/el:border-primary/30 rounded-sm pointer-events-none transition-colors" />
               )}
-              {isSelected && !element.locked && (
+              {isSelected && !element.locked && element.type === 'connector' && (
+                <ConnectorSelectionOverlay
+                  element={element}
+                  canvasRef={canvasRef}
+                  slideElements={slide.elements}
+                  onUpdateConnector={(updates) => onUpdateElement(element.id, updates)}
+                />
+              )}
+              {isSelected && !element.locked && element.type !== 'connector' && (
                 <SelectionOverlay
                   element={element}
                   canvasRef={canvasRef}

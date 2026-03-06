@@ -31,6 +31,7 @@ import { LeaderboardProperties } from './properties/LeaderboardProperties';
 import { QAProperties } from './properties/QAProperties';
 import { SpinWheelProperties } from './properties/SpinWheelProperties';
 import { EvaluationProperties } from './properties/EvaluationProperties';
+import { ConnectorProperties } from './properties/ConnectorProperties';
 import { ResultsProperties } from './properties/ResultsProperties';
 import { SlideProperties } from './properties/SlideProperties';
 
@@ -225,6 +226,9 @@ export function PropertiesPanel({
       )}
       {selectedElement!.type === 'shape' && (
         <ShapeProperties element={selectedElement!} onUpdate={onUpdateElement} />
+      )}
+      {selectedElement!.type === 'connector' && (
+        <ConnectorProperties element={selectedElement!} onUpdate={onUpdateElement} />
       )}
       {selectedElement!.type === 'quiz' && (
         <QuizProperties element={selectedElement!} onUpdate={onUpdateElement} />

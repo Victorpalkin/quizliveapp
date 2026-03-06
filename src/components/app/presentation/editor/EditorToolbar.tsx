@@ -34,7 +34,7 @@ import { ThemeSelector } from './ThemeSelector';
 import { TemplateSelector } from './TemplateSelector';
 import { PresentationSettingsDialog } from './PresentationSettingsDialog';
 import { SaveTemplateDialog } from './SaveTemplateDialog';
-import type { SlideElementType, PresentationSlide, PresentationSettings, PresentationTheme } from '@/lib/types';
+import type { SlideElement, SlideElementType, PresentationSlide, PresentationSettings, PresentationTheme } from '@/lib/types';
 
 interface EditorToolbarProps {
   title: string;
@@ -45,7 +45,7 @@ interface EditorToolbarProps {
   canUndo: boolean;
   canRedo: boolean;
   isDirty: boolean;
-  onAddElement: (type: SlideElementType) => void;
+  onAddElement: (type: SlideElementType, overrides?: Partial<SlideElement>) => void;
   currentSlideHasInteractive: boolean;
   settings: PresentationSettings;
   onUpdateSettings: (settings: Partial<PresentationSettings>) => void;

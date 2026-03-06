@@ -7,6 +7,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -14,6 +17,12 @@ import {
   Type,
   Image,
   Square,
+  Circle,
+  Triangle,
+  Diamond,
+  ArrowRight,
+  Minus,
+  RectangleHorizontal,
   FileQuestion,
   Vote,
   MessageSquare,
@@ -23,11 +32,14 @@ import {
   Disc3,
   BarChart3,
   ClipboardList,
+  Spline,
+  MoveRight,
+  GitBranch,
 } from 'lucide-react';
-import type { SlideElementType } from '@/lib/types';
+import type { SlideElement, SlideElementType } from '@/lib/types';
 
 interface InsertMenuProps {
-  onInsert: (type: SlideElementType) => void;
+  onInsert: (type: SlideElementType, overrides?: Partial<SlideElement>) => void;
   disableInteractive: boolean;
 }
 
@@ -63,12 +75,91 @@ export function InsertMenu({ onInsert, disableInteractive }: InsertMenuProps) {
           </IconCircle>
           Image
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onInsert('shape')}>
-          <IconCircle className="bg-gray-500/10 mr-2">
-            <Square className="h-3.5 w-3.5 text-gray-500" />
-          </IconCircle>
-          Shape
-        </DropdownMenuItem>
+
+        {/* Shape sub-menu */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <IconCircle className="bg-gray-500/10 mr-2">
+              <Square className="h-3.5 w-3.5 text-gray-500" />
+            </IconCircle>
+            Shape
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="w-48">
+            <DropdownMenuItem onClick={() => onInsert('shape', { shapeType: 'rectangle' })}>
+              <Square className="h-4 w-4 mr-2 text-gray-500" />
+              Rectangle
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onInsert('shape', { shapeType: 'circle' })}>
+              <Circle className="h-4 w-4 mr-2 text-gray-500" />
+              Circle
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onInsert('shape', { shapeType: 'rounded-rect' })}>
+              <RectangleHorizontal className="h-4 w-4 mr-2 text-gray-500" />
+              Rounded Rectangle
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onInsert('shape', { shapeType: 'triangle' })}>
+              <Triangle className="h-4 w-4 mr-2 text-gray-500" />
+              Triangle
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onInsert('shape', { shapeType: 'diamond' })}>
+              <Diamond className="h-4 w-4 mr-2 text-gray-500" />
+              Diamond
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onInsert('shape', { shapeType: 'arrow-right' })}>
+              <ArrowRight className="h-4 w-4 mr-2 text-gray-500" />
+              Arrow
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onInsert('shape', { shapeType: 'line' })}>
+              <Minus className="h-4 w-4 mr-2 text-gray-500" />
+              Line
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+
+        {/* Connector sub-menu */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <IconCircle className="bg-emerald-500/10 mr-2">
+              <Spline className="h-3.5 w-3.5 text-emerald-500" />
+            </IconCircle>
+            Connector
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="w-48">
+            <DropdownMenuItem onClick={() => onInsert('connector', {
+              connectorConfig: {
+                routingType: 'straight',
+                startX: 20, startY: 50, endX: 80, endY: 50,
+                startArrow: 'none', endArrow: 'arrow',
+                strokeColor: '#64748b', strokeWidth: 2, strokeStyle: 'solid',
+              },
+            })}>
+              <MoveRight className="h-4 w-4 mr-2 text-emerald-500" />
+              Straight Line
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onInsert('connector', {
+              connectorConfig: {
+                routingType: 'elbow',
+                startX: 20, startY: 30, endX: 80, endY: 70,
+                startArrow: 'none', endArrow: 'arrow',
+                strokeColor: '#64748b', strokeWidth: 2, strokeStyle: 'solid',
+              },
+            })}>
+              <GitBranch className="h-4 w-4 mr-2 text-emerald-500" />
+              Elbow
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onInsert('connector', {
+              connectorConfig: {
+                routingType: 'curved',
+                startX: 20, startY: 30, endX: 80, endY: 70,
+                startArrow: 'none', endArrow: 'arrow',
+                strokeColor: '#64748b', strokeWidth: 2, strokeStyle: 'solid',
+              },
+            })}>
+              <Spline className="h-4 w-4 mr-2 text-emerald-500" />
+              Curved
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
 
         <DropdownMenuSeparator />
 

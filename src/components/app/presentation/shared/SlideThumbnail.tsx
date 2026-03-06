@@ -109,6 +109,31 @@ export function ElementPreview({ element }: { element: SlideElement }) {
     );
   }
 
+  if (element.type === 'connector' && element.connectorConfig) {
+    const cfg = element.connectorConfig;
+    // Simple line preview for thumbnails
+    const bbox = {
+      x: Math.min(cfg.startX, cfg.endX),
+      y: Math.min(cfg.startY, cfg.endY),
+      width: Math.max(2, Math.abs(cfg.endX - cfg.startX)),
+      height: Math.max(2, Math.abs(cfg.endY - cfg.startY)),
+    };
+    const lx1 = ((cfg.startX - bbox.x) / bbox.width) * 100;
+    const ly1 = ((cfg.startY - bbox.y) / bbox.height) * 100;
+    const lx2 = ((cfg.endX - bbox.x) / bbox.width) * 100;
+    const ly2 = ((cfg.endY - bbox.y) / bbox.height) * 100;
+    return (
+      <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <line
+          x1={lx1} y1={ly1} x2={lx2} y2={ly2}
+          stroke={cfg.strokeColor}
+          strokeWidth={Math.max(1, cfg.strokeWidth * FONT_SCALE)}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    );
+  }
+
   const iconConfig = ELEMENT_ICON_CONFIG[element.type];
   if (iconConfig) {
     const Icon = iconConfig.icon;
