@@ -102,7 +102,8 @@ export function useJoinGame({
         name: trimmedNickname,
         score: 0,
         answers: [],
-        currentStreak: 0
+        currentStreak: 0,
+        maxStreak: 0,
       };
 
       await setDoc(playerRef, newPlayer);
