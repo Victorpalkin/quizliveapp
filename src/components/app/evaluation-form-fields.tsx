@@ -3,33 +3,23 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FormCard } from '@/components/app/form-card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { SettingToggle } from '@/components/app/setting-toggle';
+import { MetricCard } from '@/components/app/metric-card';
 import { Badge } from '@/components/ui/badge';
 import {
-  BarChart3,
   Plus,
   Trash2,
   GripVertical,
-  ArrowUp,
-  ArrowDown,
   ListPlus,
   Sparkles,
-  Target,
-  Scale,
-  Vote,
 } from 'lucide-react';
 import { FeatureTooltip } from '@/components/ui/feature-tooltip';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { EvaluationMetric, PredefinedItem } from '@/lib/types';
+import { EVALUATION_TEMPLATES, type EvaluationTemplate } from '@/lib/constants/evaluation-templates';
 import { nanoid } from 'nanoid';
 
 // ---- Shared constants ----
@@ -45,55 +35,6 @@ export const DEFAULT_METRIC = (): EvaluationMetric => ({
   weight: 1,
   lowerIsBetter: false,
 });
-
-export interface EvaluationTemplate {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  metrics: Omit<EvaluationMetric, 'id'>[];
-}
-
-export const EVALUATION_TEMPLATES: EvaluationTemplate[] = [
-  {
-    id: 'impact-effort',
-    name: 'Impact/Effort Matrix',
-    description: 'Prioritize by impact vs. effort - great for project planning',
-    icon: <Target className="h-5 w-5 text-green-500" />,
-    metrics: [
-      { name: 'Impact', description: 'How much value will this deliver?', scaleType: 'stars', scaleMin: 1, scaleMax: 5, scaleLabels: [], weight: 1, lowerIsBetter: false },
-      { name: 'Effort', description: 'How much work is required?', scaleType: 'stars', scaleMin: 1, scaleMax: 5, scaleLabels: [], weight: 1, lowerIsBetter: true },
-    ],
-  },
-  {
-    id: 'priority',
-    name: 'Simple Priority',
-    description: 'Single metric ranking by importance',
-    icon: <BarChart3 className="h-5 w-5 text-orange-500" />,
-    metrics: [
-      { name: 'Priority', description: 'How important is this?', scaleType: 'stars', scaleMin: 1, scaleMax: 5, scaleLabels: [], weight: 1, lowerIsBetter: false },
-    ],
-  },
-  {
-    id: 'feasibility',
-    name: 'Importance + Feasibility',
-    description: 'Balance desirability with practicality',
-    icon: <Scale className="h-5 w-5 text-blue-500" />,
-    metrics: [
-      { name: 'Importance', description: 'How important is this to achieve?', scaleType: 'stars', scaleMin: 1, scaleMax: 5, scaleLabels: [], weight: 1.5, lowerIsBetter: false },
-      { name: 'Feasibility', description: 'How realistic is it to accomplish?', scaleType: 'stars', scaleMin: 1, scaleMax: 5, scaleLabels: [], weight: 1, lowerIsBetter: false },
-    ],
-  },
-  {
-    id: 'voting',
-    name: 'Dot Voting',
-    description: 'Simple yes/no voting for quick decisions',
-    icon: <Vote className="h-5 w-5 text-purple-500" />,
-    metrics: [
-      { name: 'Vote', description: 'Do you support this?', scaleType: 'labels', scaleMin: 1, scaleMax: 2, scaleLabels: ['No', 'Yes'], weight: 1, lowerIsBetter: false },
-    ],
-  },
-];
 
 // ---- Template Picker ----
 
@@ -188,23 +129,17 @@ export function EvaluationMetricsEditor({
   };
 
   return (
-    <Card className="shadow-lg rounded-2xl border border-card-border">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div>
-              <CardTitle>Metrics</CardTitle>
-              <CardDescription>
-                {showWeight ? 'Define criteria for rating items (1-5 metrics)' : 'Customize your evaluation criteria'}
-              </CardDescription>
-            </div>
-            {showTooltips && (
-              <FeatureTooltip
-                content="Metrics are the criteria participants use to rate items. For example, 'Impact' and 'Effort' for a prioritization exercise."
-                icon="info"
-              />
-            )}
-          </div>
+    <FormCard
+      title="Metrics"
+      description={showWeight ? 'Define criteria for rating items (1-5 metrics)' : 'Customize your evaluation criteria'}
+      headerExtra={
+        <div className="flex items-center gap-2">
+          {showTooltips && (
+            <FeatureTooltip
+              content="Metrics are the criteria participants use to rate items. For example, 'Impact' and 'Effort' for a prioritization exercise."
+              icon="info"
+            />
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -214,173 +149,21 @@ export function EvaluationMetricsEditor({
             <Plus className="h-4 w-4 mr-1" /> Add Metric
           </Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      }
+    >
         {metrics.map((metric, index) => (
-          <div key={metric.id} className="p-4 border rounded-lg space-y-4 bg-muted/30">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <GripVertical className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">Metric {index + 1}</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => removeMetric(index)}
-                disabled={metrics.length <= 1}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Name *</Label>
-                <Input
-                  value={metric.name}
-                  onChange={(e) => updateMetric(index, { name: e.target.value })}
-                  placeholder="e.g., Impact, Effort, Risk"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Scale Type</Label>
-                <Select
-                  value={metric.scaleType}
-                  onValueChange={(value: 'stars' | 'numeric' | 'labels') => {
-                    const updates: Partial<EvaluationMetric> = { scaleType: value };
-                    if (value === 'stars') {
-                      updates.scaleMin = 1;
-                      updates.scaleMax = 5;
-                    } else if (value === 'numeric') {
-                      updates.scaleMin = 1;
-                      updates.scaleMax = 10;
-                    }
-                    updateMetric(index, updates);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="stars">Stars (1-5)</SelectItem>
-                    <SelectItem value="numeric">Numeric (1-10)</SelectItem>
-                    <SelectItem value="labels">Custom Labels</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Description (optional)</Label>
-              <Input
-                value={metric.description || ''}
-                onChange={(e) => updateMetric(index, { description: e.target.value })}
-                placeholder="Help text for participants"
-              />
-            </div>
-
-            {metric.scaleType === 'numeric' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Min Value</Label>
-                  <Input
-                    type="number"
-                    value={metric.scaleMin}
-                    onChange={(e) => updateMetric(index, { scaleMin: parseInt(e.target.value) || 1 })}
-                    min={0}
-                    max={metric.scaleMax - 1}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Max Value</Label>
-                  <Input
-                    type="number"
-                    value={metric.scaleMax}
-                    onChange={(e) => updateMetric(index, { scaleMax: parseInt(e.target.value) || 10 })}
-                    min={metric.scaleMin + 1}
-                    max={100}
-                  />
-                </div>
-              </div>
-            )}
-
-            {metric.scaleType === 'labels' && (
-              <div className="space-y-2">
-                <Label>Labels (comma-separated)</Label>
-                <Input
-                  key={metric.id}
-                  defaultValue={metric.scaleLabels?.join(', ') || ''}
-                  onBlur={(e) => {
-                    const labels = e.target.value.split(',').map(l => l.trim()).filter(Boolean);
-                    updateMetric(index, {
-                      scaleLabels: labels,
-                      scaleMin: 1,
-                      scaleMax: Math.max(labels.length, 2)
-                    });
-                  }}
-                  placeholder="Low, Medium, High"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Enter 2-10 labels separated by commas
-                </p>
-              </div>
-            )}
-
-            <div className="flex items-center gap-6 pt-2">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id={`lower-${metric.id}`}
-                  checked={metric.lowerIsBetter}
-                  onCheckedChange={(checked) => updateMetric(index, { lowerIsBetter: checked })}
-                />
-                <Label htmlFor={`lower-${metric.id}`} className="flex items-center gap-1">
-                  {metric.lowerIsBetter ? (
-                    <><ArrowDown className="h-3 w-3 text-green-500" /> Lower is better</>
-                  ) : (
-                    <><ArrowUp className="h-3 w-3 text-green-500" /> Higher is better</>
-                  )}
-                </Label>
-                {showTooltips && (
-                  <FeatureTooltip
-                    content={metric.lowerIsBetter
-                      ? "Items with lower scores will rank higher. Use for metrics like 'Effort' or 'Cost' where less is better."
-                      : "Items with higher scores will rank higher. Use for metrics like 'Impact' or 'Value' where more is better."
-                    }
-                    icon="info"
-                    iconSize={14}
-                  />
-                )}
-              </div>
-
-              {showWeight && (
-                <div className="flex items-center gap-2">
-                  <Label htmlFor={`weight-${metric.id}`}>Weight:</Label>
-                  <Input
-                    id={`weight-${metric.id}`}
-                    type="number"
-                    value={metric.weight}
-                    onChange={(e) => updateMetric(index, { weight: parseFloat(e.target.value) || 1 })}
-                    min={0.1}
-                    max={10}
-                    step={0.1}
-                    className="w-20"
-                  />
-                  {showTooltips && (
-                    <FeatureTooltip
-                      content="Weight determines how much this metric counts in the final ranking. Higher weight = more influence. Default is 1."
-                      icon="info"
-                      iconSize={14}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          <MetricCard
+            key={metric.id}
+            metric={metric}
+            index={index}
+            metricsCount={metrics.length}
+            onUpdate={updateMetric}
+            onRemove={removeMetric}
+            showWeight={showWeight}
+            showTooltips={showTooltips}
+          />
         ))}
-      </CardContent>
-    </Card>
+    </FormCard>
   );
 }
 
@@ -410,19 +193,11 @@ export function EvaluationPredefinedItemsEditor({ items, onItemsChange }: Predef
   };
 
   return (
-    <Card className="shadow-lg rounded-2xl border border-card-border">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Predefined Items</CardTitle>
-            <CardDescription>
-              Add items that will be available for ranking (optional)
-            </CardDescription>
-          </div>
-          <Badge variant="outline">{items.length} items</Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <FormCard
+      title="Predefined Items"
+      description="Add items that will be available for ranking (optional)"
+      headerExtra={<Badge variant="outline">{items.length} items</Badge>}
+    >
         <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="newItemText">Item Name</Label>
@@ -491,8 +266,7 @@ export function EvaluationPredefinedItemsEditor({ items, onItemsChange }: Predef
             No items added yet. You can also add items during the session.
           </p>
         )}
-      </CardContent>
-    </Card>
+    </FormCard>
   );
 }
 
@@ -520,27 +294,17 @@ export function EvaluationParticipantSettings({
   onShowItemSubmitterChange,
 }: ParticipantSettingsProps) {
   return (
-    <Card className="shadow-lg rounded-2xl border border-card-border">
-      <CardHeader>
-        <CardTitle>Participant Settings</CardTitle>
-        <CardDescription>
-          Configure how participants can contribute
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label htmlFor="allowItems">Allow Participant Item Submissions</Label>
-            <p className="text-sm text-muted-foreground">
-              Let participants suggest items to be ranked
-            </p>
-          </div>
-          <Switch
-            id="allowItems"
-            checked={allowParticipantItems}
-            onCheckedChange={onAllowParticipantItemsChange}
-          />
-        </div>
+    <FormCard
+      title="Participant Settings"
+      description="Configure how participants can contribute"
+    >
+        <SettingToggle
+          id="allowItems"
+          label="Allow Participant Item Submissions"
+          description="Let participants suggest items to be ranked"
+          checked={allowParticipantItems}
+          onCheckedChange={onAllowParticipantItemsChange}
+        />
 
         {allowParticipantItems && (
           <>
@@ -557,37 +321,24 @@ export function EvaluationParticipantSettings({
               />
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="requireApproval">Require Host Approval</Label>
-                <p className="text-sm text-muted-foreground">
-                  Review participant items before adding to ranking
-                </p>
-              </div>
-              <Switch
-                id="requireApproval"
-                checked={requireApproval}
-                onCheckedChange={onRequireApprovalChange}
-              />
-            </div>
+            <SettingToggle
+              id="requireApproval"
+              label="Require Host Approval"
+              description="Review participant items before adding to ranking"
+              checked={requireApproval}
+              onCheckedChange={onRequireApprovalChange}
+            />
 
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="showSubmitter">Show Item Submitter</Label>
-                <p className="text-sm text-muted-foreground">
-                  Display who submitted each item
-                </p>
-              </div>
-              <Switch
-                id="showSubmitter"
-                checked={showItemSubmitter}
-                onCheckedChange={onShowItemSubmitterChange}
-              />
-            </div>
+            <SettingToggle
+              id="showSubmitter"
+              label="Show Item Submitter"
+              description="Display who submitted each item"
+              checked={showItemSubmitter}
+              onCheckedChange={onShowItemSubmitterChange}
+            />
           </>
         )}
-      </CardContent>
-    </Card>
+    </FormCard>
   );
 }
 

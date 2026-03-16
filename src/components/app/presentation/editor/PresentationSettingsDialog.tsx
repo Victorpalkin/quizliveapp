@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -18,9 +19,11 @@ import type { PresentationSettings } from '@/lib/types';
 interface PresentationSettingsDialogProps {
   settings: PresentationSettings;
   onUpdate: (updates: Partial<PresentationSettings>) => void;
+  description?: string;
+  onDescriptionChange?: (description: string) => void;
 }
 
-export function PresentationSettingsDialog({ settings, onUpdate }: PresentationSettingsDialogProps) {
+export function PresentationSettingsDialog({ settings, onUpdate, description, onDescriptionChange }: PresentationSettingsDialogProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -35,6 +38,19 @@ export function PresentationSettingsDialog({ settings, onUpdate }: PresentationS
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {onDescriptionChange && (
+            <div>
+              <Label className="text-sm">Description</Label>
+              <Textarea
+                value={description || ''}
+                onChange={(e) => onDescriptionChange(e.target.value)}
+                rows={3}
+                placeholder="Add a description for this presentation..."
+                className="mt-1 text-sm"
+              />
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-sm">Live Reactions</Label>

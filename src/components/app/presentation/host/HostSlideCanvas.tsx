@@ -17,6 +17,7 @@ import { HostEvaluationResultsElement } from './elements/HostEvaluationResultsEl
 import { HostLeaderboardElement } from './elements/HostLeaderboardElement';
 import { HostQAElement } from './elements/HostQAElement';
 import { HostSpinWheelElement } from './elements/HostSpinWheelElement';
+import { HostConnectorElement } from './elements/HostConnectorElement';
 import type { PresentationSlide } from '@/lib/types';
 
 // Light-mode theme values (from :root in globals.css) — used on light slide backgrounds
@@ -139,6 +140,7 @@ export function HostSlideCanvas({ slide, slides, gameId, playerCount, playerName
           {element.type === 'text' && <HostTextElement element={element} />}
           {element.type === 'image' && <HostImageElement element={element} />}
           {element.type === 'shape' && <HostShapeElement element={element} />}
+          {element.type === 'connector' && <HostConnectorElement element={element} />}
           {element.type === 'quiz' && <HostQuizElement element={element} gameId={gameId} playerCount={playerCount} timerStartedAt={timerElementId === element.id ? timerStartedAt : null} />}
           {element.type === 'poll' && <HostPollElement element={element} gameId={gameId} playerCount={playerCount} />}
           {element.type === 'thoughts' && <HostThoughtsElement element={element} gameId={gameId} playerCount={playerCount} />}

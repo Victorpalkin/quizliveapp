@@ -25,7 +25,7 @@ import {
   EvaluationPredefinedItemsEditor,
   EvaluationParticipantSettings,
 } from '@/components/app/evaluation-form-fields';
-import type { EvaluationTemplate } from '@/components/app/evaluation-form-fields';
+import type { EvaluationTemplate } from '@/lib/constants/evaluation-templates';
 
 export default function CreateEvaluationPage() {
   const router = useRouter();

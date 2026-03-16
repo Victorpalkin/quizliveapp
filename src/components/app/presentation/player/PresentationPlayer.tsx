@@ -14,6 +14,7 @@ import { PlayerRating } from './elements/PlayerRating';
 import { PlayerEvaluation } from './elements/PlayerEvaluation';
 import { PlayerQuizResult } from './elements/PlayerQuizResult';
 import { PlayerLeaderboardView } from './elements/PlayerLeaderboardView';
+import { PlayerQA } from './elements/PlayerQA';
 import type { PresentationGame, PresentationSlide, SlideElement } from '@/lib/types';
 import type { QuizResult } from '@/app/play/presentation/[gamePin]/hooks/use-player-state-machine';
 
@@ -31,6 +32,7 @@ interface PresentationPlayerProps {
   interactiveElement: SlideElement | null;
   resultsElement: SlideElement | null;
   leaderboardElement: SlideElement | null;
+  qaElement: SlideElement | null;
   slides: PresentationSlide[];
   playerScore: number;
   playerStreak: number;
@@ -74,6 +76,7 @@ export function PresentationPlayer({
   interactiveElement,
   resultsElement,
   leaderboardElement,
+  qaElement,
   playerScore,
   playerStreak,
   joinGame,
@@ -357,6 +360,21 @@ export function PresentationPlayer({
                     playerId={session.playerId}
                     playerScore={playerScore}
                     playerStreak={playerStreak}
+                  />
+                </motion.div>
+              ) : qaElement && game && session ? (
+                <motion.div
+                  key={`qa-${qaElement.id}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="h-full"
+                >
+                  <PlayerQA
+                    gameId={game.id}
+                    playerId={session.playerId}
+                    playerName={session.playerName}
                   />
                 </motion.div>
               ) : (

@@ -14,18 +14,11 @@ import {
   Trash2,
   MoreHorizontal,
   GripVertical,
-  Image as ImageIcon,
-  FileQuestion,
-  Vote,
-  MessageSquare,
-  Star,
-  Trophy,
-  HelpCircle,
-  Disc3,
-  ClipboardList,
-  BarChart3,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
-import type { PresentationSlide, SlideElement } from '@/lib/types';
+import type { PresentationSlide } from '@/lib/types';
+import { SlideThumbnail } from '../shared/SlideThumbnail';
 import {
   DndContext,
   closestCenter,
@@ -52,190 +45,6 @@ interface SlidePanelProps {
   onDuplicateSlide: (index: number) => void;
   onDeleteSlide: (index: number) => void;
   onReorderSlides: (fromIndex: number, toIndex: number) => void;
-}
-
-// Thumbnail is ~154px wide in 180px panel. Virtual canvas = 960px. Scale ≈ 0.16
-const FONT_SCALE = 0.16;
-
-const ELEMENT_ICON_CONFIG: Record<
-  string,
-  { icon: React.ComponentType<{ className?: string }>; color: string }
-> = {
-  quiz: { icon: FileQuestion, color: 'text-purple-500' },
-  poll: { icon: Vote, color: 'text-teal-500' },
-  thoughts: { icon: MessageSquare, color: 'text-blue-500' },
-  rating: { icon: Star, color: 'text-orange-500' },
-  evaluation: { icon: ClipboardList, color: 'text-indigo-500' },
-  'quiz-results': { icon: BarChart3, color: 'text-purple-500' },
-  'poll-results': { icon: BarChart3, color: 'text-teal-500' },
-  'thoughts-results': { icon: BarChart3, color: 'text-blue-500' },
-  'rating-results': { icon: BarChart3, color: 'text-orange-500' },
-  'evaluation-results': { icon: BarChart3, color: 'text-indigo-500' },
-  leaderboard: { icon: Trophy, color: 'text-yellow-500' },
-  qa: { icon: HelpCircle, color: 'text-green-500' },
-  'spin-wheel': { icon: Disc3, color: 'text-pink-500' },
-};
-
-function ElementPreview({ element }: { element: SlideElement }) {
-  if (element.type === 'text') {
-    const fontSize = Math.max(4, (element.fontSize || 24) * FONT_SCALE);
-    return (
-      <div
-        className="w-full h-full overflow-hidden"
-        style={{
-          fontSize: `${fontSize}px`,
-          fontWeight: element.fontWeight || 'normal',
-          fontStyle: element.fontStyle || 'normal',
-          textAlign: element.textAlign || 'left',
-          color: element.color || 'inherit',
-          lineHeight: element.lineHeight || 1.2,
-        }}
-      >
-        {element.content || ''}
-      </div>
-    );
-  }
-
-  if (element.type === 'image') {
-    if (element.imageUrl) {
-      return (
-        <img
-          src={element.imageUrl}
-          alt=""
-          className="w-full h-full"
-          style={{
-            objectFit: element.objectFit || 'cover',
-            borderRadius: element.borderRadius
-              ? `${Math.max(1, element.borderRadius * FONT_SCALE)}px`
-              : undefined,
-          }}
-          draggable={false}
-        />
-      );
-    }
-    return (
-      <div className="w-full h-full bg-muted/30 flex items-center justify-center">
-        <ImageIcon className="h-3 w-3 text-muted-foreground/50" />
-      </div>
-    );
-  }
-
-  if (element.type === 'shape') {
-    return (
-      <div
-        className="w-full h-full"
-        style={{
-          backgroundColor: element.backgroundColor || 'transparent',
-          borderColor: element.borderColor || 'transparent',
-          borderWidth: element.borderWidth
-            ? `${Math.max(1, element.borderWidth * FONT_SCALE)}px`
-            : undefined,
-          borderStyle: element.borderWidth ? 'solid' : undefined,
-          borderRadius:
-            element.shapeType === 'circle'
-              ? '50%'
-              : element.shapeType === 'rounded-rect'
-                ? '4px'
-                : undefined,
-        }}
-      />
-    );
-  }
-
-  const iconConfig = ELEMENT_ICON_CONFIG[element.type];
-  if (iconConfig) {
-    const Icon = iconConfig.icon;
-    return (
-      <div className="w-full h-full rounded-sm bg-muted/30 flex items-center justify-center">
-        <Icon className={cn('h-3 w-3', iconConfig.color)} />
-      </div>
-    );
-  }
-
-  return null;
-}
-
-function SlideThumbnail({
-  slide,
-  index,
-  isActive,
-}: {
-  slide: PresentationSlide;
-  index: number;
-  isActive: boolean;
-}) {
-  const bgStyle: React.CSSProperties = {};
-  if (slide.background) {
-    if (slide.background.type === 'solid' && slide.background.color) {
-      bgStyle.backgroundColor = slide.background.color;
-    } else if (
-      slide.background.type === 'gradient' &&
-      slide.background.gradient
-    ) {
-      bgStyle.background = slide.background.gradient;
-    } else if (
-      slide.background.type === 'image' &&
-      slide.background.imageUrl
-    ) {
-      bgStyle.backgroundImage = `url(${slide.background.imageUrl})`;
-      bgStyle.backgroundSize = 'cover';
-    }
-  } else {
-    bgStyle.backgroundColor = '#ffffff';
-  }
-
-  return (
-    <div className="flex items-stretch gap-1.5">
-      {/* Active indicator */}
-      <div
-        className={cn(
-          'w-1 rounded-full flex-shrink-0 transition-all duration-200',
-          isActive
-            ? 'bg-gradient-to-b from-primary to-accent'
-            : 'bg-transparent'
-        )}
-      />
-      <div
-        className={cn(
-          'relative flex-1 aspect-video rounded-md overflow-hidden transition-all duration-200',
-          isActive
-            ? 'shadow-lg shadow-primary/15 ring-1 ring-primary/30'
-            : 'shadow-sm'
-        )}
-        style={bgStyle}
-      >
-        {/* Rich element previews */}
-        <div className="absolute inset-0 pointer-events-none">
-          {slide.elements
-            .slice()
-            .sort((a, b) => a.zIndex - b.zIndex)
-            .map((el) => (
-              <div
-                key={el.id}
-                className="absolute overflow-hidden"
-                style={{
-                  left: `${el.x}%`,
-                  top: `${el.y}%`,
-                  width: `${el.width}%`,
-                  height: `${el.height}%`,
-                  opacity: el.opacity ?? 1,
-                  transform: el.rotation
-                    ? `rotate(${el.rotation}deg)`
-                    : undefined,
-                }}
-              >
-                <ElementPreview element={el} />
-              </div>
-            ))}
-        </div>
-
-        {/* Slide number */}
-        <div className="absolute bottom-0.5 left-1 text-[9px] font-mono text-muted-foreground bg-background/70 px-1 rounded">
-          {index + 1}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function SortableSlideItem({
@@ -336,6 +145,14 @@ export function SlidePanel({
   onReorderSlides,
 }: SlidePanelProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('slide-panel-expanded') === 'true';
+    }
+    return false;
+  });
+
+  const panelWidth = expanded ? 260 : 180;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -370,8 +187,29 @@ export function SlidePanel({
     ? slides.findIndex((s) => s.id === activeId)
     : -1;
 
+  const toggleExpanded = () => {
+    const next = !expanded;
+    setExpanded(next);
+    localStorage.setItem('slide-panel-expanded', String(next));
+  };
+
   return (
-    <div className="w-[180px] flex-shrink-0 bg-background border-r overflow-y-auto p-2 space-y-1.5">
+    <div
+      className="flex-shrink-0 bg-background border-r overflow-y-auto p-2 space-y-1.5 transition-all duration-200"
+      style={{ width: `${panelWidth}px` }}
+    >
+      {/* Expand/collapse toggle */}
+      <div className="flex justify-end mb-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5"
+          onClick={toggleExpanded}
+          title={expanded ? 'Compact view' : 'Expanded view'}
+        >
+          {expanded ? <PanelLeftClose className="h-3 w-3" /> : <PanelLeftOpen className="h-3 w-3" />}
+        </Button>
+      </div>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}

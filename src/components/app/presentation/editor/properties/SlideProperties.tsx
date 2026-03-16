@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +12,61 @@ interface SlidePropertiesProps {
   onUpdateBackground: (bg: SlideBackground) => void;
   onUpdateNotes: (notes: string) => void;
   onUpdateTransition: (transition: PresentationSlide['transition']) => void;
+}
+
+function TransitionPreview({ transition }: { transition: string }) {
+  const [playing, setPlaying] = useState(false);
+
+  // Replay animation when transition type changes
+  useEffect(() => {
+    setPlaying(false);
+    const t = setTimeout(() => setPlaying(true), 50);
+    return () => clearTimeout(t);
+  }, [transition]);
+
+  if (transition === 'none') return null;
+
+  const slideAStyle: React.CSSProperties = {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: '#94a3b8',
+    borderRadius: '2px',
+    transition: playing ? 'all 0.8s ease' : 'none',
+  };
+
+  const slideBStyle: React.CSSProperties = {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: '#3b82f6',
+    borderRadius: '2px',
+    transition: playing ? 'all 0.8s ease' : 'none',
+  };
+
+  if (transition === 'fade') {
+    slideAStyle.opacity = playing ? 0 : 1;
+    slideBStyle.opacity = playing ? 1 : 0;
+  } else if (transition === 'slide') {
+    slideAStyle.transform = playing ? 'translateX(-100%)' : 'translateX(0)';
+    slideBStyle.transform = playing ? 'translateX(0)' : 'translateX(100%)';
+  } else if (transition === 'zoom') {
+    slideAStyle.transform = playing ? 'scale(0.5)' : 'scale(1)';
+    slideAStyle.opacity = playing ? 0 : 1;
+    slideBStyle.transform = playing ? 'scale(1)' : 'scale(1.5)';
+    slideBStyle.opacity = playing ? 1 : 0;
+  }
+
+  return (
+    <div
+      className="relative h-12 bg-muted rounded overflow-hidden cursor-pointer"
+      onClick={() => { setPlaying(false); setTimeout(() => setPlaying(true), 50); }}
+    >
+      <div style={slideAStyle} />
+      <div style={slideBStyle} />
+      <div className="absolute inset-0 flex items-center justify-center text-[9px] text-muted-foreground/70 pointer-events-none">
+        Click to preview
+      </div>
+    </div>
+  );
 }
 
 export function SlideProperties({ slide, onUpdateBackground, onUpdateNotes, onUpdateTransition }: SlidePropertiesProps) {
@@ -41,6 +97,9 @@ export function SlideProperties({ slide, onUpdateBackground, onUpdateNotes, onUp
             <SelectItem value="zoom">Zoom</SelectItem>
           </SelectContent>
         </Select>
+        <div className="mt-2">
+          <TransitionPreview transition={slide.transition || 'none'} />
+        </div>
       </div>
 
       <div>

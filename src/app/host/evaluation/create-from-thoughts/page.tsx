@@ -26,7 +26,7 @@ import {
   EvaluationMetricsEditor,
   EvaluationParticipantSettings,
 } from '@/components/app/evaluation-form-fields';
-import type { EvaluationTemplate } from '@/components/app/evaluation-form-fields';
+import type { EvaluationTemplate } from '@/lib/constants/evaluation-templates';
 
 interface SelectableItem {
   id: string;

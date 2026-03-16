@@ -12,108 +12,33 @@
 import { onCall } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import {
-  ComputeRankingResultsRequest,
-  ComputeRankingResultsResult,
-  RankingActivity,
-  RankingItem,
+  ComputeEvaluationResultsRequest,
+  ComputeEvaluationResultsResult,
+  EvaluationActivity,
+  EvaluationItem,
   PlayerRatings,
-  RankingItemResult,
-  RankingResults,
+  EvaluationItemResult,
+  EvaluationResults,
   MetricScoreDetails,
 } from '../types';
 import { ALLOWED_ORIGINS, REGION } from '../config';
+import {
+  calculateMedian,
+  calculateStdDev,
+  normalizeScore,
+  calculateDistribution,
+  determineConsensusLevel,
+} from '../utils/evaluationCalc';
 
 const firestore = admin.firestore();
-
-/**
- * Calculate median of an array of numbers
- */
-function calculateMedian(values: number[]): number {
-  if (values.length === 0) return 0;
-
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-
-  if (sorted.length % 2 === 0) {
-    return (sorted[mid - 1] + sorted[mid]) / 2;
-  }
-  return sorted[mid];
-}
-
-/**
- * Calculate standard deviation of an array of numbers
- */
-function calculateStdDev(values: number[], mean: number): number {
-  if (values.length <= 1) return 0;
-
-  const squaredDiffs = values.map((v) => Math.pow(v - mean, 2));
-  const avgSquaredDiff = squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
-  return Math.sqrt(avgSquaredDiff);
-}
-
-/**
- * Normalize a score to 0-1 range, accounting for lowerIsBetter
- */
-function normalizeScore(
-  score: number,
-  min: number,
-  max: number,
-  lowerIsBetter: boolean
-): number {
-  if (max === min) return 0.5;
-
-  if (lowerIsBetter) {
-    // For lowerIsBetter, invert the normalization so lower scores = higher normalized
-    return (max - score) / (max - min);
-  }
-  return (score - min) / (max - min);
-}
-
-/**
- * Calculate distribution of scores for a metric
- */
-function calculateDistribution(
-  scores: number[],
-  min: number,
-  max: number
-): number[] {
-  const bucketCount = max - min + 1;
-  const distribution = new Array(bucketCount).fill(0);
-
-  for (const score of scores) {
-    const bucketIndex = Math.round(score) - min;
-    if (bucketIndex >= 0 && bucketIndex < bucketCount) {
-      distribution[bucketIndex]++;
-    }
-  }
-
-  return distribution;
-}
-
-/**
- * Determine consensus level based on standard deviation relative to scale
- */
-function determineConsensusLevel(
-  avgStdDev: number,
-  scaleRange: number
-): 'high' | 'medium' | 'low' {
-  const normalizedStdDev = avgStdDev / scaleRange;
-
-  // High consensus: stdDev < 15% of scale range
-  if (normalizedStdDev < 0.15) return 'high';
-  // Medium consensus: stdDev < 30% of scale range
-  if (normalizedStdDev < 0.3) return 'medium';
-  // Low consensus: high variance
-  return 'low';
-}
 
 export const computeEvaluationResults = onCall(
   {
     region: REGION,
     cors: ALLOWED_ORIGINS,
   },
-  async (request): Promise<ComputeRankingResultsResult> => {
-    const data = request.data as ComputeRankingResultsRequest;
+  async (request): Promise<ComputeEvaluationResultsResult> => {
+    const data = request.data as ComputeEvaluationResultsRequest;
     const { gameId } = data;
 
     if (!gameId) {
@@ -147,7 +72,7 @@ export const computeEvaluationResults = onCall(
       const activity = {
         id: activityDoc.id,
         ...activityDoc.data(),
-      } as RankingActivity;
+      } as EvaluationActivity;
 
       const metrics = activity.config.metrics;
 
@@ -160,10 +85,10 @@ export const computeEvaluationResults = onCall(
         .orderBy('order', 'asc')
         .get();
 
-      const items: RankingItem[] = itemsSnapshot.docs.map((doc) => ({
+      const items: EvaluationItem[] = itemsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-      })) as RankingItem[];
+      })) as EvaluationItem[];
 
       if (items.length === 0) {
         return { success: false, message: 'No items to rank' };
@@ -191,7 +116,7 @@ export const computeEvaluationResults = onCall(
       const participantsWhoRated = allRatings.length;
 
       // Process each item
-      const itemResults: RankingItemResult[] = [];
+      const itemResults: EvaluationItemResult[] = [];
 
       for (const item of items) {
         const metricScores: { [metricId: string]: MetricScoreDetails } = {};
@@ -295,7 +220,7 @@ export const computeEvaluationResults = onCall(
       }
 
       // Create results document
-      const results: RankingResults = {
+      const results: EvaluationResults = {
         items: itemResults,
         totalParticipants,
         participantsWhoRated,

@@ -16,6 +16,7 @@ export type SlideElementType =
   | 'text'
   | 'image'
   | 'shape'
+  | 'connector'
   // Interactive (max 1 per slide, player interacts with these)
   | 'quiz'
   | 'poll'
@@ -67,11 +68,36 @@ export interface SlideElement {
   objectFit?: 'cover' | 'contain' | 'fill';
   borderRadius?: number;
 
+  // === Text decoration ===
+  textDecoration?: 'none' | 'underline';
+
   // === Shape properties ===
-  shapeType?: 'rectangle' | 'circle' | 'rounded-rect' | 'line';
+  shapeType?: 'rectangle' | 'circle' | 'rounded-rect' | 'line' | 'triangle' | 'arrow-right' | 'diamond';
   backgroundColor?: string;
   borderColor?: string;
   borderWidth?: number;
+
+  // === Connector properties ===
+  connectorConfig?: {
+    routingType: 'straight' | 'elbow' | 'curved';
+    startX: number;  // % of slide
+    startY: number;
+    endX: number;
+    endY: number;
+    startAttachment?: {
+      elementId: string;
+      anchor: 'top' | 'bottom' | 'left' | 'right';
+    };
+    endAttachment?: {
+      elementId: string;
+      anchor: 'top' | 'bottom' | 'left' | 'right';
+    };
+    startArrow: 'none' | 'arrow';
+    endArrow: 'none' | 'arrow';
+    strokeColor: string;
+    strokeWidth: number;
+    strokeStyle: 'solid' | 'dashed' | 'dotted';
+  };
 
   // === Interactive element configs ===
   quizConfig?: {

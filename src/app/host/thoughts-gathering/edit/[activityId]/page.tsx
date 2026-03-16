@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { SettingToggle } from '@/components/app/setting-toggle';
 import { Header } from '@/components/app/header';
 import { Cloud, ArrowLeft, Loader2, Save, Bot } from 'lucide-react';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
@@ -247,36 +247,23 @@ export default function EditThoughtsGatheringPage() {
               </p>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="multipleRounds">Allow Multiple Rounds</Label>
-                <p className="text-sm text-muted-foreground">
-                  Let participants submit more after viewing results
-                </p>
-              </div>
-              <Switch
-                id="multipleRounds"
-                checked={allowMultipleRounds}
-                onCheckedChange={setAllowMultipleRounds}
-              />
-            </div>
+            <SettingToggle
+              id="multipleRounds"
+              label="Allow Multiple Rounds"
+              description="Let participants submit more after viewing results"
+              checked={allowMultipleRounds}
+              onCheckedChange={setAllowMultipleRounds}
+            />
 
-            <div className="flex items-center justify-between rounded-lg border p-4 border-violet-500/30 bg-violet-500/5">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-violet-500" />
-                  <Label htmlFor="agenticUseCases">Agentic Use Cases Collection</Label>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Match topics with AI agents from the tracker database
-                </p>
-              </div>
-              <Switch
-                id="agenticUseCases"
-                checked={agenticUseCasesCollection}
-                onCheckedChange={setAgenticUseCasesCollection}
-              />
-            </div>
+            <SettingToggle
+              id="agenticUseCases"
+              label="Agentic Use Cases Collection"
+              description="Match topics with AI agents from the tracker database"
+              checked={agenticUseCasesCollection}
+              onCheckedChange={setAgenticUseCasesCollection}
+              icon={<Bot className="h-4 w-4 text-violet-500" />}
+              className="border-violet-500/30 bg-violet-500/5"
+            />
 
             <div className="pt-4 border-t">
               <Button

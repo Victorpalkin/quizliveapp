@@ -251,7 +251,7 @@ service cloud.firestore {
                         request.resource.data.name.size() <= 20 &&
                         request.resource.data.answers == [] &&
                         request.resource.data.currentStreak == 0 &&
-                        request.resource.data.maxStreak == 0;
+                        request.resource.data.get('maxStreak', 0) == 0;
 
         // All player updates (score, answers, streak) are handled by Cloud Functions only
         // Cloud Functions use admin privileges and bypass these rules

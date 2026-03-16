@@ -187,6 +187,9 @@ export function usePlayerStateMachine(gamePin: string) {
   const leaderboardElement: SlideElement | null = currentSlide?.elements.find(
     (el) => el.type === 'leaderboard'
   ) || null;
+  const qaElement: SlideElement | null = currentSlide?.elements.find(
+    (el) => el.type === 'qa'
+  ) || null;
 
   // Track responded elements
   const markResponded = useCallback((elementId: string) => {
@@ -230,6 +233,7 @@ export function usePlayerStateMachine(gamePin: string) {
     interactiveElement,
     resultsElement,
     leaderboardElement,
+    qaElement,
     slides,
     playerScore,
     playerStreak,

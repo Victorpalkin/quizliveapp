@@ -97,12 +97,13 @@ export function useJoinGame({
 
       const gameDoc = querySnapshot.docs[0];
       const playerRef = doc(firestore, 'games', gameDoc.id, 'players', playerId);
-      const newPlayer: Player = {
+      const newPlayer: Player & { maxStreak: number } = {
         id: playerId,
         name: trimmedNickname,
         score: 0,
         answers: [],
-        currentStreak: 0
+        currentStreak: 0,
+        maxStreak: 0,
       };
 
       await setDoc(playerRef, newPlayer);
