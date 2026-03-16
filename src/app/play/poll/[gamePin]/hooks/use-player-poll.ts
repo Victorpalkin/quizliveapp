@@ -152,7 +152,6 @@ export function usePlayerPoll() {
         score: 0,
         answers: [],
         currentStreak: 0,
-        maxStreak: 0,
       };
 
       await setDoc(doc(firestore, 'games', gameDocId, 'players', playerId), {

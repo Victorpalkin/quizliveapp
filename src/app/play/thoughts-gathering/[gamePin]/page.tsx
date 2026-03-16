@@ -136,7 +136,6 @@ export default function ThoughtsGatheringPlayerPage() {
         score: 0,
         answers: [],
         currentStreak: 0,
-        maxStreak: 0,
       };
 
       // Use setDoc with playerId as document ID to match Firestore rules

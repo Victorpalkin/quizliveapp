@@ -175,7 +175,6 @@ export function usePlayerEvaluation() {
         score: 0,
         answers: [],
         currentStreak: 0,
-        maxStreak: 0,
       });
 
       setPlayerId(newPlayerId);

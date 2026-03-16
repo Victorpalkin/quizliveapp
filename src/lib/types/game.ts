@@ -25,7 +25,6 @@ export interface Player {
     score: number;
     answers: PlayerAnswer[];
     currentStreak: number;
-    maxStreak?: number;
 }
 
 // Activity types for the Activity system
