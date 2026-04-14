@@ -39,7 +39,7 @@ export const REGION = 'europe-west4';
 /**
  * Gemini model configuration
  */
-export const GEMINI_MODEL = 'gemini-3-pro-preview';
+export const GEMINI_MODEL = 'gemini-3.1-pro-preview';
 
 /**
  * Service account for AI functions
