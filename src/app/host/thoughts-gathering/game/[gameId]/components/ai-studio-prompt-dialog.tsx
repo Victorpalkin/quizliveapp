@@ -74,7 +74,7 @@ export function AIStudioPromptDialog({
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="w-full border-teal-500/30 hover:bg-teal-500/10"
+          className="w-full justify-start border-teal-500/30 hover:bg-teal-500/10"
           disabled={isDisabled}
         >
           <Sparkles className="mr-2 h-4 w-4 text-teal-500" />

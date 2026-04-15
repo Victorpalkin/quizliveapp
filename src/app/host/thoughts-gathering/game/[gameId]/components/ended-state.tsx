@@ -1,8 +1,8 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Home, MessageSquare, BarChart3 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Home, MessageSquare, BarChart3, Download } from 'lucide-react';
 import { ResultsView } from './results-view';
 import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
 
@@ -26,49 +26,45 @@ export function EndedState({
   onCreateEvaluation,
 }: EndedStateProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <ResultsView
         activity={activity}
         players={players}
         submissions={submissions}
         topicCloud={topicCloud}
         handleExportResults={handleExportResults}
-        onCreateEvaluation={onCreateEvaluation}
         headerTitle="Session Complete!"
         borderColor="border-green-500/20 bg-gradient-to-br from-green-500/5 to-blue-500/5"
       />
 
-      {/* Additional ended-state actions */}
+      {/* Next Steps — consolidated */}
       {topicCloud?.topics && topicCloud.topics.length > 0 && (
-        <Card className="border-2 border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-red-500/5">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <BarChart3 className="h-6 w-6 text-orange-500" />
-              <div>
-                <CardTitle>Continue with Evaluation</CardTitle>
-                <CardDescription>
-                  Prioritize the collected topics with your audience
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        <Card className="border border-card-border">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Next Steps</p>
             <Button
               onClick={() => onCreateEvaluation('topics')}
-              size="lg"
-              className="w-full py-6 bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90"
+              variant="outline"
+              className="w-full justify-start"
             >
-              <BarChart3 className="mr-2 h-5 w-5" />
+              <BarChart3 className="mr-2 h-4 w-4 text-orange-500" />
               Create Evaluation from Topics
             </Button>
             <Button
               onClick={() => onCreateEvaluation('submissions')}
               variant="outline"
-              size="lg"
-              className="w-full py-6"
+              className="w-full justify-start"
             >
-              <MessageSquare className="mr-2 h-5 w-5" />
+              <MessageSquare className="mr-2 h-4 w-4 text-muted-foreground" />
               Create from Raw Submissions
+            </Button>
+            <Button
+              onClick={handleExportResults}
+              variant="outline"
+              className="w-full justify-start"
+            >
+              <Download className="mr-2 h-4 w-4 text-muted-foreground" />
+              Export to Markdown
             </Button>
           </CardContent>
         </Card>

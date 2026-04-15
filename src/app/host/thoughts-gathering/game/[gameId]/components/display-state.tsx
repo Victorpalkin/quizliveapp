@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { RefreshCw, Pencil } from 'lucide-react';
+import { RefreshCw, Pencil, Download, BarChart3 } from 'lucide-react';
 import { ReprocessDialog } from './reprocess-dialog';
 import { EditableGroupedView } from './editable-grouped-view';
 import { ResultsView } from './results-view';
+import { AIStudioPromptDialog } from './ai-studio-prompt-dialog';
 import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
 
 interface DisplayStateProps {
@@ -63,14 +64,35 @@ export function DisplayState({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Compact Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <Card>
+          <CardContent className="p-3 text-center">
+            <p className="text-2xl font-bold">{players?.length || 0}</p>
+            <p className="text-xs text-muted-foreground">Participants</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 text-center">
+            <p className="text-2xl font-bold">{submissions?.length || 0}</p>
+            <p className="text-xs text-muted-foreground">Submissions</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 text-center">
+            <p className="text-2xl font-bold">{topicCloud?.topics?.length || 0}</p>
+            <p className="text-xs text-muted-foreground">Groups</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <ResultsView
         activity={activity}
         players={players}
         submissions={submissions}
         topicCloud={topicCloud}
         handleExportResults={handleExportResults}
-        onCreateEvaluation={onCreateEvaluation}
         headerSlot={
           <>
             <Button
@@ -88,27 +110,36 @@ export function DisplayState({
         }
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-3xl font-bold">{players?.length || 0}</p>
-            <p className="text-muted-foreground">Participants</p>
+      {/* Next Steps — consolidated CTAs */}
+      {topicCloud?.topics && topicCloud.topics.length > 0 && (
+        <Card className="border border-card-border">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Next Steps</p>
+            <Button
+              onClick={() => onCreateEvaluation('topics')}
+              variant="outline"
+              className="w-full justify-start"
+            >
+              <BarChart3 className="mr-2 h-4 w-4 text-orange-500" />
+              Create Evaluation from Topics
+            </Button>
+            <AIStudioPromptDialog
+              activity={activity}
+              submissions={submissions}
+              topicCloud={topicCloud}
+              playerCount={players?.length || 0}
+            />
+            <Button
+              onClick={handleExportResults}
+              variant="outline"
+              className="w-full justify-start"
+            >
+              <Download className="mr-2 h-4 w-4 text-muted-foreground" />
+              Export to Markdown
+            </Button>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-3xl font-bold">{submissions?.length || 0}</p>
-            <p className="text-muted-foreground">Submissions</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-3xl font-bold">{topicCloud?.topics?.length || 0}</p>
-            <p className="text-muted-foreground">Groups</p>
-          </CardContent>
-        </Card>
-      </div>
+      )}
 
       {/* Actions */}
       <div className="flex gap-4">

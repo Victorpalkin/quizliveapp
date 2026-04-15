@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { GameHeader, KeyboardShortcutsHint } from '@/components/app/game-header';
-import { HostActionHint, ReadinessChecklist } from '@/components/app/host-action-hint';
+import { HostActionHint } from '@/components/app/host-action-hint';
 import { useThoughtsGatheringGame } from './hooks/use-thoughts-gathering-game';
 import { CollectingState } from './components/collecting-state';
 import { ProcessingState } from './components/processing-state';
@@ -127,17 +127,6 @@ export default function ThoughtsGatheringGamePage() {
               totalPlayers={players?.length || 0}
               submissionsCount={submissions?.length || 0}
               allowMultipleRounds={activity?.config.allowMultipleRounds}
-            />
-          </div>
-        )}
-
-        {game?.state === 'collecting' && (
-          <div className="mb-6">
-            <ReadinessChecklist
-              items={[
-                { label: 'Participants joined', isReady: (players?.length || 0) > 0, detail: `${players?.length || 0}` },
-                { label: 'Submissions received', isReady: (submissions?.length || 0) > 0, detail: `${submissions?.length || 0}` },
-              ]}
             />
           </div>
         )}
