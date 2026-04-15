@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { gameConverter, thoughtsGatheringActivityConverter, thoughtSubmissionConverter } from '@/firebase/converters';
 import { clearHostSession, saveHostSession } from '@/lib/host-session';
 import { exportThoughtsToMarkdown, downloadMarkdown, generateExportFilename } from '@/lib/export-thoughts';
-import type { Game, ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
+import type { Game, ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult, TopicEntry } from '@/lib/types';
 
 export function useThoughtsGatheringGame() {
   const params = useParams();
@@ -139,6 +139,62 @@ export function useThoughtsGatheringGame() {
     router.push('/host');
   };
 
+  const handleUpdateTopics = useCallback(async (updatedTopics: TopicEntry[]) => {
+    if (!firestore || !gameId) return;
+
+    try {
+      const topicsDocRef = doc(firestore, 'games', gameId, 'aggregates', 'topics');
+      await updateDoc(topicsDocRef, { topics: updatedTopics });
+      toast({
+        title: 'Groups Updated',
+        description: 'Your changes have been saved.',
+      });
+    } catch (error) {
+      console.error("Error updating topics: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not save changes. Please try again.",
+      });
+    }
+  }, [firestore, gameId, toast]);
+
+  const handleReprocess = useCallback(async (customInstructions?: string) => {
+    if (!gameDocRef) return;
+
+    setIsProcessing(true);
+
+    try {
+      await updateDoc(gameDocRef, { state: 'processing' });
+
+      const functions = getFunctions(undefined, 'europe-west4');
+      const extractTopics = httpsCallable(functions, 'extractTopics');
+
+      await extractTopics({ gameId, customInstructions });
+    } catch (error) {
+      console.error("Error reprocessing submissions: ", error);
+      toast({
+        variant: "destructive",
+        title: "Processing Error",
+        description: "Could not reprocess submissions. Please try again.",
+      });
+      await updateDoc(gameDocRef, { state: 'display' });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [gameDocRef, gameId, toast]);
+
+  const handleToggleSubmissionVisibility = useCallback(async (submissionId: string, hidden: boolean) => {
+    if (!firestore || !gameId) return;
+
+    try {
+      const submissionRef = doc(firestore, 'games', gameId, 'submissions', submissionId);
+      await updateDoc(submissionRef, { hidden });
+    } catch (error) {
+      console.error("Error toggling submission visibility: ", error);
+    }
+  }, [firestore, gameId]);
+
   const handleExportResults = useCallback(() => {
     if (!topicCloud?.topics || !submissions || !activity) return;
 
@@ -149,7 +205,9 @@ export function useThoughtsGatheringGame() {
       players?.length || 0,
       topicCloud.processedAt?.toDate?.(),
       topicCloud.agentMatches,
-      topicCloud.topMatureAgents
+      topicCloud.topMatureAgents,
+      topicCloud.summary,
+      activity.config.anonymousMode
     );
 
     const filename = generateExportFilename(activity.title);
@@ -208,6 +266,9 @@ export function useThoughtsGatheringGame() {
     handleEndSession,
     handleReturnToDashboard,
     handleExportResults,
+    handleReprocess,
+    handleUpdateTopics,
+    handleToggleSubmissionVisibility,
 
     // Navigation
     router,

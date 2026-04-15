@@ -10,7 +10,9 @@ export function exportThoughtsToMarkdown(
   playerCount: number,
   processedAt?: Date,
   agentMatches?: TopicAgentMatch[],
-  topMatureAgents?: MatchingAgent[]
+  topMatureAgents?: MatchingAgent[],
+  summary?: string,
+  anonymousMode?: boolean
 ): string {
   const date = processedAt || new Date();
   const formattedDate = date.toLocaleDateString('en-US', {
@@ -42,7 +44,19 @@ export function exportThoughtsToMarkdown(
 
 ---
 
-## Grouped Submissions
+`;
+
+  if (summary) {
+    md += `## Summary
+
+${summary}
+
+---
+
+`;
+  }
+
+  md += `## Grouped Submissions
 
 `;
 
@@ -68,7 +82,8 @@ export function exportThoughtsToMarkdown(
     if (linkedSubmissions.length > 0) {
       md += `**Submissions:**\n`;
       linkedSubmissions.forEach(sub => {
-        md += `- **${sub.playerName}:** "${sub.rawText}"\n`;
+        const name = anonymousMode ? 'Participant' : sub.playerName;
+      md += `- **${name}:** "${sub.rawText}"\n`;
       });
       md += '\n';
     }
@@ -110,7 +125,8 @@ export function exportThoughtsToMarkdown(
       : '';
     // Escape pipe characters in submission text for markdown table
     const escapedText = sub.rawText.replace(/\|/g, '\\|').replace(/\n/g, ' ');
-    md += `| ${index + 1} | ${sub.playerName} | ${escapedText} | ${time} |\n`;
+    const playerName = anonymousMode ? 'Participant' : sub.playerName;
+    md += `| ${index + 1} | ${playerName} | ${escapedText} | ${time} |\n`;
   });
 
   // Add top mature agents section if available

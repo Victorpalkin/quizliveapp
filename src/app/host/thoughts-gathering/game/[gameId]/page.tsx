@@ -26,6 +26,10 @@ export default function ThoughtsGatheringGamePage() {
     handleEndSession,
     handleReturnToDashboard,
     handleExportResults,
+    handleReprocess,
+    handleUpdateTopics,
+    handleToggleSubmissionVisibility,
+    isProcessing,
     router,
   } = useThoughtsGatheringGame();
 
@@ -49,6 +53,7 @@ export default function ThoughtsGatheringGamePage() {
             handleToggleSubmissions={handleToggleSubmissions}
             handleStopAndProcess={handleStopAndProcess}
             handleEndSession={handleEndSession}
+            handleToggleSubmissionVisibility={handleToggleSubmissionVisibility}
           />
         );
 
@@ -67,6 +72,9 @@ export default function ThoughtsGatheringGamePage() {
             handleCollectMore={handleCollectMore}
             handleEndSession={handleEndSession}
             handleExportResults={handleExportResults}
+            handleReprocess={handleReprocess}
+            handleUpdateTopics={handleUpdateTopics}
+            isProcessing={isProcessing}
             onCreateEvaluation={handleCreateEvaluation}
           />
         );
@@ -74,6 +82,8 @@ export default function ThoughtsGatheringGamePage() {
       case 'ended':
         return (
           <EndedState
+            activity={activity}
+            players={players as { id: string; name: string }[] | null}
             submissions={submissions}
             topicCloud={topicCloud}
             handleReturnToDashboard={handleReturnToDashboard}

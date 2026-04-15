@@ -5,9 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Home, MessageSquare, BarChart3, Download } from 'lucide-react';
 import { ThoughtsGroupedView } from '@/components/app/thoughts-grouped-view';
 import { MatureAgentsCard } from './mature-agents-card';
-import type { ThoughtSubmission, TopicCloudResult } from '@/lib/types';
+import { SessionSummaryCard } from './session-summary-card';
+import { AIStudioPromptDialog } from './ai-studio-prompt-dialog';
+import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
 
 interface EndedStateProps {
+  activity: ThoughtsGatheringActivity | null;
+  players: { id: string; name: string }[] | null;
   submissions: ThoughtSubmission[] | null;
   topicCloud: TopicCloudResult | null;
   handleReturnToDashboard: () => void;
@@ -16,6 +20,8 @@ interface EndedStateProps {
 }
 
 export function EndedState({
+  activity,
+  players,
   submissions,
   topicCloud,
   handleReturnToDashboard,
@@ -24,6 +30,9 @@ export function EndedState({
 }: EndedStateProps) {
   return (
     <div className="space-y-6">
+      {/* Session Summary */}
+      <SessionSummaryCard summary={topicCloud?.summary} />
+
       {/* Final Results */}
       <Card className="border-2 border-green-500/20 bg-gradient-to-br from-green-500/5 to-blue-500/5">
         <CardContent className="p-8">
@@ -45,6 +54,7 @@ export function EndedState({
               topics={topicCloud.topics}
               submissions={submissions || []}
               agentMatches={topicCloud.agentMatches}
+              anonymousMode={activity?.config.anonymousMode}
             />
           ) : (
             <p className="text-center text-muted-foreground py-12">No groups collected</p>
@@ -86,6 +96,32 @@ export function EndedState({
               <MessageSquare className="mr-2 h-5 w-5" />
               Create from Raw Submissions
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Generate AI Studio Prompt */}
+      {topicCloud?.topics && topicCloud.topics.length > 0 && (
+        <Card className="border-2 border-teal-500/20 bg-gradient-to-br from-teal-500/5 to-cyan-500/5">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div>
+                  <h3 className="font-semibold">Generate AI Studio Prompt</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Create a prompt to build a demo app from these requirements
+                  </p>
+                </div>
+              </div>
+              <div className="flex-shrink-0 ml-4">
+                <AIStudioPromptDialog
+                  activity={activity}
+                  submissions={submissions}
+                  topicCloud={topicCloud}
+                  playerCount={players?.length || 0}
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}

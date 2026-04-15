@@ -2,7 +2,8 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { StopCircle, MessageSquare, PlayCircle, PauseCircle, XCircle } from 'lucide-react';
+import { StopCircle, MessageSquare, PlayCircle, PauseCircle, XCircle, EyeOff, Eye } from 'lucide-react';
+import { LiveWordFrequency } from './live-word-frequency';
 import type { Game, ThoughtsGatheringActivity, ThoughtSubmission } from '@/lib/types';
 
 interface CollectingStateProps {
@@ -13,6 +14,7 @@ interface CollectingStateProps {
   handleToggleSubmissions: () => void;
   handleStopAndProcess: () => void;
   handleEndSession: () => void;
+  handleToggleSubmissionVisibility?: (submissionId: string, hidden: boolean) => void;
 }
 
 export function CollectingState({
@@ -23,7 +25,13 @@ export function CollectingState({
   handleToggleSubmissions,
   handleStopAndProcess,
   handleEndSession,
+  handleToggleSubmissionVisibility,
 }: CollectingStateProps) {
+  const moderationEnabled = activity?.config.enableModeration;
+  const hiddenCount = submissions?.filter(s => s.hidden).length || 0;
+  const visibleSubmissions = moderationEnabled
+    ? submissions
+    : submissions?.slice(-5).reverse();
   return (
     <div className="space-y-6">
       {/* Submission Status */}
@@ -74,24 +82,56 @@ export function CollectingState({
         </CardContent>
       </Card>
 
-      {/* Recent Submissions Preview */}
+      {/* Submissions */}
       {submissions && submissions.length > 0 && (
         <Card className="border border-card-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Recent Submissions</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">
+                {moderationEnabled ? 'All Submissions' : 'Recent Submissions'}
+              </CardTitle>
+              {moderationEnabled && hiddenCount > 0 && (
+                <span className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+                  {hiddenCount} hidden
+                </span>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {submissions.slice(-5).reverse().map(sub => (
-                <div key={sub.id} className="flex items-start gap-3 p-2 bg-muted rounded-lg">
-                  <span className="font-medium text-sm">{sub.playerName}:</span>
-                  <span className="text-sm text-muted-foreground">{sub.rawText}</span>
+            <div className={`space-y-2 overflow-y-auto ${moderationEnabled ? 'max-h-72' : 'max-h-48'}`}>
+              {(moderationEnabled ? submissions : submissions.slice(-5).reverse()).map(sub => (
+                <div
+                  key={sub.id}
+                  className={`flex items-start gap-3 p-2 rounded-lg ${sub.hidden ? 'bg-muted/40 opacity-60' : 'bg-muted'}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-sm">
+                      {activity?.config.anonymousMode ? 'Participant' : sub.playerName}:
+                    </span>
+                    <span className="text-sm text-muted-foreground ml-1">{sub.rawText}</span>
+                  </div>
+                  {moderationEnabled && handleToggleSubmissionVisibility && (
+                    <button
+                      onClick={() => handleToggleSubmissionVisibility(sub.id, !sub.hidden)}
+                      className="flex-shrink-0 p-1 rounded hover:bg-background/50 transition-colors"
+                      title={sub.hidden ? 'Show submission' : 'Hide submission'}
+                    >
+                      {sub.hidden ? (
+                        <EyeOff className="h-4 w-4 text-amber-500" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Live Word Frequency */}
+      <LiveWordFrequency submissions={submissions} />
 
       {/* Participants */}
       {players && players.length > 0 && (

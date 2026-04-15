@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { SettingToggle } from '@/components/app/setting-toggle';
 import { Header } from '@/components/app/header';
-import { Cloud, ArrowLeft, Loader2, Save, Bot } from 'lucide-react';
+import { Cloud, ArrowLeft, Loader2, Save, Bot, EyeOff, Shield } from 'lucide-react';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp, DocumentReference } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +32,8 @@ export default function EditThoughtsGatheringPage() {
   const [maxSubmissions, setMaxSubmissions] = useState(3);
   const [allowMultipleRounds, setAllowMultipleRounds] = useState(false);
   const [agenticUseCasesCollection, setAgenticUseCasesCollection] = useState(false);
+  const [anonymousMode, setAnonymousMode] = useState(false);
+  const [enableModeration, setEnableModeration] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -57,6 +59,8 @@ export default function EditThoughtsGatheringPage() {
       setMaxSubmissions(activity.config.maxSubmissionsPerPlayer);
       setAllowMultipleRounds(activity.config.allowMultipleRounds);
       setAgenticUseCasesCollection(activity.config.agenticUseCasesCollection || false);
+      setAnonymousMode(activity.config.anonymousMode || false);
+      setEnableModeration(activity.config.enableModeration || false);
       setIsInitialized(true);
     }
   }, [activity, isInitialized]);
@@ -97,6 +101,8 @@ export default function EditThoughtsGatheringPage() {
         maxSubmissionsPerPlayer: maxSubmissions,
         allowMultipleRounds,
         agenticUseCasesCollection,
+        anonymousMode,
+        enableModeration,
       };
 
       await updateDoc(activityDocRef, {
@@ -263,6 +269,24 @@ export default function EditThoughtsGatheringPage() {
               onCheckedChange={setAgenticUseCasesCollection}
               icon={<Bot className="h-4 w-4 text-violet-500" />}
               className="border-violet-500/30 bg-violet-500/5"
+            />
+
+            <SettingToggle
+              id="anonymousMode"
+              label="Anonymous Mode"
+              description="Hide participant names in results and exports"
+              checked={anonymousMode}
+              onCheckedChange={setAnonymousMode}
+              icon={<EyeOff className="h-4 w-4 text-slate-500" />}
+            />
+
+            <SettingToggle
+              id="enableModeration"
+              label="Submission Moderation"
+              description="Review and hide submissions before AI analysis"
+              checked={enableModeration}
+              onCheckedChange={setEnableModeration}
+              icon={<Shield className="h-4 w-4 text-amber-500" />}
             />
 
             <div className="pt-4 border-t">

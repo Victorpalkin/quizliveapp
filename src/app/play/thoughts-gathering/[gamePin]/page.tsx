@@ -352,6 +352,16 @@ export default function ThoughtsGatheringPlayerPage() {
       case 'viewing':
         return (
           <div className="w-full max-w-2xl space-y-6">
+            {topicCloud?.summary && (
+              <Card className="shadow-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-indigo-500/5">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold mb-2">Session Summary</h3>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                    {topicCloud.summary}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
             <Card className="shadow-2xl">
               <CardContent className="p-8">
                 <h2 className="text-2xl font-bold mb-6">Grouped Submissions</h2>

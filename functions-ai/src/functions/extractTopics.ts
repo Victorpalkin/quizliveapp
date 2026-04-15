@@ -9,6 +9,7 @@ interface ExtractTopicsRequest {
   gameId: string;
   slideId?: string; // Optional: for presentation slides - filter by slide and skip state updates
   elementId?: string; // Optional: for presentation elements - read from responses collection filtered by elementId
+  customInstructions?: string; // Optional: host-provided instructions for refining analysis
 }
 
 interface ExtractTopicsResponse {
@@ -62,6 +63,7 @@ GROUPING STRATEGY:
 
 Respond ONLY with valid JSON in this exact format:
 {
+  "summary": "A 2-3 paragraph executive summary of the session findings. Highlight the most popular themes, notable consensus areas, interesting outliers, and any gaps. Write in a professional tone suitable for sharing with stakeholders.",
   "topics": [
     {
       "topic": "Customer Service Chatbots",
@@ -95,10 +97,15 @@ Grouping rules:
 - Order groups by count (highest first)
 - NEVER create a group that just restates the collection prompt`;
 
+interface ParsedExtractionResult {
+  topics: TopicEntry[];
+  summary?: string;
+}
+
 /**
  * Parse the AI topic extraction response
  */
-function parseExtractionResponse(responseText: string): TopicEntry[] {
+function parseExtractionResponse(responseText: string): ParsedExtractionResult {
   let jsonStr = responseText.trim();
 
   // Remove markdown code blocks if present
@@ -119,13 +126,18 @@ function parseExtractionResponse(responseText: string): TopicEntry[] {
       throw new Error('Invalid topics structure');
     }
 
-    return parsed.topics.map((t: TopicEntry) => ({
+    const topics = parsed.topics.map((t: TopicEntry) => ({
       topic: t.topic,
       description: t.description || '',
       count: t.count || 1,
       variations: t.variations || [t.topic],
       submissionIds: t.submissionIds || [],
     }));
+
+    return {
+      topics,
+      summary: typeof parsed.summary === 'string' ? parsed.summary : undefined,
+    };
   } catch (error) {
     console.error('Failed to parse extraction response:', responseText);
     throw new HttpsError('internal', 'Failed to parse AI topic extraction response');
@@ -268,10 +280,12 @@ export const extractTopics = onCall(
         return { success: true, topicCount: 0, submissionCount: 0 };
       }
 
-      submissions = submissionsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data() as Omit<InterestSubmission, 'id'>,
-      }));
+      submissions = submissionsSnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data() as Omit<InterestSubmission, 'id'>,
+        }))
+        .filter(sub => !(sub as Record<string, unknown>).hidden);
     }
 
     // Build the extraction request
@@ -291,13 +305,18 @@ export const extractTopics = onCall(
 
       // Build the prompt with activity context
       const collectionPrompt = activityConfig?.prompt || 'Share your thoughts';
-      const userPrompt = `The participants were asked: "${collectionPrompt}"
+      let userPrompt = `The participants were asked: "${collectionPrompt}"
 
 Group these ${submissions.length} responses into DISTINCT CATEGORIES. Focus on the SPECIFIC topics, not the general theme of the question.
 
 ${JSON.stringify(submissionsForAI, null, 2)}
 
 Create meaningful groups based on the specific subject matter of each response. Each group should represent a distinct category of responses.`;
+
+      // Append custom instructions if provided
+      if (data.customInstructions && typeof data.customInstructions === 'string') {
+        userPrompt += `\n\nADDITIONAL INSTRUCTIONS FROM THE HOST:\n${data.customInstructions}`;
+      }
 
       // Call Gemini
       const response = await client.models.generateContent({
@@ -317,13 +336,15 @@ Create meaningful groups based on the specific subject matter of each response. 
       }
 
       // Parse topic extraction results
-      const topics = parseExtractionResponse(responseText);
+      const extractionResult = parseExtractionResponse(responseText);
+      const { topics, summary } = extractionResult;
 
       // Initialize result object
       const topicsResult: {
         topics: TopicEntry[];
         totalSubmissions: number;
         processedAt: admin.firestore.FieldValue;
+        summary?: string;
         slideId?: string;
         agentMatches?: TopicAgentMatch[];
         topMatureAgents?: MatchingAgent[];
@@ -331,6 +352,7 @@ Create meaningful groups based on the specific subject matter of each response. 
         topics,
         totalSubmissions: submissions.length,
         processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        ...(summary && { summary }),
         ...(data.slideId && { slideId: data.slideId }),
         ...(data.elementId && { elementId: data.elementId }),
       };
