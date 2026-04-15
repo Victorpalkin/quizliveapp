@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 import { StopCircle, MessageSquare, PlayCircle, PauseCircle, XCircle, EyeOff, Eye, Send, Loader2 } from 'lucide-react';
 import { LiveWordFrequency } from './live-word-frequency';
 import type { Game, ThoughtsGatheringActivity, ThoughtSubmission } from '@/lib/types';
@@ -16,10 +18,7 @@ interface CollectingStateProps {
   handleStopAndProcess: () => void;
   handleEndSession: () => void;
   handleToggleSubmissionVisibility?: (submissionId: string, hidden: boolean) => void;
-  hostSubmissionText: string;
-  setHostSubmissionText: (value: string) => void;
-  isHostSubmitting: boolean;
-  onHostSubmit: () => void;
+  onHostSubmit: (text: string) => Promise<void>;
 }
 
 export function CollectingState({
@@ -31,16 +30,13 @@ export function CollectingState({
   handleStopAndProcess,
   handleEndSession,
   handleToggleSubmissionVisibility,
-  hostSubmissionText,
-  setHostSubmissionText,
-  isHostSubmitting,
   onHostSubmit,
 }: CollectingStateProps) {
+  const [hostSubmissionText, setHostSubmissionText] = useState('');
+  const [isHostSubmitting, setIsHostSubmitting] = useState(false);
+  const { toast } = useToast();
   const moderationEnabled = activity?.config.enableModeration;
   const hiddenCount = submissions?.filter(s => s.hidden).length || 0;
-  const visibleSubmissions = moderationEnabled
-    ? submissions
-    : submissions?.slice(-5).reverse();
   return (
     <div className="space-y-6">
       {/* Submission Status */}
@@ -107,7 +103,17 @@ export function CollectingState({
                 maxLength={1000}
               />
               <Button
-                onClick={onHostSubmit}
+                onClick={async () => {
+                  setIsHostSubmitting(true);
+                  try {
+                    await onHostSubmit(hostSubmissionText);
+                    setHostSubmissionText('');
+                  } catch {
+                    toast({ variant: 'destructive', title: 'Error', description: 'Could not submit. Please try again.' });
+                  } finally {
+                    setIsHostSubmitting(false);
+                  }
+                }}
                 disabled={isHostSubmitting || !hostSubmissionText.trim()}
                 size="icon"
                 className="self-end h-10 w-10"

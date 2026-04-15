@@ -19,8 +19,6 @@ export function useThoughtsGatheringGame() {
   const { user, loading: userLoading } = useUser();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [hostSubmissionText, setHostSubmissionText] = useState('');
-  const [isHostSubmitting, setIsHostSubmitting] = useState(false);
 
   // Typed ref for reading with converter
   const gameRef = useMemoFirebase(
@@ -190,27 +188,19 @@ export function useThoughtsGatheringGame() {
     }
   }, [firestore, gameId]);
 
-  const handleHostSubmit = useCallback(async () => {
-    if (!gameId || !hostSubmissionText.trim() || !user) return;
+  const handleHostSubmit = async (text: string) => {
+    if (!gameId || !text.trim() || !user) return;
 
-    setIsHostSubmitting(true);
-    try {
-      await addDoc(
-        collection(firestore, 'games', gameId, 'submissions'),
-        {
-          playerId: user.uid,
-          playerName: user.displayName || 'Host',
-          rawText: hostSubmissionText.trim(),
-          submittedAt: serverTimestamp(),
-        }
-      );
-      setHostSubmissionText('');
-    } catch (error) {
-      console.error('Error submitting host thought:', error);
-    } finally {
-      setIsHostSubmitting(false);
-    }
-  }, [firestore, gameId, hostSubmissionText, user]);
+    await addDoc(
+      collection(firestore, 'games', gameId, 'submissions'),
+      {
+        playerId: user.uid,
+        playerName: user.displayName || 'Host',
+        rawText: text.trim(),
+        submittedAt: serverTimestamp(),
+      }
+    );
+  };
 
   const handleExportResults = useCallback(() => {
     if (!topicCloud?.topics || !submissions || !activity) return;
@@ -287,9 +277,6 @@ export function useThoughtsGatheringGame() {
     handleUpdateTopics,
     handleToggleSubmissionVisibility,
     handleHostSubmit,
-    hostSubmissionText,
-    setHostSubmissionText,
-    isHostSubmitting,
 
     // Navigation
     router,
