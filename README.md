@@ -36,7 +36,7 @@ Zivo is an interactive, real-time audience engagement platform that allows users
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - Firebase CLI: `npm install -g firebase-tools`
 - Google Cloud CLI (for Cloud Run deployments)
 

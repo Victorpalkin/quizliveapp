@@ -83,9 +83,9 @@ quizliveapp/
 
 ### Required Tools
 
-1. **Node.js 20+**
+1. **Node.js 22+**
    ```bash
-   node --version  # Should be v20 or higher
+   node --version  # Should be v22 or higher
    ```
 
 2. **Firebase CLI**

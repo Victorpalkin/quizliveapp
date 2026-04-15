@@ -17,7 +17,7 @@ steps:
   # ============================================================================
   # Step 1: Install Node.js dependencies
   # ============================================================================
-  - name: 'node:20'
+  - name: 'node:22'
     entrypoint: 'npm'
     args: ['ci']
     id: 'install-deps'
@@ -26,14 +26,14 @@ steps:
   # ============================================================================
   # Step 2: Install Cloud Functions dependencies (main + AI in parallel)
   # ============================================================================
-  - name: 'node:20'
+  - name: 'node:22'
     entrypoint: 'npm'
     args: ['ci']
     dir: 'functions'
     id: 'install-functions-deps'
     waitFor: ['-']
 
-  - name: 'node:20'
+  - name: 'node:22'
     entrypoint: 'npm'
     args: ['ci']
     dir: 'functions-ai'
@@ -43,14 +43,14 @@ steps:
   # ============================================================================
   # Step 3: Build Cloud Functions (main + AI in parallel)
   # ============================================================================
-  - name: 'node:20'
+  - name: 'node:22'
     entrypoint: 'npm'
     args: ['run', 'build']
     dir: 'functions'
     id: 'build-functions'
     waitFor: ['install-functions-deps']
 
-  - name: 'node:20'
+  - name: 'node:22'
     entrypoint: 'npm'
     args: ['run', 'build']
     dir: 'functions-ai'
@@ -61,7 +61,7 @@ steps:
   # Step 4: Run tests (if available)
   # ============================================================================
   # Uncomment when tests are available
-  # - name: 'node:20'
+  # - name: 'node:22'
   #   entrypoint: 'npm'
   #   args: ['run', 'test:ci']
   #   id: 'run-tests'
@@ -70,7 +70,7 @@ steps:
   # ============================================================================
   # Step 5: Deploy Firestore rules and indexes
   # ============================================================================
-  - name: 'node:20'
+  - name: 'node:22'
     entrypoint: 'bash'
     args:
       - '-c'
@@ -85,7 +85,7 @@ steps:
   # ============================================================================
   # Step 6: Deploy Storage rules
   # ============================================================================
-  - name: 'node:20'
+  - name: 'node:22'
     entrypoint: 'bash'
     args:
       - '-c'
@@ -100,7 +100,7 @@ steps:
   # ============================================================================
   # Step 7: Deploy Cloud Functions (all codebases: default + ai)
   # ============================================================================
-  - name: 'node:20'
+  - name: 'node:22'
     entrypoint: 'bash'
     args:
       - '-c'
