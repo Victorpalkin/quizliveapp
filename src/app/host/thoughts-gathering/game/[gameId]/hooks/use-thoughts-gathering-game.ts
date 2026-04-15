@@ -88,18 +88,25 @@ export function useThoughtsGatheringGame() {
     }
   };
 
-  const handleStopAndProcess = async () => {
+  const callExtractTopics = useCallback(async (options: {
+    customInstructions?: string;
+    revertState?: string;
+    closeSubmissions?: boolean;
+  } = {}) => {
     if (!gameDocRef) return;
 
     setIsProcessing(true);
 
     try {
-      await updateDoc(gameDocRef, { state: 'processing', submissionsOpen: false });
+      await updateDoc(gameDocRef, {
+        state: 'processing',
+        ...(options.closeSubmissions && { submissionsOpen: false }),
+      });
 
       const functions = getFunctions(undefined, 'europe-west4');
       const extractTopics = httpsCallable(functions, 'extractTopics');
 
-      await extractTopics({ gameId });
+      await extractTopics({ gameId, customInstructions: options.customInstructions });
     } catch (error) {
       console.error("Error processing submissions: ", error);
       toast({
@@ -107,10 +114,17 @@ export function useThoughtsGatheringGame() {
         title: "Processing Error",
         description: "Could not process submissions. Please try again.",
       });
-      await updateDoc(gameDocRef, { state: 'collecting', submissionsOpen: true });
+      await updateDoc(gameDocRef, {
+        state: options.revertState || 'collecting',
+        ...(options.closeSubmissions && { submissionsOpen: true }),
+      });
     } finally {
       setIsProcessing(false);
     }
+  }, [gameDocRef, gameId, toast]);
+
+  const handleStopAndProcess = async () => {
+    await callExtractTopics({ revertState: 'collecting', closeSubmissions: true });
   };
 
   const handleCollectMore = async () => {
@@ -160,29 +174,8 @@ export function useThoughtsGatheringGame() {
   }, [firestore, gameId, toast]);
 
   const handleReprocess = useCallback(async (customInstructions?: string) => {
-    if (!gameDocRef) return;
-
-    setIsProcessing(true);
-
-    try {
-      await updateDoc(gameDocRef, { state: 'processing' });
-
-      const functions = getFunctions(undefined, 'europe-west4');
-      const extractTopics = httpsCallable(functions, 'extractTopics');
-
-      await extractTopics({ gameId, customInstructions });
-    } catch (error) {
-      console.error("Error reprocessing submissions: ", error);
-      toast({
-        variant: "destructive",
-        title: "Processing Error",
-        description: "Could not reprocess submissions. Please try again.",
-      });
-      await updateDoc(gameDocRef, { state: 'display' });
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [gameDocRef, gameId, toast]);
+    await callExtractTopics({ customInstructions, revertState: 'display' });
+  }, [callExtractTopics]);
 
   const handleToggleSubmissionVisibility = useCallback(async (submissionId: string, hidden: boolean) => {
     if (!firestore || !gameId) return;
