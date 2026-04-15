@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc, collection, updateDoc, deleteDoc, DocumentReference, Query } from 'firebase/firestore';
+import { doc, collection, updateDoc, deleteDoc, addDoc, serverTimestamp, DocumentReference, Query } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { gameConverter, thoughtsGatheringActivityConverter, thoughtSubmissionConverter } from '@/firebase/converters';
@@ -19,6 +19,8 @@ export function useThoughtsGatheringGame() {
   const { user, loading: userLoading } = useUser();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [hostSubmissionText, setHostSubmissionText] = useState('');
+  const [isHostSubmitting, setIsHostSubmitting] = useState(false);
 
   // Typed ref for reading with converter
   const gameRef = useMemoFirebase(
@@ -188,6 +190,28 @@ export function useThoughtsGatheringGame() {
     }
   }, [firestore, gameId]);
 
+  const handleHostSubmit = useCallback(async () => {
+    if (!gameId || !hostSubmissionText.trim() || !user) return;
+
+    setIsHostSubmitting(true);
+    try {
+      await addDoc(
+        collection(firestore, 'games', gameId, 'submissions'),
+        {
+          playerId: user.uid,
+          playerName: user.displayName || 'Host',
+          rawText: hostSubmissionText.trim(),
+          submittedAt: serverTimestamp(),
+        }
+      );
+      setHostSubmissionText('');
+    } catch (error) {
+      console.error('Error submitting host thought:', error);
+    } finally {
+      setIsHostSubmitting(false);
+    }
+  }, [firestore, gameId, hostSubmissionText, user]);
+
   const handleExportResults = useCallback(() => {
     if (!topicCloud?.topics || !submissions || !activity) return;
 
@@ -262,6 +286,10 @@ export function useThoughtsGatheringGame() {
     handleReprocess,
     handleUpdateTopics,
     handleToggleSubmissionVisibility,
+    handleHostSubmit,
+    hostSubmissionText,
+    setHostSubmissionText,
+    isHostSubmitting,
 
     // Navigation
     router,

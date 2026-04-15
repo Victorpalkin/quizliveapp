@@ -29,6 +29,10 @@ export default function ThoughtsGatheringGamePage() {
     handleReprocess,
     handleUpdateTopics,
     handleToggleSubmissionVisibility,
+    handleHostSubmit,
+    hostSubmissionText,
+    setHostSubmissionText,
+    isHostSubmitting,
     isProcessing,
     router,
   } = useThoughtsGatheringGame();
@@ -54,6 +58,10 @@ export default function ThoughtsGatheringGamePage() {
             handleStopAndProcess={handleStopAndProcess}
             handleEndSession={handleEndSession}
             handleToggleSubmissionVisibility={handleToggleSubmissionVisibility}
+            hostSubmissionText={hostSubmissionText}
+            setHostSubmissionText={setHostSubmissionText}
+            isHostSubmitting={isHostSubmitting}
+            onHostSubmit={handleHostSubmit}
           />
         );
 

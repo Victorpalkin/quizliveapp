@@ -2,7 +2,8 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { StopCircle, MessageSquare, PlayCircle, PauseCircle, XCircle, EyeOff, Eye } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { StopCircle, MessageSquare, PlayCircle, PauseCircle, XCircle, EyeOff, Eye, Send, Loader2 } from 'lucide-react';
 import { LiveWordFrequency } from './live-word-frequency';
 import type { Game, ThoughtsGatheringActivity, ThoughtSubmission } from '@/lib/types';
 
@@ -15,6 +16,10 @@ interface CollectingStateProps {
   handleStopAndProcess: () => void;
   handleEndSession: () => void;
   handleToggleSubmissionVisibility?: (submissionId: string, hidden: boolean) => void;
+  hostSubmissionText: string;
+  setHostSubmissionText: (value: string) => void;
+  isHostSubmitting: boolean;
+  onHostSubmit: () => void;
 }
 
 export function CollectingState({
@@ -26,6 +31,10 @@ export function CollectingState({
   handleStopAndProcess,
   handleEndSession,
   handleToggleSubmissionVisibility,
+  hostSubmissionText,
+  setHostSubmissionText,
+  isHostSubmitting,
+  onHostSubmit,
 }: CollectingStateProps) {
   const moderationEnabled = activity?.config.enableModeration;
   const hiddenCount = submissions?.filter(s => s.hidden).length || 0;
@@ -81,6 +90,38 @@ export function CollectingState({
           <p className="text-lg italic">&quot;{activity?.config.prompt}&quot;</p>
         </CardContent>
       </Card>
+
+      {/* Host Submission */}
+      {game.submissionsOpen && (
+        <Card className="border border-card-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Your Submission</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Textarea
+                value={hostSubmissionText}
+                onChange={(e) => setHostSubmissionText(e.target.value)}
+                placeholder="Add your own thought..."
+                className="min-h-[60px] flex-1"
+                maxLength={1000}
+              />
+              <Button
+                onClick={onHostSubmit}
+                disabled={isHostSubmitting || !hostSubmissionText.trim()}
+                size="icon"
+                className="self-end h-10 w-10"
+              >
+                {isHostSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Submissions */}
       {submissions && submissions.length > 0 && (
