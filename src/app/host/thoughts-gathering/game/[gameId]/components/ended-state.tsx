@@ -29,10 +29,8 @@ export function EndedState({
     <div className="space-y-4">
       <ResultsView
         activity={activity}
-        players={players}
         submissions={submissions}
         topicCloud={topicCloud}
-        handleExportResults={handleExportResults}
         headerTitle="Session Complete!"
         borderColor="border-green-500/20 bg-gradient-to-br from-green-500/5 to-blue-500/5"
       />

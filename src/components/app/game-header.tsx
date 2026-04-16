@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { QrCode, Copy, Users, XCircle, FileQuestion, Cloud, BarChart3, Keyboard, Presentation, Vote } from 'lucide-react';
+import { QrCode, Users, XCircle, FileQuestion, Cloud, BarChart3, Keyboard, Presentation, Vote } from 'lucide-react';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { cn } from '@/lib/utils';
 
@@ -127,14 +127,7 @@ export function GameHeader({
           </PopoverContent>
         </Popover>
 
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => navigator.clipboard.writeText(joinUrl)}
-          title="Copy join link"
-        >
-          <Copy className="h-4 w-4" />
-        </Button>
+        <CopyButton text={joinUrl} />
       </div>
 
       {/* Right: Player Count and Actions */}

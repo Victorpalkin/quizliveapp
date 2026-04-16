@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
-import { StopCircle, MessageSquare, PlayCircle, PauseCircle, XCircle, EyeOff, Eye, Send, Loader2, Users, ChevronDown, ChevronRight } from 'lucide-react';
+import { Sparkles, MessageSquare, PlayCircle, PauseCircle, XCircle, EyeOff, Eye, Send, Loader2, Users, ChevronDown, ChevronRight } from 'lucide-react';
 import { LiveWordFrequency } from './live-word-frequency';
 import type { Game, ThoughtsGatheringActivity, ThoughtSubmission } from '@/lib/types';
 
@@ -41,7 +41,7 @@ export function CollectingState({
   const hiddenCount = submissions?.filter(s => s.hidden).length || 0;
 
   return (
-    <div className="space-y-4 pb-24">
+    <div className="space-y-4 pb-28">
       {/* Live Collection — merged: status + prompt + host submission + participants */}
       <Card className={`border-2 ${game.submissionsOpen ? 'border-green-500/30 bg-gradient-to-br from-green-500/5 to-blue-500/5' : 'border-orange-500/30 bg-gradient-to-br from-orange-500/5 to-red-500/5'}`}>
         <CardContent className="p-5 space-y-4">
@@ -81,40 +81,38 @@ export function CollectingState({
             {activity?.config.prompt}
           </p>
 
-          {/* Host submission */}
-          {game.submissionsOpen && (
-            <div className="flex gap-2">
-              <Textarea
-                value={hostSubmissionText}
-                onChange={(e) => setHostSubmissionText(e.target.value)}
-                placeholder="Add your own thought..."
-                className="min-h-[50px] flex-1 text-sm"
-                maxLength={1000}
-              />
-              <Button
-                onClick={async () => {
-                  setIsHostSubmitting(true);
-                  try {
-                    await onHostSubmit(hostSubmissionText);
-                    setHostSubmissionText('');
-                  } catch {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Could not submit. Please try again.' });
-                  } finally {
-                    setIsHostSubmitting(false);
-                  }
-                }}
-                disabled={isHostSubmitting || !hostSubmissionText.trim()}
-                size="icon"
-                className="self-end h-9 w-9"
-              >
-                {isHostSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          )}
+          {/* Host submission — always visible during collecting */}
+          <div className="flex gap-2">
+            <Textarea
+              value={hostSubmissionText}
+              onChange={(e) => setHostSubmissionText(e.target.value)}
+              placeholder="Add your own thought..."
+              className="min-h-[50px] flex-1 text-sm"
+              maxLength={1000}
+            />
+            <Button
+              onClick={async () => {
+                setIsHostSubmitting(true);
+                try {
+                  await onHostSubmit(hostSubmissionText);
+                  setHostSubmissionText('');
+                } catch {
+                  toast({ variant: 'destructive', title: 'Error', description: 'Could not submit. Please try again.' });
+                } finally {
+                  setIsHostSubmitting(false);
+                }
+              }}
+              disabled={isHostSubmitting || !hostSubmissionText.trim()}
+              size="icon"
+              className="self-end h-9 w-9"
+            >
+              {isHostSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
 
           {/* Participants — collapsible */}
           {players && players.length > 0 && (
@@ -187,6 +185,11 @@ export function CollectingState({
                 </div>
               ))}
             </div>
+            {!moderationEnabled && submissions.length > 5 && (
+              <p className="text-xs text-muted-foreground text-center pt-2">
+                Showing latest 5 of {submissions.length}
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -194,27 +197,39 @@ export function CollectingState({
       {/* Live Word Frequency */}
       <LiveWordFrequency submissions={submissions} />
 
-      {/* Sticky Action Bar */}
+      {/* Sticky Action Bar with keyboard hints */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="container mx-auto max-w-3xl flex gap-3 p-3">
-          <Button
-            onClick={handleStopAndProcess}
-            size="lg"
-            disabled={!submissions?.length}
-            className="flex-1 py-5 bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90"
-          >
-            <StopCircle className="mr-2 h-5 w-5" />
-            Analyze Results
-          </Button>
-          <Button
-            onClick={handleEndSession}
-            size="lg"
-            variant="outline"
-            className="py-5"
-          >
-            <XCircle className="mr-2 h-4 w-4" />
-            Finish
-          </Button>
+        <div className="container mx-auto max-w-3xl p-3">
+          <div className="flex gap-3">
+            <Button
+              onClick={handleStopAndProcess}
+              size="lg"
+              disabled={!submissions?.length}
+              className="flex-1 py-5 bg-gradient-to-r from-blue-500 to-purple-500 hover:opacity-90"
+            >
+              <Sparkles className="mr-2 h-5 w-5" />
+              Analyze Results
+            </Button>
+            <Button
+              onClick={handleEndSession}
+              size="lg"
+              variant="outline"
+              className="py-5"
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              Finish
+            </Button>
+          </div>
+          <div className="flex items-center justify-center gap-4 mt-1.5">
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <kbd className="px-1 py-0.5 bg-muted rounded font-mono">{'\u2423'}</kbd>
+              {game.submissionsOpen ? 'Pause' : 'Resume'}
+            </span>
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <kbd className="px-1 py-0.5 bg-muted rounded font-mono">{'\u21B5'}</kbd>
+              Analyze
+            </span>
+          </div>
         </div>
       </div>
     </div>

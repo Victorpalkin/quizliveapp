@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { PauseCircle, CheckCircle } from 'lucide-react';
+import { PauseCircle, CheckCircle, Loader2 } from 'lucide-react';
 import type { Game, ThoughtSubmission } from '@/lib/types';
 
 interface WaitingStateProps {
@@ -10,18 +10,31 @@ interface WaitingStateProps {
 }
 
 export function WaitingState({ game, playerSubmissions }: WaitingStateProps) {
+  const isProcessing = game?.state === 'processing';
+
   return (
     <Card className="w-full max-w-md text-center shadow-2xl">
       <CardContent className="p-8">
-        <PauseCircle className="h-16 w-16 mx-auto mb-4 text-orange-500" />
+        {isProcessing ? (
+          <Loader2 className="h-16 w-16 mx-auto mb-4 text-blue-500 animate-spin" />
+        ) : (
+          <PauseCircle className="h-16 w-16 mx-auto mb-4 text-orange-500 animate-pulse" />
+        )}
         <h2 className="text-2xl font-bold mb-2">
-          {game?.state === 'processing' ? 'Processing...' : 'Submissions Paused'}
+          {isProcessing ? 'Analyzing...' : 'Submissions Paused'}
         </h2>
         <p className="text-muted-foreground">
-          {game?.state === 'processing'
-            ? 'AI is analyzing all submissions'
-            : 'The host will resume submissions soon'}
+          {isProcessing
+            ? 'AI is analyzing all submissions. This usually takes 15\u201330 seconds.'
+            : 'Hang tight \u2014 the host will resume shortly.'}
         </p>
+
+        {/* Liveness indicator */}
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-xs text-muted-foreground">Connected</span>
+        </div>
+
         {playerSubmissions && playerSubmissions.length > 0 && (
           <div className="mt-6 text-left">
             <p className="text-sm font-medium mb-2">Your submissions:</p>

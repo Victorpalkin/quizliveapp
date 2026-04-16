@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Pencil, Download, BarChart3 } from 'lucide-react';
 import { ReprocessDialog } from './reprocess-dialog';
 import { EditableGroupedView } from './editable-grouped-view';
@@ -26,6 +27,35 @@ interface DisplayStateProps {
   onCreateEvaluation: (source: string) => void;
 }
 
+function StatsRow({ players, submissions, topicCloud }: {
+  players: { id: string; name: string }[] | null;
+  submissions: ThoughtSubmission[] | null;
+  topicCloud: TopicCloudResult | null;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <Card>
+        <CardContent className="p-3 text-center">
+          <p className="text-2xl font-bold">{players?.length || 0}</p>
+          <p className="text-xs text-muted-foreground">Participants</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-3 text-center">
+          <p className="text-2xl font-bold">{submissions?.length || 0}</p>
+          <p className="text-xs text-muted-foreground">Submissions</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-3 text-center">
+          <p className="text-2xl font-bold">{topicCloud?.topics?.length || 0}</p>
+          <p className="text-xs text-muted-foreground">Groups</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export function DisplayState({
   activity,
   players,
@@ -43,10 +73,15 @@ export function DisplayState({
 
   if (isEditing && topicCloud?.topics) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
+        <StatsRow players={players} submissions={submissions} topicCloud={topicCloud} />
+
         <Card className="border-2 border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-purple-500/5">
           <CardContent className="p-8">
-            <h2 className="text-2xl font-bold mb-6">Edit Groups</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Edit Groups</h2>
+              <Badge variant="outline">Editing</Badge>
+            </div>
             <EditableGroupedView
               topics={topicCloud.topics}
               submissions={submissions || []}
@@ -65,34 +100,12 @@ export function DisplayState({
 
   return (
     <div className="space-y-4">
-      {/* Compact Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold">{players?.length || 0}</p>
-            <p className="text-xs text-muted-foreground">Participants</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold">{submissions?.length || 0}</p>
-            <p className="text-xs text-muted-foreground">Submissions</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold">{topicCloud?.topics?.length || 0}</p>
-            <p className="text-xs text-muted-foreground">Groups</p>
-          </CardContent>
-        </Card>
-      </div>
+      <StatsRow players={players} submissions={submissions} topicCloud={topicCloud} />
 
       <ResultsView
         activity={activity}
-        players={players}
         submissions={submissions}
         topicCloud={topicCloud}
-        handleExportResults={handleExportResults}
         headerSlot={
           <>
             <Button
@@ -161,6 +174,18 @@ export function DisplayState({
         >
           End Session
         </Button>
+      </div>
+      <div className="flex items-center justify-center gap-4">
+        {activity?.config.allowMultipleRounds && (
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <kbd className="px-1 py-0.5 bg-muted rounded font-mono">{'\u2423'}</kbd>
+            Collect More
+          </span>
+        )}
+        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <kbd className="px-1 py-0.5 bg-muted rounded font-mono">{'\u21B5'}</kbd>
+          End Session
+        </span>
       </div>
     </div>
   );

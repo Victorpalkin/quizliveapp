@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
-import { GameHeader, KeyboardShortcutsHint } from '@/components/app/game-header';
+import { GameHeader } from '@/components/app/game-header';
 import { HostActionHint } from '@/components/app/host-action-hint';
 import { useThoughtsGatheringGame } from './hooks/use-thoughts-gathering-game';
 import { CollectingState } from './components/collecting-state';
@@ -132,25 +132,6 @@ export default function ThoughtsGatheringGamePage() {
         )}
 
         {renderContent()}
-
-        {game?.state !== 'ended' && game?.state !== 'processing' && (
-          <KeyboardShortcutsHint
-            shortcuts={
-              game?.state === 'collecting'
-                ? [
-                    { key: 'Space', action: game.submissionsOpen ? 'Pause' : 'Resume' },
-                    { key: 'Enter', action: 'Analyze' },
-                  ]
-                : game?.state === 'display'
-                ? [
-                    ...(activity?.config.allowMultipleRounds ? [{ key: 'Space', action: 'Collect More' }] : []),
-                    { key: 'Enter', action: 'End Session' },
-                  ]
-                : []
-            }
-            className="justify-center mt-6"
-          />
-        )}
       </main>
     </div>
   );

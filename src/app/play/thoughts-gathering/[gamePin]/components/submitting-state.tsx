@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,6 +29,19 @@ export function SubmittingState({
   const maxSubmissions = activity?.config.maxSubmissionsPerPlayer || 3;
   const remainingSubmissions = maxSubmissions - submissionCount;
 
+  // Transient success feedback when submissionCount increments
+  const [showSuccess, setShowSuccess] = useState(false);
+  const prevCount = useRef(submissionCount);
+  useEffect(() => {
+    if (submissionCount > prevCount.current) {
+      setShowSuccess(true);
+      const timer = setTimeout(() => setShowSuccess(false), 1500);
+      prevCount.current = submissionCount;
+      return () => clearTimeout(timer);
+    }
+    prevCount.current = submissionCount;
+  }, [submissionCount]);
+
   return (
     <div className="w-full max-w-md space-y-6">
       <Card className="shadow-2xl">
@@ -52,11 +66,15 @@ export function SubmittingState({
             </span>
             <Button
               onClick={onSubmit}
-              disabled={isSubmitting || !submissionText.trim() || remainingSubmissions <= 0}
-              className="bg-gradient-to-r from-blue-500 to-purple-500 active:scale-95 transition-transform"
+              disabled={isSubmitting || !submissionText.trim() || remainingSubmissions <= 0 || showSuccess}
+              className={`transition-all ${showSuccess ? 'bg-green-500 hover:bg-green-500' : 'bg-gradient-to-r from-blue-500 to-purple-500'} active:scale-95`}
             >
               {isSubmitting ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
+              ) : showSuccess ? (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" /> Sent!
+                </>
               ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" /> Submit
