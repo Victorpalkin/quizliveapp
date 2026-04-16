@@ -7,11 +7,13 @@ import { Lightbulb, ArrowRight, CheckCircle, Users, Clock, Cloud, BarChart3, Sta
 type QuizState = 'lobby' | 'preparing' | 'question' | 'leaderboard' | 'ended';
 // Thoughts Gathering states
 type ThoughtsGatheringState = 'lobby' | 'collecting' | 'processing' | 'display' | 'ended';
+// Poll states
+type PollState = 'lobby' | 'question' | 'results' | 'ended';
 // Evaluation states
 type EvaluationState = 'collecting' | 'rating' | 'analyzing' | 'results' | 'ended';
 
-type GameState = QuizState | ThoughtsGatheringState | EvaluationState;
-type ActivityType = 'quiz' | 'thoughts-gathering' | 'evaluation';
+type GameState = QuizState | ThoughtsGatheringState | PollState | EvaluationState;
+type ActivityType = 'quiz' | 'poll' | 'thoughts-gathering' | 'evaluation';
 
 interface HostActionHintProps {
   /** Current game state */
@@ -208,6 +210,59 @@ export function HostActionHint({
     }
   };
 
+  const getPollHint = (): HintConfig => {
+    switch (gameState) {
+      case 'lobby':
+        if (totalPlayers === 0) {
+          return {
+            icon: <Users className="h-5 w-5" />,
+            text: 'Waiting for participants to join...',
+            subtext: 'Share the PIN or scan the QR code',
+          };
+        }
+        return {
+          icon: <ArrowRight className="h-5 w-5" />,
+          text: 'Click "Start Poll" when ready',
+          subtext: `${totalPlayers} participant${totalPlayers !== 1 ? 's' : ''} joined`,
+          actionKey: 'Start Poll',
+        };
+
+      case 'question': {
+        const allAnswered = answeredCount >= totalPlayers && totalPlayers > 0;
+        if (allAnswered) {
+          return {
+            icon: <CheckCircle className="h-5 w-5 text-green-500" />,
+            text: isLastQuestion ? 'All responded! End the poll or show results' : 'All responded! Show results or move to next question',
+            subtext: `${answeredCount}/${totalPlayers} responded`,
+          };
+        }
+        return {
+          icon: <BarChart3 className="h-5 w-5" />,
+          text: 'Collecting responses...',
+          subtext: `${answeredCount}/${totalPlayers} responded`,
+        };
+      }
+
+      case 'results':
+        return {
+          icon: <ArrowRight className="h-5 w-5" />,
+          text: isLastQuestion ? 'Click "End Poll" to finish' : 'Click "Next Question" to continue',
+        };
+
+      case 'ended':
+        return {
+          icon: <CheckCircle className="h-5 w-5" />,
+          text: 'Poll complete! View analytics or return to dashboard.',
+        };
+
+      default:
+        return {
+          icon: <Lightbulb className="h-5 w-5" />,
+          text: 'Ready to poll!',
+        };
+    }
+  };
+
   const getEvaluationHint = (): HintConfig => {
     switch (gameState) {
       case 'collecting':
@@ -279,6 +334,8 @@ export function HostActionHint({
 
   const getHintConfig = (): HintConfig => {
     switch (activityType) {
+      case 'poll':
+        return getPollHint();
       case 'thoughts-gathering':
         return getThoughtsGatheringHint();
       case 'evaluation':

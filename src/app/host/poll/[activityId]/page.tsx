@@ -110,7 +110,7 @@ export default function PollDetailPage() {
         gamePin: nanoid(8).toUpperCase(),
         questions: poll.questions,
         createdAt: serverTimestamp(),
-        quizId: '', // Required by Game interface, not used for polls
+        quizId: '',
       };
 
       const gameDoc = await addDoc(collection(firestore, 'games'), gameData);

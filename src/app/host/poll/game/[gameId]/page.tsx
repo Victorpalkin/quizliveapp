@@ -6,72 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Header } from '@/components/app/header';
+import { GameHeader } from '@/components/app/game-header';
+import { HostActionHint } from '@/components/app/host-action-hint';
 import { Vote, Users, ArrowRight, CheckCircle, BarChart3, MessageSquare, ListChecks, AlignLeft, Home } from 'lucide-react';
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, updateDoc, DocumentReference, Query, onSnapshot } from 'firebase/firestore';
+import { doc, collection, updateDoc, deleteDoc, DocumentReference, Query } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { Game, Player, PollActivity, PollQuestion, PlayerAnswer } from '@/lib/types';
-import { saveHostSession, clearHostSession } from '@/lib/host-session';
+import { clearHostSession } from '@/lib/host-session';
+import { useHostSession } from '../../../hooks/use-host-session';
 import { gameConverter, playerConverter, pollActivityConverter } from '@/firebase/converters';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
+import { PollResultsChart } from './components/poll-results-chart';
 import Link from 'next/link';
 
 interface AnswerDistribution {
   [answerIndex: number]: number;
-}
-
-function PollResultsChart({ question, distribution, totalResponses }: {
-  question: PollQuestion;
-  distribution: AnswerDistribution;
-  totalResponses: number;
-}) {
-  if (question.type === 'poll-free-text') {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <AlignLeft className="h-12 w-12 mx-auto mb-4 opacity-30" />
-        <p>Free text responses will be grouped by AI</p>
-        <p className="text-sm">{totalResponses} response{totalResponses !== 1 ? 's' : ''} collected</p>
-      </div>
-    );
-  }
-
-  if (!('answers' in question)) return null;
-
-  const maxCount = Math.max(...Object.values(distribution), 1);
-
-  return (
-    <div className="space-y-4">
-      {question.answers.map((answer, index) => {
-        const count = distribution[index] || 0;
-        const percentage = totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0;
-        const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0;
-
-        return (
-          <div key={index} className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 flex items-center justify-center bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-full text-xs font-medium">
-                  {String.fromCharCode(65 + index)}
-                </span>
-                <span className="font-medium">{answer.text}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{count} vote{count !== 1 ? 's' : ''}</span>
-                <Badge variant="secondary">{percentage}%</Badge>
-              </div>
-            </div>
-            <div className="h-8 bg-muted rounded-lg overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-teal-500 to-cyan-500 rounded-lg transition-all duration-500"
-                style={{ width: `${barWidth}%` }}
-              />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
 }
 
 export default function PollGamePage() {
@@ -140,19 +90,16 @@ export default function PollGamePage() {
     }
   }, [user, userLoading, router]);
 
-  // Save host session when game is loaded
-  useEffect(() => {
-    if (game && poll && user && game.state !== 'ended') {
-      saveHostSession(gameId, game.gamePin, game.activityId || '', poll.title, user.uid, 'poll', game.state, `/host/poll/game/${gameId}`);
-    }
-  }, [gameId, game, poll, user, game?.state]);
-
-  // Clear host session when game ends
-  useEffect(() => {
-    if (game?.state === 'ended') {
-      clearHostSession();
-    }
-  }, [game?.state]);
+  // Host session tracking
+  useHostSession({
+    gameId,
+    game,
+    contentId: game?.activityId || '',
+    contentTitle: poll?.title || '',
+    userId: user?.uid,
+    activityType: 'poll',
+    returnPath: `/host/poll/game/${gameId}`,
+  });
 
   const resetLeaderboardForNewQuestion = useCallback(async () => {
     try {
@@ -191,18 +138,30 @@ export default function PollGamePage() {
     });
   };
 
+  const handleCancelGame = async () => {
+    try {
+      clearHostSession();
+      await deleteDoc(doc(firestore, 'games', gameId));
+      router.push('/host');
+    } catch (error) {
+      console.error('Error cancelling game:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not end the session. Please try again.",
+      });
+    }
+  };
+
   if (userLoading || gameLoading) {
     return <FullPageLoader />;
   }
 
   if (!game || !poll) {
     return (
-      <div className="flex min-h-screen flex-col bg-background">
-        <Header />
-        <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl text-center">
-          <h2 className="text-2xl font-bold mb-4">Session Not Found</h2>
-          <Button onClick={() => router.push('/host')}>Return to Dashboard</Button>
-        </main>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+        <h2 className="text-2xl font-bold mb-4">Session Not Found</h2>
+        <Button onClick={() => router.push('/host')}>Return to Dashboard</Button>
       </div>
     );
   }
@@ -216,7 +175,6 @@ export default function PollGamePage() {
   if (game.state === 'ended') {
     return (
       <div className="flex min-h-screen flex-col bg-background">
-        <Header />
         <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl">
           <Card className="shadow-2xl rounded-3xl text-center">
             <CardContent className="p-12">
@@ -254,9 +212,28 @@ export default function PollGamePage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Header />
-      <main className="flex-1 container mx-auto p-4 md:p-8 max-w-4xl">
+    <div className="min-h-screen bg-background">
+      <main className="container mx-auto p-4 md:p-8 max-w-4xl">
+        {/* Game Header with PIN, QR, player count, and cancel */}
+        <GameHeader
+          gamePin={game.gamePin}
+          playerCount={playerCount}
+          activityType="poll"
+          title={poll.title}
+          onCancel={handleCancelGame}
+          isLive={true}
+        />
+
+        {/* Host Action Hint */}
+        <HostActionHint
+          gameState={game.state as 'question' | 'results'}
+          activityType="poll"
+          answeredCount={respondedCount}
+          totalPlayers={playerCount}
+          isLastQuestion={isLastQuestion}
+          className="mb-6"
+        />
+
         {/* Progress */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">

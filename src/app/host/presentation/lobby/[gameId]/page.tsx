@@ -9,7 +9,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { Users, Play, Loader2, Copy } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { usePresentationGame, usePresentationControls } from '@/firebase/presentation/use-presentation-game';
-import { saveHostSession } from '@/lib/host-session';
+import { useHostSession } from '../../../hooks/use-host-session';
 
 export default function PresentationLobbyPage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
@@ -25,21 +25,16 @@ export default function PresentationLobbyPage({ params }: { params: Promise<{ ga
     }
   }, [game]);
 
-  // Save host session
-  useEffect(() => {
-    if (game && user) {
-      saveHostSession(
-        gameId,
-        game.gamePin,
-        game.presentationId,
-        'Presentation',
-        user.uid,
-        'presentation',
-        'lobby',
-        `/host/presentation/lobby/${gameId}`
-      );
-    }
-  }, [gameId, game, user]);
+  // Host session tracking (also clears when game ends)
+  useHostSession({
+    gameId,
+    game,
+    contentId: game?.presentationId || '',
+    contentTitle: 'Presentation',
+    userId: user?.uid,
+    activityType: 'presentation',
+    returnPath: `/host/presentation/lobby/${gameId}`,
+  });
 
   // Redirect when game starts
   useEffect(() => {

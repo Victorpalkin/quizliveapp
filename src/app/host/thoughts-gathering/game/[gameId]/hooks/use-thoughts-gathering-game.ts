@@ -7,7 +7,8 @@ import { doc, collection, updateDoc, deleteDoc, addDoc, serverTimestamp, Documen
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { gameConverter, thoughtsGatheringActivityConverter, thoughtSubmissionConverter } from '@/firebase/converters';
-import { clearHostSession, saveHostSession } from '@/lib/host-session';
+import { clearHostSession } from '@/lib/host-session';
+import { useHostSession } from '../../../../hooks/use-host-session';
 import { exportThoughtsToMarkdown, downloadMarkdown, generateExportFilename } from '@/lib/export-thoughts';
 import type { Game, ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult, TopicEntry } from '@/lib/types';
 
@@ -63,12 +64,16 @@ export function useThoughtsGatheringGame() {
   );
   const { data: topicCloud } = useDoc(topicsRef);
 
-  // Save host session
-  useEffect(() => {
-    if (game && activity && user) {
-      saveHostSession(gameId, game.gamePin, game.activityId || '', activity.title, user.uid, 'thoughts-gathering', game.state, `/host/thoughts-gathering/game/${gameId}`);
-    }
-  }, [gameId, game, activity, user, game?.state]);
+  // Host session tracking
+  useHostSession({
+    gameId,
+    game,
+    contentId: game?.activityId || '',
+    contentTitle: activity?.title || '',
+    userId: user?.uid,
+    activityType: 'thoughts-gathering',
+    returnPath: `/host/thoughts-gathering/game/${gameId}`,
+  });
 
   const handleCancelGame = useCallback(() => {
     if (!gameDocRef) return;

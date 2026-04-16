@@ -18,7 +18,8 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { saveHostSession, clearHostSession } from '@/lib/host-session';
+import { clearHostSession } from '@/lib/host-session';
+import { useHostSession } from '../../../../hooks/use-host-session';
 import { evaluationActivityConverter, evaluationItemConverter, playerRatingsConverter, playerConverter } from '@/firebase/converters';
 import type { Game, EvaluationActivity, EvaluationItem, PlayerRatings, EvaluationGameState, Player, EvaluationResults } from '@/lib/types';
 
@@ -85,28 +86,16 @@ export function useEvaluationGame() {
   );
   const { data: evaluationResults, loading: resultsLoading } = useDoc(resultsRef);
 
-  // Save host session
-  useEffect(() => {
-    if (game && activity && user && game.state !== 'ended') {
-      saveHostSession(
-        gameId,
-        game.gamePin,
-        game.activityId || '',
-        activity.title,
-        user.uid,
-        'evaluation',
-        game.state,
-        `/host/evaluation/game/${gameId}`
-      );
-    }
-  }, [gameId, game, activity, user]);
-
-  // Clear session when game ends
-  useEffect(() => {
-    if (game?.state === 'ended') {
-      clearHostSession();
-    }
-  }, [game?.state]);
+  // Host session tracking
+  useHostSession({
+    gameId,
+    game,
+    contentId: game?.activityId || '',
+    contentTitle: activity?.title || '',
+    userId: user?.uid,
+    activityType: 'evaluation',
+    returnPath: `/host/evaluation/game/${gameId}`,
+  });
 
   const handleAddItem = async () => {
     if (!newItemText.trim() || !game) return;

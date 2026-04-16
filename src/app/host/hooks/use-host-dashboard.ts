@@ -13,6 +13,7 @@ import { quizConverter, gameConverter, thoughtsGatheringActivityConverter, evalu
 import { usePresentations, usePresentationMutations } from '@/firebase/presentation/use-presentation';
 import { useCreatePresentationGame } from '@/firebase/presentation/use-presentation-game';
 import type { Quiz, Game, ThoughtsGatheringActivity, EvaluationActivity, PollActivity, Presentation as PresentationType } from '@/lib/types';
+import { getGameRoutePath } from '@/lib/activity-config';
 
 type Activity = ThoughtsGatheringActivity | EvaluationActivity | PollActivity;
 
@@ -214,31 +215,8 @@ export function useHostDashboard() {
   };
 
   const handleOpenGame = (game: Game) => {
-    if (game.state === 'lobby') {
-        if (game.activityType === 'thoughts-gathering') {
-            router.push(`/host/thoughts-gathering/lobby/${game.id}`);
-        } else if (game.activityType === 'evaluation') {
-            router.push(`/host/evaluation/game/${game.id}`);
-        } else if (game.activityType === 'poll') {
-            router.push(`/host/poll/lobby/${game.id}`);
-        } else if (game.activityType === 'presentation') {
-            router.push(`/host/presentation/lobby/${game.id}`);
-        } else {
-            router.push(`/host/quiz/lobby/${game.id}`);
-        }
-    } else {
-        if (game.activityType === 'thoughts-gathering') {
-            router.push(`/host/thoughts-gathering/game/${game.id}`);
-        } else if (game.activityType === 'evaluation') {
-            router.push(`/host/evaluation/game/${game.id}`);
-        } else if (game.activityType === 'poll') {
-            router.push(`/host/poll/game/${game.id}`);
-        } else if (game.activityType === 'presentation') {
-            router.push(`/host/presentation/present/${game.id}`);
-        } else {
-            router.push(`/host/quiz/game/${game.id}`);
-        }
-    }
+    const path = getGameRoutePath(game.activityType, game.state, game.id);
+    router.push(path);
   };
 
   const handleHostActivity = (activityId: string) => {

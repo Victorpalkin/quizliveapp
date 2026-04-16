@@ -3,38 +3,29 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { deleteDoc } from 'firebase/firestore';
-import Link from 'next/link';
-import Image from 'next/image';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Home, CheckCircle, Users, XCircle, Loader2, AlertCircle, BarChart3 } from 'lucide-react';
+import { CheckCircle, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CircularTimer } from '@/components/app/circular-timer';
-import { AnswerButton } from '@/components/app/answer-button';
 import { QuestionCounter } from '@/components/app/question-counter';
-import { QuestionTypeBadges } from '@/components/app/question-type-badges';
 import { GameHeader, KeyboardShortcutsHint } from '@/components/app/game-header';
 import { HostActionHint } from '@/components/app/host-action-hint';
-import { saveHostSession, clearHostSession } from '@/lib/host-session';
+import { clearHostSession } from '@/lib/host-session';
 import { useUser } from '@/firebase';
 import { getEffectiveQuestions } from '@/lib/utils/game-utils';
+import { useHostSession } from '../../../hooks/use-host-session';
 
 // Hooks
 import { useGameState } from './hooks/use-game-state';
 import { useQuestionTimer } from './hooks/use-question-timer';
 import { useGameControls } from './hooks/use-game-controls';
 
-// Components
-import { DeleteGameButton } from './components/controls/delete-game-button';
-import { LeaderboardView } from './components/visualizations/leaderboard-view';
-import { FinalLeaderboardView } from './components/visualizations/final-leaderboard-view';
-import { AnswerDistributionChart } from './components/visualizations/answer-distribution-chart';
-import { SliderResultsView } from './components/visualizations/slider-results-view';
-import { FreeResponseResultsView } from './components/visualizations/free-response-results-view';
-
-// Helper to convert index to letter (0 = A, 1 = B, etc.)
-const indexToLetter = (index: number): string => String.fromCharCode(65 + index);
+// State components
+import { NotFoundState } from './components/states/not-found-state';
+import { EndedState } from './components/states/ended-state';
+import { PreparingState } from './components/states/preparing-state';
+import { QuestionState } from './components/states/question-state';
+import { LeaderboardState } from './components/states/leaderboard-state';
 
 export default function HostGamePage() {
   const params = useParams();
@@ -42,7 +33,7 @@ export default function HostGamePage() {
   const router = useRouter();
   const { user } = useUser();
 
-  // Game state (now uses aggregate document for leaderboard data)
+  // Game state (uses aggregate document for leaderboard data)
   const {
     game, gameRef, quiz,
     topPlayers, totalPlayers, totalAnswered, answerCounts,
@@ -52,19 +43,16 @@ export default function HostGamePage() {
   // Get effective questions (includes crowdsourced questions when integrated)
   const effectiveQuestions = getEffectiveQuestions(game, quiz);
 
-  // Save host session when game and quiz are loaded
-  useEffect(() => {
-    if (game && quiz && user && game.state !== 'ended') {
-      saveHostSession(gameId, game.gamePin, game.quizId, quiz.title, user.uid, 'quiz', game.state, `/host/quiz/game/${gameId}`);
-    }
-  }, [gameId, game, quiz, user, game?.state]);
-
-  // Clear host session when game ends
-  useEffect(() => {
-    if (game?.state === 'ended') {
-      clearHostSession();
-    }
-  }, [game?.state]);
+  // Host session tracking
+  useHostSession({
+    gameId,
+    game,
+    contentId: game?.quizId || '',
+    contentTitle: quiz?.title || '',
+    userId: user?.uid,
+    activityType: 'quiz',
+    returnPath: `/host/quiz/game/${gameId}`,
+  });
 
   const question = effectiveQuestions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;
@@ -77,7 +65,7 @@ export default function HostGamePage() {
     quiz
   );
 
-  // Timer (now uses totalAnswered from aggregate)
+  // Timer (uses totalAnswered from aggregate)
   const { time } = useQuestionTimer(game, totalPlayers, timeLimit, finishQuestion, totalAnswered);
 
   // Cancel game handler for GameHeader
@@ -90,12 +78,10 @@ export default function HostGamePage() {
   }, [gameRef, router]);
 
   // Build answer distribution from pre-computed answerCounts
-  // Use quiz.questions for correct answer info (host has full quiz data)
   const questionIndex = game?.currentQuestionIndex || 0;
   const quizQuestion = quiz?.questions?.[questionIndex];
   const answerDistribution = question && 'answers' in question
     ? question.answers.map((ans, index) => {
-        // Determine if this answer is correct based on quiz question data
         let isCorrect = false;
         if (quizQuestion) {
           if (quizQuestion.type === 'single-choice') {
@@ -103,7 +89,6 @@ export default function HostGamePage() {
           } else if (quizQuestion.type === 'multiple-choice') {
             isCorrect = quizQuestion.correctAnswerIndices.includes(index);
           }
-          // Polls and crowdsourced questions (index >= quiz.questions.length) don't show correct answers
         }
         return {
           name: ans.text,
@@ -125,7 +110,6 @@ export default function HostGamePage() {
 
   // Keyboard shortcuts handler
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    // Don't trigger if user is typing in an input or if cancel dialog is open
     if (
       event.target instanceof HTMLInputElement ||
       event.target instanceof HTMLTextAreaElement ||
@@ -159,43 +143,18 @@ export default function HostGamePage() {
     );
   }
 
-  // Game not found
   if (!game && !gameLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-8 text-center">
-        <XCircle className="w-16 h-16 text-destructive mb-4" />
-        <h1 className="text-4xl font-bold mb-4">Game Not Found</h1>
-        <p className="text-muted-foreground mb-8">This game may have been canceled or never existed.</p>
-        <Button asChild>
-          <a href="/host">Return to Dashboard</a>
-        </Button>
-      </div>
-    );
+    return <NotFoundState />;
   }
 
-  // Game ended state
   if (game?.state === 'ended') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-8">
-        <h1 className="text-4xl font-bold mb-4">Quiz Over!</h1>
-        <p className="text-muted-foreground mb-8">Here are the final results.</p>
-        <FinalLeaderboardView topPlayers={topPlayers} totalPlayers={totalPlayers} />
-        <div className="mt-8 flex flex-col sm:flex-row gap-4">
-          <Button asChild className="bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300">
-            <Link href={`/host/quiz/analytics/${gameId}`}>
-              <BarChart3 className="mr-2 h-4 w-4" />
-              View Analytics
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/host">
-              <Home className="mr-2 h-4 w-4" />
-              Exit to Dashboard
-            </Link>
-          </Button>
-          <DeleteGameButton gameRef={gameRef} />
-        </div>
-      </div>
+      <EndedState
+        gameId={gameId}
+        gameRef={gameRef}
+        topPlayers={topPlayers}
+        totalPlayers={totalPlayers}
+      />
     );
   }
 
@@ -228,173 +187,32 @@ export default function HostGamePage() {
         />
       </div>
 
-      {/* Preparing State */}
-      {game?.state === 'preparing' && (
-        <main className="flex-1 flex flex-col items-center justify-center text-center">
-          <h1 className="text-3xl font-bold">Get ready for the next question...</h1>
-        </main>
-      )}
+      {/* State-specific content */}
+      {game?.state === 'preparing' && <PreparingState />}
 
-      {/* Question State */}
       {game?.state === 'question' && question && (
-        <main className="flex-1 flex flex-col items-center justify-center text-center relative">
-          {/* Computing Results Overlay - shown when calculating results before transitioning to leaderboard */}
-          {isComputingResults && (
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-4">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="text-lg text-muted-foreground">Calculating results...</p>
-            </div>
-          )}
-
-          <div className="absolute top-4 right-4">
-            <CircularTimer time={time} timeLimit={timeLimit} size={80} />
-          </div>
-
-          <div className="w-full max-w-4xl">
-            <Card className="bg-card text-card-foreground mb-4">
-              <CardContent className="p-8">
-                <div className="flex flex-col items-center gap-3">
-                  <p className="text-3xl font-bold">{question.text}</p>
-                  <div className="flex items-center gap-2 flex-wrap justify-center">
-                    <QuestionTypeBadges question={question} />
-                    {question?.submittedBy && (
-                      <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                        <Users className="w-3 h-3 mr-1" />
-                        Submitted by {question.submittedBy}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {question.imageUrl && (
-              <div className="relative w-full max-w-4xl mx-auto aspect-video rounded-lg overflow-hidden my-6">
-                <Image src={question.imageUrl} alt="Question image" layout="fill" objectFit="contain" />
-              </div>
-            )}
-          </div>
-
-          {/* Question Type Display */}
-          {question.type === 'slide' ? (
-            <Card className="w-full max-w-2xl mx-auto mt-8">
-              <CardContent className="p-8 text-center">
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <Badge variant="secondary" className="text-sm">Informational Slide</Badge>
-                    <h2 className="text-4xl font-bold text-primary">{question.text}</h2>
-                    {question.description && (
-                      <p className="text-xl text-muted-foreground whitespace-pre-wrap mt-4">
-                        {question.description}
-                      </p>
-                    )}
-                  </div>
-                  <p className="text-lg text-muted-foreground">Players are viewing this slide...</p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : question.type === 'slider' ? (
-            <Card className="w-full max-w-2xl mx-auto mt-8">
-              <CardContent className="p-8 text-center">
-                <p className="text-lg text-muted-foreground mb-4">Players are submitting their answers...</p>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Range:</p>
-                    <p className="text-4xl font-bold">
-                      {question.minValue}{question.unit} - {question.maxValue}{question.unit}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ) : question.type === 'free-response' || question.type === 'poll-free-text' ? (
-            <Card className="w-full max-w-2xl mx-auto mt-8">
-              <CardContent className="p-8 text-center">
-                <p className="text-lg text-muted-foreground mb-4">Players are typing their answers...</p>
-                <div className="space-y-4">
-                  <Badge variant="secondary" className="text-sm">{question.type === 'poll-free-text' ? 'Poll Free Text' : 'Free Response Question'}</Badge>
-                  {question.type === 'free-response' && (
-                    <p className="text-sm text-muted-foreground">
-                      {question.allowTypos !== false ? 'Typo tolerance enabled' : 'Exact match required'}
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ) : 'answers' in question ? (
-            <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 w-full max-w-4xl">
-              {question.answers.map((ans: { text: string }, i: number) => (
-                <AnswerButton
-                  key={i}
-                  letter={indexToLetter(i)}
-                  text={ans.text}
-                  disabled={true}
-                  colorIndex={i}
-                  showLiveCount={question.showLiveResults}
-                  count={answerCounts[i] || 0}
-                  totalCount={totalAnswered}
-                />
-              ))}
-            </div>
-          ) : null}
-        </main>
+        <QuestionState
+          question={question}
+          time={time}
+          timeLimit={timeLimit}
+          isComputingResults={isComputingResults}
+          answerCounts={answerCounts}
+          totalAnswered={totalAnswered}
+        />
       )}
 
-      {/* Leaderboard State */}
       {game?.state === 'leaderboard' && (
-        <main className="flex-1 flex flex-col items-center justify-center gap-8 md:flex-row md:items-start">
-          {isComputingResults ? (
-            <div className="flex flex-col items-center justify-center gap-4 w-full">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="text-lg text-muted-foreground">Calculating results...</p>
-            </div>
-          ) : computeError ? (
-            <div className="flex flex-col items-center justify-center gap-4 w-full">
-              <AlertCircle className="h-12 w-12 text-destructive" />
-              <p className="text-lg text-destructive font-medium">Error computing results</p>
-              <p className="text-sm text-muted-foreground max-w-md text-center">{computeError}</p>
-              <Button onClick={finishQuestion} variant="outline">
-                Retry
-              </Button>
-            </div>
-          ) : (
-            <>
-              <LeaderboardView topPlayers={topPlayers} totalPlayers={totalPlayers} />
-              {question?.type === 'slide' ? (
-            <Card className="w-full max-w-2xl flex-1">
-              <CardContent className="p-8 text-center space-y-4">
-                <Badge variant="secondary" className="text-lg">Informational Content</Badge>
-                <p className="text-lg text-muted-foreground">
-                  This was an informational slide. No scoring applied.
-                </p>
-                <div className="space-y-2 pt-4">
-                  <h3 className="text-2xl font-bold text-primary">{question.text}</h3>
-                  {question.description && (
-                    <p className="text-muted-foreground whitespace-pre-wrap">{question.description}</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ) : question?.type === 'slider' && quizQuestion?.type === 'slider' ? (
-            <SliderResultsView
-              correctValue={quizQuestion.correctValue}
-              minValue={quizQuestion.minValue}
-              maxValue={quizQuestion.maxValue}
-              unit={quizQuestion.unit}
-              totalAnswered={totalAnswered}
-            />
-          ) : question?.type === 'free-response' && quizQuestion?.type === 'free-response' ? (
-            <FreeResponseResultsView
-              correctAnswer={quizQuestion.correctAnswer}
-              alternativeAnswers={quizQuestion.alternativeAnswers}
-              totalAnswered={totalAnswered}
-            />
-          ) : (
-            <AnswerDistributionChart data={answerDistribution} />
-          )}
-            </>
-          )}
-        </main>
+        <LeaderboardState
+          topPlayers={topPlayers}
+          totalPlayers={totalPlayers}
+          totalAnswered={totalAnswered}
+          question={question}
+          quizQuestion={quizQuestion}
+          answerDistribution={answerDistribution}
+          isComputingResults={isComputingResults}
+          computeError={computeError}
+          onRetry={finishQuestion}
+        />
       )}
 
       {/* Footer */}
