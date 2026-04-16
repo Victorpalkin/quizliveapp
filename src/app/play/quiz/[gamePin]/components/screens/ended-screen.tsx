@@ -66,7 +66,7 @@ export function EndedScreen({ playerScore, playerRank, totalPlayers, onPlayAgain
 
       {/* Play Again Button */}
       <Button onClick={onPlayAgain} size="lg" variant="secondary" className="mt-12 text-xl">
-        Play Again
+        Join Another Game
       </Button>
     </div>
   );

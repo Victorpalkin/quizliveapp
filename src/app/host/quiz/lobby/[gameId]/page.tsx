@@ -18,6 +18,17 @@ import { removeUndefined } from '@/lib/firestore-utils';
 import { saveHostSession, clearHostSession } from '@/lib/host-session';
 import { extractAnswerKeyEntry, sanitizeQuestionForPlayer } from '@/lib/question-utils';
 import { SubmissionsPanel } from './components/submissions-panel';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 
 export default function HostLobbyPage() {
@@ -238,14 +249,31 @@ export default function HostLobbyPage() {
                     No more players can join after starting
                   </CardDescription>
                 </div>
-                <Button
-                  onClick={handleStartGame}
-                  size="lg"
-                  className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
-                >
-                  <Play className="h-5 w-5 mr-2" />
-                  Start Game
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="lg"
+                      className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
+                    >
+                      <Play className="h-5 w-5 mr-2" />
+                      Start Game
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="rounded-2xl shadow-xl">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-2xl font-semibold">Start the game?</AlertDialogTitle>
+                      <AlertDialogDescription className="text-base">
+                        No more players will be able to join after the game starts. {players?.length || 0} player{(players?.length || 0) !== 1 ? 's' : ''} currently in the lobby.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleStartGame} className="rounded-xl">
+                        Start Game
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
           </div>

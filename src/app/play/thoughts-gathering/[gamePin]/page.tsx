@@ -1,6 +1,7 @@
 'use client';
 
 import { ThemeToggle } from '@/components/app/theme-toggle';
+import { PlayerLeaveButton } from '@/components/app/player-leave-button';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { useThoughtsPlayer } from './hooks/use-thoughts-player';
 import { JoiningState } from './components/joining-state';
@@ -72,7 +73,7 @@ export default function ThoughtsGatheringPlayerPage() {
         return (
           <PlayerEndedState
             playerName={player?.name}
-            onReturnHome={() => router.push('/')}
+            onReturnHome={() => router.push('/join')}
             variant={state}
           />
         );
@@ -83,6 +84,9 @@ export default function ThoughtsGatheringPlayerPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background relative">
+      <div className="absolute top-6 left-6 z-20">
+        <PlayerLeaveButton />
+      </div>
       <div className="absolute top-6 right-6 z-20">
         <ThemeToggle />
       </div>

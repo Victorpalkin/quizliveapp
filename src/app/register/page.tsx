@@ -123,7 +123,7 @@ export default function RegisterPage() {
               <BrainCircuit className="h-8 w-8" />
             </div>
             <CardTitle className="text-3xl">Create Host Account</CardTitle>
-            <CardDescription>Register to create and manage quizzes</CardDescription>
+            <CardDescription>Register to host interactive sessions</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -209,6 +209,7 @@ export default function RegisterPage() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -242,6 +243,7 @@ export default function RegisterPage() {
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4" />

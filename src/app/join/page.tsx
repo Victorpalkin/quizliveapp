@@ -43,6 +43,7 @@ export default function JoinGamePage() {
                 className="h-14 text-center text-2xl font-bold tracking-widest uppercase"
                 maxLength={8}
                 required
+                autoFocus
                 autoComplete="off"
                 autoCapitalize="characters"
               />

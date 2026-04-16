@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { BarChart3 } from 'lucide-react';
+import { PlayerLeaveButton } from '@/components/app/player-leave-button';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { usePlayerEvaluation } from './hooks/use-player-evaluation';
 import { JoiningScreen } from './components/joining-screen';
@@ -64,7 +65,10 @@ export default function PlayerEvaluationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-500/10 to-red-500/10 p-4">
+    <div className="min-h-screen bg-background p-4 relative">
+      <div className="absolute top-6 left-6 z-20">
+        <PlayerLeaveButton />
+      </div>
       <div className="max-w-lg mx-auto space-y-4">
         {/* Header */}
         <div className="text-center pt-4">

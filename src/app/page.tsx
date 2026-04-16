@@ -12,6 +12,7 @@ import {
   Users,
   Timer,
   ArrowRight,
+  ArrowDown,
   Smartphone,
   LineChart,
   MessageSquare,
@@ -105,84 +106,94 @@ export default function Home() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
               {/* Presentation */}
-              <Card className="border-card-border hover:shadow-lg transition-shadow sm:col-span-2 lg:col-span-1">
-                <CardContent className="p-6">
-                  <div className="rounded-xl bg-purple-500/10 p-3 w-fit mb-4">
-                    <Presentation className="h-8 w-8 text-purple-500" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">Presentation</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Combine slides with interactive activities. Import from Google Slides or generate with AI.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Keynotes, training sessions, workshops, interactive lectures
-                  </p>
-                </CardContent>
-              </Card>
+              <Link href="/host/presentation/create">
+                <Card className="border-card-border hover:shadow-lg transition-shadow sm:col-span-2 lg:col-span-1 cursor-pointer h-full">
+                  <CardContent className="p-6">
+                    <div className="rounded-xl bg-purple-500/10 p-3 w-fit mb-4">
+                      <Presentation className="h-8 w-8 text-purple-500" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">Presentation</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Combine slides with interactive activities. Import from Google Slides or generate with AI.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Keynotes, training sessions, workshops, interactive lectures
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
 
               {/* Quiz */}
-              <Card className="border-card-border hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="rounded-xl bg-primary/10 p-3 w-fit mb-4">
-                    <BrainCircuit className="h-8 w-8 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">Quiz</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Scored questions with leaderboards. Create manually or generate with AI.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Knowledge checks, competitions, gamified learning
-                  </p>
-                </CardContent>
-              </Card>
+              <Link href="/host/quiz/create">
+                <Card className="border-card-border hover:shadow-lg transition-shadow cursor-pointer h-full">
+                  <CardContent className="p-6">
+                    <div className="rounded-xl bg-primary/10 p-3 w-fit mb-4">
+                      <BrainCircuit className="h-8 w-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">Quiz</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Scored questions with leaderboards. Create manually or generate with AI.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Knowledge checks, competitions, gamified learning
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
 
               {/* Poll */}
-              <Card className="border-card-border hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="rounded-xl bg-green-500/10 p-3 w-fit mb-4">
-                    <ListChecks className="h-8 w-8 text-green-500" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">Poll</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Unscored questions to gather opinions. See real-time response distributions.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Quick votes, feedback collection, audience sentiment
-                  </p>
-                </CardContent>
-              </Card>
+              <Link href="/host/poll/create">
+                <Card className="border-card-border hover:shadow-lg transition-shadow cursor-pointer h-full">
+                  <CardContent className="p-6">
+                    <div className="rounded-xl bg-green-500/10 p-3 w-fit mb-4">
+                      <ListChecks className="h-8 w-8 text-green-500" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">Poll</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Unscored questions to gather opinions. See real-time response distributions.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Quick votes, feedback collection, audience sentiment
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
 
               {/* Thoughts Gathering */}
-              <Card className="border-card-border hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="rounded-xl bg-blue-500/10 p-3 w-fit mb-4">
-                    <Cloud className="h-8 w-8 text-blue-500" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">Thoughts Gathering</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Collect free-form ideas. AI groups similar responses into themes.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Brainstorming, Q&A, retrospectives, idea generation
-                  </p>
-                </CardContent>
-              </Card>
+              <Link href="/host/thoughts-gathering/create">
+                <Card className="border-card-border hover:shadow-lg transition-shadow cursor-pointer h-full">
+                  <CardContent className="p-6">
+                    <div className="rounded-xl bg-blue-500/10 p-3 w-fit mb-4">
+                      <Cloud className="h-8 w-8 text-blue-500" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">Thoughts Gathering</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Collect free-form ideas. AI groups similar responses into themes.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Brainstorming, Q&A, retrospectives, idea generation
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
 
               {/* Evaluation */}
-              <Card className="border-card-border hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="rounded-xl bg-orange-500/10 p-3 w-fit mb-4">
-                    <BarChart3 className="h-8 w-8 text-orange-500" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">Evaluation</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Rate items on custom metrics. Visualize rankings with heatmaps and charts.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Prioritization, comparisons, weighted scoring, assessments
-                  </p>
-                </CardContent>
-              </Card>
+              <Link href="/host/evaluation/create">
+                <Card className="border-card-border hover:shadow-lg transition-shadow cursor-pointer h-full">
+                  <CardContent className="p-6">
+                    <div className="rounded-xl bg-orange-500/10 p-3 w-fit mb-4">
+                      <BarChart3 className="h-8 w-8 text-orange-500" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">Evaluation</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Rate items on custom metrics. Visualize rankings with heatmaps and charts.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Prioritization, comparisons, weighted scoring, assessments
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
             </div>
           </div>
         </section>
@@ -262,6 +273,7 @@ export default function Home() {
               </div>
 
               <ArrowRight className="hidden md:block h-6 w-6 text-muted-foreground/50 flex-shrink-0" />
+              <ArrowDown className="block md:hidden h-6 w-6 text-muted-foreground/50" />
 
               {/* Step 2 */}
               <div className="flex flex-col items-center text-center flex-1">
@@ -275,6 +287,7 @@ export default function Home() {
               </div>
 
               <ArrowRight className="hidden md:block h-6 w-6 text-muted-foreground/50 flex-shrink-0" />
+              <ArrowDown className="block md:hidden h-6 w-6 text-muted-foreground/50" />
 
               {/* Step 3 */}
               <div className="flex flex-col items-center text-center flex-1">

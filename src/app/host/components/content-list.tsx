@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileQuestion, Cloud, BarChart3, Presentation, Vote, ArrowUpDown, Sparkles } from 'lucide-react';
+import { FileQuestion, Cloud, BarChart3, Presentation, Vote, ArrowUpDown, Sparkles, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { CreateDropdown } from './create-dropdown';
 import { QuizCard } from './quiz-card';
@@ -63,6 +64,7 @@ export function ContentList({
 }: ContentListProps) {
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [sortType, setSortType] = useState<SortType>('recent');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const totalCount = (quizzes?.length || 0) + (activities?.length || 0) + (presentations?.length || 0);
 
@@ -88,7 +90,19 @@ export function ContentList({
         </div>
       </div>
 
-      {/* Filter and Sort Controls */}
+      {/* Search and Filter Controls */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-4 mb-6">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search activities..."
+            className="pl-9"
+          />
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-4 mb-6">
         <div className="grid grid-cols-2 sm:flex items-center gap-1 bg-muted p-1.5 rounded-xl w-full sm:w-auto">
           {[
@@ -168,9 +182,13 @@ export function ContentList({
           })) || []),
         ];
 
+        const searchedItems = searchQuery
+          ? allItems.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()))
+          : allItems;
+
         const filteredItems = filterType === 'all'
-          ? allItems
-          : allItems.filter(item => item.type === filterType);
+          ? searchedItems
+          : searchedItems.filter(item => item.type === filterType);
 
         const sortedItems = [...filteredItems].sort((a, b) => {
           const getDate = (item: ContentItem, field: 'updatedAt' | 'createdAt') => {

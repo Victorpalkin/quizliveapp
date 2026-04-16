@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, DocumentReference, Query } from 'firebase/firestore';
 import { useWakeLock } from '@/hooks/use-wake-lock';
+import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { nanoid } from 'nanoid';
 import type { Quiz, Player, Game, GameLeaderboard, QuestionSubmission } from '@/lib/types';
 
@@ -19,6 +20,7 @@ import { useAnswerState } from './hooks/use-answer-state';
 
 // Components
 import { ThemeToggle } from '@/components/app/theme-toggle';
+import { PlayerLeaveButton } from '@/components/app/player-leave-button';
 
 // Screens
 import { JoiningScreen } from './components/screens/joining-screen';
@@ -181,6 +183,14 @@ export default function QuizPlayerPage() {
   const shouldKeepAwake = ['lobby', 'preparing', 'question', 'waiting', 'result'].includes(state);
   useWakeLock(shouldKeepAwake);
 
+  // Focus management — move focus to main container on state transitions
+  const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.focus();
+    }
+  }, [state]);
+
   // Note: Timeout submission removed - streak is now computed in computeQuestionResults
   // which handles players with no answer correctly (streak resets to 0)
 
@@ -318,7 +328,7 @@ export default function QuizPlayerPage() {
             totalPlayers={rankInfo?.totalPlayers}
             onPlayAgain={() => {
               sessionManager.clearSession();
-              router.push('/');
+              router.push('/join');
             }}
           />
         );
@@ -329,24 +339,27 @@ export default function QuizPlayerPage() {
           <CancelledScreen
             onReturnHome={() => {
               sessionManager.clearSession();
-              router.push('/');
+              router.push('/join');
             }}
           />
         );
 
       default:
-        return null;
+        return <FullPageLoader />;
     }
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background relative">
-      {/* Theme Toggle - Top Right */}
+      {/* Player Controls */}
+      <div className="absolute top-6 left-6 z-20">
+        <PlayerLeaveButton onLeave={() => sessionManager.clearSession()} />
+      </div>
       <div className="absolute top-6 right-6 z-20">
         <ThemeToggle />
       </div>
 
-      <main className="w-full h-screen max-w-5xl mx-auto flex flex-col items-center justify-center">
+      <main ref={mainRef} tabIndex={-1} className="w-full h-screen max-w-5xl mx-auto flex flex-col items-center justify-center outline-none">
         {renderContent()}
       </main>
     </div>

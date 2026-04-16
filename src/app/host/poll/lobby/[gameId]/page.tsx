@@ -11,6 +11,17 @@ import { GameHeader } from '@/components/app/game-header';
 import { TipBanner, ReadinessChecklist } from '@/components/app/host-action-hint';
 import { useFirestore, useUser, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { Game, Player, PollActivity } from '@/lib/types';
 import { saveHostSession, clearHostSession } from '@/lib/host-session';
 import { gameConverter, playerConverter, pollActivityConverter } from '@/firebase/converters';
@@ -229,14 +240,31 @@ export default function PollLobbyPage() {
                   </Badge>
                 </div>
 
-                <Button
-                  onClick={handleStartPoll}
-                  size="lg"
-                  className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
-                >
-                  <Play className="h-5 w-5 mr-2" />
-                  Start Poll
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="lg"
+                      className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
+                    >
+                      <Play className="h-5 w-5 mr-2" />
+                      Start Poll
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="rounded-2xl shadow-xl">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-2xl font-semibold">Start the poll?</AlertDialogTitle>
+                      <AlertDialogDescription className="text-base">
+                        Start the poll with {playerCount} participant{playerCount !== 1 ? 's' : ''}?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleStartPoll} className="rounded-xl">
+                        Start Poll
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
           </div>

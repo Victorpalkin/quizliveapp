@@ -101,7 +101,7 @@ export function QuizCard({ quiz, onHost, onPreview, onShare, onDelete }: QuizCar
           ) : (
             <Gamepad2 className="mr-2 h-4 w-4" />
           )}
-          Host Game
+          Host Session
         </Button>
         <Button className="w-full" variant="outline" onClick={() => onPreview(quiz)}>
           <Eye className="mr-2 h-4 w-4" /> Preview Quiz

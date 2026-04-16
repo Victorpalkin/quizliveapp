@@ -23,7 +23,7 @@ export function EndedScreen({ playerName, onReturnHome }: EndedScreenProps) {
           size="lg"
           className="w-full"
         >
-          <Home className="mr-2 h-5 w-5" /> Return Home
+          <Home className="mr-2 h-5 w-5" /> Join Another Game
         </Button>
       </CardContent>
     </Card>

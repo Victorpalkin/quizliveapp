@@ -133,7 +133,7 @@ export function GameHeader({
       {/* Right: Player Count and Actions */}
       <div className="flex items-center gap-3">
         {/* Player Count */}
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm" role="status" aria-live="polite">
           <Users className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">{playerCount}</span>
           <span className="text-muted-foreground hidden sm:inline">

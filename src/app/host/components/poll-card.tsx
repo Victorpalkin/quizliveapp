@@ -104,7 +104,7 @@ export function PollCard({ poll, onHost, onPreview, onShare, onDelete }: PollCar
           ) : (
             <Gamepad2 className="mr-2 h-4 w-4" />
           )}
-          Launch Session
+          Host Session
         </Button>
         <Button className="w-full" variant="outline" onClick={() => onPreview(poll)}>
           <Eye className="mr-2 h-4 w-4" /> Preview Poll

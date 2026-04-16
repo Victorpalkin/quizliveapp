@@ -113,7 +113,7 @@ export function ActivityCard({ activity, onDelete }: ActivityCardProps) {
       <CardContent className="flex-grow flex flex-col justify-end gap-2 p-4 pt-0">
         <Button asChild variant="gradient" className={`w-full bg-gradient-to-r ${gradientClass}`}>
           <Link href={`/host/${activityTypePath}/${activity.id}`}>
-            <Gamepad2 className="mr-2 h-4 w-4" /> Launch Session
+            <Gamepad2 className="mr-2 h-4 w-4" /> Host Session
           </Link>
         </Button>
       </CardContent>

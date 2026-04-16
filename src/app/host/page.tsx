@@ -10,7 +10,7 @@ import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { ContentShareManager } from '@/components/app/content-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
 import { PollPreview } from '@/components/app/poll-preview';
-import { Loader2, XCircle, LogIn } from 'lucide-react';
+import { Loader2, XCircle, LogIn, ChevronDown } from 'lucide-react';
 import { CompletedActivityCard } from './components/completed-activity-card';
 import { ContentList } from './components/content-list';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
@@ -186,12 +186,28 @@ export default function HostDashboardPage() {
           onDeletePresentation={handleDeletePresentation}
         />
 
+        {/* Quick-jump to completed activities */}
+        {completedGames && completedGames.length > 0 && (
+          <div className="flex justify-end mb-4">
+            <a
+              href="#completed-activities"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronDown className="h-4 w-4" />
+              Completed Activities
+              <span className="px-1.5 py-0.5 text-xs font-medium bg-muted rounded-full">
+                {completedGames.length}
+              </span>
+            </a>
+          </div>
+        )}
+
         {/* Shared Content Section */}
         <SharedContent />
 
         {/* Completed Activities Section */}
         {completedGames && completedGames.length > 0 && (
-            <div className="mb-12">
+            <div id="completed-activities" className="mb-12 scroll-mt-8">
                 <div className="border-t border-border pt-8 mb-6">
                     <div className="flex items-center gap-3">
                         <h2 className="text-3xl font-semibold">Completed Activities</h2>

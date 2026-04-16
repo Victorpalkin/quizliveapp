@@ -73,7 +73,7 @@ export default function LoginPage() {
               <BrainCircuit className="h-8 w-8" />
             </div>
             <CardTitle className="text-3xl">Host Sign-In</CardTitle>
-            <CardDescription>Enter your credentials to create and manage quizzes.</CardDescription>
+            <CardDescription>Sign in to create and manage interactive sessions.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignIn} className="space-y-6">
@@ -108,7 +108,7 @@ export default function LoginPage() {
                 />
               </div>
               <Button type="submit" size="lg" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="animate-spin" /> : 'Sign In'}
+                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing In...</> : 'Sign In'}
               </Button>
 
               {/* Registration Link */}

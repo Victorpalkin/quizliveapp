@@ -135,7 +135,7 @@ export function PresentationCard({ presentation, onHost, onPreview, onShare, onD
             ) : (
               <Play className="mr-2 h-4 w-4" />
             )}
-            Present
+            Host Session
           </Button>
           {onPreview && (
             <Button
