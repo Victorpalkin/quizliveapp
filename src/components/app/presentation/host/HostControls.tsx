@@ -52,6 +52,15 @@ export function HostControls({
   const navigatorRef = useRef<HTMLDivElement>(null);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    const target = e.target as Element;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target.closest('[contenteditable]')
+    ) {
+      return;
+    }
+
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
       e.preventDefault();
       onNextSlide();

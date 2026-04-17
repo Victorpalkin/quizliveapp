@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { Users, QrCode, X } from 'lucide-react';
 
 interface HostOverlayProps {
   gamePin: string;
@@ -13,6 +14,14 @@ interface HostOverlayProps {
 
 export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: HostOverlayProps) {
   const [visible, setVisible] = useState(true);
+  const [qrVisible, setQrVisible] = useState(true);
+  const [joinUrl, setJoinUrl] = useState('');
+
+  useEffect(() => {
+    if (gamePin) {
+      setJoinUrl(`${window.location.origin}/play/${gamePin}`);
+    }
+  }, [gamePin]);
 
   // Show briefly when slide changes
   useEffect(() => {
@@ -63,12 +72,21 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
             transition={{ duration: 0.3 }}
             className="absolute top-0.5 left-0 right-0 z-20 flex items-center justify-between px-5 py-2.5 backdrop-blur-xl bg-black/30 border-b border-white/10 text-white"
           >
-            {/* PIN */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs opacity-60 uppercase tracking-wider">Pin</span>
-              <span className="font-mono font-bold text-lg tracking-wider drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
-                {gamePin}
-              </span>
+            {/* PIN + QR toggle */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs opacity-60 uppercase tracking-wider">Pin</span>
+                <span className="font-mono font-bold text-lg tracking-wider drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
+                  {gamePin}
+                </span>
+              </div>
+              <button
+                onClick={() => setQrVisible((v) => !v)}
+                className={`p-1 rounded transition-colors ${qrVisible ? 'bg-white/20' : 'hover:bg-white/10'}`}
+                title={qrVisible ? 'Hide QR code' : 'Show QR code'}
+              >
+                <QrCode className="h-4 w-4" />
+              </button>
             </div>
 
             {/* Slide counter */}
@@ -87,6 +105,34 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
               >
                 {playerCount}
               </motion.span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating QR code — persists independently of the overlay bar */}
+      <AnimatePresence>
+        {qrVisible && joinUrl && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            className="absolute bottom-20 left-4 z-20 flex items-end gap-3 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10"
+            data-controls
+          >
+            <div className="bg-white p-2 rounded-lg">
+              <QRCodeSVG value={joinUrl} size={96} level="M" />
+            </div>
+            <div className="flex flex-col gap-1 text-white pb-1">
+              <p className="text-xs font-medium opacity-80">Scan to join</p>
+              <p className="font-mono font-bold text-sm tracking-wider">{gamePin}</p>
+              <button
+                onClick={() => setQrVisible(false)}
+                className="mt-1 flex items-center gap-1 text-[10px] opacity-50 hover:opacity-100 transition-opacity"
+              >
+                <X className="h-3 w-3" /> Hide
+              </button>
             </div>
           </motion.div>
         )}

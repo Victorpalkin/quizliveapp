@@ -60,12 +60,12 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
   const handleRunAI = useCallback(async () => {
     setRunning(true);
     try {
-      await runStep(currentStep, nudgeText || undefined);
+      await runStep(currentStep, nudgeText || undefined, session?.stepsData);
       setNudgeText('');
     } finally {
       setRunning(false);
     }
-  }, [currentStep, nudgeText, runStep]);
+  }, [currentStep, nudgeText, runStep, session?.stepsData]);
 
   const handleNextStep = useCallback(() => {
     if (currentStep < 11) {
