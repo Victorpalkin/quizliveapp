@@ -6,11 +6,29 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PresentationPlayer } from '@/components/app/presentation/player/PresentationPlayer';
 import { PlayerLeaveButton } from '@/components/app/player-leave-button';
+import { useAnonymousAuth } from '@/hooks/use-anonymous-auth';
 import { usePlayerStateMachine } from './hooks/use-player-state-machine';
 
 export default function PlayPresentationPage({ params }: { params: Promise<{ gamePin: string }> }) {
   const { gamePin } = use(params);
-  const playerState = usePlayerStateMachine(gamePin);
+  const { uid, loading: authLoading } = useAnonymousAuth();
+
+  if (authLoading || !uid) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Connecting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <PresentationPlayerContent gamePin={gamePin} playerId={uid} />;
+}
+
+function PresentationPlayerContent({ gamePin, playerId }: { gamePin: string; playerId: string }) {
+  const playerState = usePlayerStateMachine(gamePin, playerId);
 
   if (playerState.loading) {
     return (

@@ -5,6 +5,7 @@ import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { BarChart3 } from 'lucide-react';
 import { PlayerLeaveButton } from '@/components/app/player-leave-button';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
+import { useAnonymousAuth } from '@/hooks/use-anonymous-auth';
 import { usePlayerEvaluation } from './hooks/use-player-evaluation';
 import { JoiningScreen } from './components/joining-screen';
 import { CollectingScreen } from './components/collecting-screen';
@@ -14,6 +15,14 @@ import { ResultsScreen } from './components/results-screen';
 import { EndedScreen } from './components/ended-screen';
 
 export default function PlayerEvaluationPage() {
+  const { uid, loading: authLoading } = useAnonymousAuth();
+
+  if (authLoading || !uid) return <FullPageLoader />;
+
+  return <EvaluationContent playerId={uid} />;
+}
+
+function EvaluationContent({ playerId }: { playerId: string }) {
   const {
     loading,
     itemsLoading,
@@ -28,7 +37,7 @@ export default function PlayerEvaluationPage() {
     metrics,
     playerState,
     playerName,
-    playerId,
+    playerId: evalPlayerId,
     ratings,
     currentItemIndex,
     submittedItemCount,
@@ -45,7 +54,7 @@ export default function PlayerEvaluationPage() {
     handleSubmitItem,
     handleRateMetric,
     handleSubmitRatings,
-  } = usePlayerEvaluation();
+  } = usePlayerEvaluation(playerId);
 
   if (loading) {
     return <FullPageLoader />;
@@ -76,7 +85,7 @@ export default function PlayerEvaluationPage() {
             <BarChart3 className="h-6 w-6 text-orange-500" />
             <span className="text-lg font-semibold">{activity?.title || 'Evaluation'}</span>
           </div>
-          {playerId && (
+          {evalPlayerId && (
             <Badge variant="secondary">{playerName}</Badge>
           )}
         </div>

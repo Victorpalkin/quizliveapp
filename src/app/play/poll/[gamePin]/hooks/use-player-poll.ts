@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useFunctions, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, setDoc, getDocs, getDoc, DocumentReference } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { nanoid } from 'nanoid';
 import type { Game, Player, PollActivity } from '@/lib/types';
 import { gameConverter, pollActivityConverter, playerConverter } from '@/firebase/converters';
 import { useToast } from '@/hooks/use-toast';
@@ -14,7 +13,7 @@ import { logError } from '@/lib/error-logging';
 
 export type PlayerState = 'joining' | 'reconnecting' | 'lobby' | 'answering' | 'waiting' | 'results' | 'ended';
 
-export function usePlayerPoll() {
+export function usePlayerPoll(playerId: string) {
   const params = useParams();
   const gamePin = params.gamePin as string;
   const firestore = useFirestore();
@@ -24,8 +23,7 @@ export function usePlayerPoll() {
 
   // Session-aware player state initialization
   const storedSession = useRef(getPlayerSession());
-  const hasValidSession = storedSession.current && sessionMatchesPin(gamePin);
-  const [playerId] = useState(() => hasValidSession ? storedSession.current!.playerId : nanoid());
+  const hasValidSession = storedSession.current && sessionMatchesPin(gamePin) && storedSession.current.playerId === playerId;
   const [nickname, setNickname] = useState(() => hasValidSession ? storedSession.current!.nickname : '');
   const [gameDocId, setGameDocId] = useState<string | null>(() => hasValidSession ? storedSession.current!.gameDocId : null);
   const [player, setPlayer] = useState<Player | null>(null);

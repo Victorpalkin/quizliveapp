@@ -53,6 +53,14 @@ export const submitAnswer = onCall(
 
     const { gameId, playerId, questionIndex, timeRemaining, questionType, questionTimeLimit } = data;
 
+    // Verify player identity: authenticated user must match the playerId
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Authentication required');
+    }
+    if (request.auth.uid !== playerId) {
+      throw new HttpsError('permission-denied', 'Player ID must match authenticated user');
+    }
+
     // Rate limiting: 60 requests per minute per player
     // Uses playerId as key since players are identified by their player document
     enforceRateLimitInMemory(`submit:${playerId}`, 60, 60);

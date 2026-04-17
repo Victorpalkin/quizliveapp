@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, updateDoc, DocumentReference, deleteDoc, setDoc, serverTimestamp, query, where, Query, getDocs } from 'firebase/firestore';
@@ -43,6 +44,13 @@ export default function HostLobbyPage() {
     activityType: 'quiz',
     returnPath: `/host/quiz/lobby/${gameId}`,
   });
+
+  // Sync crowdsource settings from quiz to game doc so players don't need quiz access
+  useEffect(() => {
+    if (quiz?.crowdsource && game && !game.crowdsource) {
+      updateDoc(gameRef, { crowdsource: quiz.crowdsource }).catch(() => {});
+    }
+  }, [quiz?.crowdsource, game, gameRef]);
 
   const handleStartGame = async () => {
     if (!gameRef || !quiz) return;

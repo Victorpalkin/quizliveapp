@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase/firestore';
 
-import type { Question, CrowdsourceState } from './quiz';
+import type { Question, CrowdsourceSettings, CrowdsourceState } from './quiz';
 
 export interface PlayerAnswer {
     questionIndex: number;
@@ -50,6 +50,7 @@ export interface Game {
     currentQuestionIndex: number;
     gamePin: string;
     questionStartTime?: Timestamp; // Firestore server timestamp when current question started (for timer sync)
+    crowdsource?: CrowdsourceSettings;    // Crowdsource settings (copied from quiz at game creation)
     crowdsourceState?: CrowdsourceState;  // Runtime state for crowdsourced questions
     questions?: Question[];  // Override questions (used when crowdsourced questions are integrated)
     createdAt?: Date;  // When the game was created

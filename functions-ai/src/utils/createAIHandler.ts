@@ -2,7 +2,8 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { GoogleGenAI } from '@google/genai';
 import { ALLOWED_ORIGINS, REGION, GEMINI_MODEL, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from './appCheck';
-import { enforceRateLimitInMemory } from './rateLimit';
+import { enforceRateLimitFirestore } from './rateLimit';
+import * as admin from 'firebase-admin';
 import type { ChatMessage } from '../types';
 
 export type GeminiContents = Array<{ role: string; parts: Array<{ text: string }> }>;
@@ -42,7 +43,8 @@ export function createAIHandler<TRequest extends { prompt: string }, TResponse>(
       verifyAppCheck(request);
 
       if (request.auth?.uid) {
-        enforceRateLimitInMemory(request.auth.uid, 10, 3600);
+        const db = admin.firestore();
+        await enforceRateLimitFirestore(db, `ai-gen:${request.auth.uid}`, 10, 3600);
       }
 
       if (!request.auth) {

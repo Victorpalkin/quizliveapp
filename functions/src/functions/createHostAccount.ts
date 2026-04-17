@@ -4,7 +4,7 @@ import { CreateHostAccountRequest, CreateHostAccountResult } from '../types';
 import { ALLOWED_ORIGINS, REGION } from '../config';
 import { validateOrigin } from '../utils/cors';
 import { verifyAppCheck } from '../utils/appCheck';
-import { enforceRateLimitInMemory, getClientIp } from '../utils/rateLimit';
+import { enforceRateLimitFirestore, getClientIp } from '../utils/rateLimit';
 import { validateHostAccountRequest } from '../utils/validation';
 
 /**
@@ -40,9 +40,10 @@ export const createHostAccount = onCall(
     validateOrigin(origin);
 
     // Rate limiting: 5 requests per hour per IP (prevent account creation abuse)
-    // Uses in-memory rate limiting for zero latency overhead
+    // Uses Firestore-based rate limiting for accurate cross-instance enforcement
     const clientIp = getClientIp(request);
-    enforceRateLimitInMemory(clientIp, 5, 3600); // 5 requests per hour
+    const db = admin.firestore();
+    await enforceRateLimitFirestore(db, `create-account:${clientIp}`, 5, 3600);
 
     const data = request.data as CreateHostAccountRequest;
     const { email, password, name, jobRole, team } = data;

@@ -5,20 +5,18 @@ import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, setDoc, addDoc, serverTimestamp, getDocs, DocumentReference, Query } from 'firebase/firestore';
 import { useWakeLock } from '@/hooks/use-wake-lock';
-import { nanoid } from 'nanoid';
 import type { Game, Player, ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
 import { gameConverter, thoughtsGatheringActivityConverter, thoughtSubmissionConverter } from '@/firebase/converters';
 
 export type PlayerState = 'joining' | 'submitting' | 'waiting' | 'viewing' | 'ended' | 'cancelled';
 
-export function useThoughtsPlayer() {
+export function useThoughtsPlayer(playerId: string) {
   const params = useParams();
   const gamePin = params.gamePin as string;
   const firestore = useFirestore();
   const router = useRouter();
 
   // Player state
-  const [playerId] = useState(nanoid());
   const [nickname, setNickname] = useState('');
   const [gameDocId, setGameDocId] = useState<string | null>(null);
   const [player, setPlayer] = useState<Player | null>(null);

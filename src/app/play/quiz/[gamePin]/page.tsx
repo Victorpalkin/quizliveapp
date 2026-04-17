@@ -6,8 +6,8 @@ import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase
 import { doc, collection, query, where, DocumentReference, Query } from 'firebase/firestore';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
-import { nanoid } from 'nanoid';
-import type { Quiz, Player, Game, GameLeaderboard, QuestionSubmission } from '@/lib/types';
+import { useAnonymousAuth } from '@/hooks/use-anonymous-auth';
+import type { Player, Game, GameLeaderboard, QuestionSubmission } from '@/lib/types';
 
 // Hooks
 import { useSessionManager } from './hooks/use-session-manager';
@@ -35,6 +35,18 @@ import { ReconnectingScreen } from './components/screens/reconnecting-screen';
 import { SessionInvalidScreen } from './components/screens/session-invalid-screen';
 
 export default function QuizPlayerPage() {
+  const { uid, loading: authLoading } = useAnonymousAuth();
+
+  if (authLoading || !uid) return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <FullPageLoader />
+    </div>
+  );
+
+  return <QuizPlayerContent playerId={uid} />;
+}
+
+function QuizPlayerContent({ playerId }: { playerId: string }) {
   const params = useParams();
   const gamePin = params.gamePin as string;
   const firestore = useFirestore();
@@ -45,8 +57,9 @@ export default function QuizPlayerPage() {
   const storedSession = sessionManager.getSession();
 
   // Core player state
-  const [gameDocId, setGameDocId] = useState<string | null>(storedSession?.gameDocId || null);
-  const [playerId] = useState(storedSession?.playerId || nanoid());
+  const [gameDocId, setGameDocId] = useState<string | null>(
+    storedSession?.playerId === playerId ? storedSession?.gameDocId || null : null
+  );
   const [player, setPlayer] = useState<Player | null>(null);
 
   // Firebase data
@@ -100,26 +113,16 @@ export default function QuizPlayerPage() {
   );
   const { data: playerSubmissions } = useCollection<QuestionSubmission>(submissionsQuery);
 
-  // Quiz metadata for lobby only (crowdsource settings)
-  // Note: We no longer fetch the full quiz - questions are in game.questions (sanitized, no correct answers)
-  // This prevents players from seeing correct answers in browser dev tools
-  const quizRef = useMemoFirebase(
-    () => (game && game.quizId) ? doc(firestore, 'quizzes', game.quizId) : null,
-    [firestore, game]
-  );
-  const { data: quizData, loading: quizLoading } = useDoc(quizRef);
-  const quiz = quizData as Quiz | null;
-
   // Use questions from game.questions (sanitized, no correct answers)
   // This is populated by the host when starting the game
   const effectiveQuestions = game?.questions || [];
   const question = effectiveQuestions[game?.currentQuestionIndex || 0];
   const timeLimit = question?.timeLimit || 20;
 
-  // State machine
+  // State machine (only treat session as valid if playerId matches current auth identity)
   const { state, setState, isLastQuestion } = usePlayerStateMachine(
     gamePin,
-    sessionManager.hasValidSession(),
+    sessionManager.hasValidSession() && storedSession?.playerId === playerId,
     game,
     effectiveQuestions.length,
     gameLoading
@@ -271,7 +274,7 @@ export default function QuizPlayerPage() {
             gamePin={game?.gamePin || ''}
             gameId={gameDocId || ''}
             playerId={playerId}
-            crowdsourceSettings={quiz?.crowdsource}
+            crowdsourceSettings={game?.crowdsource}
             crowdsourceState={game?.crowdsourceState}
             playerSubmissions={playerSubmissions || []}
           />
@@ -295,7 +298,7 @@ export default function QuizPlayerPage() {
             onSubmitFreeResponse={handleFreeResponseAnswer}
             onSubmitPollSingle={handlePollSingleAnswer}
             onSubmitPollMultiple={handlePollMultipleAnswer}
-            quizLoading={quizLoading}
+            quizLoading={false}
           />
         );
 

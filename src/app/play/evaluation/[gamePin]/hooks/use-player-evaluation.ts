@@ -19,11 +19,10 @@ import { useToast } from '@/hooks/use-toast';
 import { savePlayerSession, getPlayerSession, clearPlayerSession } from '@/lib/player-session';
 import { evaluationActivityConverter, evaluationItemConverter } from '@/firebase/converters';
 import type { Game, EvaluationActivity, EvaluationItem, PlayerRatings } from '@/lib/types';
-import { nanoid } from 'nanoid';
 
 export type PlayerState = 'joining' | 'collecting' | 'rating' | 'waiting' | 'results' | 'ended';
 
-export function usePlayerEvaluation() {
+export function usePlayerEvaluation(anonUid: string) {
   const params = useParams();
   const gamePin = (params.gamePin as string).toUpperCase();
   const { toast } = useToast();
@@ -76,13 +75,13 @@ export function usePlayerEvaluation() {
 
       setGameId(game.id);
 
-      // Check for existing session
+      // Check for existing session (only restore if playerId matches current auth identity)
       const session = getPlayerSession();
-      if (session && session.gamePin === gamePin) {
-        const playerDoc = await getDocs(query(collection(firestore, 'games', game.id, 'players'), where('__name__', '==', session.playerId)));
+      if (session && session.gamePin === gamePin && session.playerId === anonUid) {
+        const playerDoc = await getDocs(query(collection(firestore, 'games', game.id, 'players'), where('__name__', '==', anonUid)));
 
         if (!playerDoc.empty) {
-          setPlayerId(session.playerId);
+          setPlayerId(anonUid);
           setPlayerName(session.nickname);
 
           if (game.state === 'collecting') {
@@ -111,7 +110,7 @@ export function usePlayerEvaluation() {
     };
 
     init();
-  }, [firestore, gamePin, findGameByPin, toast]);
+  }, [firestore, gamePin, findGameByPin, toast, anonUid]);
 
   // Game document listener
   const gameRef = useMemoFirebase(
@@ -167,18 +166,16 @@ export function usePlayerEvaluation() {
 
     setIsJoining(true);
     try {
-      const newPlayerId = nanoid(12);
-
-      await setDoc(doc(firestore, 'games', gameId, 'players', newPlayerId), {
-        id: newPlayerId,
+      await setDoc(doc(firestore, 'games', gameId, 'players', anonUid), {
+        id: anonUid,
         name: playerName.trim(),
         score: 0,
         answers: [],
         currentStreak: 0,
       });
 
-      setPlayerId(newPlayerId);
-      savePlayerSession(newPlayerId, gameId, gamePin, playerName.trim());
+      setPlayerId(anonUid);
+      savePlayerSession(anonUid, gameId, gamePin, playerName.trim());
 
       if (game?.state === 'collecting') {
         setPlayerState('collecting');

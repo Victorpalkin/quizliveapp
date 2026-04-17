@@ -2,6 +2,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { ALLOWED_ORIGINS, REGION } from '../config';
 import { validateOrigin } from '../utils/cors';
+import { verifyAppCheck } from '../utils/appCheck';
 
 interface InitPresentationGameRequest {
   gameId: string;
@@ -19,8 +20,11 @@ export const initPresentationGame = onCall(
     cors: ALLOWED_ORIGINS,
     timeoutSeconds: 30,
     memory: '256MiB',
+    enforceAppCheck: true,
   },
   async (request) => {
+    verifyAppCheck(request);
+
     const origin = request.rawRequest?.headers?.origin as string | undefined;
     validateOrigin(origin);
 
@@ -77,10 +81,28 @@ export const initPresentationGame = onCall(
       }
     }
 
+    // Sanitize slides for players (strip correct answers from quiz elements)
+    // Mirrors sanitizeSlideForPlayer() in src/lib/question-utils.ts
+    const sanitizedSlides = slides.map((slide: { elements?: Array<{ type: string; quizConfig?: { correctAnswerIndex: number; [key: string]: unknown }; [key: string]: unknown }>; [key: string]: unknown }) => ({
+      ...slide,
+      elements: (slide.elements || []).map((el) => {
+        if (el.type === 'quiz' && el.quizConfig) {
+          const { correctAnswerIndex, ...safeConfig } = el.quizConfig;
+          return { ...el, quizConfig: safeConfig };
+        }
+        return el;
+      }),
+    }));
+
     // Write answer key (admin-only access, not readable by clients)
     await db.doc(`games/${gameId}/aggregates/answerKey`).set({
       elements: answerKey,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Write sanitized slides to game document (safe for player reads)
+    await db.doc(`games/${gameId}`).update({
+      sanitizedSlides,
     });
 
     // Initialize leaderboard

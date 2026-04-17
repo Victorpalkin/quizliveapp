@@ -114,6 +114,44 @@ export function enforceRateLimitInMemory(
 }
 
 /**
+ * Distributed Rate Limiting via Firestore
+ *
+ * Uses Firestore transactions for accurate cross-instance rate limiting.
+ * Use this for critical endpoints where per-instance approximation is insufficient
+ * (e.g., account creation, AI generation).
+ */
+export async function enforceRateLimitFirestore(
+  db: FirebaseFirestore.Firestore,
+  identifier: string,
+  maxRequests: number,
+  windowSeconds: number
+): Promise<void> {
+  const docId = identifier.replace(/[/]/g, '_');
+  const ref = db.collection('rateLimits').doc(docId);
+  const now = Date.now();
+
+  await db.runTransaction(async (tx) => {
+    const doc = await tx.get(ref);
+    const data = doc.data();
+
+    if (!data || now > data.resetAt) {
+      tx.set(ref, { count: 1, resetAt: now + windowSeconds * 1000 });
+      return;
+    }
+
+    if (data.count >= maxRequests) {
+      const resetIn = Math.ceil((data.resetAt - now) / 1000);
+      throw new HttpsError(
+        'resource-exhausted',
+        `Too many requests. Please try again in ${resetIn} seconds.`
+      );
+    }
+
+    tx.update(ref, { count: data.count + 1 });
+  });
+}
+
+/**
  * Get client IP from request headers
  * Works with Cloud Run and Firebase Functions
  */

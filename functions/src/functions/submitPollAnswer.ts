@@ -62,6 +62,14 @@ export const submitPollAnswer = onCall(
 
     const { gameId, playerId, questionIndex, questionType } = data;
 
+    // Verify player identity: authenticated user must match the playerId
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Authentication required');
+    }
+    if (request.auth.uid !== playerId) {
+      throw new HttpsError('permission-denied', 'Player ID must match authenticated user');
+    }
+
     // Rate limiting: 60 requests per minute per player
     enforceRateLimitInMemory(`poll:${playerId}`, 60, 60);
 

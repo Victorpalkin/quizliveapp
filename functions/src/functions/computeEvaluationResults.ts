@@ -9,7 +9,7 @@
  * - Final rankings
  */
 
-import { onCall } from 'firebase-functions/v2/https';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import {
   ComputeEvaluationResultsRequest,
@@ -22,6 +22,7 @@ import {
   MetricScoreDetails,
 } from '../types';
 import { ALLOWED_ORIGINS, REGION } from '../config';
+import { verifyAppCheck } from '../utils/appCheck';
 import {
   calculateMedian,
   calculateStdDev,
@@ -36,13 +37,20 @@ export const computeEvaluationResults = onCall(
   {
     region: REGION,
     cors: ALLOWED_ORIGINS,
+    enforceAppCheck: true,
   },
   async (request): Promise<ComputeEvaluationResultsResult> => {
+    verifyAppCheck(request);
+
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'Must be authenticated to compute results');
+    }
+
     const data = request.data as ComputeEvaluationResultsRequest;
     const { gameId } = data;
 
     if (!gameId) {
-      return { success: false, message: 'Missing gameId' };
+      throw new HttpsError('invalid-argument', 'Missing gameId');
     }
 
     try {
@@ -50,13 +58,17 @@ export const computeEvaluationResults = onCall(
       const gameDoc = await firestore.collection('games').doc(gameId).get();
 
       if (!gameDoc.exists) {
-        return { success: false, message: 'Game not found' };
+        throw new HttpsError('not-found', 'Game not found');
       }
 
       const gameData = gameDoc.data();
 
+      if (gameData?.hostId !== request.auth.uid) {
+        throw new HttpsError('permission-denied', 'Only the game host can compute results');
+      }
+
       if (gameData?.activityType !== 'evaluation') {
-        return { success: false, message: 'Not an evaluation game' };
+        throw new HttpsError('invalid-argument', 'Not an evaluation game');
       }
 
       // Fetch activity for metrics configuration
@@ -66,7 +78,7 @@ export const computeEvaluationResults = onCall(
         .get();
 
       if (!activityDoc.exists) {
-        return { success: false, message: 'Activity not found' };
+        throw new HttpsError('not-found', 'Activity not found');
       }
 
       const activity = {
@@ -91,7 +103,7 @@ export const computeEvaluationResults = onCall(
       })) as EvaluationItem[];
 
       if (items.length === 0) {
-        return { success: false, message: 'No items to rank' };
+        throw new HttpsError('failed-precondition', 'No items to rank');
       }
 
       // Fetch all player ratings
@@ -250,12 +262,17 @@ export const computeEvaluationResults = onCall(
       };
     } catch (error) {
       console.error('Error computing evaluation results:', error);
-      return {
-        success: false,
-        message: `Error computing results: ${
+
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      throw new HttpsError(
+        'internal',
+        `Error computing results: ${
           error instanceof Error ? error.message : 'Unknown error'
         }`,
-      };
+      );
     }
   }
 );

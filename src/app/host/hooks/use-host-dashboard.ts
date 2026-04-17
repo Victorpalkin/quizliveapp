@@ -108,6 +108,9 @@ export function useHostDashboard() {
   const handleHostGame = async (quizId: string) => {
     if (!user) return;
 
+    // Copy crowdsource settings to game doc so players don't need to read the quiz
+    const quiz = quizzes?.find(q => q.id === quizId);
+
     const gameData = {
       quizId: quizId,
       hostId: user.uid,
@@ -115,6 +118,7 @@ export function useHostDashboard() {
       currentQuestionIndex: 0,
       gamePin: nanoid(8).toUpperCase(),
       createdAt: serverTimestamp(),
+      ...(quiz?.crowdsource ? { crowdsource: quiz.crowdsource } : {}),
     };
 
     try {

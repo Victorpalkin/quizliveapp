@@ -6,6 +6,7 @@ import { PlayerLeaveButton } from '@/components/app/player-leave-button';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Vote } from 'lucide-react';
+import { useAnonymousAuth } from '@/hooks/use-anonymous-auth';
 import { usePlayerPoll } from './hooks/use-player-poll';
 import { JoiningScreen } from './components/joining-screen';
 import { LobbyScreen } from './components/lobby-screen';
@@ -14,6 +15,18 @@ import { WaitingScreen } from './components/waiting-screen';
 import { EndedScreen } from './components/ended-screen';
 
 export default function PollPlayerPage() {
+  const { uid, loading: authLoading } = useAnonymousAuth();
+
+  if (authLoading || !uid) return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <FullPageLoader />
+    </div>
+  );
+
+  return <PollPlayerContent playerId={uid} />;
+}
+
+function PollPlayerContent({ playerId }: { playerId: string }) {
   const {
     state,
     player,
@@ -33,7 +46,7 @@ export default function PollPlayerPage() {
     toggleMultipleChoice,
     isAnswerValid,
     router,
-  } = usePlayerPoll();
+  } = usePlayerPoll(playerId);
 
   // Keep awake
   const shouldKeepAwake = ['answering', 'waiting', 'results'].includes(state);

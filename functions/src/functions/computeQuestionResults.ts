@@ -2,6 +2,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { LeaderboardEntry, Player, PlayerRankInfo } from '../types';
 import { ALLOWED_ORIGINS, REGION, GRACE_PERIOD_MS } from '../config';
+import { verifyAppCheck } from '../utils/appCheck';
 
 /**
  * Request interface for computeQuestionResults
@@ -35,8 +36,15 @@ export const computeQuestionResults = onCall(
     cors: ALLOWED_ORIGINS,
     timeoutSeconds: 30,  // May need more time for large games
     memory: '256MiB',
+    enforceAppCheck: true,
   },
   async (request): Promise<ComputeQuestionResultsResult> => {
+    verifyAppCheck(request);
+
+    if (!request.auth?.uid) {
+      throw new HttpsError('unauthenticated', 'Must be authenticated to compute results');
+    }
+
     const data = request.data as ComputeQuestionResultsRequest;
 
     if (!data.gameId || data.questionIndex === undefined || !data.questionType) {
@@ -45,6 +53,15 @@ export const computeQuestionResults = onCall(
 
     const { gameId, questionIndex, questionType } = data;
     const db = admin.firestore();
+
+    // Verify caller is the game host
+    const gameDoc = await db.collection('games').doc(gameId).get();
+    if (!gameDoc.exists) {
+      throw new HttpsError('not-found', 'Game not found');
+    }
+    if (gameDoc.data()?.hostId !== request.auth.uid) {
+      throw new HttpsError('permission-denied', 'Only the game host can compute results');
+    }
 
     try {
       // Wait for grace period to allow last-second answers to be written to database
