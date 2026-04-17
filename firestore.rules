@@ -149,9 +149,10 @@ service cloud.firestore {
 
     // Templates collection (for user-created presentation templates)
     match /templates/{templateId} {
-      // Users can read their own templates
+      // Users can read their own templates or public templates
       allow read: if request.auth != null &&
-                    resource.data.createdBy == request.auth.uid;
+                    (resource.data.createdBy == request.auth.uid ||
+                     resource.data.visibility == 'public');
 
       // Users can create templates with their own UID
       allow create: if request.auth != null &&

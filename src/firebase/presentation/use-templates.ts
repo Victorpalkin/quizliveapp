@@ -31,17 +31,23 @@ const DEFAULT_THEME: PresentationTheme = {
   preset: 'default',
 };
 
+// Built-in templates computed once at module scope — always available
+const builtInTemplates: PresentationTemplate[] = BUILT_IN_TEMPLATES.map((t, i) => ({
+  ...t,
+  id: `built-in-${i}`,
+}));
+
 /** Hook for saving and loading presentation templates */
 export function useTemplates() {
   const firestore = useFirestore();
   const { user } = useUser();
-  const [templates, setTemplates] = useState<PresentationTemplate[]>([]);
+  const [templates, setTemplates] = useState<PresentationTemplate[]>(builtInTemplates);
   const [loading, setLoading] = useState(true);
 
   // Subscribe to user's own templates + public templates
   useEffect(() => {
     if (!firestore || !user) {
-      setTemplates([]);
+      setTemplates(builtInTemplates);
       setLoading(false);
       return;
     }
@@ -63,12 +69,6 @@ export function useTemplates() {
     let publicResults: PresentationTemplate[] = [];
     let ownLoaded = false;
     let publicLoaded = false;
-
-    // Convert built-in templates to PresentationTemplate format
-    const builtInTemplates: PresentationTemplate[] = BUILT_IN_TEMPLATES.map((t, i) => ({
-      ...t,
-      id: `built-in-${i}`,
-    }));
 
     const mergeAndUpdate = () => {
       if (!ownLoaded || !publicLoaded) return;
@@ -109,10 +109,18 @@ export function useTemplates() {
       ownResults = snapshot.docs.map(mapDoc);
       ownLoaded = true;
       mergeAndUpdate();
+    }, () => {
+      // On error (e.g. permission-denied), treat as empty and continue
+      ownLoaded = true;
+      mergeAndUpdate();
     });
 
     const unsubPublic = onSnapshot(publicQuery, (snapshot) => {
       publicResults = snapshot.docs.map(mapDoc);
+      publicLoaded = true;
+      mergeAndUpdate();
+    }, () => {
+      // On error (e.g. permission-denied), treat as empty and continue
       publicLoaded = true;
       mergeAndUpdate();
     });
