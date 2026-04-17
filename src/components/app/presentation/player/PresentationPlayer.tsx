@@ -13,6 +13,7 @@ import { PlayerThoughts } from './elements/PlayerThoughts';
 import { PlayerRating } from './elements/PlayerRating';
 import { PlayerEvaluation } from './elements/PlayerEvaluation';
 import { PlayerAgenticDesigner } from './elements/PlayerAgenticDesigner';
+import { PlayerAIStep } from './elements/PlayerAIStep';
 import { PlayerQuizResult } from './elements/PlayerQuizResult';
 import { PlayerLeaderboardView } from './elements/PlayerLeaderboardView';
 import { PlayerQA } from './elements/PlayerQA';
@@ -329,6 +330,16 @@ export function PresentationPlayer({
                       gameId={game.id}
                       playerId={session.playerId}
                       playerName={session.playerName}
+                      onSubmitted={() => markResponded(interactiveElement.id)}
+                    />
+                  )}
+                  {interactiveElement.type === 'ai-step' && game && session && currentSlide && (
+                    <PlayerAIStep
+                      element={interactiveElement}
+                      gameId={game.id}
+                      playerId={session.playerId}
+                      playerName={session.playerName}
+                      currentSlide={currentSlide}
                       onSubmitted={() => markResponded(interactiveElement.id)}
                     />
                   )}

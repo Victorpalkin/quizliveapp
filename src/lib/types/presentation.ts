@@ -25,6 +25,7 @@ export type SlideElementType =
   | 'rating'
   | 'evaluation'
   | 'agentic-designer'
+  | 'ai-step'
   // Results (display-only, reference a source element)
   | 'quiz-results'
   | 'poll-results'
@@ -32,13 +33,14 @@ export type SlideElementType =
   | 'rating-results'
   | 'evaluation-results'
   | 'agentic-designer-results'
+  | 'ai-step-results'
   // Special elements
   | 'leaderboard'
   | 'qa'
   | 'spin-wheel';
 
 /** Which element types are interactive (player submits a response) */
-export const INTERACTIVE_ELEMENT_TYPES: SlideElementType[] = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation', 'agentic-designer'];
+export const INTERACTIVE_ELEMENT_TYPES: SlideElementType[] = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation', 'agentic-designer', 'ai-step'];
 
 /**
  * Canvas element positioned on a slide.
@@ -169,8 +171,17 @@ export interface SlideElement {
   // === Agentic Designer config ===
   agenticDesignerConfig?: AgenticDesignerConfig;
 
+  // === AI Step config (live AI generation per slide) ===
+  aiStepConfig?: AIStepConfig;
+
   // === Evaluation source reference (dynamic items from agentic designer) ===
   agenticSourceRef?: AgenticSourceRef;
+
+  // === Dynamic items source (items from ai-step structured output for evaluation/poll) ===
+  dynamicItemsSource?: {
+    sourceSlideId: string;
+    sourceElementId: string;
+  };
 
   // Results elements - reference source
   sourceElementId?: string;
@@ -204,6 +215,7 @@ export interface PresentationSettings {
   defaultTimerSeconds: number;
   pacingMode: 'free' | 'threshold' | 'all';
   pacingThreshold: number;
+  workflowConfig?: WorkflowConfig;
 }
 
 /** Visual theme */
@@ -284,12 +296,81 @@ export interface PresentationQuestion {
   createdAt: Timestamp;
 }
 
+// ==========================================
+// AI Step Types (live AI generation per slide)
+// ==========================================
+
+/** Input field configuration for an AI step */
+export interface AIStepFieldConfig {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'checkbox';
+  placeholder?: string;
+  helpText?: string;
+  parentField?: string; // Conditional rendering (for checkbox groups)
+}
+
+/** Configuration for an ai-step element */
+export interface AIStepConfig {
+  stepPrompt: string;
+  inputFields?: AIStepFieldConfig[];
+  outputExpectation?: string;
+
+  // Player/Audience Nudges
+  enablePlayerNudges?: boolean; // default: true
+  nudgeHints?: string[];
+
+  // AI Capabilities
+  enableGoogleSearch?: boolean;
+  enableImageGeneration?: boolean;
+  enableStructuredExtraction?: boolean;
+  extractionHint?: string;
+
+  // Context Selection — which previous ai-step slides to include as AI context
+  contextSlideIds?: string[];
+}
+
+/** Workflow config shared across all ai-step slides in a presentation */
+export interface WorkflowConfig {
+  systemPrompt: string;
+  target?: string;
+}
+
+/** Runtime workflow state stored at /games/{gameId}/workflowState */
+export interface PresentationWorkflowState {
+  slideOutputs: Record<string, SlideOutput>;
+  isProcessing: boolean;
+  processingSlideId?: string;
+}
+
+/** Output from a single ai-step slide */
+export interface SlideOutput {
+  aiOutput: string;
+  structuredItems?: { id: string; name: string; description: string }[];
+  imageUrl?: string;
+  hostInputs?: Record<string, string | boolean>;
+  generatedAt: number;
+}
+
+/** Player nudge for an ai-step slide, stored at /games/{gameId}/slideNudges/{slideId}/nudges/{nudgeId} */
+export interface AIStepNudge {
+  id: string;
+  playerId: string;
+  playerName: string;
+  text: string;
+  slideId: string;
+  submittedAt: Timestamp;
+}
+
 /** Template category for organization */
 export type PresentationTemplateCategory =
   | 'workshop'
   | 'training'
   | 'feedback'
   | 'meeting'
+  | 'strategy'
+  | 'brainstorming'
+  | 'innovation'
   | 'custom';
 
 /** Presentation template for quick starts */
@@ -304,6 +385,7 @@ export interface PresentationTemplate {
   settings: PresentationSettings;
   theme: PresentationTheme;
   isBuiltIn: boolean;
+  visibility: 'private' | 'public';
   createdBy?: string;
   createdAt?: Date;
   updatedAt?: Date;

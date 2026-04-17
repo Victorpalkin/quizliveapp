@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useTemplates } from '@/firebase/presentation';
+import { Switch } from '@/components/ui/switch';
 import { BookmarkPlus } from 'lucide-react';
 import type { PresentationSlide, PresentationSettings, PresentationTheme } from '@/lib/types';
 
@@ -26,6 +27,7 @@ interface SaveTemplateDialogProps {
 export function SaveTemplateDialog({ slides, settings, theme }: SaveTemplateDialogProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { saveTemplate } = useTemplates();
@@ -34,7 +36,7 @@ export function SaveTemplateDialog({ slides, settings, theme }: SaveTemplateDial
     if (!title.trim()) return;
     setSaving(true);
     try {
-      await saveTemplate(title.trim(), slides, settings, theme);
+      await saveTemplate(title.trim(), slides, settings, theme, visibility);
       toast({ title: 'Template saved' });
       setOpen(false);
       setTitle('');
@@ -58,15 +60,27 @@ export function SaveTemplateDialog({ slides, settings, theme }: SaveTemplateDial
           <DialogTitle>Save as Template</DialogTitle>
         </DialogHeader>
 
-        <div className="py-2">
-          <Label className="text-sm">Template Name</Label>
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="My template"
-            className="mt-1"
-            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-          />
+        <div className="py-2 space-y-3">
+          <div>
+            <Label className="text-sm">Template Name</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="My template"
+              className="mt-1"
+              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm">Share publicly</Label>
+              <p className="text-xs text-muted-foreground">Visible to all users</p>
+            </div>
+            <Switch
+              checked={visibility === 'public'}
+              onCheckedChange={(v) => setVisibility(v ? 'public' : 'private')}
+            />
+          </div>
         </div>
 
         <DialogFooter>

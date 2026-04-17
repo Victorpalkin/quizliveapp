@@ -21,9 +21,10 @@ interface PresentationSettingsDialogProps {
   onUpdate: (updates: Partial<PresentationSettings>) => void;
   description?: string;
   onDescriptionChange?: (description: string) => void;
+  hasAISteps?: boolean;
 }
 
-export function PresentationSettingsDialog({ settings, onUpdate, description, onDescriptionChange }: PresentationSettingsDialogProps) {
+export function PresentationSettingsDialog({ settings, onUpdate, description, onDescriptionChange, hasAISteps }: PresentationSettingsDialogProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -136,6 +137,51 @@ export function PresentationSettingsDialog({ settings, onUpdate, description, on
                 className="mt-1"
               />
             </div>
+          )}
+
+          {hasAISteps && (
+            <>
+              <div className="border-t pt-4 mt-4">
+                <Label className="text-sm font-medium">Workflow Settings</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Shared AI persona and context for all AI Steps
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm">System Prompt</Label>
+                <Textarea
+                  value={settings.workflowConfig?.systemPrompt ?? ''}
+                  onChange={(e) =>
+                    onUpdate({
+                      workflowConfig: {
+                        ...settings.workflowConfig,
+                        systemPrompt: e.target.value,
+                      },
+                    })
+                  }
+                  rows={4}
+                  placeholder="AI persona shared across all AI steps..."
+                  className="mt-1 text-sm"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Target / Subject</Label>
+                <Input
+                  value={settings.workflowConfig?.target ?? ''}
+                  onChange={(e) =>
+                    onUpdate({
+                      workflowConfig: {
+                        ...settings.workflowConfig,
+                        systemPrompt: settings.workflowConfig?.systemPrompt ?? '',
+                        target: e.target.value || undefined,
+                      },
+                    })
+                  }
+                  placeholder="e.g., company name, topic..."
+                  className="mt-1"
+                />
+              </div>
+            </>
           )}
         </div>
       </DialogContent>

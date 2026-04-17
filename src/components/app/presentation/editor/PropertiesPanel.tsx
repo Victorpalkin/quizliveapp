@@ -34,6 +34,7 @@ import { EvaluationProperties } from './properties/EvaluationProperties';
 import { ConnectorProperties } from './properties/ConnectorProperties';
 import { ResultsProperties } from './properties/ResultsProperties';
 import { AgenticDesignerProperties } from './properties/AgenticDesignerProperties';
+import { AIStepProperties } from './properties/AIStepProperties';
 import { SlideProperties } from './properties/SlideProperties';
 
 interface PropertiesPanelProps {
@@ -257,6 +258,9 @@ export function PropertiesPanel({
       )}
       {selectedElement!.type === 'agentic-designer' && (
         <AgenticDesignerProperties element={selectedElement!} onUpdate={onUpdateElement} />
+      )}
+      {selectedElement!.type === 'ai-step' && (
+        <AIStepProperties element={selectedElement!} slides={slides} onUpdate={onUpdateElement} />
       )}
       {['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results', 'agentic-designer-results'].includes(selectedElement!.type) && (
         <ResultsProperties element={selectedElement!} slides={slides} onUpdate={onUpdateElement} />

@@ -36,6 +36,7 @@ import {
   MoveRight,
   GitBranch,
   Workflow,
+  Sparkles,
 } from 'lucide-react';
 import type { SlideElement, SlideElementType } from '@/lib/types';
 
@@ -203,6 +204,12 @@ export function InsertMenu({ onInsert, disableInteractive }: InsertMenuProps) {
             <Workflow className="h-3.5 w-3.5 text-cyan-500" />
           </IconCircle>
           Agentic Designer
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsert('ai-step')} disabled={disableInteractive}>
+          <IconCircle className="bg-violet-500/10 mr-2">
+            <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+          </IconCircle>
+          AI Step
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

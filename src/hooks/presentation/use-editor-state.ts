@@ -345,6 +345,8 @@ export function useEditorState(initial?: {
         'evaluation-results': { x: 5, y: 5, width: 90, height: 85 },
         'agentic-designer': { x: 2, y: 5, width: 96, height: 90 },
         'agentic-designer-results': { x: 5, y: 5, width: 90, height: 85 },
+        'ai-step': { x: 2, y: 5, width: 96, height: 90 },
+        'ai-step-results': { x: 5, y: 5, width: 90, height: 85 },
         leaderboard: { x: 10, y: 5, width: 80, height: 90 },
         qa: { x: 10, y: 10, width: 80, height: 70 },
         'spin-wheel': { x: 20, y: 10, width: 60, height: 80 },
@@ -390,6 +392,10 @@ export function useEditorState(initial?: {
         ...(type === 'agentic-designer' && {
           x: 2, y: 5, width: 96, height: 90,
           agenticDesignerConfig: { target: 'Enter target industry or customer...', enablePlayerNudges: true },
+        }),
+        ...(type === 'ai-step' && {
+          x: 2, y: 5, width: 96, height: 90,
+          aiStepConfig: { stepPrompt: '', enablePlayerNudges: true },
         }),
         ...(type === 'leaderboard' && {
           leaderboardConfig: { maxDisplay: 10, showScores: true },
