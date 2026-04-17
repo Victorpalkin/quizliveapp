@@ -214,7 +214,7 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
     (e: React.MouseEvent) => {
       if (e.button !== 0) return;
       const target = e.target as HTMLElement;
-      if (target.closest('button, a, [role="button"], [data-controls]')) return;
+      if (target.closest('button, a, input, textarea, select, [role="button"], [data-controls], [data-interactive], [contenteditable]')) return;
       controls.nextSlide(game.currentSlideIndex, presentation?.slides.length ?? 0);
     },
     [controls, game.currentSlideIndex, presentation?.slides.length]

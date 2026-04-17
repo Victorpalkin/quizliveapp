@@ -443,10 +443,14 @@ async function callGeminiWithRetry(
  */
 async function extractStructuredItems(
   client: GoogleGenAI,
-  aiOutput: string
+  aiOutput: string,
+  stepNumber: number
 ): Promise<{ items: { id: string; name: string; description: string }[] } | null> {
   try {
-    const extractionPrompt = `Extract all distinct items from this markdown output as JSON.\nReturn ONLY valid JSON: {"items": [{"id": "1", "name": "short name", "description": "1-sentence description"}]}\n\nContent:\n${aiOutput}`;
+    // Step 6: only extract the winning/down-selected use cases, not all evaluated ones
+    const extractionPrompt = stepNumber === 6
+      ? `Extract ONLY the final down-selected/winning Agentic Use Cases from this viability assessment. These are the ones explicitly recommended for advancement to the design phase in the "Down-Selection Recommendation" section. Do NOT include deferred or rejected use cases.\nReturn ONLY valid JSON: {"items": [{"id": "1", "name": "Agent Name", "description": "detailed 1-2 sentence description of what this agent does and its business objective"}]}\n\nContent:\n${aiOutput}`
+      : `Extract all distinct items from this markdown output as JSON.\nReturn ONLY valid JSON: {"items": [{"id": "1", "name": "short name", "description": "1-sentence description"}]}\n\nContent:\n${aiOutput}`;
 
     const response = await client.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -696,7 +700,7 @@ INSTRUCTIONS:
       // Extract structured items for specific steps
       let structuredOutput = null;
       if (EXTRACTABLE_STEPS.includes(data.stepNumber)) {
-        structuredOutput = await extractStructuredItems(client, aiOutput);
+        structuredOutput = await extractStructuredItems(client, aiOutput, data.stepNumber);
       }
 
       // Prepare update data

@@ -101,7 +101,7 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
   const isProcessing = session?.isProcessing || running;
 
   return (
-    <div className="w-full h-full flex flex-col bg-background/95 rounded-lg border overflow-hidden">
+    <div className="w-full h-full flex flex-col bg-background/95 rounded-lg border overflow-hidden" data-interactive>
       {/* Phase Navigator */}
       <AgenticPhaseNavigator
         currentStep={currentStep}
