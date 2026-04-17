@@ -12,6 +12,7 @@ interface AgenticNudgePanelProps {
   nudges: AgenticDesignerNudge[];
   nudgesOpen: boolean;
   nudgeText: string;
+  nudgeHints: string[];
   onNudgeTextChange: (text: string) => void;
   onToggleNudges: () => void;
   onSummarize: () => Promise<string>;
@@ -23,6 +24,7 @@ export function AgenticNudgePanel({
   nudges,
   nudgesOpen,
   nudgeText,
+  nudgeHints,
   onNudgeTextChange,
   onToggleNudges,
   onSummarize,
@@ -63,10 +65,28 @@ export function AgenticNudgePanel({
       {/* Host nudge textarea */}
       <div>
         <Label className="text-xs">Refinement / Nudge</Label>
+        {nudgeHints.length > 0 && (
+          <div className="mt-1 mb-1.5">
+            <p className="text-[10px] text-muted-foreground mb-1">Try nudges like:</p>
+            <div className="flex flex-wrap gap-1">
+              {nudgeHints.map((hint, i) => (
+                <button
+                  key={i}
+                  onClick={() => onNudgeTextChange(hint)}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer text-left"
+                  title="Click to use this nudge"
+                  disabled={disabled}
+                >
+                  {hint}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <Textarea
           value={nudgeText}
           onChange={(e) => onNudgeTextChange(e.target.value)}
-          placeholder="Optional: guide the AI's focus..."
+          placeholder={nudgeHints[0] ? `e.g., "${nudgeHints[0]}"` : "Optional: guide the AI's focus..."}
           rows={2}
           className="mt-1 text-xs"
           disabled={disabled}

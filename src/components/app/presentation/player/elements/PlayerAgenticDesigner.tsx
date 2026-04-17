@@ -72,6 +72,9 @@ export function PlayerAgenticDesigner({ element, gameId, playerId, playerName, o
         </p>
         <h2 className="text-lg font-bold">{stepConfig?.title}</h2>
         <p className="text-xs text-muted-foreground mt-0.5">{config.target}</p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+          {stepConfig?.description}
+        </p>
       </motion.div>
 
       {/* AI Output or status */}
@@ -113,7 +116,7 @@ export function PlayerAgenticDesigner({ element, gameId, playerId, playerName, o
             <Input
               value={nudgeText}
               onChange={(e) => setNudgeText(e.target.value)}
-              placeholder="Your suggestion..."
+              placeholder={stepConfig?.nudgeHints?.[0] ? `e.g., "${stepConfig.nudgeHints[0]}"` : "Your suggestion..."}
               maxLength={300}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {

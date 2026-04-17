@@ -26,10 +26,16 @@ export function AgenticStepForm({ fields, values, onChange, disabled }: AgenticS
                 onCheckedChange={(checked) => onChange(field.id, checked)}
                 disabled={disabled}
               />
+              {field.helpText && (
+                <p className="text-[10px] text-muted-foreground mt-0.5 w-full">{field.helpText}</p>
+              )}
             </div>
           ) : field.type === 'textarea' ? (
             <>
               <Label className="text-xs">{field.label}</Label>
+              {field.helpText && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">{field.helpText}</p>
+              )}
               <Textarea
                 value={(values[field.id] as string) || ''}
                 onChange={(e) => onChange(field.id, e.target.value)}
@@ -42,6 +48,9 @@ export function AgenticStepForm({ fields, values, onChange, disabled }: AgenticS
           ) : (
             <>
               <Label className="text-xs">{field.label}</Label>
+              {field.helpText && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">{field.helpText}</p>
+              )}
               <Input
                 value={(values[field.id] as string) || ''}
                 onChange={(e) => onChange(field.id, e.target.value)}

@@ -3,12 +3,15 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Play, ChevronLeft, ChevronRight, Check, Loader2, SendToBack } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Play, ChevronLeft, ChevronRight, Check, Loader2, Info } from 'lucide-react';
 import { useAgenticSession } from '@/firebase/presentation';
 import { AGENTIC_DESIGNER_STEPS } from '@/lib/agentic-designer-steps';
-import { EXTRACTABLE_STEPS } from '@/lib/types';
 import { AgenticStepForm } from './agentic-designer/AgenticStepForm';
-import { AgenticAIOutput } from './agentic-designer/AgenticAIOutput';
+import { AgenticOutputPanel } from './agentic-designer/AgenticOutputPanel';
 import { AgenticNudgePanel } from './agentic-designer/AgenticNudgePanel';
 import type { SlideElement } from '@/lib/types';
 
@@ -96,42 +99,88 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
   return (
     <div className="w-full h-full flex flex-col bg-background/95 rounded-lg border overflow-hidden">
       {/* Step Navigator */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b bg-muted/30 overflow-x-auto flex-shrink-0">
-        {AGENTIC_DESIGNER_STEPS.map((step) => {
-          const isActive = step.id === currentStep;
-          const isDone = session?.completedSteps?.includes(step.id);
-          return (
-            <button
-              key={step.id}
-              onClick={() => { setCurrentStep(step.id); setNudgeText(''); }}
-              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap transition-colors ${
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : isDone
-                  ? 'bg-green-500/10 text-green-600 hover:bg-green-500/20'
-                  : 'text-muted-foreground hover:bg-muted'
-              }`}
-              title={step.title}
-            >
-              {isDone && !isActive && <Check className="h-3 w-3" />}
-              <span>{step.id}</span>
-            </button>
-          );
-        })}
+      <div className="border-b bg-muted/30 flex-shrink-0">
+        <div className="flex items-center gap-0.5 px-3 py-1.5 overflow-x-auto">
+          <TooltipProvider delayDuration={200}>
+            {AGENTIC_DESIGNER_STEPS.map((step) => {
+              const isActive = step.id === currentStep;
+              const isDone = session?.completedSteps?.includes(step.id);
+              const depsReady = step.dependsOn.every((d) => session?.completedSteps?.includes(d));
+              return (
+                <Tooltip key={step.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => { setCurrentStep(step.id); setNudgeText(''); }}
+                      className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium whitespace-nowrap transition-colors ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : isDone
+                          ? 'bg-green-500/10 text-green-600 hover:bg-green-500/20'
+                          : depsReady
+                          ? 'text-muted-foreground hover:bg-muted'
+                          : 'text-muted-foreground/40'
+                      }`}
+                    >
+                      {isDone && !isActive && <Check className="h-3 w-3" />}
+                      <span>{step.id}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    <p className="font-medium">{step.title}</p>
+                    {!depsReady && !isDone && step.dependsOn.length > 0 && (
+                      <p className="text-muted-foreground">Requires: Steps {step.dependsOn.join(', ')}</p>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </TooltipProvider>
+        </div>
+        <Progress
+          value={(session?.completedSteps?.length || 0) / 11 * 100}
+          className="h-1 rounded-none"
+        />
       </div>
 
-      {/* Step title */}
+      {/* Step title + guidance */}
       <div className="px-3 py-1.5 border-b flex-shrink-0">
         <h3 className="text-sm font-semibold">
           Step {currentStep}: {stepConfig?.title}
         </h3>
-        <p className="text-[10px] text-muted-foreground line-clamp-1">{stepConfig?.description}</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5">{stepConfig?.description}</p>
+        <Collapsible defaultOpen={!isCompleted}>
+          <CollapsibleTrigger className="text-[10px] text-primary flex items-center gap-1 mt-1 hover:underline">
+            <Info className="h-3 w-3" /> Step guidance
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="mt-1.5 space-y-1.5 text-[11px] bg-muted/30 rounded-md p-2">
+              <div>
+                <span className="font-medium text-foreground">What to provide: </span>
+                <span className="text-muted-foreground">{stepConfig?.inputGuidance}</span>
+              </div>
+              <div>
+                <span className="font-medium text-foreground">AI will produce: </span>
+                <span className="text-muted-foreground">{stepConfig?.outputExpectation}</span>
+              </div>
+              {stepConfig?.dependsOn && stepConfig.dependsOn.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="font-medium text-foreground">Requires:</span>
+                  {stepConfig.dependsOn.map((dep) => (
+                    <Badge key={dep} variant="outline" className="text-[10px] h-4 px-1.5">
+                      Step {dep}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       {/* Main content: form + output */}
       <div className="flex-1 flex min-h-0">
         {/* Left panel: form + nudges */}
-        <div className="w-[280px] flex-shrink-0 border-r flex flex-col">
+        <div className="w-[260px] flex-shrink-0 border-r flex flex-col">
           <ScrollArea className="flex-1 p-3">
             <AgenticStepForm
               fields={stepConfig?.fields || []}
@@ -146,6 +195,7 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
                   nudges={nudges}
                   nudgesOpen={session?.nudgesOpen || false}
                   nudgeText={nudgeText}
+                  nudgeHints={stepConfig?.nudgeHints || []}
                   onNudgeTextChange={setNudgeText}
                   onToggleNudges={toggleNudges}
                   onSummarize={summarizeNudges}
@@ -197,10 +247,13 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
 
         {/* Right panel: AI output */}
         <div className="flex-1 p-3 min-w-0">
-          <AgenticAIOutput
-            output={aiOutput}
-            isProcessing={isProcessing}
+          <AgenticOutputPanel
+            currentStep={currentStep}
+            currentOutput={aiOutput}
+            isProcessing={isProcessing || false}
             stepTitle={stepConfig?.title || ''}
+            completedSteps={session?.completedSteps || []}
+            aiOutputs={session?.aiOutputs || {}}
           />
         </div>
       </div>

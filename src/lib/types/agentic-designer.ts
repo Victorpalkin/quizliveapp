@@ -52,6 +52,7 @@ export interface AgenticDesignerFieldConfig {
   label: string;
   type: 'text' | 'textarea' | 'checkbox';
   placeholder?: string;
+  helpText?: string;
 }
 
 /** Step configuration */
@@ -61,6 +62,10 @@ export interface AgenticDesignerStepConfig {
   description: string;
   fields: AgenticDesignerFieldConfig[];
   aiPrompt: string;
+  inputGuidance: string;
+  outputExpectation: string;
+  nudgeHints: string[];
+  dependsOn: number[];
 }
 
 /** Steps that produce evaluatable items */
