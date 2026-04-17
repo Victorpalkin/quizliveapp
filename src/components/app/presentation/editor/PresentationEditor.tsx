@@ -111,7 +111,7 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
         await handleSave();
       }
       const gameId = await createPresentationGame(presentation.id, user.uid, editor.settings);
-      router.push(`/host/presentation/lobby/${gameId}`);
+      router.push(`/host/presentation/present/${gameId}`);
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not start presentation.' });
       throw new Error('Failed to start presentation');

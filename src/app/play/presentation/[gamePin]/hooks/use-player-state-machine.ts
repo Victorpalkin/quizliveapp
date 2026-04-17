@@ -160,7 +160,7 @@ export function usePlayerStateMachine(gamePin: string, playerId: string) {
     const newSession: PlayerSession = { playerId, playerName: name, gameId: game.id };
     sessionStorage.setItem(`${SESSION_KEY}-${gamePin}`, JSON.stringify(newSession));
     setSession(newSession);
-    setState('lobby');
+    setState(game.state === 'active' ? 'active' : 'lobby');
   }, [firestore, game, gamePin, playerId]);
 
   // Get current slide interactive element

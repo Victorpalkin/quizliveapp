@@ -391,6 +391,38 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // Agentic designer sessions subcollection
+      match /agenticSessions/{sessionId} {
+        // Anyone can read session state (players need current step + AI output)
+        allow read: if true;
+
+        // Only host can create/update sessions
+        allow create, update: if request.auth != null &&
+                                 request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId;
+
+        allow delete: if false;
+
+        // Nudges subcollection (player suggestions to host)
+        match /nudges/{nudgeId} {
+          allow read: if true;
+
+          // Players can submit nudges during active presentation (must be authenticated)
+          allow create: if request.auth != null &&
+                           get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
+                           get(/databases/$(database)/documents/games/$(gameId)).data.state == 'active' &&
+                           request.resource.data.playerId is string &&
+                           request.resource.data.text is string &&
+                           request.resource.data.text.size() >= 1 &&
+                           request.resource.data.text.size() <= 300;
+
+          // Host can delete nudges (for clearing)
+          allow delete: if request.auth != null &&
+                           request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId;
+
+          allow update: if false;
+        }
+      }
+
       // Q&A questions subcollection
       match /questions/{questionId} {
         allow read: if true;

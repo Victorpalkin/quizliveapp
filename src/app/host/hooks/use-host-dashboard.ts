@@ -258,7 +258,7 @@ export function useHostDashboard() {
       const pres = presentations?.find(p => p.id === presentationId);
       if (!pres) return;
       const gameId = await createPresentationGame(presentationId, user.uid, pres.settings);
-      router.push(`/host/presentation/lobby/${gameId}`);
+      router.push(`/host/presentation/present/${gameId}`);
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not create game.' });
     }
