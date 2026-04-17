@@ -14,6 +14,8 @@ import { HostThoughtsResultsElement } from './elements/HostThoughtsResultsElemen
 import { HostRatingResultsElement } from './elements/HostRatingResultsElement';
 import { HostEvaluationElement } from './elements/HostEvaluationElement';
 import { HostEvaluationResultsElement } from './elements/HostEvaluationResultsElement';
+import { HostAgenticDesignerElement } from './elements/HostAgenticDesignerElement';
+import { HostAgenticDesignerResultsElement } from './elements/HostAgenticDesignerResultsElement';
 import { HostLeaderboardElement } from './elements/HostLeaderboardElement';
 import { HostQAElement } from './elements/HostQAElement';
 import { HostSpinWheelElement } from './elements/HostSpinWheelElement';
@@ -146,11 +148,13 @@ export function HostSlideCanvas({ slide, slides, gameId, playerCount, playerName
           {element.type === 'thoughts' && <HostThoughtsElement element={element} gameId={gameId} playerCount={playerCount} />}
           {element.type === 'rating' && <HostRatingElement element={element} gameId={gameId} playerCount={playerCount} />}
           {element.type === 'evaluation' && <HostEvaluationElement element={element} gameId={gameId} playerCount={playerCount} />}
+          {element.type === 'agentic-designer' && <HostAgenticDesignerElement element={element} gameId={gameId} playerCount={playerCount} />}
           {element.type === 'quiz-results' && <HostQuizResultsElement element={element} slides={slides} gameId={gameId} />}
           {element.type === 'poll-results' && <HostPollResultsElement element={element} slides={slides} gameId={gameId} />}
           {element.type === 'thoughts-results' && <HostThoughtsResultsElement element={element} slides={slides} gameId={gameId} />}
           {element.type === 'rating-results' && <HostRatingResultsElement element={element} slides={slides} gameId={gameId} />}
           {element.type === 'evaluation-results' && <HostEvaluationResultsElement element={element} slides={slides} gameId={gameId} />}
+          {element.type === 'agentic-designer-results' && <HostAgenticDesignerResultsElement element={element} slides={slides} gameId={gameId} />}
           {element.type === 'leaderboard' && <HostLeaderboardElement element={element} gameId={gameId} />}
           {element.type === 'qa' && <HostQAElement element={element} gameId={gameId} />}
           {element.type === 'spin-wheel' && <HostSpinWheelElement element={element} playerNames={playerNames} />}

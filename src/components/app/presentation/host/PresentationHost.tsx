@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Trophy, BarChart3, Home } from 'lucide-react';
 import type { PresentationGame, PresentationSlide } from '@/lib/types';
 
-const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
+const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation', 'agentic-designer'];
 
 interface Player {
   id: string;

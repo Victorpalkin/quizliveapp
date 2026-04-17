@@ -33,6 +33,7 @@ import { SpinWheelProperties } from './properties/SpinWheelProperties';
 import { EvaluationProperties } from './properties/EvaluationProperties';
 import { ConnectorProperties } from './properties/ConnectorProperties';
 import { ResultsProperties } from './properties/ResultsProperties';
+import { AgenticDesignerProperties } from './properties/AgenticDesignerProperties';
 import { SlideProperties } from './properties/SlideProperties';
 
 interface PropertiesPanelProps {
@@ -252,9 +253,12 @@ export function PropertiesPanel({
         <SpinWheelProperties element={selectedElement!} onUpdate={onUpdateElement} />
       )}
       {selectedElement!.type === 'evaluation' && (
-        <EvaluationProperties element={selectedElement!} onUpdate={onUpdateElement} />
+        <EvaluationProperties element={selectedElement!} slides={slides} onUpdate={onUpdateElement} />
       )}
-      {['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results'].includes(selectedElement!.type) && (
+      {selectedElement!.type === 'agentic-designer' && (
+        <AgenticDesignerProperties element={selectedElement!} onUpdate={onUpdateElement} />
+      )}
+      {['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results', 'agentic-designer-results'].includes(selectedElement!.type) && (
         <ResultsProperties element={selectedElement!} slides={slides} onUpdate={onUpdateElement} />
       )}
 

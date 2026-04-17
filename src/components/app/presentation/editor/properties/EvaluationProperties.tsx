@@ -6,16 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Link2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
-import type { SlideElement } from '@/lib/types';
+import { EXTRACTABLE_STEPS } from '@/lib/types';
+import { AGENTIC_DESIGNER_STEPS } from '@/lib/agentic-designer-steps';
+import type { SlideElement, PresentationSlide } from '@/lib/types';
 
 interface EvaluationPropertiesProps {
   element: SlideElement;
+  slides?: PresentationSlide[];
   onUpdate: (updates: Partial<SlideElement>) => void;
 }
 
-export function EvaluationProperties({ element, onUpdate }: EvaluationPropertiesProps) {
+export function EvaluationProperties({ element, slides, onUpdate }: EvaluationPropertiesProps) {
   const config = element.evaluationConfig;
   if (!config) return null;
 
@@ -238,6 +241,78 @@ export function EvaluationProperties({ element, onUpdate }: EvaluationProperties
           </Button>
         )}
       </div>
+
+      {/* Agentic Designer Source */}
+      {slides && (() => {
+        const agenticElements: { slideId: string; slideIndex: number; el: SlideElement }[] = [];
+        slides.forEach((s, idx) => {
+          s.elements.forEach((el) => {
+            if (el.type === 'agentic-designer') {
+              agenticElements.push({ slideId: s.id, slideIndex: idx, el });
+            }
+          });
+        });
+
+        if (agenticElements.length === 0) return null;
+
+        const ref = element.agenticSourceRef;
+        const selectedKey = ref ? `${ref.slideId}__${ref.elementId}__${ref.step}` : '';
+
+        const handleSourceChange = (key: string) => {
+          if (!key) {
+            onUpdate({ agenticSourceRef: undefined });
+            return;
+          }
+          const [slideId, elementId, step] = key.split('__');
+          onUpdate({
+            agenticSourceRef: { slideId, elementId, step: Number(step) },
+          });
+        };
+
+        return (
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Link2 className="h-3.5 w-3.5 text-cyan-500" />
+              <Label className="text-xs font-medium">Dynamic Items Source</Label>
+            </div>
+            <p className="text-[10px] text-muted-foreground mb-2">
+              Source items from an Agentic Designer step at runtime. Overrides static items above during presentation.
+            </p>
+            <Select value={selectedKey} onValueChange={handleSourceChange}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="None (use static items)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None (use static items)</SelectItem>
+                {agenticElements.flatMap(({ slideId, slideIndex, el }) =>
+                  EXTRACTABLE_STEPS.map((step) => {
+                    const stepTitle = AGENTIC_DESIGNER_STEPS[step - 1]?.title || `Step ${step}`;
+                    const target = el.agenticDesignerConfig?.target || '';
+                    return (
+                      <SelectItem
+                        key={`${slideId}__${el.id}__${step}`}
+                        value={`${slideId}__${el.id}__${step}`}
+                      >
+                        Slide {slideIndex + 1}: {target ? `${target} - ` : ''}{stepTitle}
+                      </SelectItem>
+                    );
+                  })
+                )}
+              </SelectContent>
+            </Select>
+            {ref && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full mt-1 text-xs text-muted-foreground"
+                onClick={() => onUpdate({ agenticSourceRef: undefined })}
+              >
+                Clear source
+              </Button>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

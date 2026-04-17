@@ -1,4 +1,5 @@
 import { Timestamp } from 'firebase/firestore';
+import type { AgenticDesignerConfig, AgenticSourceRef } from './agentic-designer';
 
 // ==========================================
 // Presentation Mode Types (Canvas-based WYSIWYG)
@@ -7,7 +8,7 @@ import { Timestamp } from 'firebase/firestore';
 /**
  * Element types that can be placed on a slide canvas.
  * Content elements: text, image, shape
- * Interactive elements (max 1 per slide): quiz, poll, thoughts, rating
+ * Interactive elements (max 1 per slide): quiz, poll, thoughts, rating, agentic-designer
  * Results elements: quiz-results, poll-results, thoughts-results, rating-results
  * Special elements: leaderboard, qa, spin-wheel
  */
@@ -23,19 +24,21 @@ export type SlideElementType =
   | 'thoughts'
   | 'rating'
   | 'evaluation'
+  | 'agentic-designer'
   // Results (display-only, reference a source element)
   | 'quiz-results'
   | 'poll-results'
   | 'thoughts-results'
   | 'rating-results'
   | 'evaluation-results'
+  | 'agentic-designer-results'
   // Special elements
   | 'leaderboard'
   | 'qa'
   | 'spin-wheel';
 
 /** Which element types are interactive (player submits a response) */
-export const INTERACTIVE_ELEMENT_TYPES: SlideElementType[] = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
+export const INTERACTIVE_ELEMENT_TYPES: SlideElementType[] = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation', 'agentic-designer'];
 
 /**
  * Canvas element positioned on a slide.
@@ -162,6 +165,12 @@ export interface SlideElement {
     maxDisplay: number;
     showScores: boolean;
   };
+
+  // === Agentic Designer config ===
+  agenticDesignerConfig?: AgenticDesignerConfig;
+
+  // === Evaluation source reference (dynamic items from agentic designer) ===
+  agenticSourceRef?: AgenticSourceRef;
 
   // Results elements - reference source
   sourceElementId?: string;

@@ -6,3 +6,4 @@ export * from './thoughts-gathering';
 export * from './evaluation';
 export * from './poll';
 export * from './presentation';
+export * from './agentic-designer';

@@ -36,10 +36,18 @@ export function ResultsProperties({ element, slides, onUpdate }: ResultsProperti
   };
 
   const getLabel = (item: typeof interactiveElements[0]) => {
-    const config = item.element.quizConfig || item.element.pollConfig || item.element.thoughtsConfig || item.element.ratingConfig;
-    const question = (config && 'question' in config) ? config.question : (config && 'prompt' in config) ? config.prompt : (config && 'itemTitle' in config) ? config.itemTitle : '';
+    const el = item.element;
+    const config = el.quizConfig || el.pollConfig || el.thoughtsConfig || el.ratingConfig;
+    let question = '';
+    if (el.agenticDesignerConfig) {
+      question = el.agenticDesignerConfig.target;
+    } else if (el.evaluationConfig) {
+      question = el.evaluationConfig.title;
+    } else if (config) {
+      question = (('question' in config) ? config.question : ('prompt' in config) ? config.prompt : ('itemTitle' in config) ? config.itemTitle : '') || '';
+    }
     const preview = question ? ` - ${question.slice(0, 30)}${question.length > 30 ? '...' : ''}` : '';
-    return `Slide ${item.slideIndex + 1}: ${item.element.type}${preview}`;
+    return `Slide ${item.slideIndex + 1}: ${el.type}${preview}`;
   };
 
   return (

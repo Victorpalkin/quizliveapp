@@ -1,6 +1,6 @@
 'use client';
 
-import { FileQuestion, Vote, MessageSquare, Star, Trophy, HelpCircle, Disc3, ClipboardList } from 'lucide-react';
+import { FileQuestion, Vote, MessageSquare, Star, Trophy, HelpCircle, Disc3, ClipboardList, Workflow } from 'lucide-react';
 import type { SlideElement } from '@/lib/types';
 
 interface InteractiveElementProps {
@@ -16,6 +16,7 @@ const CONFIG = {
   qa: { icon: HelpCircle, label: 'Q&A', color: 'bg-green-500/10 border-green-500/30', textColor: 'text-green-600' },
   'spin-wheel': { icon: Disc3, label: 'Spin Wheel', color: 'bg-pink-500/10 border-pink-500/30', textColor: 'text-pink-600' },
   evaluation: { icon: ClipboardList, label: 'Evaluation', color: 'bg-indigo-500/10 border-indigo-500/30', textColor: 'text-indigo-600' },
+  'agentic-designer': { icon: Workflow, label: 'Agentic Designer', color: 'bg-cyan-500/10 border-cyan-500/30', textColor: 'text-cyan-600' },
 };
 
 export function InteractiveElement({ element }: InteractiveElementProps) {
@@ -31,6 +32,7 @@ export function InteractiveElement({ element }: InteractiveElementProps) {
     if (element.type === 'thoughts' && element.thoughtsConfig) return element.thoughtsConfig.prompt;
     if (element.type === 'rating' && element.ratingConfig) return element.ratingConfig.itemTitle;
     if (element.type === 'evaluation' && element.evaluationConfig) return element.evaluationConfig.title;
+    if (element.type === 'agentic-designer' && element.agenticDesignerConfig) return element.agenticDesignerConfig.target;
     if (element.type === 'leaderboard') return 'Leaderboard';
     if (element.type === 'qa') return element.qaConfig?.topic || 'Q&A';
     if (element.type === 'spin-wheel') return 'Spin the Wheel';

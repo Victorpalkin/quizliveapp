@@ -28,7 +28,7 @@ export interface QuizResult {
   wasTimeout: boolean;
 }
 
-const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
+const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation', 'agentic-designer'];
 const SESSION_KEY = 'zivo-pres-player-session';
 
 function toDate(val: unknown): Date | undefined {

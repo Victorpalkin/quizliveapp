@@ -12,6 +12,7 @@ import { PlayerPoll } from './elements/PlayerPoll';
 import { PlayerThoughts } from './elements/PlayerThoughts';
 import { PlayerRating } from './elements/PlayerRating';
 import { PlayerEvaluation } from './elements/PlayerEvaluation';
+import { PlayerAgenticDesigner } from './elements/PlayerAgenticDesigner';
 import { PlayerQuizResult } from './elements/PlayerQuizResult';
 import { PlayerLeaderboardView } from './elements/PlayerLeaderboardView';
 import { PlayerQA } from './elements/PlayerQA';
@@ -315,6 +316,15 @@ export function PresentationPlayer({
                   )}
                   {interactiveElement.type === 'evaluation' && game && session && (
                     <PlayerEvaluation
+                      element={interactiveElement}
+                      gameId={game.id}
+                      playerId={session.playerId}
+                      playerName={session.playerName}
+                      onSubmitted={() => markResponded(interactiveElement.id)}
+                    />
+                  )}
+                  {interactiveElement.type === 'agentic-designer' && game && session && (
+                    <PlayerAgenticDesigner
                       element={interactiveElement}
                       gameId={game.id}
                       playerId={session.playerId}
