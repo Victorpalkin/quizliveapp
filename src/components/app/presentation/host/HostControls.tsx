@@ -50,6 +50,22 @@ export function HostControls({
   const [navigatorOpen, setNavigatorOpen] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const navigatorRef = useRef<HTMLDivElement>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Single function to show controls and reset the shared hide timer
+  const showControls = useCallback(() => {
+    setVisible(true);
+    clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      setVisible(false);
+      setNavigatorOpen(false);
+    }, 3000);
+  }, []);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => clearTimeout(hideTimerRef.current);
+  }, []);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const target = e.target as Element;
@@ -80,12 +96,12 @@ export function HostControls({
     }
     if (e.key === 'g' || e.key === 'G') {
       setNavigatorOpen((prev) => !prev);
-      setVisible(true);
+      showControls();
     }
     if ((e.key === 'f' || e.key === 'F') && onToggleFullscreen) {
       onToggleFullscreen();
     }
-  }, [onNextSlide, onPrevSlide, navigatorOpen, isFullscreen, onToggleFullscreen]);
+  }, [onNextSlide, onPrevSlide, navigatorOpen, isFullscreen, onToggleFullscreen, showControls]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -93,26 +109,15 @@ export function HostControls({
   }, [handleKeyDown]);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-
     const handleMove = (e: MouseEvent) => {
-      const inBottomZone = e.clientY >= window.innerHeight - 80;
-      if (inBottomZone) {
-        setVisible(true);
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          setVisible(false);
-          setNavigatorOpen(false);
-        }, 3000);
+      if (e.clientY >= window.innerHeight - 80) {
+        showControls();
       }
     };
 
     window.addEventListener('mousemove', handleMove);
-    return () => {
-      window.removeEventListener('mousemove', handleMove);
-      clearTimeout(timer);
-    };
-  }, []);
+    return () => window.removeEventListener('mousemove', handleMove);
+  }, [showControls]);
 
   // Scroll active thumbnail into view when navigator opens
   useEffect(() => {

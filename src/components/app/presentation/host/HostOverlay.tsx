@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Users, QrCode, X } from 'lucide-react';
@@ -16,6 +16,7 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
   const [visible, setVisible] = useState(true);
   const [qrVisible, setQrVisible] = useState(true);
   const [joinUrl, setJoinUrl] = useState('');
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (gamePin) {
@@ -23,32 +24,34 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
     }
   }, [gamePin]);
 
+  // Single function to show overlay and reset the shared hide timer
+  const showOverlay = useCallback(() => {
+    setVisible(true);
+    clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => setVisible(false), 4000);
+  }, []);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => clearTimeout(hideTimerRef.current);
+  }, []);
+
   // Show briefly when slide changes
   useEffect(() => {
-    setVisible(true);
-    const timer = setTimeout(() => setVisible(false), 4000);
-    return () => clearTimeout(timer);
-  }, [slideIndex]);
+    showOverlay();
+  }, [slideIndex, showOverlay]);
 
   // Show when mouse enters top zone
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-
     const handleMove = (e: MouseEvent) => {
-      const inTopZone = e.clientY <= 80;
-      if (inTopZone) {
-        setVisible(true);
-        clearTimeout(timer);
-        timer = setTimeout(() => setVisible(false), 4000);
+      if (e.clientY <= 80) {
+        showOverlay();
       }
     };
 
     window.addEventListener('mousemove', handleMove);
-    return () => {
-      window.removeEventListener('mousemove', handleMove);
-      clearTimeout(timer);
-    };
-  }, []);
+    return () => window.removeEventListener('mousemove', handleMove);
+  }, [showOverlay]);
 
   const progress = totalSlides > 1 ? ((slideIndex + 1) / totalSlides) * 100 : 100;
 
