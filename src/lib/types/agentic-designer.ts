@@ -17,6 +17,7 @@ export interface AgenticDesignerSession {
   currentStep: number; // 1-11
   stepsData: Record<number, Record<string, string | boolean>>;
   aiOutputs: Record<number, string>;
+  imageUrls?: Record<number, string>;
   completedSteps: number[];
   isProcessing: boolean;
   nudgesOpen: boolean;

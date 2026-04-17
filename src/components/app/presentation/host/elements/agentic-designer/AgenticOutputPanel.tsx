@@ -15,6 +15,7 @@ interface AgenticOutputPanelProps {
   isProcessing: boolean;
   completedSteps: number[];
   aiOutputs: Record<number, string>;
+  imageUrls?: Record<number, string>;
 }
 
 export function AgenticOutputPanel({
@@ -22,6 +23,7 @@ export function AgenticOutputPanel({
   isProcessing,
   completedSteps,
   aiOutputs,
+  imageUrls,
 }: AgenticOutputPanelProps) {
   const previousSteps = completedSteps
     .filter((s) => s < currentStep)
@@ -80,6 +82,7 @@ export function AgenticOutputPanel({
       <div className="flex-1 min-h-0">
         <AgenticAIOutput
           output={currentOutput}
+          imageUrl={imageUrls?.[currentStep] || (currentStep === 11 ? imageUrls?.[10] : undefined) || null}
           isProcessing={isProcessing}
           stepTitle={stepTitle}
         />

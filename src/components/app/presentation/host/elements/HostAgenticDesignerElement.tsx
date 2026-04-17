@@ -17,6 +17,7 @@ import type { SlideElement } from '@/lib/types';
 const TOTAL_STEPS = AGENTIC_DESIGNER_STEPS.length;
 const EMPTY_STEPS: number[] = [];
 const EMPTY_OUTPUTS: Record<number, string> = {};
+const EMPTY_IMAGE_URLS: Record<number, string> = {};
 
 interface HostAgenticDesignerElementProps {
   element: SlideElement;
@@ -231,6 +232,7 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
             isProcessing={isProcessing || false}
             completedSteps={session?.completedSteps || EMPTY_STEPS}
             aiOutputs={session?.aiOutputs || EMPTY_OUTPUTS}
+            imageUrls={session?.imageUrls || EMPTY_IMAGE_URLS}
           />
         </div>
       </div>

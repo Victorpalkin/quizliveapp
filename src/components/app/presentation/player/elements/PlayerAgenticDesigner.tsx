@@ -121,6 +121,15 @@ export function PlayerAgenticDesigner({ element, gameId, playerId, playerName, o
         ) : currentStepOutput ? (
           <div className="prose prose-base dark:prose-invert max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentStepOutput}</ReactMarkdown>
+            {(session?.imageUrls?.[currentStep] || (currentStep === 11 && session?.imageUrls?.[10])) && (
+              <div className="mt-4 rounded-lg overflow-hidden border not-prose">
+                <img
+                  src={session?.imageUrls?.[currentStep] || session?.imageUrls?.[10]}
+                  alt="AI Data Foundation Map"
+                  className="w-full h-auto"
+                />
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">

@@ -8,11 +8,12 @@ import { Copy, Check, Download } from 'lucide-react';
 
 interface AgenticAIOutputProps {
   output: string | null;
+  imageUrl?: string | null;
   isProcessing: boolean;
   stepTitle: string;
 }
 
-export function AgenticAIOutput({ output, isProcessing, stepTitle }: AgenticAIOutputProps) {
+export function AgenticAIOutput({ output, imageUrl, isProcessing, stepTitle }: AgenticAIOutputProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -65,6 +66,23 @@ export function AgenticAIOutput({ output, isProcessing, stepTitle }: AgenticAIOu
       </div>
       <div className="flex-1 overflow-y-auto prose prose-base dark:prose-invert max-w-none">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{output}</ReactMarkdown>
+        {imageUrl && (
+          <div className="mt-4 rounded-lg overflow-hidden border not-prose">
+            <img
+              src={imageUrl}
+              alt={`${stepTitle} infographic`}
+              className="w-full h-auto"
+            />
+            <div className="p-2 flex justify-end">
+              <a href={imageUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="sm" className="h-8 text-sm">
+                  <Download className="h-4 w-4 mr-1" />
+                  Download Image
+                </Button>
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -104,6 +104,15 @@ export function HostAgenticDesignerResultsElement({ element, slides, gameId }: H
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {latestOutput.output}
         </ReactMarkdown>
+        {session?.imageUrls?.[10] && (
+          <div className="mt-4 rounded-lg overflow-hidden border not-prose">
+            <img
+              src={session.imageUrls[10]}
+              alt="AI Data Foundation Map"
+              className="w-full h-auto"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
