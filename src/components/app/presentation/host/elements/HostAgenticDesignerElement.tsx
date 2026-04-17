@@ -4,15 +4,14 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Play, ChevronLeft, ChevronRight, Check, Loader2, Info } from 'lucide-react';
+import { Play, RefreshCw, ChevronLeft, ChevronRight, Loader2, Info } from 'lucide-react';
 import { useAgenticSession } from '@/firebase/presentation';
-import { AGENTIC_DESIGNER_STEPS } from '@/lib/agentic-designer-steps';
+import { AGENTIC_DESIGNER_STEPS, AGENTIC_PHASES } from '@/lib/agentic-designer-steps';
 import { AgenticStepForm } from './agentic-designer/AgenticStepForm';
 import { AgenticOutputPanel } from './agentic-designer/AgenticOutputPanel';
 import { AgenticNudgePanel } from './agentic-designer/AgenticNudgePanel';
+import { AgenticPhaseNavigator } from './agentic-designer/AgenticPhaseNavigator';
 import type { SlideElement } from '@/lib/types';
 
 const TOTAL_STEPS = AGENTIC_DESIGNER_STEPS.length;
@@ -102,75 +101,54 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
 
   return (
     <div className="w-full h-full flex flex-col bg-background/95 rounded-lg border overflow-hidden">
-      {/* Step Navigator */}
-      <div className="border-b bg-muted/30 flex-shrink-0">
-        <div className="flex items-center gap-0.5 px-3 py-1.5 overflow-x-auto">
-          <TooltipProvider delayDuration={200}>
-            {AGENTIC_DESIGNER_STEPS.map((step) => {
-              const isActive = step.id === currentStep;
-              const isDone = session?.completedSteps?.includes(step.id);
-              const depsReady = step.dependsOn.every((d) => session?.completedSteps?.includes(d));
-              return (
-                <Tooltip key={step.id}>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => { setCurrentStep(step.id); setNudgeText(''); }}
-                      className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium whitespace-nowrap transition-colors ${
-                        isActive
-                          ? 'bg-primary text-primary-foreground'
-                          : isDone
-                          ? 'bg-green-500/10 text-green-600 hover:bg-green-500/20'
-                          : depsReady
-                          ? 'text-muted-foreground hover:bg-muted'
-                          : 'text-muted-foreground/40'
-                      }`}
-                    >
-                      {isDone && !isActive && <Check className="h-3 w-3" />}
-                      <span>{step.id}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    {step.title}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </TooltipProvider>
-        </div>
-        <Progress
-          value={(session?.completedSteps?.length || 0) / TOTAL_STEPS * 100}
-          className="h-1 rounded-none"
-        />
-      </div>
+      {/* Phase Navigator */}
+      <AgenticPhaseNavigator
+        currentStep={currentStep}
+        completedSteps={session?.completedSteps || EMPTY_STEPS}
+        aiOutputs={session?.aiOutputs || EMPTY_OUTPUTS}
+        onStepChange={(step) => { setCurrentStep(step); setNudgeText(''); }}
+      />
 
       {/* Step title + guidance */}
-      <div className="px-3 py-1.5 border-b flex-shrink-0">
-        <h3 className="text-sm font-semibold">
+      <div className="px-3 py-2 border-b flex-shrink-0">
+        {/* Breadcrumb */}
+        {(() => {
+          const phase = AGENTIC_PHASES.find((p) => p.steps.includes(currentStep));
+          return phase ? (
+            <p className="text-sm text-muted-foreground mb-0.5">
+              {phase.label} &rsaquo; {stepConfig?.title}
+            </p>
+          ) : null;
+        })()}
+        <h3 className="text-lg font-semibold">
           Step {currentStep}: {stepConfig?.title}
         </h3>
-        <p className="text-[10px] text-muted-foreground mt-0.5">{stepConfig?.description}</p>
+        <p className="text-sm text-muted-foreground mt-0.5">{stepConfig?.shortDescription || stepConfig?.description}</p>
         <Collapsible key={currentStep} defaultOpen={!isCompleted}>
-          <CollapsibleTrigger className="text-[10px] text-primary flex items-center gap-1 mt-1 hover:underline">
-            <Info className="h-3 w-3" /> Step guidance
+          <CollapsibleTrigger className="text-sm text-primary flex items-center gap-1 mt-1 hover:underline">
+            <Info className="h-4 w-4" /> Step guidance
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="mt-1.5 space-y-1.5 text-[11px] bg-muted/30 rounded-md p-2">
+            <div className="mt-1.5 space-y-1.5 text-sm bg-muted/30 rounded-md p-2">
               <div>
-                <span className="font-medium text-foreground">What to provide: </span>
+                <span className="font-medium text-foreground">Your input: </span>
                 <span className="text-muted-foreground">{stepConfig?.inputGuidance}</span>
               </div>
               <div>
-                <span className="font-medium text-foreground">AI will produce: </span>
+                <span className="font-medium text-foreground">AI output: </span>
                 <span className="text-muted-foreground">{stepConfig?.outputExpectation}</span>
               </div>
               {stepConfig?.dependsOn && stepConfig.dependsOn.length > 0 && (
-                <div className="flex items-center gap-1 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="font-medium text-foreground">Requires:</span>
-                  {stepConfig.dependsOn.map((dep) => (
-                    <Badge key={dep} variant="outline" className="text-[10px] h-4 px-1.5">
-                      Step {dep}
-                    </Badge>
-                  ))}
+                  {stepConfig.dependsOn.map((dep) => {
+                    const depTitle = AGENTIC_DESIGNER_STEPS[dep - 1]?.title;
+                    return (
+                      <Badge key={dep} variant="outline" className="text-sm h-6 px-2">
+                        Step {dep}{depTitle ? `: ${depTitle}` : ''}
+                      </Badge>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -181,7 +159,7 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
       {/* Main content: form + output */}
       <div className="flex-1 flex min-h-0">
         {/* Left panel: form + nudges */}
-        <div className="w-[260px] flex-shrink-0 border-r flex flex-col">
+        <div className="w-[340px] flex-shrink-0 border-r flex flex-col">
           <ScrollArea className="flex-1 p-3">
             <AgenticStepForm
               fields={stepConfig?.fields || []}
@@ -212,35 +190,35 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
             <Button
               onClick={handleRunAI}
               disabled={isProcessing}
-              className="w-full h-8 text-xs"
+              className="w-full h-10 text-sm"
               variant="gradient"
             >
               {isProcessing ? (
-                <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Processing...</>
+                <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Processing...</>
               ) : aiOutput ? (
-                <><Play className="h-3.5 w-3.5 mr-1" /> Update Analysis</>
+                <><RefreshCw className="h-4 w-4 mr-1.5" /> Regenerate</>
               ) : (
-                <><Play className="h-3.5 w-3.5 mr-1" /> {currentStep === 1 ? 'Kickoff Research' : 'Run AI'}</>
+                <><Play className="h-4 w-4 mr-1.5" /> Generate</>
               )}
             </Button>
             <div className="flex gap-1.5">
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 h-7 text-xs"
+                className="flex-1 h-9 text-sm"
                 onClick={handlePrevStep}
                 disabled={currentStep <= 1 || isProcessing}
               >
-                <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Prev
+                <ChevronLeft className="h-4 w-4 mr-1" /> Prev
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 h-7 text-xs"
+                className="flex-1 h-9 text-sm"
                 onClick={handleNextStep}
                 disabled={currentStep >= TOTAL_STEPS || isProcessing}
               >
-                Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                Next <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
           </div>

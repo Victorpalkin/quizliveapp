@@ -81,7 +81,7 @@ export function HostAgenticDesignerResultsElement({ element, slides, gameId }: H
     return (
       <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-muted-foreground">
         <p>No results yet</p>
-        <p className="text-xs">The host needs to run the agentic designer first</p>
+        <p className="text-sm">The host needs to run the agentic designer first</p>
       </div>
     );
   }
@@ -100,7 +100,7 @@ export function HostAgenticDesignerResultsElement({ element, slides, gameId }: H
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto prose prose-sm dark:prose-invert max-w-none">
+      <div className="flex-1 overflow-y-auto prose prose-base dark:prose-invert max-w-none">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {latestOutput.output}
         </ReactMarkdown>

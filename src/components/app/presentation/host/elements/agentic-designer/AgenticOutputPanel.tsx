@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { BookOpen, ChevronRight, Check } from 'lucide-react';
 import { AgenticAIOutput } from './AgenticAIOutput';
 import { AGENTIC_DESIGNER_STEPS } from '@/lib/agentic-designer-steps';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface AgenticOutputPanelProps {
   currentStep: number;
@@ -23,72 +27,63 @@ export function AgenticOutputPanel({
     .filter((s) => s < currentStep)
     .sort((a, b) => b - a);
 
-  const [viewingStep, setViewingStep] = useState<string>(
-    previousSteps[0]?.toString() || ''
-  );
-
-  // Reset viewingStep when currentStep changes
-  useEffect(() => {
-    const prev = completedSteps
-      .filter((s) => s < currentStep)
-      .sort((a, b) => b - a);
-    setViewingStep(prev[0]?.toString() || '');
-  }, [currentStep, completedSteps]);
-
   const hasPrevious = previousSteps.length > 0;
   const currentOutput = aiOutputs[currentStep] || null;
   const stepTitle = AGENTIC_DESIGNER_STEPS[currentStep - 1]?.title || '';
 
   return (
-    <Tabs defaultValue="current" className="flex flex-col h-full">
-      <TabsList className="flex-shrink-0 h-8">
-        <TabsTrigger value="current" className="text-xs h-7">
-          Step {currentStep} Output
-        </TabsTrigger>
-        <TabsTrigger value="previous" className="text-xs h-7" disabled={!hasPrevious}>
-          Previous Steps {hasPrevious ? `(${previousSteps.length})` : ''}
-        </TabsTrigger>
-      </TabsList>
+    <div className="flex flex-col h-full">
+      {/* Header with reference button */}
+      <div className="flex items-center justify-end gap-2 pb-2 flex-shrink-0">
+        {hasPrevious && (
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 text-sm">
+                <BookOpen className="h-4 w-4 mr-1.5" />
+                Reference Prior Steps ({previousSteps.length})
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[500px] sm:w-[600px] p-0">
+              <SheetHeader className="p-4 border-b">
+                <SheetTitle className="text-base">Prior Step Outputs</SheetTitle>
+              </SheetHeader>
+              <div className="overflow-y-auto h-[calc(100vh-80px)] p-4 space-y-2">
+                {previousSteps.map((stepId) => {
+                  const step = AGENTIC_DESIGNER_STEPS[stepId - 1];
+                  const output = aiOutputs[stepId];
+                  if (!output) return null;
 
-      <TabsContent value="current" className="flex-1 min-h-0 mt-2">
+                  return (
+                    <Collapsible key={stepId}>
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 rounded-lg hover:bg-muted/50 transition-colors text-left">
+                        <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <span className="text-sm font-medium flex-1">
+                          Step {stepId}: {step?.title}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-90" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="p-3 ml-6 prose prose-base dark:prose-invert max-w-none border-l-2 border-muted">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{output}</ReactMarkdown>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
+      </div>
+
+      {/* Current step output */}
+      <div className="flex-1 min-h-0">
         <AgenticAIOutput
           output={currentOutput}
           isProcessing={isProcessing}
           stepTitle={stepTitle}
         />
-      </TabsContent>
-
-      <TabsContent value="previous" className="flex-1 min-h-0 mt-2">
-        {hasPrevious && (
-          <div className="flex flex-col h-full">
-            <div className="flex items-center gap-2 mb-2 flex-shrink-0">
-              <span className="text-xs text-muted-foreground">View output from:</span>
-              <Select value={viewingStep} onValueChange={setViewingStep}>
-                <SelectTrigger className="h-7 text-xs w-[220px]">
-                  <SelectValue placeholder="Select a step" />
-                </SelectTrigger>
-                <SelectContent>
-                  {previousSteps.map((s) => (
-                    <SelectItem key={s} value={String(s)} className="text-xs">
-                      Step {s}: {AGENTIC_DESIGNER_STEPS[s - 1]?.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <p className="text-[10px] text-muted-foreground mb-2 flex-shrink-0">
-              Use previous results to inform your nudge for the current step.
-            </p>
-            <div className="flex-1 min-h-0">
-              <AgenticAIOutput
-                output={viewingStep ? aiOutputs[Number(viewingStep)] || null : null}
-                isProcessing={false}
-                stepTitle={viewingStep ? AGENTIC_DESIGNER_STEPS[Number(viewingStep) - 1]?.title || '' : ''}
-              />
-            </div>
-          </div>
-        )}
-      </TabsContent>
-    </Tabs>
+      </div>
+    </div>
   );
 }

@@ -1,5 +1,13 @@
 import type { AgenticDesignerStepConfig } from './types/agentic-designer';
 
+/** Phases group steps into logical stages for navigation */
+export const AGENTIC_PHASES: readonly { label: string; steps: readonly number[]; color: string }[] = [
+  { label: 'Discovery',  steps: [1, 2, 3],   color: 'blue' },
+  { label: 'Assessment', steps: [4, 5, 6],   color: 'amber' },
+  { label: 'Design',     steps: [7, 8],      color: 'violet' },
+  { label: 'Synthesis',  steps: [9, 10, 11], color: 'emerald' },
+];
+
 /**
  * System prompt for the Agentic Enterprise Designer AI.
  * Copied verbatim from the prototype (agentic-enterprise-designer/src/lib/gemini.ts lines 5-18).
@@ -30,6 +38,7 @@ export const AGENTIC_DESIGNER_STEPS: AgenticDesignerStepConfig[] = [
   {
     id: 1,
     title: 'Research',
+    shortDescription: 'Research the target company\'s business strategy and IT landscape.',
     description: 'Define the target industry/customer. The Agentic Enterprise Designer will execute a deep-dive research dossier across Business and IT tracks to inform the design process.',
     fields: [
       { id: 'target', label: 'Target Industry / Customer / Context', type: 'text', placeholder: 'e.g., Global Retailer, Automotive OEM...', helpText: 'Be specific: "Walmart" works better than "Large Retailer". Include geography if relevant.' },
@@ -63,6 +72,7 @@ Output the dossier in a structured format using Markdown.`,
   {
     id: 2,
     title: 'Business Context',
+    shortDescription: 'Identify key business opportunities and challenges.',
     description: 'Identify key business opportunities and challenges.',
     fields: [
       { id: 'opportunities', label: 'Business Opportunities', type: 'textarea', placeholder: 'Focus on operational inefficiencies and risks...', helpText: 'Leave blank to let the AI identify opportunities from the research, or enter your own to guide the analysis.' },
@@ -77,6 +87,7 @@ Output the dossier in a structured format using Markdown.`,
   {
     id: 3,
     title: 'Agentic Enterprise Use Cases',
+    shortDescription: 'Propose AI agent personas for each opportunity/challenge.',
     description: 'Propose Agentic Enterprise Use Cases (AEUCs) for each opportunity/challenge.',
     fields: [
       { id: 'aeucs', label: 'Agentic Use Cases', type: 'textarea', placeholder: 'Name: [Descriptive Agent Persona] | [Specific Goal]. Persona must end with "Agent".', helpText: 'Optional: propose specific agent personas, or leave blank to let the AI generate them from Step 2 results.' },
@@ -90,6 +101,7 @@ Output the dossier in a structured format using Markdown.`,
   {
     id: 4,
     title: 'Source Domains',
+    shortDescription: 'Map data domains to the proposed use cases.',
     description: 'Map the allowed Source Aligned Data Product (SADP) domains to the AEUCs.',
     fields: [
       { id: 'sadp_domains', label: 'SADP Domain Mapping', type: 'textarea', placeholder: 'Map Customer & Commercial, Marketing & Content, Supply Chain & Logistics, Manufacturing & Product, Finance & Controlling, Workforce, Industrial & Environmental domains...', helpText: 'The AI maps 7 standard domains to your AEUCs. Optionally note any domain priorities.' },
@@ -112,6 +124,7 @@ Provide a summary of the Top Source Aligned Data Product Domains and a 1-2 sente
   {
     id: 5,
     title: 'Data Readiness Assessment',
+    shortDescription: 'Evaluate data readiness and friction points.',
     description: 'Evaluate the 5 friction points (Latency, Ingestion Path, Fragmentation, Privacy/Security, Investment Ratio) for each use case.',
     fields: [
       { id: 'data_readiness', label: 'Data Readiness Assessment', type: 'textarea', placeholder: 'AEUC | Data Readiness Score | Data Assessment | Required Source Domain(s) | Likely Enterprise Systems', helpText: 'The AI evaluates data friction for each AEUC. Optionally note known data quality issues.' },
@@ -135,6 +148,7 @@ Guidance & Constraints:
   {
     id: 6,
     title: 'Use Case Viability',
+    shortDescription: 'Score use cases and select winners for design.',
     description: 'Score all AEUCs across the four dimensions: Alphabet Value Model, Google Intelligence, Implementation Feasibility, and Data Readiness.',
     fields: [
       { id: 'viability_assessment', label: 'Viability Assessment', type: 'textarea', placeholder: 'Agentic Use Case Name | Overall Assessment | Business Value Assessment | Google Intelligence Assessment | Feasibility Assessment | Data Readiness Assessment', helpText: 'The AI scores all AEUCs and recommends which to advance to design.' },
@@ -165,15 +179,16 @@ Based on the viability scores above, I recommend advancing the following AEUCs t
   {
     id: 7,
     title: 'Source Aligned Data Products',
+    shortDescription: 'Design the source data products for each selected use case.',
     description: 'Design the internal data foundation (SADPs) required to fuel each of the approved AEUCs from Step 6.',
     fields: [
       { id: 'use_sap_catalog', label: 'Use the SAP BDC Data Product Catalog?', type: 'checkbox', helpText: 'Enable to pull from the SAP Business Data Cloud catalog of pre-built data products.' },
-      { id: 'sap_pkg_people', label: 'PEOPLE INTELLIGENCE', type: 'checkbox' },
-      { id: 'sap_pkg_finance', label: 'FINANCE INTELLIGENCE', type: 'checkbox' },
-      { id: 'sap_pkg_erp', label: 'CLOUD ERP INTELLIGENCE', type: 'checkbox' },
-      { id: 'sap_pkg_spend', label: 'SPEND INTELLIGENCE', type: 'checkbox' },
-      { id: 'sap_pkg_supply', label: 'SUPPLY CHAIN INTELLIGENCE', type: 'checkbox' },
-      { id: 'sap_pkg_revenue', label: 'REVENUE INTELLIGENCE', type: 'checkbox' },
+      { id: 'sap_pkg_people', label: 'PEOPLE INTELLIGENCE', type: 'checkbox', parentField: 'use_sap_catalog' },
+      { id: 'sap_pkg_finance', label: 'FINANCE INTELLIGENCE', type: 'checkbox', parentField: 'use_sap_catalog' },
+      { id: 'sap_pkg_erp', label: 'CLOUD ERP INTELLIGENCE', type: 'checkbox', parentField: 'use_sap_catalog' },
+      { id: 'sap_pkg_spend', label: 'SPEND INTELLIGENCE', type: 'checkbox', parentField: 'use_sap_catalog' },
+      { id: 'sap_pkg_supply', label: 'SUPPLY CHAIN INTELLIGENCE', type: 'checkbox', parentField: 'use_sap_catalog' },
+      { id: 'sap_pkg_revenue', label: 'REVENUE INTELLIGENCE', type: 'checkbox', parentField: 'use_sap_catalog' },
       { id: 'use_cortex_catalog', label: 'Use Google Cortex Framework Catalog?', type: 'checkbox', helpText: 'Enable to pull from Google Cortex Framework pre-built data products.' },
     ],
     inputGuidance: 'Toggle the data catalogs (SAP BDC, Cortex) and specific data packages to use. The AI designs Source Aligned Data Products for each winning AEUC.',
@@ -236,6 +251,7 @@ Reusability Callout: Immediately below the table, identify one SADP that provide
   {
     id: 8,
     title: 'Consumption Data Products',
+    shortDescription: 'Design consumption data products fusing internal + Google data.',
     description: 'Design the realistic suite of CDPs needed to make each agent function. An autonomous Agent rarely relies on a single data feed; it requires a portfolio of data products that synthesize SADPs with Google Intelligence to achieve true foresight.',
     fields: [
       { id: 'cdps', label: 'CDP Designs', type: 'textarea', placeholder: 'CDP Name | CDP Value | Source Data Product(s) | Google Intelligence Asset | Asset & Contract | Target Agentic Use Case(s)', helpText: 'Optional: suggest specific Google AI/Data assets to incorporate.' },
@@ -272,6 +288,7 @@ Google Intelligence Portfolio Reference:
   {
     id: 9,
     title: 'Value Hypothesis',
+    shortDescription: 'Forecast business impact and ROI across the stack.',
     description: 'Forecast business impact and attribute value across SADP, CDP, and Agent layers.',
     fields: [
       { id: 'value_hypothesis', label: 'Value Hypothesis', type: 'textarea', placeholder: 'Conservative, Most Likely, and Upside scenarios...', helpText: 'Optional: provide known financial metrics or ROI targets to ground the estimates.' },
@@ -285,6 +302,7 @@ Google Intelligence Portfolio Reference:
   {
     id: 10,
     title: 'Visualize Solution Map',
+    shortDescription: 'Generate a visual solution map infographic prompt.',
     description: 'Generate the final high-fidelity infographic prompt for architectural visualization.',
     fields: [
       { id: 'infographic_prompt', label: 'Final Infographic Prompt', type: 'textarea', placeholder: 'The prompt for the image generation tool...' },
@@ -325,6 +343,7 @@ Style Notes: Force extreme contrasts in lighting, but maintain text accessibilit
   {
     id: 11,
     title: 'Agentic Enterprise Analysis',
+    shortDescription: 'Compile the full executive analysis report.',
     description: 'Generate the Final Agentic Enterprise Report synthesizing the entire 10-step evaluation process.',
     fields: [
       { id: 'final_report', label: 'Final Report', type: 'textarea', placeholder: 'Comprehensive executive report...' },

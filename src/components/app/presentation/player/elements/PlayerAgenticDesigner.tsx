@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Loader2, Lightbulb } from 'lucide-react';
 import { useAgenticSessionPlayer } from '@/firebase/presentation';
-import { AGENTIC_DESIGNER_STEPS } from '@/lib/agentic-designer-steps';
+import { AGENTIC_DESIGNER_STEPS, AGENTIC_PHASES } from '@/lib/agentic-designer-steps';
 import type { SlideElement } from '@/lib/types';
 
 interface PlayerAgenticDesignerProps {
@@ -61,19 +61,47 @@ export function PlayerAgenticDesigner({ element, gameId, playerId, playerName, o
 
   return (
     <div className="space-y-4">
-      {/* Step header */}
+      {/* Step header with dot stepper */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-center"
       >
-        <p className="text-xs text-muted-foreground">
+        {/* Dot stepper */}
+        <div className="flex items-center justify-center gap-1.5 mb-2">
+          {AGENTIC_DESIGNER_STEPS.map((step) => {
+            const isDone = session?.completedSteps?.includes(step.id);
+            const isActive = step.id === currentStep;
+            return (
+              <div
+                key={step.id}
+                className={`w-3 h-3 rounded-full transition-colors ${
+                  isActive
+                    ? 'bg-primary animate-pulse'
+                    : isDone
+                    ? 'bg-green-500'
+                    : 'bg-muted'
+                }`}
+              />
+            );
+          })}
+        </div>
+        <p className="text-sm text-muted-foreground">
           Step {currentStep} of {AGENTIC_DESIGNER_STEPS.length}
         </p>
-        <h2 className="text-lg font-bold">{stepConfig?.title}</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">{config.target}</p>
-        <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-          {stepConfig?.description}
+        <h2 className="text-xl font-bold">{stepConfig?.title}</h2>
+        {/* Phase context */}
+        {(() => {
+          const phase = AGENTIC_PHASES.find((p) => p.steps.includes(currentStep));
+          return phase ? (
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Phase: {phase.label}
+            </p>
+          ) : null;
+        })()}
+        <p className="text-sm text-muted-foreground mt-0.5">{config.target}</p>
+        <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+          {stepConfig?.shortDescription || stepConfig?.description}
         </p>
       </motion.div>
 
@@ -88,15 +116,20 @@ export function PlayerAgenticDesigner({ element, gameId, playerId, playerName, o
         {isProcessing ? (
           <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm">Generating analysis...</p>
+            <p className="text-base">Generating analysis...</p>
           </div>
         ) : currentStepOutput ? (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
+          <div className="prose prose-base dark:prose-invert max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentStepOutput}</ReactMarkdown>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <p className="text-sm">Waiting for host to run analysis...</p>
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">
+            <p className="text-base">Waiting for host to run analysis...</p>
+            {stepConfig?.outputExpectation && (
+              <p className="text-sm text-muted-foreground/70 max-w-md text-center">
+                Expected: {stepConfig.outputExpectation}
+              </p>
+            )}
           </div>
         )}
       </motion.div>
@@ -109,9 +142,25 @@ export function PlayerAgenticDesigner({ element, gameId, playerId, playerName, o
           className="space-y-2"
         >
           <div className="flex items-center gap-1.5 text-primary">
-            <Lightbulb className="h-4 w-4" />
-            <span className="text-sm font-medium">The host is accepting input!</span>
+            <Lightbulb className="h-5 w-5" />
+            <span className="text-base font-medium">The host is listening — share your ideas!</span>
           </div>
+          {/* Suggestion chips */}
+          {stepConfig?.nudgeHints && stepConfig.nudgeHints.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {stepConfig.nudgeHints.map((hint, i) => (
+                <button
+                  key={i}
+                  onClick={() => setNudgeText(hint)}
+                  className="text-sm px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer text-left"
+                  disabled={submitting}
+                >
+                  {hint}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="flex gap-2">
             <Input
               value={nudgeText}
@@ -125,7 +174,7 @@ export function PlayerAgenticDesigner({ element, gameId, playerId, playerName, o
                 }
               }}
               disabled={submitting}
-              className="bg-background/50"
+              className="bg-background/50 text-sm"
             />
             <Button
               variant="gradient"
@@ -136,12 +185,13 @@ export function PlayerAgenticDesigner({ element, gameId, playerId, playerName, o
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
+          <p className="text-sm text-muted-foreground text-right">{nudgeText.length}/300</p>
 
           {myNudges.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Your suggestions:</p>
+              <p className="text-sm text-muted-foreground">Your suggestions:</p>
               {myNudges.map((n) => (
-                <div key={n.id} className="text-xs bg-primary/10 text-primary rounded-full px-3 py-1 inline-block mr-1">
+                <div key={n.id} className="text-sm bg-primary/10 text-primary rounded-full px-3 py-1.5 inline-block mr-1">
                   {n.text}
                 </div>
               ))}

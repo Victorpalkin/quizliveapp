@@ -37,8 +37,8 @@ export function AgenticAIOutput({ output, isProcessing, stepTitle }: AgenticAIOu
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm">Generating analysis...</p>
-        <p className="text-xs">This may take up to a minute</p>
+        <p className="text-base">Generating {stepTitle}...</p>
+        <p className="text-sm">This may take up to a minute</p>
       </div>
     );
   }
@@ -46,7 +46,7 @@ export function AgenticAIOutput({ output, isProcessing, stepTitle }: AgenticAIOu
   if (!output) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
-        <p className="text-sm">Click &ldquo;Run AI&rdquo; to generate analysis</p>
+        <p className="text-base">Click &ldquo;Generate&rdquo; to run analysis</p>
       </div>
     );
   }
@@ -54,16 +54,16 @@ export function AgenticAIOutput({ output, isProcessing, stepTitle }: AgenticAIOu
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-end gap-1 pb-2 flex-shrink-0">
-        <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 text-xs">
-          {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+        <Button variant="ghost" size="sm" onClick={handleCopy} className="h-8 text-sm">
+          {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
           {copied ? 'Copied' : 'Copy'}
         </Button>
-        <Button variant="ghost" size="sm" onClick={handleExport} className="h-7 text-xs">
-          <Download className="h-3 w-3 mr-1" />
+        <Button variant="ghost" size="sm" onClick={handleExport} className="h-8 text-sm">
+          <Download className="h-4 w-4 mr-1" />
           Export
         </Button>
       </div>
-      <div className="flex-1 overflow-y-auto prose prose-sm dark:prose-invert max-w-none">
+      <div className="flex-1 overflow-y-auto prose prose-base dark:prose-invert max-w-none">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{output}</ReactMarkdown>
       </div>
     </div>

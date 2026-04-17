@@ -53,12 +53,14 @@ export interface AgenticDesignerFieldConfig {
   type: 'text' | 'textarea' | 'checkbox';
   placeholder?: string;
   helpText?: string;
+  parentField?: string;
 }
 
 /** Step configuration */
 export interface AgenticDesignerStepConfig {
   id: number;
   title: string;
+  shortDescription?: string;
   description: string;
   fields: AgenticDesignerFieldConfig[];
   aiPrompt: string;
