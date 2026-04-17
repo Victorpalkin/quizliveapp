@@ -15,6 +15,10 @@ import { AgenticOutputPanel } from './agentic-designer/AgenticOutputPanel';
 import { AgenticNudgePanel } from './agentic-designer/AgenticNudgePanel';
 import type { SlideElement } from '@/lib/types';
 
+const TOTAL_STEPS = AGENTIC_DESIGNER_STEPS.length;
+const EMPTY_STEPS: number[] = [];
+const EMPTY_OUTPUTS: Record<number, string> = {};
+
 interface HostAgenticDesignerElementProps {
   element: SlideElement;
   gameId: string;
@@ -71,7 +75,7 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
   }, [currentStep, nudgeText, runStep, session?.stepsData]);
 
   const handleNextStep = useCallback(() => {
-    if (currentStep < 11) {
+    if (currentStep < TOTAL_STEPS) {
       setCurrentStep(currentStep + 1);
       setNudgeText('');
     }
@@ -126,10 +130,7 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="text-xs">
-                    <p className="font-medium">{step.title}</p>
-                    {!depsReady && !isDone && step.dependsOn.length > 0 && (
-                      <p className="text-muted-foreground">Requires: Steps {step.dependsOn.join(', ')}</p>
-                    )}
+                    {step.title}
                   </TooltipContent>
                 </Tooltip>
               );
@@ -137,7 +138,7 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
           </TooltipProvider>
         </div>
         <Progress
-          value={(session?.completedSteps?.length || 0) / 11 * 100}
+          value={(session?.completedSteps?.length || 0) / TOTAL_STEPS * 100}
           className="h-1 rounded-none"
         />
       </div>
@@ -148,7 +149,7 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
           Step {currentStep}: {stepConfig?.title}
         </h3>
         <p className="text-[10px] text-muted-foreground mt-0.5">{stepConfig?.description}</p>
-        <Collapsible defaultOpen={!isCompleted}>
+        <Collapsible key={currentStep} defaultOpen={!isCompleted}>
           <CollapsibleTrigger className="text-[10px] text-primary flex items-center gap-1 mt-1 hover:underline">
             <Info className="h-3 w-3" /> Step guidance
           </CollapsibleTrigger>
@@ -237,7 +238,7 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
                 size="sm"
                 className="flex-1 h-7 text-xs"
                 onClick={handleNextStep}
-                disabled={currentStep >= 11 || isProcessing}
+                disabled={currentStep >= TOTAL_STEPS || isProcessing}
               >
                 Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
               </Button>
@@ -249,11 +250,9 @@ export function HostAgenticDesignerElement({ element, gameId, playerCount }: Hos
         <div className="flex-1 p-3 min-w-0">
           <AgenticOutputPanel
             currentStep={currentStep}
-            currentOutput={aiOutput}
             isProcessing={isProcessing || false}
-            stepTitle={stepConfig?.title || ''}
-            completedSteps={session?.completedSteps || []}
-            aiOutputs={session?.aiOutputs || {}}
+            completedSteps={session?.completedSteps || EMPTY_STEPS}
+            aiOutputs={session?.aiOutputs || EMPTY_OUTPUTS}
           />
         </div>
       </div>

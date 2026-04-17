@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AgenticAIOutput } from './AgenticAIOutput';
@@ -8,18 +8,14 @@ import { AGENTIC_DESIGNER_STEPS } from '@/lib/agentic-designer-steps';
 
 interface AgenticOutputPanelProps {
   currentStep: number;
-  currentOutput: string | null;
   isProcessing: boolean;
-  stepTitle: string;
   completedSteps: number[];
   aiOutputs: Record<number, string>;
 }
 
 export function AgenticOutputPanel({
   currentStep,
-  currentOutput,
   isProcessing,
-  stepTitle,
   completedSteps,
   aiOutputs,
 }: AgenticOutputPanelProps) {
@@ -31,7 +27,17 @@ export function AgenticOutputPanel({
     previousSteps[0]?.toString() || ''
   );
 
+  // Reset viewingStep when currentStep changes
+  useEffect(() => {
+    const prev = completedSteps
+      .filter((s) => s < currentStep)
+      .sort((a, b) => b - a);
+    setViewingStep(prev[0]?.toString() || '');
+  }, [currentStep, completedSteps]);
+
   const hasPrevious = previousSteps.length > 0;
+  const currentOutput = aiOutputs[currentStep] || null;
+  const stepTitle = AGENTIC_DESIGNER_STEPS[currentStep - 1]?.title || '';
 
   return (
     <Tabs defaultValue="current" className="flex flex-col h-full">

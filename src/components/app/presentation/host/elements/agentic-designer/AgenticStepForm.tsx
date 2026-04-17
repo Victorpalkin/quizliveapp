@@ -19,17 +19,19 @@ export function AgenticStepForm({ fields, values, onChange, disabled }: AgenticS
       {fields.map((field) => (
         <div key={field.id}>
           {field.type === 'checkbox' ? (
-            <div className="flex items-center justify-between">
-              <Label className="text-xs">{field.label}</Label>
-              <Switch
-                checked={!!values[field.id]}
-                onCheckedChange={(checked) => onChange(field.id, checked)}
-                disabled={disabled}
-              />
+            <>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">{field.label}</Label>
+                <Switch
+                  checked={!!values[field.id]}
+                  onCheckedChange={(checked) => onChange(field.id, checked)}
+                  disabled={disabled}
+                />
+              </div>
               {field.helpText && (
-                <p className="text-[10px] text-muted-foreground mt-0.5 w-full">{field.helpText}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{field.helpText}</p>
               )}
-            </div>
+            </>
           ) : field.type === 'textarea' ? (
             <>
               <Label className="text-xs">{field.label}</Label>

@@ -68,7 +68,7 @@ export function PlayerAgenticDesigner({ element, gameId, playerId, playerName, o
         className="text-center"
       >
         <p className="text-xs text-muted-foreground">
-          Step {currentStep} of 11
+          Step {currentStep} of {AGENTIC_DESIGNER_STEPS.length}
         </p>
         <h2 className="text-lg font-bold">{stepConfig?.title}</h2>
         <p className="text-xs text-muted-foreground mt-0.5">{config.target}</p>
