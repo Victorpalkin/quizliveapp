@@ -15,7 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Play, RefreshCw, BookOpen, ChevronRight, CheckCircle2, Layers } from 'lucide-react';
+import { Play, RefreshCw, BookOpen, ChevronRight, CheckCircle2, Layers, Minus, Plus } from 'lucide-react';
 import { AgenticStepForm } from './agentic-designer/AgenticStepForm';
 import { AgenticNudgePanel } from './agentic-designer/AgenticNudgePanel';
 import { AgenticAIOutput } from './agentic-designer/AgenticAIOutput';
@@ -29,6 +29,13 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from '@/components/ui/resizable';
+
+const FONT_SIZES = [
+  { label: 'S', prose: 'prose-sm', scale: 0.875 },
+  { label: 'M', prose: 'prose-base', scale: 1 },
+  { label: 'L', prose: 'prose-lg', scale: 1.125 },
+  { label: 'XL', prose: 'prose-xl', scale: 1.25 },
+] as const;
 
 interface HostAIStepElementProps {
   element: SlideElement;
@@ -63,6 +70,7 @@ export function HostAIStepElement({
 
   const [nudgeText, setNudgeText] = useState('');
   const [running, setRunning] = useState(false);
+  const [fontSizeIndex, setFontSizeIndex] = useState(1);
 
   // Current slide's output
   const slideOutput = workflowState.slideOutputs[slideId];
@@ -192,6 +200,27 @@ export function HostAIStepElement({
           {hasOutput && (
             <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
           )}
+          <div className="flex items-center gap-0.5 ml-auto border rounded-md px-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFontSizeIndex((i) => Math.max(0, i - 1))}
+              disabled={fontSizeIndex === 0}
+              className="h-6 w-6 p-0"
+            >
+              <Minus className="h-3 w-3" />
+            </Button>
+            <span className="text-xs text-muted-foreground w-6 text-center">{FONT_SIZES[fontSizeIndex].label}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFontSizeIndex((i) => Math.min(FONT_SIZES.length - 1, i + 1))}
+              disabled={fontSizeIndex === FONT_SIZES.length - 1}
+              className="h-6 w-6 p-0"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
         {config.outputExpectation && (
           <Collapsible>
@@ -207,9 +236,9 @@ export function HostAIStepElement({
       </div>
 
       {/* Main content: Left panel + Right panel */}
-      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">
+      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" style={{ fontSize: `${FONT_SIZES[fontSizeIndex].scale}rem` }}>
         {/* Left panel: form + nudges */}
-        <ResizablePanel defaultSize={30} minSize={20} maxSize={60} className="flex flex-col">
+        <ResizablePanel defaultSize="30" minSize="20" maxSize="60" className="flex flex-col">
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-4">
               {/* Input fields */}
@@ -275,7 +304,7 @@ export function HostAIStepElement({
         <ResizableHandle withHandle />
 
         {/* Right panel: AI output */}
-        <ResizablePanel defaultSize={70} minSize={40} className="flex flex-col min-w-0">
+        <ResizablePanel defaultSize="70" minSize="40" className="flex flex-col min-w-0">
           {/* Reference drawer for prior AI steps */}
           {previousAISteps.length > 0 && (
             <div className="flex-shrink-0 border-b px-3 py-1.5">
@@ -380,6 +409,7 @@ export function HostAIStepElement({
               imageUrl={imageUrl}
               isProcessing={isProcessing || running}
               stepTitle={stepTitle}
+              proseClass={FONT_SIZES[fontSizeIndex].prose}
             />
           </div>
         </ResizablePanel>

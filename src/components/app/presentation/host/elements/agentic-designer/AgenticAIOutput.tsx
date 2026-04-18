@@ -4,25 +4,18 @@ import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
-import { Copy, Check, Download, Minus, Plus } from 'lucide-react';
+import { Copy, Check, Download } from 'lucide-react';
 
 interface AgenticAIOutputProps {
   output: string | null;
   imageUrl?: string | null;
   isProcessing: boolean;
   stepTitle: string;
+  proseClass?: string;
 }
 
-const FONT_SIZES = [
-  { label: 'S', value: 'prose-sm', scale: 0.875 },
-  { label: 'M', value: 'prose-base', scale: 1 },
-  { label: 'L', value: 'prose-lg', scale: 1.125 },
-  { label: 'XL', value: 'prose-xl', scale: 1.25 },
-] as const;
-
-export function AgenticAIOutput({ output, imageUrl, isProcessing, stepTitle }: AgenticAIOutputProps) {
+export function AgenticAIOutput({ output, imageUrl, isProcessing, stepTitle, proseClass = 'prose-base' }: AgenticAIOutputProps) {
   const [copied, setCopied] = useState(false);
-  const [fontSizeIndex, setFontSizeIndex] = useState(1); // default: M (prose-base)
 
   const handleCopy = async () => {
     if (!output) return;
@@ -63,27 +56,6 @@ export function AgenticAIOutput({ output, imageUrl, isProcessing, stepTitle }: A
   return (
     <div className="flex flex-col h-full p-4">
       <div className="flex items-center justify-end gap-1 pb-2 flex-shrink-0">
-        <div className="flex items-center gap-0.5 mr-2 border rounded-md px-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setFontSizeIndex((i) => Math.max(0, i - 1))}
-            disabled={fontSizeIndex === 0}
-            className="h-7 w-7 p-0"
-          >
-            <Minus className="h-3 w-3" />
-          </Button>
-          <span className="text-xs text-muted-foreground w-6 text-center">{FONT_SIZES[fontSizeIndex].label}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setFontSizeIndex((i) => Math.min(FONT_SIZES.length - 1, i + 1))}
-            disabled={fontSizeIndex === FONT_SIZES.length - 1}
-            className="h-7 w-7 p-0"
-          >
-            <Plus className="h-3 w-3" />
-          </Button>
-        </div>
         <Button variant="ghost" size="sm" onClick={handleCopy} className="h-8 text-sm">
           {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
           {copied ? 'Copied' : 'Copy'}
@@ -93,7 +65,7 @@ export function AgenticAIOutput({ output, imageUrl, isProcessing, stepTitle }: A
           Export
         </Button>
       </div>
-      <div className={`flex-1 overflow-y-auto prose ${FONT_SIZES[fontSizeIndex].value} dark:prose-invert max-w-none`}>
+      <div className={`flex-1 overflow-y-auto prose ${proseClass} dark:prose-invert max-w-none`}>
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{output}</ReactMarkdown>
         {imageUrl && (
           <div className="mt-4 rounded-lg overflow-hidden border not-prose">
