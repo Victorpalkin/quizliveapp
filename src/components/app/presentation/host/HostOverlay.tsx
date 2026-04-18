@@ -17,6 +17,7 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
   const [qrVisible, setQrVisible] = useState(true);
   const [joinUrl, setJoinUrl] = useState('');
   const [qrSize, setQrSize] = useState(96);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const constraintsRef = useRef<HTMLDivElement>(null);
@@ -144,10 +145,16 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
               dragMomentum={false}
               dragElastic={0}
               whileDrag={{ scale: 1.02, cursor: 'grabbing' }}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.9, x: dragOffset.x, y: dragOffset.y }}
+              animate={{ opacity: 1, scale: 1, x: dragOffset.x, y: dragOffset.y }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.2 }}
+              onDragEnd={(_, info) => {
+                setDragOffset((prev) => ({
+                  x: prev.x + info.offset.x,
+                  y: prev.y + info.offset.y,
+                }));
+              }}
               className="absolute bottom-20 left-4 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10 cursor-grab relative w-fit pointer-events-auto"
               data-controls
             >
