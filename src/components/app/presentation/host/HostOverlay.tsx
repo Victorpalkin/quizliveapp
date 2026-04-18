@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Users, QrCode, X } from 'lucide-react';
+import { Users, QrCode, X, GripVertical } from 'lucide-react';
 
 interface HostOverlayProps {
   gamePin: string;
@@ -16,7 +16,27 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
   const [visible, setVisible] = useState(true);
   const [qrVisible, setQrVisible] = useState(true);
   const [joinUrl, setJoinUrl] = useState('');
+  const [qrSize, setQrSize] = useState(96);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startSize = qrSize;
+
+    const onMove = (ev: MouseEvent) => {
+      const delta = (ev.clientX - startX + ev.clientY - startY) / 2;
+      setQrSize(Math.max(64, Math.min(256, startSize + delta)));
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [qrSize]);
 
   useEffect(() => {
     if (gamePin) {
@@ -117,15 +137,19 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
       <AnimatePresence>
         {qrVisible && joinUrl && (
           <motion.div
+            drag
+            dragMomentum={false}
+            dragElastic={0}
+            whileDrag={{ scale: 1.02, cursor: 'grabbing' }}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.2 }}
-            className="absolute bottom-20 left-4 z-20 flex items-end gap-3 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10"
+            className="absolute bottom-20 left-4 z-20 flex items-end gap-3 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10 cursor-grab relative"
             data-controls
           >
             <div className="bg-white p-2 rounded-lg">
-              <QRCodeSVG value={joinUrl} size={96} level="M" />
+              <QRCodeSVG value={joinUrl} size={qrSize} level="M" />
             </div>
             <div className="flex flex-col gap-1 text-white pb-1">
               <p className="text-xs font-medium opacity-80">Scan to join</p>
@@ -136,6 +160,13 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
               >
                 <X className="h-3 w-3" /> Hide
               </button>
+            </div>
+            <div
+              onMouseDown={handleResizeStart}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="absolute bottom-1 right-1 cursor-se-resize p-1 opacity-40 hover:opacity-80 transition-opacity"
+            >
+              <GripVertical className="h-3 w-3 text-white rotate-[-45deg]" />
             </div>
           </motion.div>
         )}
