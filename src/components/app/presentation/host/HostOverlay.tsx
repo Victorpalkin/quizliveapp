@@ -145,21 +145,21 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.2 }}
-            className="absolute bottom-20 left-4 z-20 flex items-end gap-3 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10 cursor-grab relative"
+            className="absolute bottom-20 left-4 z-20 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10 cursor-grab relative"
             data-controls
           >
+            <button
+              onClick={() => setQrVisible(false)}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="absolute top-1.5 right-1.5 z-10 p-1 rounded-full bg-black/40 opacity-50 hover:opacity-100 transition-opacity"
+            >
+              <X className="h-3 w-3 text-white" />
+            </button>
             <div className="bg-white p-2 rounded-lg">
               <QRCodeSVG value={joinUrl} size={qrSize} level="M" />
             </div>
-            <div className="flex flex-col gap-1 text-white pb-1">
-              <p className="text-xs font-medium opacity-80">Scan to join</p>
+            <div className="text-center text-white mt-1.5">
               <p className="font-mono font-bold text-sm tracking-wider">{gamePin}</p>
-              <button
-                onClick={() => setQrVisible(false)}
-                className="mt-1 flex items-center gap-1 text-[10px] opacity-50 hover:opacity-100 transition-opacity"
-              >
-                <X className="h-3 w-3" /> Hide
-              </button>
             </div>
             <div
               onMouseDown={handleResizeStart}
