@@ -209,7 +209,7 @@ export function HostAIStepElement({
       {/* Main content: Left panel + Right panel */}
       <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">
         {/* Left panel: form + nudges */}
-        <ResizablePanel defaultSize={30} minSize={20} maxSize={50} className="flex flex-col">
+        <ResizablePanel defaultSize={30} minSize={20} maxSize={60} className="flex flex-col">
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-4">
               {/* Input fields */}
@@ -275,7 +275,7 @@ export function HostAIStepElement({
         <ResizableHandle withHandle />
 
         {/* Right panel: AI output */}
-        <ResizablePanel defaultSize={70} minSize={50} className="flex flex-col min-w-0">
+        <ResizablePanel defaultSize={70} minSize={40} className="flex flex-col min-w-0">
           {/* Reference drawer for prior AI steps */}
           {previousAISteps.length > 0 && (
             <div className="flex-shrink-0 border-b px-3 py-1.5">
