@@ -32,7 +32,7 @@ export function PlayerAIStep({
   const config = element.aiStepConfig;
   const slideId = currentSlide.id;
 
-  const { slideOutput, isLoading, myNudges, submitNudge } =
+  const { slideOutput, isLoading, myNudges, nudgesOpen, submitNudge } =
     useWorkflowStatePlayer(gameId, slideId, playerId);
 
   const [nudgeText, setNudgeText] = useState('');
@@ -147,7 +147,7 @@ export function PlayerAIStep({
       </AnimatePresence>
 
       {/* Nudge input section */}
-      {enableNudges && (
+      {enableNudges && nudgesOpen && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

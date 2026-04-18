@@ -145,6 +145,26 @@ export function useSlideNudges(gameId: string, slideId: string) {
   const firestore = useFirestore();
   const functions = useFunctions();
   const [nudges, setNudges] = useState<AIStepNudge[]>([]);
+  const [nudgesOpen, setNudgesOpen] = useState(true);
+
+  // Subscribe to nudge settings (open/closed state)
+  useEffect(() => {
+    if (!firestore || !gameId || !slideId) {
+      setNudgesOpen(true);
+      return;
+    }
+
+    const settingsRef = doc(firestore, 'games', gameId, 'slideNudges', slideId);
+    const unsubscribe = onSnapshot(settingsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setNudgesOpen(snapshot.data().nudgesOpen ?? true);
+      } else {
+        setNudgesOpen(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [firestore, gameId, slideId]);
 
   // Subscribe to nudges for this slide
   useEffect(() => {
@@ -193,7 +213,15 @@ export function useSlideNudges(gameId: string, slideId: string) {
     await batch.commit();
   }, [firestore, gameId, slideId]);
 
-  return { nudges, summarizeNudges, clearNudges };
+  /** Toggle nudges open/closed */
+  const toggleNudges = useCallback(async (): Promise<void> => {
+    if (!firestore || !gameId || !slideId) throw new Error('Not connected');
+
+    const settingsRef = doc(firestore, 'games', gameId, 'slideNudges', slideId);
+    await setDoc(settingsRef, { nudgesOpen: !nudgesOpen }, { merge: true });
+  }, [firestore, gameId, slideId, nudgesOpen]);
+
+  return { nudges, nudgesOpen, toggleNudges, summarizeNudges, clearNudges };
 }
 
 /**
@@ -208,6 +236,26 @@ export function useWorkflowStatePlayer(
   const [slideOutput, setSlideOutput] = useState<SlideOutput | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [myNudges, setMyNudges] = useState<AIStepNudge[]>([]);
+  const [nudgesOpen, setNudgesOpen] = useState(true);
+
+  // Subscribe to nudge settings (open/closed state)
+  useEffect(() => {
+    if (!firestore || !gameId || !slideId) {
+      setNudgesOpen(true);
+      return;
+    }
+
+    const settingsRef = doc(firestore, 'games', gameId, 'slideNudges', slideId);
+    const unsubscribe = onSnapshot(settingsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setNudgesOpen(snapshot.data().nudgesOpen ?? true);
+      } else {
+        setNudgesOpen(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [firestore, gameId, slideId]);
 
   // Subscribe to workflow state to get this slide's output
   useEffect(() => {
@@ -282,6 +330,7 @@ export function useWorkflowStatePlayer(
     slideOutput,
     isLoading,
     myNudges,
+    nudgesOpen,
     submitNudge,
   };
 }

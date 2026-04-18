@@ -19,15 +19,16 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
   const [qrSize, setQrSize] = useState(96);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
+  const constraintsRef = useRef<HTMLDivElement>(null);
+
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     const startX = e.clientX;
-    const startY = e.clientY;
     const startSize = qrSize;
 
     const onMove = (ev: MouseEvent) => {
-      const delta = (ev.clientX - startX + ev.clientY - startY) / 2;
+      const delta = ev.clientX - startX;
       setQrSize(Math.max(64, Math.min(256, startSize + delta)));
     };
     const onUp = () => {
@@ -134,43 +135,47 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
       </AnimatePresence>
 
       {/* Floating QR code — persists independently of the overlay bar */}
-      <AnimatePresence>
-        {qrVisible && joinUrl && (
-          <motion.div
-            drag
-            dragMomentum={false}
-            dragElastic={0}
-            whileDrag={{ scale: 1.02, cursor: 'grabbing' }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-            className="absolute bottom-20 left-4 z-20 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10 cursor-grab relative w-fit"
-            data-controls
-          >
-            <button
-              onClick={() => setQrVisible(false)}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="absolute top-1.5 right-1.5 z-10 p-1 rounded-full bg-black/40 opacity-50 hover:opacity-100 transition-opacity"
+      <div ref={constraintsRef} className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
+        <AnimatePresence>
+          {qrVisible && joinUrl && (
+            <motion.div
+              drag
+              dragConstraints={constraintsRef}
+              dragMomentum={false}
+              dragElastic={0}
+              whileDrag={{ scale: 1.02, cursor: 'grabbing' }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              className="absolute bottom-20 left-4 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10 cursor-grab relative w-fit pointer-events-auto"
+              data-controls
             >
-              <X className="h-3 w-3 text-white" />
-            </button>
-            <div className="bg-white p-2 rounded-lg" style={{ width: qrSize + 16, height: qrSize + 16 }}>
-              <QRCodeSVG value={joinUrl} size={qrSize} level="M" />
-            </div>
-            <div className="text-center text-white mt-1.5">
-              <p className="font-mono font-bold text-sm tracking-wider">{gamePin}</p>
-            </div>
-            <div
-              onMouseDown={handleResizeStart}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="absolute bottom-1 right-1 cursor-se-resize p-1 opacity-40 hover:opacity-80 transition-opacity"
-            >
-              <GripVertical className="h-3 w-3 text-white rotate-[-45deg]" />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <button
+                onClick={() => setQrVisible(false)}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="absolute top-1.5 right-1.5 z-10 p-1 rounded-full bg-black/40 opacity-50 hover:opacity-100 transition-opacity"
+              >
+                <X className="h-3 w-3 text-white" />
+              </button>
+              <p className="text-center text-white text-xs font-medium mb-1.5 opacity-80">Join Here</p>
+              <div className="bg-white p-2 rounded-lg" style={{ width: qrSize + 16, height: qrSize + 16 }}>
+                <QRCodeSVG value={joinUrl} size={qrSize} level="M" />
+              </div>
+              <div className="text-center text-white mt-1.5">
+                <p className="font-mono font-bold text-sm tracking-wider">{gamePin}</p>
+              </div>
+              <div
+                onMouseDown={handleResizeStart}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="absolute bottom-1 right-1 cursor-se-resize p-1 opacity-40 hover:opacity-80 transition-opacity"
+              >
+                <GripVertical className="h-3 w-3 text-white rotate-[-45deg]" />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </>
   );
 }

@@ -109,7 +109,7 @@ export function AgenticNudgePanel({
         <div className="px-3 py-2 border-b flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Player Input</span>
+            <span className="text-sm font-medium">Audience Suggestions</span>
             {nudges.length > 0 && (
               <Badge variant="secondary" className="text-sm h-5 px-1.5">
                 {nudges.length}
@@ -180,7 +180,7 @@ export function AgenticNudgePanel({
         ) : (
           <div className="p-3 text-center">
             <p className="text-sm text-muted-foreground">
-              {nudgesOpen ? 'Waiting for player suggestions...' : 'Player input is currently closed.'}
+              {nudgesOpen ? 'Waiting for audience suggestions...' : 'Audience suggestions are currently closed.'}
             </p>
           </div>
         )}

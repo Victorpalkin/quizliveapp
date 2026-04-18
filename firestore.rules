@@ -405,26 +405,37 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      // AI-step slide nudges subcollection
-      // Path: /games/{gameId}/slideNudges/{slideId}/nudges/{nudgeId}
-      match /slideNudges/{slideId}/nudges/{nudgeId} {
-        // Anyone can read nudges (host sees all, players query their own)
+      // AI-step slide nudge settings (open/closed state)
+      // Path: /games/{gameId}/slideNudges/{slideId}
+      match /slideNudges/{slideId} {
         allow read: if true;
 
-        // Players can submit nudges during active presentation (must be authenticated)
-        allow create: if request.auth != null &&
-                         get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
-                         get(/databases/$(database)/documents/games/$(gameId)).data.state == 'active' &&
-                         request.resource.data.playerId is string &&
-                         request.resource.data.text is string &&
-                         request.resource.data.text.size() >= 1 &&
-                         request.resource.data.text.size() <= 300;
+        allow create, update: if request.auth != null &&
+                                 request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId;
 
-        // Host can delete nudges (for clearing)
-        allow delete: if request.auth != null &&
-                         request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId;
+        allow delete: if false;
 
-        allow update: if false;
+        // AI-step slide nudges subcollection
+        // Path: /games/{gameId}/slideNudges/{slideId}/nudges/{nudgeId}
+        match /nudges/{nudgeId} {
+          // Anyone can read nudges (host sees all, players query their own)
+          allow read: if true;
+
+          // Players can submit nudges during active presentation (must be authenticated)
+          allow create: if request.auth != null &&
+                           get(/databases/$(database)/documents/games/$(gameId)).data.activityType == 'presentation' &&
+                           get(/databases/$(database)/documents/games/$(gameId)).data.state == 'active' &&
+                           request.resource.data.playerId is string &&
+                           request.resource.data.text is string &&
+                           request.resource.data.text.size() >= 1 &&
+                           request.resource.data.text.size() <= 300;
+
+          // Host can delete nudges (for clearing)
+          allow delete: if request.auth != null &&
+                           request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId;
+
+          allow update: if false;
+        }
       }
 
       // Agentic designer sessions subcollection

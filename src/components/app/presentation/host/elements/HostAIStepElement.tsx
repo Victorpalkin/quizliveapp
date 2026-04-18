@@ -59,7 +59,7 @@ export function HostAIStepElement({
     processingSlideId,
   } = useWorkflowState(gameId);
 
-  const { nudges, summarizeNudges, clearNudges } = useSlideNudges(gameId, slideId);
+  const { nudges, nudgesOpen, toggleNudges, summarizeNudges, clearNudges } = useSlideNudges(gameId, slideId);
 
   const [nudgeText, setNudgeText] = useState('');
   const [running, setRunning] = useState(false);
@@ -226,11 +226,11 @@ export function HostAIStepElement({
               {enableNudges && (
                 <AgenticNudgePanel
                   nudges={nudges as any}
-                  nudgesOpen={true}
+                  nudgesOpen={nudgesOpen}
                   nudgeText={nudgeText}
                   nudgeHints={nudgeHints}
                   onNudgeTextChange={setNudgeText}
-                  onToggleNudges={() => {}}
+                  onToggleNudges={toggleNudges}
                   onSummarize={summarizeNudges}
                   onClearNudges={clearNudges}
                   disabled={isProcessing || running}
@@ -266,7 +266,7 @@ export function HostAIStepElement({
             </Button>
             {playerCount > 0 && enableNudges && (
               <p className="text-[10px] text-center text-muted-foreground">
-                {nudges.length} nudge{nudges.length !== 1 ? 's' : ''} from {playerCount} player{playerCount !== 1 ? 's' : ''}
+                {nudges.length} suggestion{nudges.length !== 1 ? 's' : ''} from {playerCount} player{playerCount !== 1 ? 's' : ''}
               </p>
             )}
           </div>
