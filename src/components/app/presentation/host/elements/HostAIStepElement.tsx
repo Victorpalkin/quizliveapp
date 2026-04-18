@@ -24,6 +24,11 @@ import type { SlideElement, PresentationSlide, AIStepConfig } from '@/lib/types'
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
 
 interface HostAIStepElementProps {
   element: SlideElement;
@@ -202,9 +207,9 @@ export function HostAIStepElement({
       </div>
 
       {/* Main content: Left panel + Right panel */}
-      <div className="flex flex-1 min-h-0">
+      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">
         {/* Left panel: form + nudges */}
-        <div className="w-[340px] flex-shrink-0 border-r flex flex-col">
+        <ResizablePanel defaultSize={30} minSize={20} maxSize={50} className="flex flex-col">
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-4">
               {/* Input fields */}
@@ -265,10 +270,12 @@ export function HostAIStepElement({
               </p>
             )}
           </div>
-        </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
 
         {/* Right panel: AI output */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <ResizablePanel defaultSize={70} minSize={50} className="flex flex-col min-w-0">
           {/* Reference drawer for prior AI steps */}
           {previousAISteps.length > 0 && (
             <div className="flex-shrink-0 border-b px-3 py-1.5">
@@ -322,23 +329,31 @@ export function HostAIStepElement({
                 <ChevronRight className={cn("h-3 w-3 ml-auto transition-transform", contextOpen && "rotate-90")} />
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="max-h-[200px] overflow-y-auto border-b">
+                <div className="max-h-[50vh] overflow-y-auto border-b">
                   <div className="p-3 space-y-2">
                     {contextSources.map((src) => (
                       <div key={src.slideId} className="text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-medium text-foreground">Slide {src.slideNumber}</span>
-                          <span className="text-muted-foreground truncate">{src.title}</span>
-                          {src.output ? (
-                            <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0 ml-auto" />
-                          ) : (
+                        {src.output ? (
+                          <Collapsible>
+                            <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left">
+                              <ChevronRight className="h-3 w-3 text-muted-foreground transition-transform data-[state=open]:rotate-90 flex-shrink-0" />
+                              <span className="font-medium text-foreground">Slide {src.slideNumber}</span>
+                              <span className="text-muted-foreground truncate">{src.title}</span>
+                              <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0 ml-auto" />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="ml-[18px] mt-1 prose prose-sm dark:prose-invert max-w-none text-xs bg-muted/30 rounded p-3">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{src.output}</ReactMarkdown>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-3 flex-shrink-0" />
+                            <span className="font-medium text-foreground">Slide {src.slideNumber}</span>
+                            <span className="text-muted-foreground truncate">{src.title}</span>
                             <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/15 text-amber-600 rounded ml-auto flex-shrink-0">Pending</span>
-                          )}
-                        </div>
-                        {src.output && (
-                          <p className="text-[11px] text-muted-foreground line-clamp-3 mt-0.5 pl-4">
-                            {src.output.slice(0, 150)}{src.output.length > 150 ? '...' : ''}
-                          </p>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -367,8 +382,8 @@ export function HostAIStepElement({
               stepTitle={stepTitle}
             />
           </div>
-        </div>
-      </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }

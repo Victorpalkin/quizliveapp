@@ -53,7 +53,7 @@ export function AgenticAIOutput({ output, imageUrl, isProcessing, stepTitle }: A
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full p-4">
       <div className="flex items-center justify-end gap-1 pb-2 flex-shrink-0">
         <Button variant="ghost" size="sm" onClick={handleCopy} className="h-8 text-sm">
           {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
