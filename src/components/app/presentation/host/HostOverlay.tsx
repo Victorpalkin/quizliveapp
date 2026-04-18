@@ -145,7 +145,7 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.2 }}
-            className="absolute bottom-20 left-4 z-20 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10 cursor-grab relative"
+            className="absolute bottom-20 left-4 z-20 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10 cursor-grab relative w-fit"
             data-controls
           >
             <button
@@ -155,7 +155,7 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
             >
               <X className="h-3 w-3 text-white" />
             </button>
-            <div className="bg-white p-2 rounded-lg">
+            <div className="bg-white p-2 rounded-lg" style={{ width: qrSize + 16, height: qrSize + 16 }}>
               <QRCodeSVG value={joinUrl} size={qrSize} level="M" />
             </div>
             <div className="text-center text-white mt-1.5">
