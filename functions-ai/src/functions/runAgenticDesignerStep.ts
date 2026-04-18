@@ -1,16 +1,16 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { GoogleGenAI } from '@google/genai';
 import * as admin from 'firebase-admin';
-import { getStorage } from 'firebase-admin/storage';
-import { randomUUID } from 'crypto';
 import { ALLOWED_ORIGINS, REGION, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
-
-/**
- * Model for infographic image generation (Gemini 3.1 Flash Image)
- * Must use 'global' location for image generation on Vertex AI
- */
-const AGENTIC_IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
+import {
+  createGeminiClient,
+  callGeminiWithRetry,
+  extractJsonFromText,
+  throwClassifiedError,
+  GEMINI_FLASH,
+  GEMINI_PRO,
+} from '../utils/gemini';
+import { generateAndUploadImage } from '../utils/imageGeneration';
 
 /**
  * System prompt for the Agentic Enterprise Designer AI
@@ -355,198 +355,20 @@ function buildContextString(
 }
 
 /**
- * Call Gemini API with retry logic
- */
-async function callGeminiWithRetry(
-  client: GoogleGenAI,
-  model: string,
-  prompt: string,
-  useSearch: boolean
-): Promise<string> {
-  let retries = 0;
-  const maxRetries = 3;
-  const baseDelay = 1500;
-
-  while (retries <= maxRetries) {
-    try {
-      const response = await client.models.generateContent({
-        model,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          systemInstruction: AGENTIC_DESIGNER_SYSTEM_PROMPT,
-          tools: useSearch ? [{ googleSearch: {} }] : undefined,
-          temperature: 0.7,
-          topP: 0.9,
-          maxOutputTokens: 65536,
-        },
-      });
-
-      const text = response.text;
-      if (!text) {
-        throw new HttpsError('internal', 'No response received from AI model');
-      }
-
-      return text;
-    } catch (error: any) {
-      // Check for rate limit errors - don't retry
-      if (
-        error.message?.includes('429') ||
-        error.message?.toLowerCase().includes('rate limit')
-      ) {
-        throw new HttpsError(
-          'resource-exhausted',
-          'AI rate limit exceeded. Please wait a moment and try again.'
-        );
-      }
-
-      // Check for token limit errors - don't retry
-      if (
-        error.message?.includes('400') ||
-        error.message?.toLowerCase().includes('token limit')
-      ) {
-        throw new HttpsError(
-          'invalid-argument',
-          'Request too large. Please reduce the amount of context or simplify your inputs.'
-        );
-      }
-
-      // Retry on server errors
-      const isRetryable =
-        error.message?.includes('500') ||
-        error.message?.includes('503') ||
-        error.message?.includes('504') ||
-        error.message?.toLowerCase().includes('internal') ||
-        error.message?.toLowerCase().includes('overloaded') ||
-        error.message?.toLowerCase().includes('deadline exceeded');
-
-      if (isRetryable && retries < maxRetries) {
-        retries++;
-        const delay = baseDelay * Math.pow(2, retries - 1);
-        console.warn(`Retrying Gemini API call (attempt ${retries}/${maxRetries}) after ${delay}ms`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-
-      // If not retryable or out of retries, throw
-      if (error instanceof HttpsError) {
-        throw error;
-      }
-      throw new HttpsError('internal', `AI request failed: ${error.message}`);
-    }
-  }
-
-  throw new HttpsError('internal', 'AI request failed after maximum retries');
-}
-
-/**
  * Extract structured items from AI output for specific steps
  */
 async function extractStructuredItems(
-  client: GoogleGenAI,
+  client: ReturnType<typeof createGeminiClient>,
   aiOutput: string,
   stepNumber: number
 ): Promise<{ items: { id: string; name: string; description: string }[] } | null> {
-  try {
-    // Step 6: only extract the winning/down-selected use cases, not all evaluated ones
-    const extractionPrompt = stepNumber === 6
-      ? `Extract ONLY the final down-selected/winning Agentic Use Cases from this viability assessment. These are the ones explicitly recommended for advancement to the design phase in the "Down-Selection Recommendation" section. Do NOT include deferred or rejected use cases.\nReturn ONLY valid JSON: {"items": [{"id": "1", "name": "Agent Name", "description": "detailed 1-2 sentence description of what this agent does and its business objective"}]}\n\nContent:\n${aiOutput}`
-      : `Extract all distinct items from this markdown output as JSON.\nReturn ONLY valid JSON: {"items": [{"id": "1", "name": "short name", "description": "1-sentence description"}]}\n\nContent:\n${aiOutput}`;
+  const extractionPrompt = stepNumber === 6
+    ? `Extract ONLY the final down-selected/winning Agentic Use Cases from this viability assessment. These are the ones explicitly recommended for advancement to the design phase in the "Down-Selection Recommendation" section. Do NOT include deferred or rejected use cases.\nReturn ONLY valid JSON: {"items": [{"id": "1", "name": "Agent Name", "description": "detailed 1-2 sentence description of what this agent does and its business objective"}]}\n\nContent:\n${aiOutput}`
+    : `Extract all distinct items from this markdown output as JSON.\nReturn ONLY valid JSON: {"items": [{"id": "1", "name": "short name", "description": "1-sentence description"}]}\n\nContent:\n${aiOutput}`;
 
-    const response = await client.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: [{ role: 'user', parts: [{ text: extractionPrompt }] }],
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.3,
-        maxOutputTokens: 8192,
-      },
-    });
-
-    const text = response.text;
-    if (!text) {
-      return null;
-    }
-
-    let jsonStr = text.trim();
-    // Remove markdown code blocks if present
-    if (jsonStr.startsWith('```json')) {
-      jsonStr = jsonStr.slice(7);
-    } else if (jsonStr.startsWith('```')) {
-      jsonStr = jsonStr.slice(3);
-    }
-    if (jsonStr.endsWith('```')) {
-      jsonStr = jsonStr.slice(0, -3);
-    }
-    jsonStr = jsonStr.trim();
-
-    const parsed = JSON.parse(jsonStr);
-    if (!parsed.items || !Array.isArray(parsed.items)) {
-      return null;
-    }
-
-    return { items: parsed.items };
-  } catch (error) {
-    console.error('Failed to extract structured items:', error);
-    return null;
-  }
-}
-
-/**
- * Generate an infographic image for step 10 and upload to Firebase Storage
- */
-async function generateInfographicImage(
-  client: GoogleGenAI,
-  imagePrompt: string,
-  gameId: string,
-  elementId: string,
-): Promise<string> {
-  const response = await client.models.generateContent({
-    model: AGENTIC_IMAGE_MODEL,
-    contents: imagePrompt,
-    config: {
-      responseModalities: ['TEXT', 'IMAGE'],
-      imageConfig: {
-        aspectRatio: '16:9',
-      },
-    },
-  });
-
-  // Extract image from response (same pattern as generateQuestionImage.ts)
-  const parts = response.candidates?.[0]?.content?.parts || [];
-  let imageData: string | undefined;
-  let mimeType: string = 'image/png';
-
-  for (const part of parts) {
-    if (part && typeof part === 'object' && 'inlineData' in part && part.inlineData) {
-      const inlineData = part.inlineData as { data?: string; mimeType?: string };
-      if (inlineData.data) {
-        imageData = inlineData.data;
-        mimeType = inlineData.mimeType || 'image/png';
-        break;
-      }
-    }
-  }
-
-  if (!imageData) {
-    throw new HttpsError('internal', 'No infographic image generated by AI');
-  }
-
-  // Upload to Firebase Storage
-  const filePath = `agentic-designer/${gameId}/${elementId}/solution-map.png`;
-  const bucket = getStorage().bucket();
-  const file = bucket.file(filePath);
-  const downloadToken = randomUUID();
-
-  await file.save(Buffer.from(imageData, 'base64'), {
-    metadata: {
-      contentType: mimeType,
-      metadata: {
-        firebaseStorageDownloadTokens: downloadToken,
-      },
-    },
-  });
-
-  return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${downloadToken}`;
+  const parsed = await extractJsonFromText(client, extractionPrompt);
+  if (!parsed?.items || !Array.isArray(parsed.items)) return null;
+  return { items: parsed.items as { id: string; name: string; description: string }[] };
 }
 
 /**
@@ -638,7 +460,7 @@ export const runAgenticDesignerStep = onCall(
 
       // Select model based on task complexity
       const isComplexTask = data.stepNumber === 11 || (data.nudge && data.nudge.length > 200);
-      const model = isComplexTask ? 'gemini-3.1-pro-preview' : 'gemini-3-flash-preview';
+      const model = isComplexTask ? GEMINI_PRO : GEMINI_FLASH;
 
       // Determine if Google Search grounding is needed
       const useSearch = SEARCH_GROUNDING_STEPS.includes(data.stepNumber) && !data.nudge;
@@ -670,26 +492,17 @@ INSTRUCTIONS:
 3. Use professional, architectural language.
 4. Output ONLY the markdown content for the design document. No conversational filler.`;
 
-      // Initialize Gemini client
-      const client = new GoogleGenAI({
-        vertexai: true,
-        project: process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT,
-        location: 'global',
-      });
+      const client = createGeminiClient();
 
       // Call Gemini with retry logic
-      const aiOutput = await callGeminiWithRetry(client, model, fullPrompt, useSearch);
+      const aiOutput = await callGeminiWithRetry(client, model, AGENTIC_DESIGNER_SYSTEM_PROMPT, fullPrompt, useSearch);
 
       // Step 10: also generate the infographic image
       let imageUrl: string | undefined;
       if (data.stepNumber === 10) {
         try {
-          imageUrl = await generateInfographicImage(
-            client,
-            aiOutput,
-            data.gameId,
-            data.elementId,
-          );
+          const storagePath = `agentic-designer/${data.gameId}/${data.elementId}/solution-map.png`;
+          imageUrl = await generateAndUploadImage(client, aiOutput, storagePath);
           console.log(`Infographic image generated for session ${data.elementId}: ${imageUrl}`);
         } catch (imageError) {
           // Don't fail the step — the compiled prompt text is still valuable
@@ -747,20 +560,7 @@ INSTRUCTIONS:
         console.error('Failed to reset processing flag:', updateError);
       }
 
-      if (error instanceof HttpsError) {
-        throw error;
-      }
-
-      if (error instanceof Error) {
-        if (error.message.includes('quota')) {
-          throw new HttpsError('resource-exhausted', 'AI quota exceeded. Please try again later.');
-        }
-        if (error.message.includes('safety')) {
-          throw new HttpsError('invalid-argument', 'Content was flagged by safety filters.');
-        }
-      }
-
-      throw new HttpsError('internal', 'Failed to run step. Please try again.');
+      throwClassifiedError(error, 'run step');
     }
   }
 );
@@ -830,12 +630,7 @@ export const summarizeAgenticNudges = onCall(
 
       const nudges = nudgesSnapshot.docs.map(doc => doc.data() as AgenticDesignerNudge);
 
-      // Initialize Gemini client
-      const client = new GoogleGenAI({
-        vertexai: true,
-        project: process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT,
-        location: 'global',
-      });
+      const client = createGeminiClient();
 
       // Build prompt
       const suggestionsText = nudges
@@ -851,7 +646,7 @@ Output ONLY the synthesized request.`;
 
       // Call Gemini
       const response = await client.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: GEMINI_FLASH,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           temperature: 0.5,
@@ -870,17 +665,7 @@ Output ONLY the synthesized request.`;
     } catch (error) {
       console.error('Error summarizing nudges:', error);
 
-      if (error instanceof HttpsError) {
-        throw error;
-      }
-
-      if (error instanceof Error) {
-        if (error.message.includes('quota')) {
-          throw new HttpsError('resource-exhausted', 'AI quota exceeded. Please try again later.');
-        }
-      }
-
-      throw new HttpsError('internal', 'Failed to summarize nudges. Please try again.');
+      throwClassifiedError(error, 'summarize nudges');
     }
   }
 );

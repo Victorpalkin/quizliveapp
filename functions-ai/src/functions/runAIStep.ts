@@ -1,15 +1,17 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { GoogleGenAI } from '@google/genai';
 import * as admin from 'firebase-admin';
-import { getStorage } from 'firebase-admin/storage';
-import { randomUUID } from 'crypto';
 import { ALLOWED_ORIGINS, REGION, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
-
-/**
- * Model for infographic image generation
- */
-const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
+import {
+  createGeminiClient,
+  callGeminiWithRetry,
+  extractJsonFromText,
+  throwClassifiedError,
+  GEMINI_PRO,
+  GEMINI_FLASH,
+} from '../utils/gemini';
+import { generateAndUploadImage } from '../utils/imageGeneration';
+import { loadInteractionResults } from '../utils/interactionResults';
 
 // ── Types ──
 
@@ -92,280 +94,22 @@ function sanitizeInput(input: string): string {
 }
 
 /**
- * Call Gemini API with retry logic
- */
-async function callGeminiWithRetry(
-  client: GoogleGenAI,
-  model: string,
-  systemPrompt: string,
-  prompt: string,
-  useSearch: boolean
-): Promise<string> {
-  let retries = 0;
-  const maxRetries = 3;
-  const baseDelay = 1500;
-
-  while (retries <= maxRetries) {
-    try {
-      const response = await client.models.generateContent({
-        model,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          systemInstruction: systemPrompt,
-          tools: useSearch ? [{ googleSearch: {} }] : undefined,
-          temperature: 0.7,
-          topP: 0.9,
-          maxOutputTokens: 65536,
-        },
-      });
-
-      const text = response.text;
-      if (!text) {
-        throw new HttpsError('internal', 'No response received from AI model');
-      }
-
-      return text;
-    } catch (error: any) {
-      if (
-        error.message?.includes('429') ||
-        error.message?.toLowerCase().includes('rate limit')
-      ) {
-        throw new HttpsError(
-          'resource-exhausted',
-          'AI rate limit exceeded. Please wait a moment and try again.'
-        );
-      }
-
-      if (
-        error.message?.includes('400') ||
-        error.message?.toLowerCase().includes('token limit')
-      ) {
-        throw new HttpsError(
-          'invalid-argument',
-          'Request too large. Please reduce the amount of context or simplify your inputs.'
-        );
-      }
-
-      const isRetryable =
-        error.message?.includes('500') ||
-        error.message?.includes('503') ||
-        error.message?.includes('504') ||
-        error.message?.toLowerCase().includes('internal') ||
-        error.message?.toLowerCase().includes('overloaded') ||
-        error.message?.toLowerCase().includes('deadline exceeded');
-
-      if (isRetryable && retries < maxRetries) {
-        retries++;
-        const delay = baseDelay * Math.pow(2, retries - 1);
-        console.warn(`Retrying Gemini API call (attempt ${retries}/${maxRetries}) after ${delay}ms`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-
-      if (error instanceof HttpsError) throw error;
-      throw new HttpsError('internal', `AI request failed: ${error.message}`);
-    }
-  }
-
-  throw new HttpsError('internal', 'AI request failed after maximum retries');
-}
-
-/**
  * Extract structured items from AI output using a separate Gemini call
  */
 async function extractStructuredItems(
-  client: GoogleGenAI,
+  client: ReturnType<typeof createGeminiClient>,
   aiOutput: string,
   extractionHint?: string
 ): Promise<{ id: string; name: string; description: string }[] | null> {
-  try {
-    const hintClause = extractionHint
-      ? `Extraction guidance: ${extractionHint}\n`
-      : '';
+  const hintClause = extractionHint
+    ? `Extraction guidance: ${extractionHint}\n`
+    : '';
 
-    const extractionPrompt = `${hintClause}Extract all distinct items from this markdown output as JSON.\nReturn ONLY valid JSON: {"items": [{"id": "1", "name": "short name", "description": "1-sentence description"}]}\n\nContent:\n${aiOutput}`;
+  const extractionPrompt = `${hintClause}Extract all distinct items from this markdown output as JSON.\nReturn ONLY valid JSON: {"items": [{"id": "1", "name": "short name", "description": "1-sentence description"}]}\n\nContent:\n${aiOutput}`;
 
-    const response = await client.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: [{ role: 'user', parts: [{ text: extractionPrompt }] }],
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.3,
-        maxOutputTokens: 8192,
-      },
-    });
-
-    const text = response.text;
-    if (!text) return null;
-
-    let jsonStr = text.trim();
-    if (jsonStr.startsWith('```json')) jsonStr = jsonStr.slice(7);
-    else if (jsonStr.startsWith('```')) jsonStr = jsonStr.slice(3);
-    if (jsonStr.endsWith('```')) jsonStr = jsonStr.slice(0, -3);
-    jsonStr = jsonStr.trim();
-
-    const parsed = JSON.parse(jsonStr);
-    if (!parsed.items || !Array.isArray(parsed.items)) return null;
-
-    return parsed.items;
-  } catch (error) {
-    console.error('Failed to extract structured items:', error);
-    return null;
-  }
-}
-
-/**
- * Generate an infographic image and upload to Firebase Storage
- */
-async function generateImage(
-  client: GoogleGenAI,
-  imagePrompt: string,
-  gameId: string,
-  slideId: string
-): Promise<string> {
-  const response = await client.models.generateContent({
-    model: IMAGE_MODEL,
-    contents: imagePrompt,
-    config: {
-      responseModalities: ['TEXT', 'IMAGE'],
-      imageConfig: { aspectRatio: '16:9' },
-    },
-  });
-
-  const parts = response.candidates?.[0]?.content?.parts || [];
-  let imageData: string | undefined;
-  let mimeType = 'image/png';
-
-  for (const part of parts) {
-    if (part && typeof part === 'object' && 'inlineData' in part && part.inlineData) {
-      const inlineData = part.inlineData as { data?: string; mimeType?: string };
-      if (inlineData.data) {
-        imageData = inlineData.data;
-        mimeType = inlineData.mimeType || 'image/png';
-        break;
-      }
-    }
-  }
-
-  if (!imageData) {
-    throw new HttpsError('internal', 'No image generated by AI');
-  }
-
-  const filePath = `ai-step/${gameId}/${slideId}/output.png`;
-  const bucket = getStorage().bucket();
-  const file = bucket.file(filePath);
-  const downloadToken = randomUUID();
-
-  await file.save(Buffer.from(imageData, 'base64'), {
-    metadata: {
-      contentType: mimeType,
-      metadata: { firebaseStorageDownloadTokens: downloadToken },
-    },
-  });
-
-  return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${downloadToken}`;
-}
-
-/**
- * Load interaction results (poll, evaluation, thoughts, quiz) from slides
- * between context sources and the current slide.
- */
-async function loadInteractionResults(
-  db: admin.firestore.Firestore,
-  gameId: string,
-  slides: PresentationSlide[],
-  currentSlideOrder: number,
-  contextSlideIds: string[]
-): Promise<string> {
-  const parts: string[] = [];
-
-  // Find the earliest context source order to determine the range of intermediate slides
-  const contextOrders = contextSlideIds
-    .map(id => slides.find(s => s.id === id)?.order ?? -1)
-    .filter(o => o >= 0);
-  const earliestContextOrder = contextOrders.length > 0 ? Math.min(...contextOrders) : 0;
-
-  // Check all slides between earliest context and current slide for interaction results
-  const intermediateSlidesToCheck = slides.filter(
-    s => s.order >= earliestContextOrder && s.order < currentSlideOrder
-  );
-
-  for (const slide of intermediateSlidesToCheck) {
-    for (const el of slide.elements) {
-      try {
-        if (el.type === 'poll') {
-          const aggDoc = await db
-            .collection('games').doc(gameId)
-            .collection('aggregates').doc(el.id)
-            .get();
-
-          if (aggDoc.exists) {
-            const data = aggDoc.data();
-            const optionCounts = data?.optionCounts as Record<string, number> | undefined;
-            if (optionCounts && Object.keys(optionCounts).length > 0) {
-              const total = Object.values(optionCounts).reduce((s, v) => s + v, 0);
-              const sorted = Object.entries(optionCounts).sort((a, b) => b[1] - a[1]);
-              const winner = sorted[0];
-              const pct = total > 0 ? Math.round((winner[1] / total) * 100) : 0;
-              const question = el.pollConfig?.question || 'Poll';
-              parts.push(`[Poll Result — "${question}"] Audience voted: ${winner[0]} (${pct}%, ${total} total votes). All options: ${sorted.map(([opt, cnt]) => `${opt}: ${cnt}`).join(', ')}`);
-            }
-          }
-        } else if (el.type === 'evaluation') {
-          const aggDoc = await db
-            .collection('games').doc(gameId)
-            .collection('aggregates').doc(el.id)
-            .get();
-
-          if (aggDoc.exists) {
-            const data = aggDoc.data();
-            const items = data?.items as { name: string; averageScore: number }[] | undefined;
-            if (items && items.length > 0) {
-              const sorted = [...items].sort((a, b) => b.averageScore - a.averageScore);
-              const title = el.evaluationConfig?.title || 'Evaluation';
-              parts.push(`[Evaluation Result — "${title}"] Audience ranked: ${sorted.map((item, i) => `${i + 1}. ${item.name} (${item.averageScore.toFixed(1)}/5)`).join(', ')}`);
-            }
-          }
-        } else if (el.type === 'thoughts') {
-          const responsesSnapshot = await db
-            .collection('games').doc(gameId)
-            .collection('responses').doc(el.id)
-            .collection('items')
-            .limit(50)
-            .get();
-
-          if (!responsesSnapshot.empty) {
-            const thoughts = responsesSnapshot.docs
-              .map(d => d.data().text as string)
-              .filter(Boolean);
-            if (thoughts.length > 0) {
-              const prompt = el.thoughtsConfig?.prompt || 'Thoughts gathering';
-              parts.push(`[Thoughts Result — "${prompt}"] ${thoughts.length} audience submissions: ${thoughts.slice(0, 20).map(t => `"${t}"`).join(', ')}${thoughts.length > 20 ? ` ... and ${thoughts.length - 20} more` : ''}`);
-            }
-          }
-        } else if (el.type === 'quiz') {
-          const aggDoc = await db
-            .collection('games').doc(gameId)
-            .collection('aggregates').doc(el.id)
-            .get();
-
-          if (aggDoc.exists) {
-            const data = aggDoc.data();
-            const totalResponses = data?.totalResponses as number | undefined;
-            const correctCount = data?.correctCount as number | undefined;
-            if (totalResponses && totalResponses > 0) {
-              const pct = Math.round(((correctCount ?? 0) / totalResponses) * 100);
-              parts.push(`[Quiz Result] Knowledge check: ${pct}% answered correctly (${totalResponses} responses)`);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn(`Failed to load interaction result for element ${el.id}:`, err);
-      }
-    }
-  }
-
-  return parts.join('\n\n');
+  const parsed = await extractJsonFromText(client, extractionPrompt);
+  if (!parsed?.items || !Array.isArray(parsed.items)) return null;
+  return parsed.items as { id: string; name: string; description: string }[];
 }
 
 /**
@@ -394,7 +138,7 @@ async function buildContext(
 
   const contextSlideIds = config.contextSlideIds && config.contextSlideIds.length > 0
     ? config.contextSlideIds
-    : aiStepSlides.map(s => s.id); // default: all prior ai-step slides
+    : aiStepSlides.map(s => s.id);
 
   const contextOutputs: { slideOrder: number; title: string; output: string; imageUrl?: string }[] = [];
 
@@ -417,8 +161,6 @@ async function buildContext(
     parts.push('Previous AI Step Results:');
 
     for (const ctx of contextOutputs) {
-      // For final-report-style steps that reference many, include full output
-      // Otherwise truncate very long outputs
       const maxLen = contextSlideIds.length > 5 ? 4000 : 3000;
       const content = ctx.output.length > maxLen
         ? ctx.output.substring(0, maxLen) + '... [truncated for brevity]'
@@ -439,6 +181,36 @@ async function buildContext(
   }
 
   return parts.join('\n\n');
+}
+
+/**
+ * Compose the full prompt for the AI step
+ */
+function composePrompt(
+  targetContext: string,
+  contextString: string,
+  nudgeSummary: string,
+  currentOutput: string,
+  stepPrompt: string,
+  sanitizedNudge?: string
+): string {
+  return `${targetContext}
+
+RELEVANT CONTEXT:
+${contextString}
+${nudgeSummary}
+
+${currentOutput ? `CURRENT STATE:\n${currentOutput}\n` : ''}
+TASK:
+${stepPrompt}
+
+${sanitizedNudge ? `HOST REFINEMENT REQUEST: "${sanitizedNudge}"` : 'Generate a fresh, high-quality response for the task based on the context above.'}
+
+INSTRUCTIONS:
+1. If a refinement request is provided, update the current state accordingly.
+2. If no refinement is provided, generate the initial output for this step.
+3. Use professional, well-structured language.
+4. Output ONLY the markdown content. No conversational filler.`;
 }
 
 // ── Cloud Function: runAIStep ──
@@ -479,12 +251,11 @@ export const runAIStep = onCall(
       if (!gameDoc.exists) {
         throw new HttpsError('not-found', 'Game not found');
       }
-      const gameData = gameDoc.data();
-      if (gameData?.hostId !== request.auth.uid) {
+      if (gameDoc.data()?.hostId !== request.auth.uid) {
         throw new HttpsError('permission-denied', 'Only the game host can run AI steps');
       }
 
-      // Load presentation to get slide config and workflow settings
+      // Load presentation
       const presDoc = await db.collection('presentations').doc(data.presentationId).get();
       if (!presDoc.exists) {
         throw new HttpsError('not-found', 'Presentation not found');
@@ -493,7 +264,7 @@ export const runAIStep = onCall(
       const slides = (presData?.slides || []) as PresentationSlide[];
       const settings = (presData?.settings || {}) as PresentationSettings;
 
-      // Find the target slide and its ai-step element
+      // Find target slide and ai-step element
       const currentSlide = slides.find(s => s.id === data.slideId);
       if (!currentSlide) {
         throw new HttpsError('not-found', 'Slide not found in presentation');
@@ -548,60 +319,34 @@ export const runAIStep = onCall(
         }
       }
 
-      // Determine system prompt
+      // Compose prompt
       const systemPrompt = settings.workflowConfig?.systemPrompt
         || 'You are a helpful AI assistant. Provide clear, well-structured markdown output.';
-
-      // Target context (e.g., company name)
       const targetContext = settings.workflowConfig?.target
         ? `\nTarget/Subject: ${sanitizeInput(settings.workflowConfig.target)}`
         : '';
-
-      // Current step output (for regeneration)
       const currentOutput = slideOutputs[data.slideId]?.aiOutput || '';
-
-      // Sanitize host nudge
       const sanitizedNudge = data.nudge ? sanitizeInput(data.nudge) : undefined;
 
-      // Compose full prompt
-      const fullPrompt = `${targetContext}
+      const fullPrompt = composePrompt(
+        targetContext, contextString, nudgeSummary,
+        currentOutput, config.stepPrompt, sanitizedNudge
+      );
 
-RELEVANT CONTEXT:
-${contextString}
-${nudgeSummary}
-
-${currentOutput ? `CURRENT STATE:\n${currentOutput}\n` : ''}
-TASK:
-${config.stepPrompt}
-
-${sanitizedNudge ? `HOST REFINEMENT REQUEST: "${sanitizedNudge}"` : 'Generate a fresh, high-quality response for the task based on the context above.'}
-
-INSTRUCTIONS:
-1. If a refinement request is provided, update the current state accordingly.
-2. If no refinement is provided, generate the initial output for this step.
-3. Use professional, well-structured language.
-4. Output ONLY the markdown content. No conversational filler.`;
-
-      // Select model based on context size
+      // Select model and call Gemini
       const isComplexTask = contextString.length > 10000 || (data.nudge && data.nudge.length > 200);
-      const model = isComplexTask ? 'gemini-3.1-pro-preview' : 'gemini-3-flash-preview';
+      const model = isComplexTask ? GEMINI_PRO : GEMINI_FLASH;
       const useSearch = !!config.enableGoogleSearch && !data.nudge;
 
-      // Initialize Gemini client
-      const client = new GoogleGenAI({
-        vertexai: true,
-        project: process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT,
-        location: 'global',
-      });
-
-      // Call Gemini
+      const client = createGeminiClient();
       const aiOutput = await callGeminiWithRetry(client, model, systemPrompt, fullPrompt, useSearch);
 
       // Image generation (if enabled)
       let imageUrl: string | undefined;
       if (config.enableImageGeneration) {
         try {
-          imageUrl = await generateImage(client, aiOutput, data.gameId, data.slideId);
+          const storagePath = `ai-step/${data.gameId}/${data.slideId}/output.png`;
+          imageUrl = await generateAndUploadImage(client, aiOutput, storagePath);
           console.log(`Image generated for slide ${data.slideId}: ${imageUrl}`);
         } catch (imageError) {
           console.error('Image generation failed, continuing with text output:', imageError);
@@ -651,18 +396,7 @@ INSTRUCTIONS:
         console.error('Failed to reset processing flag:', updateError);
       }
 
-      if (error instanceof HttpsError) throw error;
-
-      if (error instanceof Error) {
-        if (error.message.includes('quota')) {
-          throw new HttpsError('resource-exhausted', 'AI quota exceeded. Please try again later.');
-        }
-        if (error.message.includes('safety')) {
-          throw new HttpsError('invalid-argument', 'Content was flagged by safety filters.');
-        }
-      }
-
-      throw new HttpsError('internal', 'Failed to run AI step. Please try again.');
+      throwClassifiedError(error, 'run AI step');
     }
   }
 );
@@ -702,8 +436,7 @@ export const summarizeSlideNudges = onCall(
       if (!gameDoc.exists) {
         throw new HttpsError('not-found', 'Game not found');
       }
-      const gameData = gameDoc.data();
-      if (gameData?.hostId !== request.auth.uid) {
+      if (gameDoc.data()?.hostId !== request.auth.uid) {
         throw new HttpsError('permission-denied', 'Only the game host can summarize nudges');
       }
 
@@ -720,12 +453,7 @@ export const summarizeSlideNudges = onCall(
 
       const nudges = nudgesSnapshot.docs.map(d => d.data());
 
-      // Initialize Gemini client
-      const client = new GoogleGenAI({
-        vertexai: true,
-        project: process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT,
-        location: 'global',
-      });
+      const client = createGeminiClient();
 
       const suggestionsText = nudges
         .map(n => `- ${sanitizeInput(n.playerName)}: "${sanitizeInput(n.text)}"`)
@@ -739,7 +467,7 @@ ${suggestionsText}
 Output ONLY the synthesized request.`;
 
       const response = await client.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: GEMINI_FLASH,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           temperature: 0.5,
@@ -753,16 +481,7 @@ Output ONLY the synthesized request.`;
       return { success: true, summary };
     } catch (error) {
       console.error('Error summarizing nudges:', error);
-
-      if (error instanceof HttpsError) throw error;
-
-      if (error instanceof Error) {
-        if (error.message.includes('quota')) {
-          throw new HttpsError('resource-exhausted', 'AI quota exceeded. Please try again later.');
-        }
-      }
-
-      throw new HttpsError('internal', 'Failed to summarize nudges. Please try again.');
+      throwClassifiedError(error, 'summarize nudges');
     }
   }
 );
