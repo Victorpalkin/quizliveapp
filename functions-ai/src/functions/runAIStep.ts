@@ -623,14 +623,11 @@ INSTRUCTIONS:
         ...(data.hostInputs ? { hostInputs: data.hostInputs } : {}),
       };
 
-      await stateRef.set(
-        {
-          [`slideOutputs.${data.slideId}`]: outputData,
-          isProcessing: false,
-          processingSlideId: admin.firestore.FieldValue.delete(),
-        },
-        { merge: true }
-      );
+      await stateRef.update({
+        [`slideOutputs.${data.slideId}`]: outputData,
+        isProcessing: false,
+        processingSlideId: admin.firestore.FieldValue.delete(),
+      });
 
       console.log(`Completed AI step for slide ${data.slideId} in game ${data.gameId}`);
 
