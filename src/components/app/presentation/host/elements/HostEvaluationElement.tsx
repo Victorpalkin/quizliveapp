@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { motion } from 'motion/react';
-import { useResponseCount } from '@/firebase/presentation';
+import { useResponseCount, useDynamicItems } from '@/firebase/presentation';
 import { ClipboardList, Loader2 } from 'lucide-react';
 import type { SlideElement } from '@/lib/types';
 import type { AgenticDesignerSession } from '@/lib/types/agentic-designer';
@@ -20,6 +20,9 @@ export function HostEvaluationElement({ element, gameId, playerCount }: HostEval
   const config = element.evaluationConfig;
   const count = useResponseCount(gameId, element.id);
   const ref = element.agenticSourceRef;
+
+  // Dynamic items from ai-step structured output
+  const { items: aiStepItems, isLoading: loadingAIStep } = useDynamicItems(gameId, element.dynamicItemsSource);
 
   // Dynamic items from agentic designer session
   const [dynamicItems, setDynamicItems] = useState<{ id: string; text: string; description?: string }[] | null>(null);
@@ -58,7 +61,7 @@ export function HostEvaluationElement({ element, gameId, playerCount }: HostEval
 
   if (!config) return null;
 
-  const items = dynamicItems || config.items;
+  const items = aiStepItems || dynamicItems || config.items;
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-4">
@@ -75,7 +78,7 @@ export function HostEvaluationElement({ element, gameId, playerCount }: HostEval
 
       {/* Items list */}
       <div className="w-full max-w-lg space-y-2 mb-6">
-        {loadingDynamic ? (
+        {(loadingDynamic || loadingAIStep) ? (
           <div className="flex items-center justify-center py-4">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>

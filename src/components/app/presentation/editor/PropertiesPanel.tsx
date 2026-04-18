@@ -236,7 +236,7 @@ export function PropertiesPanel({
         <QuizProperties element={selectedElement!} onUpdate={onUpdateElement} />
       )}
       {selectedElement!.type === 'poll' && (
-        <PollProperties element={selectedElement!} onUpdate={onUpdateElement} />
+        <PollProperties element={selectedElement!} slides={slides} onUpdate={onUpdateElement} />
       )}
       {selectedElement!.type === 'thoughts' && (
         <ThoughtsProperties element={selectedElement!} onUpdate={onUpdateElement} />

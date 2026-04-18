@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirestore, useFunctions } from '@/firebase';
-import { useElementResponses } from '@/firebase/presentation';
+import { useElementResponses, useDynamicItems } from '@/firebase/presentation';
 import { EvaluationResultsDisplay } from '@/components/app/evaluation-results-display';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw } from 'lucide-react';
@@ -26,6 +26,9 @@ export function HostEvaluationResultsElement({ element, slides, gameId }: HostEv
   const sourceSlide = slides.find((s) => s.id === element.sourceSlideId);
   const sourceElement = sourceSlide?.elements.find((el) => el.id === element.sourceElementId);
   const config = sourceElement?.evaluationConfig;
+
+  // Load dynamic items from AI step if configured on source element
+  const { items: aiStepItems } = useDynamicItems(gameId, sourceElement?.dynamicItemsSource);
 
   // Build metrics array from config for the display component
   const metrics: EvaluationMetric[] = config?.metrics?.map((m) => ({
@@ -72,22 +75,27 @@ export function HostEvaluationResultsElement({ element, slides, gameId }: HostEv
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasResults, responses.length, processing, functions, element.sourceElementId]);
 
+  // Merge dynamic items into config for computation
+  const effectiveConfig = config && aiStepItems
+    ? { ...config, items: aiStepItems }
+    : config;
+
   const triggerComputation = useCallback(async () => {
-    if (!functions || !element.sourceElementId || !config) return;
+    if (!functions || !element.sourceElementId || !effectiveConfig) return;
     setProcessing(true);
     try {
       const fn = httpsCallable(functions, 'computePresentationEvaluationResults');
       await fn({
         gameId,
         elementId: element.sourceElementId,
-        evaluationConfig: config,
+        evaluationConfig: effectiveConfig,
       });
     } catch {
       // Results subscription will update when ready
     } finally {
       setProcessing(false);
     }
-  }, [functions, gameId, element.sourceElementId, config]);
+  }, [functions, gameId, element.sourceElementId, effectiveConfig]);
 
   if (!config) {
     return (

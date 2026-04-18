@@ -25,7 +25,6 @@ import type {
 const EMPTY_STATE: PresentationWorkflowState = {
   slideOutputs: {},
   isProcessing: false,
-  processingSlideId: undefined,
 };
 
 /**

@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { ANSWER_COLORS } from '@/lib/constants';
-import { useResponses } from '@/firebase/presentation';
-import { Check } from 'lucide-react';
+import { useResponses, useDynamicItems } from '@/firebase/presentation';
+import { Check, Loader2 } from 'lucide-react';
 import type { SlideElement } from '@/lib/types';
 
 interface PlayerPollProps {
@@ -19,10 +19,23 @@ interface PlayerPollProps {
 export function PlayerPoll({ element, gameId, playerId, playerName, onSubmitted }: PlayerPollProps) {
   const config = element.pollConfig;
   const { submitResponse } = useResponses(gameId);
+  const { items: aiStepItems, isLoading: loadingDynamic } = useDynamicItems(gameId, element.dynamicItemsSource);
   const [submitting, setSubmitting] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
 
   if (!config) return null;
+
+  if (loadingDynamic) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const options = aiStepItems
+    ? aiStepItems.map((item) => ({ text: item.text }))
+    : config.options;
 
   const toggleOption = (index: number) => {
     if (submitting) return;
@@ -78,7 +91,7 @@ export function PlayerPoll({ element, gameId, playerId, playerName, onSubmitted 
       )}
 
       <div className="grid grid-cols-1 gap-3">
-        {config.options.map((opt, i) => {
+        {options.map((opt, i) => {
           const isSelected = selected.includes(i);
           return (
             <motion.div

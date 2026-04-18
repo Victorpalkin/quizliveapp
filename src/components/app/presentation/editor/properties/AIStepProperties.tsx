@@ -30,11 +30,15 @@ export function AIStepProperties({ element, slides, onUpdate }: AIStepProperties
     onUpdate({ aiStepConfig: { ...config, ...updates } });
   };
 
-  // Find all other ai-step slides for context selection
+  // Find the current slide's order
+  const currentSlide = slides.find((sl) => sl.elements.some((el) => el.id === element.id));
+  const currentSlideOrder = currentSlide?.order ?? Infinity;
+
+  // Only show ai-step slides that come BEFORE the current one
   const aiStepSlides = slides.filter(
     (s) =>
       s.elements.some((el) => el.type === 'ai-step') &&
-      s.id !== slides.find((sl) => sl.elements.some((el) => el.id === element.id))?.id
+      s.order < currentSlideOrder
   );
 
   const selectedContextIds = config.contextSlideIds ?? [];
