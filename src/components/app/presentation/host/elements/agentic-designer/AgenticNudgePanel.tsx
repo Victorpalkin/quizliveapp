@@ -104,93 +104,86 @@ export function AgenticNudgePanel({
         />
       </div>
 
-      {/* Player nudges — compact trigger + popover */}
-      <div className="flex items-center gap-2">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-sm flex-1 justify-start">
-              <MessageSquare className="h-4 w-4 mr-1.5" />
-              Player Input
-              {nudges.length > 0 && (
-                <Badge variant="secondary" className="ml-1.5 text-sm h-5 px-1.5">
-                  {nudges.length}
-                </Badge>
+      {/* Player nudges — inline */}
+      <div className="border rounded-md">
+        <div className="px-3 py-2 border-b flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Player Input</span>
+            {nudges.length > 0 && (
+              <Badge variant="secondary" className="text-sm h-5 px-1.5">
+                {nudges.length}
+              </Badge>
+            )}
+          </div>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onToggleNudges}>
+            {nudgesOpen ? (
+              <><ToggleRight className="h-3.5 w-3.5 mr-1 text-green-500" /> Open</>
+            ) : (
+              <><ToggleLeft className="h-3.5 w-3.5 mr-1" /> Closed</>
+            )}
+          </Button>
+        </div>
+
+        {nudges.length > 0 ? (
+          <div className="p-2 space-y-2">
+            <div className="max-h-48 overflow-y-auto space-y-1">
+              {nudges.map((nudge) => (
+                <label
+                  key={nudge.id}
+                  className="flex items-start gap-2 p-1.5 rounded hover:bg-muted/50 cursor-pointer"
+                >
+                  <Checkbox
+                    checked={selectedIds.has(nudge.id)}
+                    onCheckedChange={() => toggleSelected(nudge.id)}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">{nudge.text}</p>
+                    <p className="text-sm text-muted-foreground">{nudge.playerName}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-1 pt-1 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-sm flex-1"
+                onClick={handleSummarize}
+                disabled={summarizing || nudges.length === 0}
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                {summarizing ? 'Summarizing...' : 'AI Summary'}
+              </Button>
+              {selectedIds.size > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-sm"
+                  onClick={handleUseSelected}
+                >
+                  Use Selected ({selectedIds.size})
+                </Button>
               )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-[340px] p-0">
-            <div className="p-3 border-b flex items-center justify-between">
-              <span className="text-sm font-medium">Player Nudges ({nudges.length})</span>
-              <Button variant="ghost" size="sm" className="h-8 text-sm" onClick={onToggleNudges}>
-                {nudgesOpen ? (
-                  <><ToggleRight className="h-4 w-4 mr-1 text-green-500" /> Open</>
-                ) : (
-                  <><ToggleLeft className="h-4 w-4 mr-1" /> Closed</>
-                )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={onClearNudges}
+                title="Clear all nudges"
+              >
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
-
-            {nudges.length > 0 ? (
-              <div className="p-2 space-y-2">
-                <div className="max-h-48 overflow-y-auto space-y-1">
-                  {nudges.map((nudge) => (
-                    <label
-                      key={nudge.id}
-                      className="flex items-start gap-2 p-1.5 rounded hover:bg-muted/50 cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={selectedIds.has(nudge.id)}
-                        onCheckedChange={() => toggleSelected(nudge.id)}
-                        className="mt-0.5"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm">{nudge.text}</p>
-                        <p className="text-sm text-muted-foreground">{nudge.playerName}</p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-                <div className="flex gap-1 pt-1 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-sm flex-1"
-                    onClick={handleSummarize}
-                    disabled={summarizing || nudges.length === 0}
-                  >
-                    <Sparkles className="h-4 w-4 mr-1" />
-                    {summarizing ? 'Summarizing...' : 'AI Summary'}
-                  </Button>
-                  {selectedIds.size > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-sm"
-                      onClick={handleUseSelected}
-                    >
-                      Use Selected ({selectedIds.size})
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={onClearNudges}
-                    title="Clear all nudges"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 text-center">
-                <p className="text-sm text-muted-foreground">
-                  {nudgesOpen ? 'Waiting for player suggestions...' : 'Player input is currently closed.'}
-                </p>
-              </div>
-            )}
-          </PopoverContent>
-        </Popover>
+          </div>
+        ) : (
+          <div className="p-3 text-center">
+            <p className="text-sm text-muted-foreground">
+              {nudgesOpen ? 'Waiting for player suggestions...' : 'Player input is currently closed.'}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

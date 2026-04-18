@@ -174,45 +174,36 @@ export function HostAIStepElement({
       data-interactive
     >
       {/* Step header */}
-      <div className="flex-shrink-0 border-b px-4 py-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-          <span>Slide {currentSlide.order + 1}</span>
-          {hasOutput && (
-            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-          )}
-          <div className="flex items-center gap-0.5 ml-auto border rounded-md px-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setFontSizeIndex((i) => Math.max(0, i - 1))}
-              disabled={fontSizeIndex === 0}
-              className="h-6 w-6 p-0"
-            >
-              <Minus className="h-3 w-3" />
-            </Button>
-            <span className="text-xs text-muted-foreground w-6 text-center">{FONT_SIZES[fontSizeIndex].label}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setFontSizeIndex((i) => Math.min(FONT_SIZES.length - 1, i + 1))}
-              disabled={fontSizeIndex === FONT_SIZES.length - 1}
-              className="h-6 w-6 p-0"
-            >
-              <Plus className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
-        {config.outputExpectation && (
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              <ChevronRight className="h-3 w-3" />
-              Expected output
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-1 text-xs text-muted-foreground bg-muted/50 rounded p-2">
-              {config.outputExpectation}
-            </CollapsibleContent>
-          </Collapsible>
+      <div className="flex-shrink-0 border-b px-4 py-2.5 flex items-center gap-3">
+        {config.outputExpectation ? (
+          <p className="text-sm text-muted-foreground flex-1 min-w-0">{config.outputExpectation}</p>
+        ) : (
+          <div className="flex-1" />
         )}
+        {hasOutput && (
+          <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+        )}
+        <div className="flex items-center gap-0.5 border rounded-md px-1 flex-shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setFontSizeIndex((i) => Math.max(0, i - 1))}
+            disabled={fontSizeIndex === 0}
+            className="h-6 w-6 p-0"
+          >
+            <Minus className="h-3 w-3" />
+          </Button>
+          <span className="text-xs text-muted-foreground w-6 text-center">{FONT_SIZES[fontSizeIndex].label}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setFontSizeIndex((i) => Math.min(FONT_SIZES.length - 1, i + 1))}
+            disabled={fontSizeIndex === FONT_SIZES.length - 1}
+            className="h-6 w-6 p-0"
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
 
       {/* Main content: Left panel + Right panel */}
