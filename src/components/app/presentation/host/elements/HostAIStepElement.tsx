@@ -4,18 +4,11 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Play, RefreshCw, BookOpen, ChevronRight, CheckCircle2, Layers, Minus, Plus } from 'lucide-react';
+import { Play, RefreshCw, ChevronRight, CheckCircle2, Layers, Minus, Plus } from 'lucide-react';
 import { AgenticStepForm } from './agentic-designer/AgenticStepForm';
 import { AgenticNudgePanel } from './agentic-designer/AgenticNudgePanel';
 import { AgenticAIOutput } from './agentic-designer/AgenticAIOutput';
@@ -79,19 +72,6 @@ export function HostAIStepElement({
   const hostInputs = slideOutput?.hostInputs ?? {};
   const isProcessing = globalProcessing && processingSlideId === slideId;
   const hasOutput = !!aiOutput;
-
-  // Find previous ai-step slides that have output (for reference drawer)
-  const previousAISteps = useMemo(() => {
-    const currentOrder = currentSlide.order;
-    return allSlides
-      .filter((s) => {
-        if (s.order >= currentOrder) return false;
-        const aiStepEl = s.elements.find((el) => el.type === 'ai-step');
-        if (!aiStepEl) return false;
-        return !!workflowState.slideOutputs[s.id]?.aiOutput;
-      })
-      .sort((a, b) => b.order - a.order);
-  }, [allSlides, currentSlide.order, workflowState.slideOutputs]);
 
   // Context sources for this AI step
   const contextSources = useMemo(() => {
@@ -305,47 +285,6 @@ export function HostAIStepElement({
 
         {/* Right panel: AI output */}
         <ResizablePanel defaultSize="70" minSize="40" className="flex flex-col min-w-0">
-          {/* Reference drawer for prior AI steps */}
-          {previousAISteps.length > 0 && (
-            <div className="flex-shrink-0 border-b px-3 py-1.5">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs">
-                    <BookOpen className="h-3.5 w-3.5 mr-1.5" />
-                    Reference Prior Steps ({previousAISteps.length})
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[600px] overflow-y-auto">
-                  <SheetHeader>
-                    <SheetTitle>Prior AI Step Outputs</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-4 space-y-3">
-                    {previousAISteps.map((slide) => {
-                      const output = workflowState.slideOutputs[slide.id]?.aiOutput;
-                      const title = slide.elements.find((el) => el.type === 'text')?.content
-                        || `Slide ${slide.order + 1}`;
-                      return (
-                        <Collapsible key={slide.id}>
-                          <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 rounded hover:bg-muted text-sm font-medium">
-                            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                            <span className="truncate">{title}</span>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="px-2 pb-2">
-                            <div className="prose prose-sm dark:prose-invert max-w-none text-xs mt-1 bg-muted/30 rounded p-3">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {output || ''}
-                              </ReactMarkdown>
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      );
-                    })}
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </div>
-          )}
-
           {/* Context sources */}
           {contextSources.length > 0 && (
             <Collapsible open={contextOpen} onOpenChange={setContextOpen}>
