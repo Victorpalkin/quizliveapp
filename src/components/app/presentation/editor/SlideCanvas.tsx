@@ -56,8 +56,8 @@ interface SlideCanvasProps {
   onEndDrag: () => void;
 }
 
-const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
-const RESULTS_TYPES = ['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results'];
+const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation', 'agentic-designer', 'ai-step'];
+const RESULTS_TYPES = ['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results', 'agentic-designer-results'];
 const SPECIAL_TYPES = ['leaderboard', 'qa', 'spin-wheel'];
 
 const SNAP_THRESHOLD = 2; // % threshold for snapping

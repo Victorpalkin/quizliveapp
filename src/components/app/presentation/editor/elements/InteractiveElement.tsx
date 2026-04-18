@@ -1,6 +1,6 @@
 'use client';
 
-import { FileQuestion, Vote, MessageSquare, Star, Trophy, HelpCircle, Disc3, ClipboardList, Workflow } from 'lucide-react';
+import { FileQuestion, Vote, MessageSquare, Star, Trophy, HelpCircle, Disc3, ClipboardList, Workflow, Sparkles } from 'lucide-react';
 import type { SlideElement } from '@/lib/types';
 
 interface InteractiveElementProps {
@@ -17,6 +17,7 @@ const CONFIG = {
   'spin-wheel': { icon: Disc3, label: 'Spin Wheel', color: 'bg-pink-500/10 border-pink-500/30', textColor: 'text-pink-600' },
   evaluation: { icon: ClipboardList, label: 'Evaluation', color: 'bg-indigo-500/10 border-indigo-500/30', textColor: 'text-indigo-600' },
   'agentic-designer': { icon: Workflow, label: 'Agentic Designer', color: 'bg-cyan-500/10 border-cyan-500/30', textColor: 'text-cyan-600' },
+  'ai-step': { icon: Sparkles, label: 'AI Step', color: 'bg-violet-500/10 border-violet-500/30', textColor: 'text-violet-600' },
 };
 
 export function InteractiveElement({ element }: InteractiveElementProps) {
@@ -33,6 +34,7 @@ export function InteractiveElement({ element }: InteractiveElementProps) {
     if (element.type === 'rating' && element.ratingConfig) return element.ratingConfig.itemTitle;
     if (element.type === 'evaluation' && element.evaluationConfig) return element.evaluationConfig.title;
     if (element.type === 'agentic-designer' && element.agenticDesignerConfig) return element.agenticDesignerConfig.target;
+    if (element.type === 'ai-step' && element.aiStepConfig) return element.aiStepConfig.stepPrompt;
     if (element.type === 'leaderboard') return 'Leaderboard';
     if (element.type === 'qa') return element.qaConfig?.topic || 'Q&A';
     if (element.type === 'spin-wheel') return 'Spin the Wheel';
@@ -90,6 +92,25 @@ export function InteractiveElement({ element }: InteractiveElementProps) {
             <div className="text-[10px] px-2 text-muted-foreground/60">
               +{element.evaluationConfig.items.length - 3} more
             </div>
+          )}
+        </div>
+      )}
+
+      {element.type === 'ai-step' && element.aiStepConfig && (
+        <div className="flex flex-wrap gap-1 mt-1 justify-center">
+          {element.aiStepConfig.enableGoogleSearch && (
+            <span className="text-[9px] px-1.5 py-0.5 bg-violet-500/20 text-violet-700 dark:text-violet-300 rounded">Search</span>
+          )}
+          {element.aiStepConfig.enableImageGeneration && (
+            <span className="text-[9px] px-1.5 py-0.5 bg-violet-500/20 text-violet-700 dark:text-violet-300 rounded">Image</span>
+          )}
+          {element.aiStepConfig.enableStructuredExtraction && (
+            <span className="text-[9px] px-1.5 py-0.5 bg-violet-500/20 text-violet-700 dark:text-violet-300 rounded">Extract</span>
+          )}
+          {element.aiStepConfig.contextSlideIds && element.aiStepConfig.contextSlideIds.length > 0 && (
+            <span className="text-[9px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
+              {element.aiStepConfig.contextSlideIds.length} ctx
+            </span>
           )}
         </div>
       )}

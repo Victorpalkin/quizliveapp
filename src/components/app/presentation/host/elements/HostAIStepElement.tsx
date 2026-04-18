@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -15,12 +15,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Play, RefreshCw, BookOpen, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Play, RefreshCw, BookOpen, ChevronRight, CheckCircle2, Layers } from 'lucide-react';
 import { AgenticStepForm } from './agentic-designer/AgenticStepForm';
 import { AgenticNudgePanel } from './agentic-designer/AgenticNudgePanel';
 import { AgenticAIOutput } from './agentic-designer/AgenticAIOutput';
 import { useWorkflowState, useSlideNudges } from '@/firebase/presentation';
 import type { SlideElement, PresentationSlide, AIStepConfig } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -78,6 +79,53 @@ export function HostAIStepElement({
       })
       .sort((a, b) => b.order - a.order);
   }, [allSlides, currentSlide.order, workflowState.slideOutputs]);
+
+  // Context sources for this AI step
+  const contextSources = useMemo(() => {
+    const currentOrder = currentSlide.order;
+    const contextIds = config?.contextSlideIds;
+
+    return allSlides
+      .filter((s) => {
+        if (s.order >= currentOrder) return false;
+        if (!s.elements.some((el) => el.type === 'ai-step')) return false;
+        if (contextIds && contextIds.length > 0) return contextIds.includes(s.id);
+        return true;
+      })
+      .sort((a, b) => a.order - b.order)
+      .map((s) => ({
+        slideId: s.id,
+        slideNumber: s.order + 1,
+        title: s.elements.find((el) => el.type === 'text')?.content || `Slide ${s.order + 1}`,
+        output: workflowState.slideOutputs[s.id]?.aiOutput,
+      }));
+  }, [allSlides, currentSlide.order, config?.contextSlideIds, workflowState.slideOutputs]);
+
+  const interactionSources = useMemo(() => {
+    const currentOrder = currentSlide.order;
+    const interactiveTypes = ['poll', 'quiz', 'thoughts', 'evaluation', 'rating'];
+    const results: { type: string; label: string }[] = [];
+
+    allSlides.forEach((s) => {
+      if (s.order >= currentOrder) return;
+      s.elements.forEach((el) => {
+        if (interactiveTypes.includes(el.type)) {
+          const label = el.pollConfig?.question || el.quizConfig?.question
+            || el.thoughtsConfig?.prompt || el.evaluationConfig?.title
+            || el.ratingConfig?.itemTitle || el.type;
+          results.push({ type: el.type, label });
+        }
+      });
+    });
+    return results;
+  }, [allSlides, currentSlide.order]);
+
+  const [contextOpen, setContextOpen] = useState(!hasOutput);
+
+  // Auto-collapse context sources when output is first generated
+  useEffect(() => {
+    if (hasOutput) setContextOpen(false);
+  }, [hasOutput]);
 
   // Fields from config
   const fields = config?.inputFields ?? [];
@@ -260,6 +308,54 @@ export function HostAIStepElement({
                 </SheetContent>
               </Sheet>
             </div>
+          )}
+
+          {/* Context sources */}
+          {contextSources.length > 0 && (
+            <Collapsible open={contextOpen} onOpenChange={setContextOpen}>
+              <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-2 bg-muted/30 border-b text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+                <Layers className="h-3.5 w-3.5" />
+                <span className="font-medium">Context ({contextSources.length} source{contextSources.length !== 1 ? 's' : ''})</span>
+                {interactionSources.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground/70">+ {interactionSources.length} interaction{interactionSources.length !== 1 ? 's' : ''}</span>
+                )}
+                <ChevronRight className={cn("h-3 w-3 ml-auto transition-transform", contextOpen && "rotate-90")} />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="max-h-[200px] overflow-y-auto border-b">
+                  <div className="p-3 space-y-2">
+                    {contextSources.map((src) => (
+                      <div key={src.slideId} className="text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-foreground">Slide {src.slideNumber}</span>
+                          <span className="text-muted-foreground truncate">{src.title}</span>
+                          {src.output ? (
+                            <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0 ml-auto" />
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/15 text-amber-600 rounded ml-auto flex-shrink-0">Pending</span>
+                          )}
+                        </div>
+                        {src.output && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-3 mt-0.5 pl-4">
+                            {src.output.slice(0, 150)}{src.output.length > 150 ? '...' : ''}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                    {interactionSources.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1 border-t">
+                        {interactionSources.map((src, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
+                            <span className="capitalize">{src.type}</span>
+                            <span className="truncate max-w-[120px]">{src.label}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           )}
 
           {/* Output display */}

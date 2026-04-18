@@ -47,14 +47,16 @@ export function useWorkflowState(gameId: string) {
 
     const stateRef = doc(firestore, 'games', gameId, 'workflowState', 'state');
 
-    const unsubscribe = onSnapshot(stateRef, async (snapshot) => {
+    const unsubscribe = onSnapshot(stateRef, (snapshot) => {
       if (!snapshot.exists()) {
-        // Auto-create on first access
-        await setDoc(stateRef, EMPTY_STATE);
+        setDoc(stateRef, EMPTY_STATE).catch(() => {});
         setWorkflowState(EMPTY_STATE);
       } else {
         setWorkflowState(snapshot.data() as PresentationWorkflowState);
       }
+      setIsLoading(false);
+    }, () => {
+      setWorkflowState(EMPTY_STATE);
       setIsLoading(false);
     });
 

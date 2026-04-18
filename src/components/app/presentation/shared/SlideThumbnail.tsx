@@ -9,6 +9,8 @@ import {
   Disc3,
   ClipboardList,
   BarChart3,
+  Sparkles,
+  Workflow,
 } from 'lucide-react';
 import type { PresentationSlide, SlideElement } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -33,6 +35,9 @@ export const ELEMENT_ICON_CONFIG: Record<
   leaderboard: { icon: Trophy, color: 'text-yellow-500' },
   qa: { icon: HelpCircle, color: 'text-green-500' },
   'spin-wheel': { icon: Disc3, color: 'text-pink-500' },
+  'ai-step': { icon: Sparkles, color: 'text-violet-500' },
+  'agentic-designer': { icon: Workflow, color: 'text-cyan-500' },
+  'agentic-designer-results': { icon: BarChart3, color: 'text-cyan-500' },
 };
 
 export function ElementPreview({ element }: { element: SlideElement }) {
