@@ -11,10 +11,9 @@ interface AgenticAIOutputProps {
   imageUrl?: string | null;
   isProcessing: boolean;
   stepTitle: string;
-  proseClass?: string;
 }
 
-export function AgenticAIOutput({ output, imageUrl, isProcessing, stepTitle, proseClass = 'prose-base' }: AgenticAIOutputProps) {
+export function AgenticAIOutput({ output, imageUrl, isProcessing, stepTitle }: AgenticAIOutputProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -65,7 +64,7 @@ export function AgenticAIOutput({ output, imageUrl, isProcessing, stepTitle, pro
           Export
         </Button>
       </div>
-      <div className={`flex-1 overflow-y-auto prose ${proseClass} dark:prose-invert max-w-none`}>
+      <div className="flex-1 overflow-y-auto prose prose-base dark:prose-invert max-w-none">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{output}</ReactMarkdown>
         {imageUrl && (
           <div className="mt-4 rounded-lg overflow-hidden border not-prose">

@@ -24,10 +24,10 @@ import {
 } from '@/components/ui/resizable';
 
 const FONT_SIZES = [
-  { label: 'S', prose: 'prose-sm', scale: 0.875 },
-  { label: 'M', prose: 'prose-base', scale: 1 },
-  { label: 'L', prose: 'prose-lg', scale: 1.125 },
-  { label: 'XL', prose: 'prose-xl', scale: 1.25 },
+  { label: 'S', scale: 0.875 },
+  { label: 'M', scale: 1 },
+  { label: 'L', scale: 1.125 },
+  { label: 'XL', scale: 1.25 },
 ] as const;
 
 interface HostAIStepElementProps {
@@ -216,7 +216,7 @@ export function HostAIStepElement({
       </div>
 
       {/* Main content: Left panel + Right panel */}
-      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" style={{ fontSize: `${FONT_SIZES[fontSizeIndex].scale}rem` }}>
+      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" style={{ zoom: FONT_SIZES[fontSizeIndex].scale }}>
         {/* Left panel: form + nudges */}
         <ResizablePanel defaultSize="30" minSize="20" maxSize="60" className="flex flex-col">
           <ScrollArea className="flex-1">
@@ -348,7 +348,6 @@ export function HostAIStepElement({
               imageUrl={imageUrl}
               isProcessing={isProcessing || running}
               stepTitle={stepTitle}
-              proseClass={FONT_SIZES[fontSizeIndex].prose}
             />
           </div>
         </ResizablePanel>
