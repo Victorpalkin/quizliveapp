@@ -34,11 +34,19 @@ export function AIStepProperties({ element, slides, onUpdate }: AIStepProperties
   const currentSlide = slides.find((sl) => sl.elements.some((el) => el.id === element.id));
   const currentSlideOrder = currentSlide?.order ?? Infinity;
 
-  // Only show ai-step slides that come BEFORE the current one
-  const aiStepSlides = slides.filter(
+  // Show ai-step and interactive slides that come BEFORE the current one
+  const CONTEXT_SOURCE_TYPES = ['ai-step', 'evaluation', 'rating', 'poll', 'thoughts', 'quiz'];
+  const contextSourceSlides = slides.filter(
     (s) =>
-      s.elements.some((el) => el.type === 'ai-step') &&
+      s.elements.some((el) => CONTEXT_SOURCE_TYPES.includes(el.type)) &&
       s.order < currentSlideOrder
+  );
+  const aiStepSlides = contextSourceSlides.filter((s) =>
+    s.elements.some((el) => el.type === 'ai-step')
+  );
+  const interactionSlides = contextSourceSlides.filter(
+    (s) => !s.elements.some((el) => el.type === 'ai-step') &&
+           s.elements.some((el) => ['evaluation', 'rating', 'poll', 'thoughts', 'quiz'].includes(el.type))
   );
 
   const selectedContextIds = config.contextSlideIds ?? [];
@@ -223,10 +231,10 @@ export function AIStepProperties({ element, slides, onUpdate }: AIStepProperties
         </div>
       </div>
 
-      {/* Player Nudges */}
+      {/* Audience Suggestions */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs font-medium">Player Nudges</Label>
+          <Label className="text-xs font-medium">Audience Suggestions</Label>
           <Switch
             checked={config.enablePlayerNudges !== false}
             onCheckedChange={(checked) => updateConfig({ enablePlayerNudges: checked })}
@@ -279,31 +287,66 @@ export function AIStepProperties({ element, slides, onUpdate }: AIStepProperties
       </div>
 
       {/* Context Selection */}
-      {aiStepSlides.length > 0 && (
+      {contextSourceSlides.length > 0 && (
         <div className="space-y-2">
           <Label className="text-xs font-medium">Context Sources</Label>
           <p className="text-[10px] text-muted-foreground">
-            Which previous AI steps feed into this one? All selected by default.
+            Select which previous slides feed into this AI step. All selected by default.
           </p>
-          <div className="space-y-1.5 max-h-40 overflow-y-auto">
-            {aiStepSlides.map((s) => {
-              const title =
-                s.elements.find((el) => el.type === 'text')?.content ||
-                `Slide ${s.order + 1}`;
-              const isSelected =
-                selectedContextIds.length === 0 || selectedContextIds.includes(s.id);
-              return (
-                <div key={s.id} className="flex items-center gap-2">
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={() => toggleContextSlide(s.id)}
-                  />
-                  <span className="text-[11px] truncate">
-                    {s.order + 1}. {title}
-                  </span>
-                </div>
-              );
-            })}
+          <div className="space-y-1.5 max-h-52 overflow-y-auto">
+            {aiStepSlides.length > 0 && (
+              <>
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider pt-1">AI Steps</p>
+                {aiStepSlides.map((s) => {
+                  const title =
+                    s.elements.find((el) => el.type === 'text')?.content ||
+                    `Slide ${s.order + 1}`;
+                  const isSelected =
+                    selectedContextIds.length === 0 || selectedContextIds.includes(s.id);
+                  return (
+                    <div key={s.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleContextSlide(s.id)}
+                      />
+                      <span className="text-[11px] truncate">
+                        {s.order + 1}. {title}
+                      </span>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+            {interactionSlides.length > 0 && (
+              <>
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider pt-1">Interaction Results</p>
+                {interactionSlides.map((s) => {
+                  const interactiveEl = s.elements.find((el) =>
+                    ['evaluation', 'rating', 'poll', 'thoughts', 'quiz'].includes(el.type)
+                  );
+                  const typeLabel = interactiveEl?.type
+                    ? interactiveEl.type.charAt(0).toUpperCase() + interactiveEl.type.slice(1)
+                    : '';
+                  const title =
+                    s.elements.find((el) => el.type === 'text')?.content ||
+                    `Slide ${s.order + 1}`;
+                  const isSelected =
+                    selectedContextIds.length === 0 || selectedContextIds.includes(s.id);
+                  return (
+                    <div key={s.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleContextSlide(s.id)}
+                      />
+                      <span className="text-[11px] truncate">
+                        {s.order + 1}. {title}
+                      </span>
+                      <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{typeLabel}</Badge>
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
         </div>
       )}

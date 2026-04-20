@@ -263,16 +263,13 @@ export async function loadInteractionResults(
 ): Promise<string> {
   const parts: string[] = [];
 
-  const contextOrders = contextSlideIds
-    .map(id => slides.find(s => s.id === id)?.order ?? -1)
-    .filter(o => o >= 0);
-  const earliestContextOrder = contextOrders.length > 0 ? Math.min(...contextOrders) : 0;
+  // If context IDs are provided, only check those specific slides for interactions.
+  // Otherwise check all prior slides.
+  const slidesToCheck = contextSlideIds.length > 0
+    ? slides.filter(s => contextSlideIds.includes(s.id) && s.order < currentSlideOrder)
+    : slides.filter(s => s.order < currentSlideOrder);
 
-  const intermediateSlidesToCheck = slides.filter(
-    s => s.order >= earliestContextOrder && s.order < currentSlideOrder
-  );
-
-  for (const slide of intermediateSlidesToCheck) {
+  for (const slide of slidesToCheck) {
     for (const el of slide.elements) {
       const loader = RESULT_LOADERS[el.type];
       if (!loader) continue;

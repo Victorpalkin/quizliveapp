@@ -42,7 +42,7 @@ export function AgenticDesignerProperties({ element, onUpdate }: AgenticDesigner
         />
       </div>
       <div className="flex items-center justify-between">
-        <Label className="text-xs">Enable Player Nudges</Label>
+        <Label className="text-xs">Enable Audience Suggestions</Label>
         <Switch
           checked={config.enablePlayerNudges !== false}
           onCheckedChange={(checked) => updateConfig({ enablePlayerNudges: checked })}

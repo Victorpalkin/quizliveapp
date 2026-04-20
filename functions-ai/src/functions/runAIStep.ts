@@ -132,14 +132,17 @@ async function buildContext(
     parts.push(`User Inputs for Current Step:\n${JSON.stringify(hostInputs, null, 2)}`);
   }
 
-  // 2. Previous AI step outputs (based on contextSlideIds or all prior ai-steps)
-  const aiStepSlides = slides
-    .filter(s => s.order < currentSlide.order && s.elements.some(el => el.type === 'ai-step'))
+  // 2. Previous AI step outputs + interaction results (based on contextSlideIds or all prior)
+  const INTERACTIVE_TYPES = ['evaluation', 'rating', 'poll', 'thoughts', 'quiz'];
+  const defaultContextSlides = slides
+    .filter(s => s.order < currentSlide.order && s.elements.some(el =>
+      el.type === 'ai-step' || INTERACTIVE_TYPES.includes(el.type)
+    ))
     .sort((a, b) => a.order - b.order);
 
   const contextSlideIds = config.contextSlideIds && config.contextSlideIds.length > 0
     ? config.contextSlideIds
-    : aiStepSlides.map(s => s.id);
+    : defaultContextSlides.map(s => s.id);
 
   const contextOutputs: { slideOrder: number; title: string; output: string; imageUrl?: string }[] = [];
 
