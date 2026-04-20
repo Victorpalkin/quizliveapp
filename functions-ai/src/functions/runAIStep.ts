@@ -246,17 +246,15 @@ function createAgentTrackerTool(): ToolDefinition {
     },
     execute: async (args) => {
       const query = args.query as string;
-      const limit = (args.limit as number) || 5;
+      const limit = (args.limit as number) || 3;
       const agents = await findSimilarAgents(query, limit);
       return {
         agents: agents.map((a) => ({
           agentName: a.agentName,
-          summary: a.summary,
+          summary: a.summary ? a.summary.substring(0, 150) : '',
           functionalArea: a.functionalArea,
           industry: a.industry,
           maturity: a.maturity,
-          score: a.score,
-          referenceLink: a.referenceLink,
         })),
         resultCount: agents.length,
       };
