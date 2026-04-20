@@ -327,6 +327,7 @@ export interface AIStepConfig {
   enableImageGeneration?: boolean;
   enableStructuredExtraction?: boolean;
   extractionHint?: string;
+  enableAgentTracker?: boolean;
 
   // Context Selection — which previous ai-step slides to include as AI context
   contextSlideIds?: string[];

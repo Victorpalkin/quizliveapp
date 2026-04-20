@@ -160,6 +160,15 @@ export function AIStepProperties({ element, slides, onUpdate }: AIStepProperties
             }
           />
         </div>
+        <div className="flex items-center justify-between">
+          <Label className="text-[11px]">AI Agent Tracker search</Label>
+          <Switch
+            checked={config.enableAgentTracker ?? false}
+            onCheckedChange={(checked) =>
+              updateConfig({ enableAgentTracker: checked || undefined })
+            }
+          />
+        </div>
         {config.enableStructuredExtraction && (
           <div>
             <Input

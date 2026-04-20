@@ -5,13 +5,17 @@ import { verifyAppCheck } from '../utils/appCheck';
 import {
   createGeminiClient,
   callGeminiWithRetry,
+  callGeminiWithTools,
   extractJsonFromText,
   throwClassifiedError,
   GEMINI_PRO,
   GEMINI_FLASH,
+  Type,
 } from '../utils/gemini';
+import type { ToolDefinition } from '../utils/gemini';
 import { generateAndUploadImage } from '../utils/imageGeneration';
 import { loadInteractionResults } from '../utils/interactionResults';
+import { findSimilarAgents } from '../utils/vectorSearch';
 
 // ── Types ──
 
@@ -49,6 +53,7 @@ interface AIStepConfig {
   enableImageGeneration?: boolean;
   enableStructuredExtraction?: boolean;
   extractionHint?: string;
+  enableAgentTracker?: boolean;
   contextSlideIds?: string[];
 }
 
@@ -217,6 +222,48 @@ INSTRUCTIONS:
 4. Output ONLY the markdown content. No conversational filler.`;
 }
 
+// ── Agent Tracker Tool ──
+
+function createAgentTrackerTool(): ToolDefinition {
+  return {
+    declaration: {
+      name: 'searchAgentTracker',
+      description: 'Search the AI Agent Tracker database to find AI agents relevant to a topic, use case, or business area. Returns matching agents with name, summary, maturity score, functional area, and industry. Use this when you need to identify existing AI agents or solutions relevant to specific use cases or topics.',
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          query: {
+            type: Type.STRING,
+            description: 'A descriptive search query about the use case, topic, or business area to find relevant AI agents for.',
+          },
+          limit: {
+            type: Type.INTEGER,
+            description: 'Maximum number of agents to return. Defaults to 5.',
+          },
+        },
+        required: ['query'],
+      },
+    },
+    execute: async (args) => {
+      const query = args.query as string;
+      const limit = (args.limit as number) || 5;
+      const agents = await findSimilarAgents(query, limit);
+      return {
+        agents: agents.map((a) => ({
+          agentName: a.agentName,
+          summary: a.summary,
+          functionalArea: a.functionalArea,
+          industry: a.industry,
+          maturity: a.maturity,
+          score: a.score,
+          referenceLink: a.referenceLink,
+        })),
+        resultCount: agents.length,
+      };
+    },
+  };
+}
+
 // ── Cloud Function: runAIStep ──
 
 export const runAIStep = onCall(
@@ -339,11 +386,25 @@ export const runAIStep = onCall(
 
       // Select model and call Gemini
       const isComplexTask = contextString.length > 10000 || (data.nudge && data.nudge.length > 200);
-      const model = isComplexTask ? GEMINI_PRO : GEMINI_FLASH;
+      const model = config.enableAgentTracker || isComplexTask ? GEMINI_PRO : GEMINI_FLASH;
       const useSearch = !!config.enableGoogleSearch && !data.nudge;
 
       const client = createGeminiClient();
-      const aiOutput = await callGeminiWithRetry(client, model, systemPrompt, fullPrompt, useSearch);
+      let aiOutput: string;
+
+      if (config.enableAgentTracker) {
+        const agentTrackerTool = createAgentTrackerTool();
+        const result = await callGeminiWithTools(client, model, systemPrompt, fullPrompt, [agentTrackerTool], {
+          maxToolCalls: 3,
+          useSearch,
+        });
+        aiOutput = result.text;
+        if (result.toolCallLog.length > 0) {
+          console.log(`Agent tracker tool called ${result.toolCallLog.length} time(s): ${result.toolCallLog.map((c) => c.args.query).join(', ')}`);
+        }
+      } else {
+        aiOutput = await callGeminiWithRetry(client, model, systemPrompt, fullPrompt, useSearch);
+      }
 
       // Image generation (if enabled)
       let imageUrl: string | undefined;
