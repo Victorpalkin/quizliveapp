@@ -2,7 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { ExpandableTextarea } from './ExpandableTextarea';
 import { Switch } from '@/components/ui/switch';
 import type { SlideElement } from '@/lib/types';
 
@@ -32,7 +32,8 @@ export function AgenticDesignerProperties({ element, onUpdate }: AgenticDesigner
       </div>
       <div>
         <Label className="text-xs">Description (optional)</Label>
-        <Textarea
+        <ExpandableTextarea
+          label="Description"
           value={config.description || ''}
           onChange={(e) => updateConfig({ description: e.target.value || undefined })}
           placeholder="Context for the audience..."

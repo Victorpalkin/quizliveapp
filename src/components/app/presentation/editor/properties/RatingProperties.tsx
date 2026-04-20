@@ -2,7 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { ExpandableTextarea } from './ExpandableTextarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { SlideElement } from '@/lib/types';
 
@@ -31,7 +31,8 @@ export function RatingProperties({ element, onUpdate }: RatingPropertiesProps) {
       </div>
       <div>
         <Label className="text-xs">Description</Label>
-        <Textarea
+        <ExpandableTextarea
+          label="Description"
           value={config.itemDescription || ''}
           onChange={(e) => updateConfig({ itemDescription: e.target.value })}
           rows={2}

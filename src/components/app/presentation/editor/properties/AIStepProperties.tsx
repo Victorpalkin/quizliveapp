@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { ExpandableTextarea } from './ExpandableTextarea';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -97,7 +97,8 @@ export function AIStepProperties({ element, slides, onUpdate }: AIStepProperties
         <p className="text-[10px] text-muted-foreground mb-1">
           What should the AI generate for this slide?
         </p>
-        <Textarea
+        <ExpandableTextarea
+          label="Step Prompt"
           value={config.stepPrompt}
           onChange={(e) => updateConfig({ stepPrompt: e.target.value })}
           placeholder="Describe what the AI should analyze, research, or generate..."
@@ -109,7 +110,8 @@ export function AIStepProperties({ element, slides, onUpdate }: AIStepProperties
       {/* Output Expectation */}
       <div>
         <Label className="text-xs font-medium">Output Expectation</Label>
-        <Textarea
+        <ExpandableTextarea
+          label="Output Expectation"
           value={config.outputExpectation ?? ''}
           onChange={(e) =>
             updateConfig({ outputExpectation: e.target.value || undefined })

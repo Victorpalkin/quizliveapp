@@ -3,7 +3,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { ExpandableTextarea } from './ExpandableTextarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, Link2 } from 'lucide-react';
@@ -88,7 +88,8 @@ export function EvaluationProperties({ element, slides, onUpdate }: EvaluationPr
       {/* Description */}
       <div>
         <Label className="text-xs">Description</Label>
-        <Textarea
+        <ExpandableTextarea
+          label="Description"
           value={config.description || ''}
           onChange={(e) => updateConfig({ description: e.target.value || undefined })}
           className="mt-1"

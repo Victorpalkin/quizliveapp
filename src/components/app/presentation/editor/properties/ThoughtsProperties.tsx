@@ -2,7 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { ExpandableTextarea } from './ExpandableTextarea';
 import type { SlideElement } from '@/lib/types';
 
 interface ThoughtsPropertiesProps {
@@ -22,7 +22,8 @@ export function ThoughtsProperties({ element, onUpdate }: ThoughtsPropertiesProp
     <div className="p-4 space-y-4">
       <div>
         <Label className="text-xs">Prompt</Label>
-        <Textarea
+        <ExpandableTextarea
+          label="Prompt"
           value={config.prompt}
           onChange={(e) => updateConfig({ prompt: e.target.value })}
           rows={2}

@@ -3,7 +3,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { ExpandableTextarea } from './ExpandableTextarea';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
@@ -19,7 +19,8 @@ export function TextProperties({ element, onUpdate }: TextPropertiesProps) {
     <div className="p-4 space-y-4">
       <div>
         <Label className="text-xs">Content</Label>
-        <Textarea
+        <ExpandableTextarea
+          label="Content"
           value={element.content || ''}
           onChange={(e) => onUpdate({ content: e.target.value })}
           rows={3}

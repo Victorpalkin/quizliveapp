@@ -82,7 +82,7 @@ export function PropertiesPanel({
   // If nothing selected, show slide properties
   if (!selectedElement && !isMultiSelect) {
     return (
-      <div ref={containerRef} className="w-[280px] flex-shrink-0 bg-background border-l overflow-y-auto">
+      <div ref={containerRef} className="h-full bg-background border-l overflow-y-auto">
         <SlideProperties
           slide={slide}
           onUpdateBackground={onUpdateBackground}
@@ -96,7 +96,7 @@ export function PropertiesPanel({
   // Multi-select: show shared controls only
   if (isMultiSelect) {
     return (
-      <div ref={containerRef} className="w-[280px] flex-shrink-0 bg-background border-l overflow-y-auto">
+      <div ref={containerRef} className="h-full bg-background border-l overflow-y-auto">
         <div className="p-4 border-b flex items-center gap-2">
           <div className="w-1 h-4 rounded-full bg-gradient-to-b from-primary to-accent" />
           <h3 className="text-sm font-medium flex-1">{selectedElements!.length} Elements Selected</h3>
@@ -154,7 +154,7 @@ export function PropertiesPanel({
 
   // Single element selected — show full properties
   return (
-    <div ref={containerRef} className="w-[280px] flex-shrink-0 bg-background border-l overflow-y-auto">
+    <div ref={containerRef} className="h-full bg-background border-l overflow-y-auto">
       {/* Element header with lock toggle */}
       <div className="p-4 border-b flex items-center gap-2">
         <div className="w-1 h-4 rounded-full bg-gradient-to-b from-primary to-accent" />

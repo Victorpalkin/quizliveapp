@@ -13,6 +13,11 @@ import { SlidePanel } from './SlidePanel';
 import { SlideCanvas } from './SlideCanvas';
 import { PropertiesPanel } from './PropertiesPanel';
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
 import { Keyboard, Minus, Plus, Maximize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Presentation } from '@/lib/types';
@@ -273,53 +278,60 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
           onReorderSlides={editor.reorderSlides}
         />
 
-        {/* Center: Canvas */}
-        <SlideCanvas
-          slide={editor.currentSlide}
-          selectedElementId={editor.selectedElementId}
-          selectedElementIds={editor.selectedElementIds}
-          onSelectElement={editor.selectElement}
-          onToggleSelectElement={editor.toggleSelectElement}
-          onUpdateElement={editor.updateElement}
-          onDeleteElement={editor.deleteElement}
-          onAddElement={editor.addElement}
-          onBringToFront={editor.bringToFront}
-          onSendToBack={editor.sendToBack}
-          onCopyElement={editor.copyElement}
-          onPasteElement={editor.pasteElement}
-          onDuplicateElement={editor.duplicateElement}
-          theme={editor.theme}
-          editingElementId={editingElementId}
-          onStartEditing={handleStartEditing}
-          onStopEditing={handleStopEditing}
-          zoom={zoom}
-          onZoomChange={setZoom}
-          onStartDrag={editor.startDrag}
-          onEndDrag={editor.endDrag}
-        />
+        {/* Center + Right: Canvas and Properties (resizable) */}
+        <ResizablePanelGroup orientation="horizontal" className="flex-1">
+          <ResizablePanel defaultSize="70" minSize="40">
+            <SlideCanvas
+              slide={editor.currentSlide}
+              selectedElementId={editor.selectedElementId}
+              selectedElementIds={editor.selectedElementIds}
+              onSelectElement={editor.selectElement}
+              onToggleSelectElement={editor.toggleSelectElement}
+              onUpdateElement={editor.updateElement}
+              onDeleteElement={editor.deleteElement}
+              onAddElement={editor.addElement}
+              onBringToFront={editor.bringToFront}
+              onSendToBack={editor.sendToBack}
+              onCopyElement={editor.copyElement}
+              onPasteElement={editor.pasteElement}
+              onDuplicateElement={editor.duplicateElement}
+              theme={editor.theme}
+              editingElementId={editingElementId}
+              onStartEditing={handleStartEditing}
+              onStopEditing={handleStopEditing}
+              zoom={zoom}
+              onZoomChange={setZoom}
+              onStartDrag={editor.startDrag}
+              onEndDrag={editor.endDrag}
+            />
+          </ResizablePanel>
 
-        {/* Right: Properties panel */}
-        <PropertiesPanel
-          selectedElement={editor.selectedElement}
-          selectedElements={editor.selectedElements}
-          slide={editor.currentSlide}
-          slides={editor.slides}
-          onUpdateElement={(updates) => {
-            if (editor.selectedElementIds.length > 1) {
-              editor.updateElements(editor.selectedElementIds, updates);
-            } else if (editor.selectedElementId) {
-              editor.updateElement(editor.selectedElementId, updates);
-            }
-          }}
-          onUpdateBackground={editor.updateSlideBackground}
-          onUpdateNotes={editor.updateSlideNotes}
-          onUpdateTransition={editor.updateSlideTransition}
-          onBringToFront={editor.bringToFront}
-          onSendToBack={editor.sendToBack}
-          onMoveForward={editor.moveForward}
-          onMoveBackward={editor.moveBackward}
-          onAlignElement={editor.alignElement}
-        />
+          <ResizableHandle withHandle />
+
+          <ResizablePanel defaultSize="30" minSize="15" maxSize="60">
+            <PropertiesPanel
+              selectedElement={editor.selectedElement}
+              selectedElements={editor.selectedElements}
+              slide={editor.currentSlide}
+              slides={editor.slides}
+              onUpdateElement={(updates) => {
+                if (editor.selectedElementIds.length > 1) {
+                  editor.updateElements(editor.selectedElementIds, updates);
+                } else if (editor.selectedElementId) {
+                  editor.updateElement(editor.selectedElementId, updates);
+                }
+              }}
+              onUpdateBackground={editor.updateSlideBackground}
+              onUpdateNotes={editor.updateSlideNotes}
+              onUpdateTransition={editor.updateSlideTransition}
+              onBringToFront={editor.bringToFront}
+              onSendToBack={editor.sendToBack}
+              onMoveForward={editor.moveForward}
+              onMoveBackward={editor.moveBackward}
+              onAlignElement={editor.alignElement}
+            />
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
 
       {/* Status bar */}
