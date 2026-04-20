@@ -395,7 +395,7 @@ export const runAIStep = onCall(
       if (config.enableAgentTracker) {
         const agentTrackerTool = createAgentTrackerTool();
         const result = await callGeminiWithTools(client, model, systemPrompt, fullPrompt, [agentTrackerTool], {
-          maxToolCalls: 3,
+          maxToolCalls: 10,
           useSearch,
         });
         aiOutput = result.text;

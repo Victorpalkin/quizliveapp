@@ -124,7 +124,7 @@ export async function callGeminiWithTools(
   tools: ToolDefinition[],
   options?: { maxToolCalls?: number; useSearch?: boolean }
 ): Promise<{ text: string; toolCallLog: ToolCallLogEntry[] }> {
-  const maxToolCalls = options?.maxToolCalls ?? 3;
+  const maxToolCalls = options?.maxToolCalls ?? 10;
   const toolCallLog: ToolCallLogEntry[] = [];
 
   const geminiTools: Tool[] = [
@@ -187,9 +187,21 @@ export async function callGeminiWithTools(
     }
 
     if (toolCallCount >= maxToolCalls) {
-      const text = response.text || '';
+      // Limit reached — make a final call without tools to force text output
+      console.log(`Tool call limit (${maxToolCalls}) reached, forcing final text generation`);
+      const finalResponse = await client.models.generateContent({
+        model,
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.7,
+          topP: 0.9,
+          maxOutputTokens: 65536,
+        },
+      });
+      const text = finalResponse.text || '';
       if (text) return { text, toolCallLog };
-      throw new HttpsError('internal', 'AI model exceeded max tool calls without producing output');
+      throw new HttpsError('internal', 'AI model failed to produce output after tool calls');
     }
 
     // Append model's function call response to conversation
