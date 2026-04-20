@@ -280,7 +280,7 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
 
         {/* Center + Right: Canvas and Properties (resizable) */}
         <ResizablePanelGroup orientation="horizontal" className="flex-1">
-          <ResizablePanel defaultSize="70" minSize="40">
+          <ResizablePanel defaultSize="70" minSize="40" className="flex flex-col">
             <SlideCanvas
               slide={editor.currentSlide}
               selectedElementId={editor.selectedElementId}
