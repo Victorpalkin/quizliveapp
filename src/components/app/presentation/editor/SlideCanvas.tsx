@@ -10,6 +10,7 @@ import { ImageElement } from './elements/ImageElement';
 import { ShapeElement } from './elements/ShapeElement';
 import { ConnectorElement } from './elements/ConnectorElement';
 import { InteractiveElement } from './elements/InteractiveElement';
+import { AIStepPreview } from './elements/AIStepPreview';
 import { ResultsElement } from './elements/ResultsElement';
 import { SelectionOverlay } from './elements/SelectionOverlay';
 import { ConnectorSelectionOverlay } from './elements/ConnectorSelectionOverlay';
@@ -56,7 +57,7 @@ interface SlideCanvasProps {
   onEndDrag: () => void;
 }
 
-const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation', 'agentic-designer', 'ai-step'];
+const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation', 'agentic-designer'];
 const RESULTS_TYPES = ['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results', 'agentic-designer-results'];
 const SPECIAL_TYPES = ['leaderboard', 'qa', 'spin-wheel'];
 
@@ -106,6 +107,9 @@ function ElementRenderer({
   }
   if (element.type === 'connector') {
     return <ConnectorElement element={element} />;
+  }
+  if (element.type === 'ai-step') {
+    return <AIStepPreview element={element} />;
   }
   if (INTERACTIVE_TYPES.includes(element.type) || SPECIAL_TYPES.includes(element.type)) {
     return <InteractiveElement element={element} />;
