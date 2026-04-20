@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ChevronLeft, ChevronRight, Pause, Play, Square, LayoutGrid, Maximize, Minimize } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play, Square, LayoutGrid, Maximize, Minimize, PanelBottomClose, PanelBottomOpen } from 'lucide-react';
 import type { PresentationGameState, PresentationSlide } from '@/lib/types';
 import { SlideThumbnail } from '../shared/SlideThumbnail';
 
@@ -30,6 +30,8 @@ interface HostControlsProps {
   onEnd: () => void;
   onToggleFullscreen?: () => void;
   isFullscreen?: boolean;
+  pinned?: boolean;
+  onTogglePin?: () => void;
 }
 
 export function HostControls({
@@ -45,8 +47,10 @@ export function HostControls({
   onEnd,
   onToggleFullscreen,
   isFullscreen,
+  pinned,
+  onTogglePin,
 }: HostControlsProps) {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(!!pinned);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const navigatorRef = useRef<HTMLDivElement>(null);
@@ -55,12 +59,21 @@ export function HostControls({
   // Single function to show controls and reset the shared hide timer
   const showControls = useCallback(() => {
     setVisible(true);
+    if (pinned) return;
     clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
       setVisible(false);
       setNavigatorOpen(false);
     }, 3000);
-  }, []);
+  }, [pinned]);
+
+  // When pinned changes, ensure visibility matches
+  useEffect(() => {
+    if (pinned) {
+      setVisible(true);
+      clearTimeout(hideTimerRef.current);
+    }
+  }, [pinned]);
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -109,6 +122,7 @@ export function HostControls({
   }, [handleKeyDown]);
 
   useEffect(() => {
+    if (pinned) return;
     const handleMove = (e: MouseEvent) => {
       if (e.clientY >= window.innerHeight - 80) {
         showControls();
@@ -117,7 +131,7 @@ export function HostControls({
 
     window.addEventListener('mousemove', handleMove);
     return () => window.removeEventListener('mousemove', handleMove);
-  }, [showControls]);
+  }, [showControls, pinned]);
 
   // Scroll active thumbnail into view when navigator opens
   useEffect(() => {
@@ -251,6 +265,21 @@ export function HostControls({
             <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setShowEndConfirm(true); }} className="text-white hover:bg-white/20 h-10 w-10">
               <Square className="h-4 w-4" />
             </Button>
+
+            {onTogglePin && (
+              <>
+                <div className="w-px h-6 bg-white/20 mx-1" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
+                  className="text-white hover:bg-white/20 h-10 w-10"
+                  title={pinned ? 'Hide panels' : 'Pin panels'}
+                >
+                  {pinned ? <PanelBottomClose className="h-4 w-4" /> : <PanelBottomOpen className="h-4 w-4" />}
+                </Button>
+              </>
+            )}
           </div>
         </motion.div>
       )}

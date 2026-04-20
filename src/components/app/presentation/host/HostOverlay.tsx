@@ -3,16 +3,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Users, QrCode, X, GripVertical } from 'lucide-react';
+import { Users, QrCode, X, GripVertical, PanelTopClose, PanelTopOpen } from 'lucide-react';
 
 interface HostOverlayProps {
   gamePin: string;
   slideIndex: number;
   totalSlides: number;
   playerCount: number;
+  pinned?: boolean;
+  onTogglePin?: () => void;
 }
 
-export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: HostOverlayProps) {
+export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount, pinned, onTogglePin }: HostOverlayProps) {
   const [visible, setVisible] = useState(true);
   const [qrVisible, setQrVisible] = useState(true);
   const [joinUrl, setJoinUrl] = useState('');
@@ -49,9 +51,18 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
   // Single function to show overlay and reset the shared hide timer
   const showOverlay = useCallback(() => {
     setVisible(true);
+    if (pinned) return;
     clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => setVisible(false), 4000);
-  }, []);
+  }, [pinned]);
+
+  // When pinned changes, ensure visibility matches
+  useEffect(() => {
+    if (pinned) {
+      setVisible(true);
+      clearTimeout(hideTimerRef.current);
+    }
+  }, [pinned]);
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -63,8 +74,9 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
     showOverlay();
   }, [slideIndex, showOverlay]);
 
-  // Show when mouse enters top zone
+  // Show when mouse enters top zone (only when unpinned)
   useEffect(() => {
+    if (pinned) return;
     const handleMove = (e: MouseEvent) => {
       if (e.clientY <= 80) {
         showOverlay();
@@ -73,7 +85,7 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
 
     window.addEventListener('mousemove', handleMove);
     return () => window.removeEventListener('mousemove', handleMove);
-  }, [showOverlay]);
+  }, [showOverlay, pinned]);
 
   const progress = totalSlides > 1 ? ((slideIndex + 1) / totalSlides) * 100 : 100;
 
@@ -119,17 +131,28 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
               {slideIndex + 1} / {totalSlides}
             </div>
 
-            {/* Player count */}
-            <div className="flex items-center gap-1.5">
-              <Users className="h-4 w-4 opacity-60" />
-              <motion.span
-                key={playerCount}
-                initial={{ scale: 1.3 }}
-                animate={{ scale: 1 }}
-                className="font-bold"
-              >
-                {playerCount}
-              </motion.span>
+            {/* Player count + pin toggle */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <Users className="h-4 w-4 opacity-60" />
+                <motion.span
+                  key={playerCount}
+                  initial={{ scale: 1.3 }}
+                  animate={{ scale: 1 }}
+                  className="font-bold"
+                >
+                  {playerCount}
+                </motion.span>
+              </div>
+              {onTogglePin && (
+                <button
+                  onClick={onTogglePin}
+                  className="p-1 rounded hover:bg-white/10 transition-colors"
+                  title={pinned ? 'Hide panels' : 'Pin panels'}
+                >
+                  {pinned ? <PanelTopClose className="h-4 w-4 opacity-60" /> : <PanelTopOpen className="h-4 w-4 opacity-60" />}
+                </button>
+              )}
             </div>
           </motion.div>
         )}
@@ -155,7 +178,7 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount }: H
                   y: prev.y + info.offset.y,
                 }));
               }}
-              className="absolute bottom-20 left-4 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10 cursor-grab relative w-fit pointer-events-auto"
+              className="absolute bottom-20 right-4 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10 cursor-grab relative w-fit pointer-events-auto"
               data-controls
             >
               <button

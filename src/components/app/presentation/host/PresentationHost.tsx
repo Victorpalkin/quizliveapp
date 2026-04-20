@@ -77,6 +77,7 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
 
   const [ended, setEnded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [panelsPinned, setPanelsPinned] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
   const prevSlideIndexRef = useRef(game.currentSlideIndex);
 
@@ -362,10 +363,22 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
   const playerNames = players.map((p) => p.name);
   const variants = getTransitionVariants(currentSlide!.transition, direction);
 
+  const togglePanels = useCallback(() => setPanelsPinned((p) => !p), []);
+
   return (
     <div ref={rootRef} className="relative w-screen h-screen bg-black overflow-hidden">
-      {/* 16:9 canvas centered */}
-      <div className="absolute inset-0 flex items-center justify-center">
+      {/* Overlay: PIN, slide counter, player count */}
+      <HostOverlay
+        gamePin={game.gamePin}
+        slideIndex={game.currentSlideIndex}
+        totalSlides={presentation.slides.length}
+        playerCount={players.length}
+        pinned={panelsPinned}
+        onTogglePin={togglePanels}
+      />
+
+      {/* 16:9 canvas centered — padded when panels are pinned */}
+      <div className={`absolute inset-0 flex items-center justify-center ${panelsPinned ? 'pt-[44px] pb-[68px]' : ''}`}>
         <div
           className="relative w-full h-full max-w-[177.78vh] max-h-[56.25vw] cursor-pointer"
           onClick={handleCanvasClick}
@@ -392,14 +405,6 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
             </motion.div>
           </AnimatePresence>
 
-          {/* Overlay: PIN, slide counter, player count */}
-          <HostOverlay
-            gamePin={game.gamePin}
-            slideIndex={game.currentSlideIndex}
-            totalSlides={presentation.slides.length}
-            playerCount={players.length}
-          />
-
           {/* Reactions floating up + counts bar */}
           {game.settings.enableReactions && (
             <>
@@ -415,24 +420,26 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
               streak={topStreakPlayer.streak}
             />
           )}
-
-          {/* Navigation controls (show on hover) */}
-          <HostControls
-            slideIndex={game.currentSlideIndex}
-            totalSlides={presentation.slides.length}
-            gameState={game.state}
-            slides={presentation.slides}
-            onNextSlide={() => controls.nextSlide(game.currentSlideIndex, presentation.slides.length)}
-            onPrevSlide={() => controls.prevSlide(game.currentSlideIndex)}
-            onGoToSlide={controls.goToSlide}
-            onPause={controls.pausePresentation}
-            onResume={controls.startPresentation}
-            onEnd={handleEnd}
-            onToggleFullscreen={toggleFullscreen}
-            isFullscreen={isFullscreen}
-          />
         </div>
       </div>
+
+      {/* Navigation controls */}
+      <HostControls
+        slideIndex={game.currentSlideIndex}
+        totalSlides={presentation.slides.length}
+        gameState={game.state}
+        slides={presentation.slides}
+        onNextSlide={() => controls.nextSlide(game.currentSlideIndex, presentation.slides.length)}
+        onPrevSlide={() => controls.prevSlide(game.currentSlideIndex)}
+        onGoToSlide={controls.goToSlide}
+        onPause={controls.pausePresentation}
+        onResume={controls.startPresentation}
+        onEnd={handleEnd}
+        onToggleFullscreen={toggleFullscreen}
+        isFullscreen={isFullscreen}
+        pinned={panelsPinned}
+        onTogglePin={togglePanels}
+      />
     </div>
   );
 }
