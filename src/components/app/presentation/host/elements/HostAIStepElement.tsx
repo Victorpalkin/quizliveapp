@@ -8,10 +8,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Play, RefreshCw, ChevronRight, CheckCircle2, Layers, Minus, Plus } from 'lucide-react';
+import { Play, RefreshCw, ChevronRight, CheckCircle2, Layers, Minus, Plus, BarChart3 } from 'lucide-react';
 import { AgenticStepForm } from './agentic-designer/AgenticStepForm';
 import { AgenticNudgePanel } from './agentic-designer/AgenticNudgePanel';
 import { AgenticAIOutput } from './agentic-designer/AgenticAIOutput';
+import { InteractionResultPreview } from './InteractionResultPreview';
 import { useWorkflowState, useSlideNudges } from '@/firebase/presentation';
 import type { SlideElement, PresentationSlide, AIStepConfig } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -97,21 +98,30 @@ export function HostAIStepElement({
   const interactionSources = useMemo(() => {
     const currentOrder = currentSlide.order;
     const interactiveTypes = ['poll', 'quiz', 'thoughts', 'evaluation', 'rating'];
-    const results: { type: string; label: string }[] = [];
+    const contextIds = config?.contextSlideIds;
 
-    allSlides.forEach((s) => {
-      if (s.order >= currentOrder) return;
-      s.elements.forEach((el) => {
-        if (interactiveTypes.includes(el.type)) {
-          const label = el.pollConfig?.question || el.quizConfig?.question
-            || el.thoughtsConfig?.prompt || el.evaluationConfig?.title
-            || el.ratingConfig?.itemTitle || el.type;
-          results.push({ type: el.type, label });
-        }
+    return allSlides
+      .filter((s) => {
+        if (s.order >= currentOrder) return false;
+        if (!s.elements.some((el) => interactiveTypes.includes(el.type))) return false;
+        if (contextIds && contextIds.length > 0) return contextIds.includes(s.id);
+        return true;
+      })
+      .sort((a, b) => a.order - b.order)
+      .map((s) => {
+        const el = s.elements.find((el) => interactiveTypes.includes(el.type))!;
+        const label = el.pollConfig?.question || el.quizConfig?.question
+          || el.thoughtsConfig?.prompt || el.evaluationConfig?.title
+          || el.ratingConfig?.question || el.ratingConfig?.itemTitle || el.type;
+        return {
+          slideId: s.id,
+          slideNumber: s.order + 1,
+          element: el,
+          type: el.type,
+          label,
+        };
       });
-    });
-    return results;
-  }, [allSlides, currentSlide.order]);
+  }, [allSlides, currentSlide.order, config?.contextSlideIds]);
 
   const [contextOpen, setContextOpen] = useState(!hasOutput);
 
@@ -277,14 +287,11 @@ export function HostAIStepElement({
         {/* Right panel: AI output */}
         <ResizablePanel defaultSize="70" minSize="40" className="flex flex-col min-w-0">
           {/* Context sources */}
-          {contextSources.length > 0 && (
+          {(contextSources.length > 0 || interactionSources.length > 0) && (
             <Collapsible open={contextOpen} onOpenChange={setContextOpen}>
               <CollapsibleTrigger className="flex items-center gap-2 w-full px-3 py-2 bg-muted/30 border-b text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
                 <Layers className="h-3.5 w-3.5" />
-                <span className="font-medium">Context ({contextSources.length} source{contextSources.length !== 1 ? 's' : ''})</span>
-                {interactionSources.length > 0 && (
-                  <span className="text-[10px] text-muted-foreground/70">+ {interactionSources.length} interaction{interactionSources.length !== 1 ? 's' : ''}</span>
-                )}
+                <span className="font-medium">Context ({contextSources.length + interactionSources.length} source{contextSources.length + interactionSources.length !== 1 ? 's' : ''})</span>
                 <ChevronRight className={cn("h-3 w-3 ml-auto transition-transform", contextOpen && "rotate-90")} />
               </CollapsibleTrigger>
               <CollapsibleContent>
@@ -316,16 +323,27 @@ export function HostAIStepElement({
                         )}
                       </div>
                     ))}
-                    {interactionSources.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1 border-t">
-                        {interactionSources.map((src, i) => (
-                          <span key={i} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
-                            <span className="capitalize">{src.type}</span>
-                            <span className="truncate max-w-[120px]">{src.label}</span>
-                          </span>
-                        ))}
-                      </div>
+                    {interactionSources.length > 0 && contextSources.length > 0 && (
+                      <div className="border-t pt-2" />
                     )}
+                    {interactionSources.map((src) => (
+                      <div key={src.slideId} className="text-xs">
+                        <Collapsible>
+                          <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left">
+                            <ChevronRight className="h-3 w-3 text-muted-foreground transition-transform data-[state=open]:rotate-90 flex-shrink-0" />
+                            <BarChart3 className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            <span className="font-medium text-foreground">Slide {src.slideNumber}</span>
+                            <span className="text-[10px] px-1 py-0.5 bg-primary/10 text-primary rounded capitalize flex-shrink-0">{src.type}</span>
+                            <span className="text-muted-foreground truncate">{src.label}</span>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="ml-[18px] mt-1 bg-muted/30 rounded p-3">
+                              <InteractionResultPreview gameId={gameId} element={src.element} />
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </CollapsibleContent>

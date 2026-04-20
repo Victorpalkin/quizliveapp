@@ -182,7 +182,7 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount, pin
                   y: prev.y + info.offset.y,
                 }));
               }}
-              className="absolute bottom-20 right-4 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10 cursor-grab relative w-fit pointer-events-auto"
+              className="absolute bottom-20 right-4 backdrop-blur-xl bg-black/40 rounded-xl p-3 border border-white/10 cursor-grab w-fit pointer-events-auto"
               data-controls
             >
               <button

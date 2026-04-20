@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { PresentationPlayer } from '@/components/app/presentation/player/PresentationPlayer';
 import { PlayerLeaveButton } from '@/components/app/player-leave-button';
 import { useAnonymousAuth } from '@/hooks/use-anonymous-auth';
+import { useWakeLock } from '@/hooks/use-wake-lock';
 import { usePlayerStateMachine } from './hooks/use-player-state-machine';
 
 export default function PlayPresentationPage({ params }: { params: Promise<{ gamePin: string }> }) {
@@ -29,6 +30,7 @@ export default function PlayPresentationPage({ params }: { params: Promise<{ gam
 
 function PresentationPlayerContent({ gamePin, playerId }: { gamePin: string; playerId: string }) {
   const playerState = usePlayerStateMachine(gamePin, playerId);
+  useWakeLock(playerState.state === 'lobby' || playerState.state === 'active');
 
   if (playerState.loading) {
     return (

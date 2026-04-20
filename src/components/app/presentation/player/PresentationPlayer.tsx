@@ -111,7 +111,7 @@ export function PresentationPlayer({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.3 }}
-          className="flex items-center justify-center h-screen p-4 bg-gradient-to-br from-primary/5 via-background to-accent/5"
+          className="flex items-center justify-center min-h-[100dvh] p-4 bg-gradient-to-br from-primary/5 via-background to-accent/5"
         >
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -161,7 +161,7 @@ export function PresentationPlayer({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center justify-center h-screen p-4 bg-gradient-to-br from-primary/5 via-background to-accent/5"
+          className="flex items-center justify-center min-h-[100dvh] p-4 bg-gradient-to-br from-primary/5 via-background to-accent/5"
         >
           <div className="text-center space-y-6">
             <motion.div
@@ -206,7 +206,7 @@ export function PresentationPlayer({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center justify-center h-screen p-4 bg-gradient-to-br from-primary/5 via-background to-accent/5"
+          className="flex items-center justify-center min-h-[100dvh] p-4 bg-gradient-to-br from-primary/5 via-background to-accent/5"
         >
           <div className="text-center space-y-6">
             <motion.div
@@ -257,7 +257,7 @@ export function PresentationPlayer({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="flex flex-col h-screen"
+          className="flex flex-col h-[100dvh]"
         >
           <PlayerHeader
             playerName={session?.playerName || ''}
