@@ -316,7 +316,7 @@ export function EvaluationProperties({ element, slides, onUpdate }: EvaluationPr
                 <SelectItem value="none">None (use static items)</SelectItem>
                 {aiStepElements.length > 0 && (
                   <>
-                    <SelectItem value="" disabled className="text-[10px] font-semibold text-muted-foreground">
+                    <SelectItem value="__header_ai_steps" disabled className="text-[10px] font-semibold text-muted-foreground">
                       AI Steps
                     </SelectItem>
                     {aiStepElements.map(({ slideId, slideIndex, el }) => {
@@ -334,7 +334,7 @@ export function EvaluationProperties({ element, slides, onUpdate }: EvaluationPr
                 )}
                 {agenticElements.length > 0 && (
                   <>
-                    <SelectItem value="" disabled className="text-[10px] font-semibold text-muted-foreground">
+                    <SelectItem value="__header_agentic" disabled className="text-[10px] font-semibold text-muted-foreground">
                       Agentic Designer
                     </SelectItem>
                     {agenticElements.flatMap(({ slideId, slideIndex, el }) =>
