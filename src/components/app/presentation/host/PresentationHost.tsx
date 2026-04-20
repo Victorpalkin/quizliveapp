@@ -228,6 +228,8 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
     setEnded(true);
   }, [controls]);
 
+  const togglePanels = useCallback(() => setPanelsPinned((p) => !p), []);
+
   // ── Loading / error states ──
 
   if (loading) {
@@ -362,8 +364,6 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
 
   const playerNames = players.map((p) => p.name);
   const variants = getTransitionVariants(currentSlide!.transition, direction);
-
-  const togglePanels = useCallback(() => setPanelsPinned((p) => !p), []);
 
   return (
     <div ref={rootRef} className="relative w-screen h-screen bg-black overflow-hidden">
