@@ -73,10 +73,11 @@ interface PresentationSlide {
     type: string;
     aiStepConfig?: AIStepConfig;
     content?: string;
-    pollConfig?: { question: string; options: string[] };
-    quizConfig?: { question: string };
-    evaluationConfig?: { title: string };
+    pollConfig?: { question: string; options: { text: string }[] };
+    quizConfig?: { question: string; correctAnswerIndex: number };
+    evaluationConfig?: { title: string; items: { id: string; text: string }[]; metrics: { id: string; name: string }[] };
     thoughtsConfig?: { prompt: string };
+    ratingConfig?: { itemTitle: string; items?: { id: string; text: string }[]; question?: string };
     [key: string]: unknown;
   }[];
   [key: string]: unknown;

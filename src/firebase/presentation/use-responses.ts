@@ -47,6 +47,7 @@ export function useResponses(gameId: string | null) {
             answerIndices: data.answerIndices,
             textAnswers: data.textAnswers,
             ratingValue: data.ratingValue,
+            ratingValues: data.ratingValues,
             evaluationRatings: data.evaluationRatings,
           } as PresentationElementResponse;
         });
@@ -101,6 +102,7 @@ export function useResponses(gameId: string | null) {
       answerIndices?: number[];
       textAnswers?: string[];
       ratingValue?: number;
+      ratingValues?: Record<string, number>;
       evaluationRatings?: Record<string, Record<string, number>>;
       timeRemaining?: number;
     }) => {

@@ -375,7 +375,7 @@ export function useEditorState(initial?: {
           thoughtsConfig: { prompt: 'Share your thoughts...', maxPerPlayer: 3 },
         }),
         ...(type === 'rating' && {
-          ratingConfig: { itemTitle: 'Rate this item', metricType: 'stars' as const, min: 1, max: 5 },
+          ratingConfig: { itemTitle: 'Rate this item', metricType: 'stars' as const, min: 1, max: 5, items: [] },
         }),
         ...(type === 'evaluation' && {
           evaluationConfig: {

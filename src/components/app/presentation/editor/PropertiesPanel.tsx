@@ -242,7 +242,7 @@ export function PropertiesPanel({
         <ThoughtsProperties element={selectedElement!} onUpdate={onUpdateElement} />
       )}
       {selectedElement!.type === 'rating' && (
-        <RatingProperties element={selectedElement!} onUpdate={onUpdateElement} />
+        <RatingProperties element={selectedElement!} slides={slides} onUpdate={onUpdateElement} />
       )}
       {selectedElement!.type === 'leaderboard' && (
         <LeaderboardProperties element={selectedElement!} onUpdate={onUpdateElement} />

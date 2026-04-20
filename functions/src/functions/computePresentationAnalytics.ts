@@ -80,6 +80,7 @@ export const computePresentationAnalytics = onCall(
       correctRate?: number;
       avgRating?: number;
       answerDistribution?: Record<string, number>;
+      itemRatings?: Record<string, number>;
     }> = [];
 
     for (let si = 0; si < slides.length; si++) {
@@ -120,11 +121,33 @@ export const computePresentationAnalytics = onCall(
         }
 
         if (element.type === 'rating') {
-          const ratings = elementResponses
+          // Handle both single-item (ratingValue) and multi-item (ratingValues)
+          const singleRatings = elementResponses
             .map((r: Record<string, unknown>) => r.ratingValue as number)
             .filter((v): v is number => typeof v === 'number');
-          if (ratings.length > 0) {
-            stat.avgRating = Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10;
+
+          const multiRatings = elementResponses
+            .map((r: Record<string, unknown>) => r.ratingValues as Record<string, number> | undefined)
+            .filter((v): v is Record<string, number> => !!v && Object.keys(v).length > 0);
+
+          if (multiRatings.length > 0) {
+            // Per-item averages
+            const itemTotals: Record<string, { sum: number; count: number }> = {};
+            for (const rv of multiRatings) {
+              for (const [itemId, val] of Object.entries(rv)) {
+                if (!itemTotals[itemId]) itemTotals[itemId] = { sum: 0, count: 0 };
+                itemTotals[itemId].sum += val;
+                itemTotals[itemId].count += 1;
+              }
+            }
+            stat.itemRatings = Object.fromEntries(
+              Object.entries(itemTotals).map(([id, { sum, count }]) => [id, Math.round((sum / count) * 10) / 10])
+            );
+            // Overall average across all items
+            const allAvgs = Object.values(itemTotals).map(({ sum, count }) => sum / count);
+            stat.avgRating = Math.round((allAvgs.reduce((a, b) => a + b, 0) / allAvgs.length) * 10) / 10;
+          } else if (singleRatings.length > 0) {
+            stat.avgRating = Math.round((singleRatings.reduce((a, b) => a + b, 0) / singleRatings.length) * 10) / 10;
           }
         }
 

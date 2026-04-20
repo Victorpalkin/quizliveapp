@@ -133,6 +133,7 @@ export interface SlideElement {
     min: number;
     max: number;
     question?: string;
+    items?: { id: string; text: string; description?: string }[];
   };
 
   qaConfig?: {
@@ -272,6 +273,7 @@ export interface PresentationElementResponse {
   answerIndices?: number[];
   textAnswers?: string[];
   ratingValue?: number;
+  ratingValues?: Record<string, number>; // itemId -> value (multi-item rating)
   evaluationRatings?: Record<string, Record<string, number>>; // itemId -> metricId -> value
 }
 
