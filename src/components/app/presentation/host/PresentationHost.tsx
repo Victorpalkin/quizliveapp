@@ -7,6 +7,8 @@ import { usePresentationById } from '@/firebase/presentation/use-presentation';
 import { usePresentationControls } from '@/firebase/presentation/use-presentation-game';
 import { useLeaderboard } from '@/firebase/presentation/use-leaderboard';
 import { useResponseCount } from '@/firebase/presentation/use-responses';
+import { httpsCallable } from 'firebase/functions';
+import { useFunctions } from '@/firebase';
 import { HostSlideCanvas } from './HostSlideCanvas';
 import { HostOverlay } from './HostOverlay';
 import { HostControls } from './HostControls';
@@ -75,10 +77,12 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
   const controls = usePresentationControls(game.id);
   const { leaderboard } = useLeaderboard(game.id);
 
+  const functions = useFunctions();
   const [ended, setEnded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [panelsPinned, setPanelsPinned] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
+  const computeAttempted = useRef(false);
   const prevSlideIndexRef = useRef(game.currentSlideIndex);
 
   // Track slide direction for slide transitions
@@ -93,6 +97,14 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
       setEnded(true);
     }
   }, [game.state]);
+
+  // Auto-trigger analytics computation when presentation ends
+  useEffect(() => {
+    if (!ended || computeAttempted.current || !functions || !game) return;
+    computeAttempted.current = true;
+    const fn = httpsCallable(functions, 'computePresentationAnalytics');
+    fn({ gameId: game.id }).catch(() => {});
+  }, [ended, functions, game]);
 
   // ── Fullscreen ──
 
@@ -268,18 +280,17 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
   if (ended) {
     const top3 = leaderboard.topPlayers.slice(0, 3);
     return (
-      <div ref={rootRef} className="relative w-screen h-screen bg-black overflow-hidden flex items-center justify-center">
+      <div ref={rootRef} className="relative w-screen h-screen bg-background overflow-hidden flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
-          className="text-center text-white space-y-8 max-w-lg mx-auto px-6"
+          className="text-center text-foreground space-y-8 max-w-lg mx-auto px-6"
         >
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
-            className="text-6xl"
           >
             <Trophy className="h-16 w-16 mx-auto text-yellow-400" />
           </motion.div>
@@ -297,14 +308,14 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="flex justify-center gap-8 text-white/70"
+            className="flex justify-center gap-8 text-muted-foreground"
           >
             <div className="text-center">
-              <div className="text-2xl font-bold text-white">{players.length}</div>
+              <div className="text-2xl font-bold text-foreground">{players.length}</div>
               <div className="text-sm">Players</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-white">{presentation.slides.length}</div>
+              <div className="text-2xl font-bold text-foreground">{presentation.slides.length}</div>
               <div className="text-sm">Slides</div>
             </div>
           </motion.div>
@@ -316,17 +327,17 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
               transition={{ delay: 0.5 }}
               className="space-y-3"
             >
-              <h2 className="text-lg font-semibold text-white/80">Top Players</h2>
+              <h2 className="text-lg font-semibold text-muted-foreground">Top Players</h2>
               {top3.map((p, i) => (
                 <div
                   key={p.playerId}
-                  className="flex items-center gap-3 bg-white/10 rounded-lg px-4 py-2.5"
+                  className="flex items-center gap-3 bg-muted/50 rounded-lg px-4 py-2.5"
                 >
-                  <span className="text-xl font-bold text-white/60 w-8">
+                  <span className="text-xl font-bold text-muted-foreground w-8">
                     {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
                   </span>
                   <span className="flex-1 text-left font-medium">{p.playerName}</span>
-                  <span className="font-mono text-white/80">{p.score.toLocaleString()}</span>
+                  <span className="font-mono text-muted-foreground">{p.score.toLocaleString()}</span>
                 </div>
               ))}
             </motion.div>
@@ -341,7 +352,6 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
             <Button
               onClick={() => router.push(`/host/presentation/analytics/${game.id}`)}
               variant="outline"
-              className="border-white/20 text-white hover:bg-white/10"
             >
               <BarChart3 className="h-4 w-4 mr-2" />
               View Analytics
@@ -349,7 +359,6 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
             <Button
               onClick={() => router.push('/host')}
               variant="outline"
-              className="border-white/20 text-white hover:bg-white/10"
             >
               <Home className="h-4 w-4 mr-2" />
               Back to Dashboard

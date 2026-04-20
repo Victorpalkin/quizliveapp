@@ -1,12 +1,13 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { httpsCallable } from 'firebase/functions';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { useUser } from '@/firebase';
+import { useUser, useFunctions } from '@/firebase';
 import { useAnalytics } from './hooks/use-analytics';
 import { OverviewTab } from './components/overview-tab';
 import { SlidesTab } from './components/slides-tab';
@@ -17,8 +18,19 @@ export default function PresentationAnalyticsPage({ params }: { params: Promise<
   const { gameId } = use(params);
   const router = useRouter();
   const { user, loading: authLoading } = useUser();
+  const functions = useFunctions();
   const { analytics, loading } = useAnalytics(gameId);
   const [tab, setTab] = useState('overview');
+  const generationAttempted = useRef(false);
+
+  // Auto-trigger analytics computation if not yet computed
+  useEffect(() => {
+    if (generationAttempted.current || loading || authLoading) return;
+    if (!user || !functions || analytics) return;
+    generationAttempted.current = true;
+    const fn = httpsCallable(functions, 'computePresentationAnalytics');
+    fn({ gameId }).catch(() => {});
+  }, [loading, authLoading, user, functions, analytics, gameId]);
 
   if (authLoading || loading) {
     return (
@@ -46,9 +58,10 @@ export default function PresentationAnalyticsPage({ params }: { params: Promise<
       {/* Content */}
       <div className="max-w-4xl mx-auto p-6">
         {!analytics ? (
-          <div className="text-center py-12">
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             <p className="text-muted-foreground">
-              Analytics are being computed. This may take a moment after the presentation ends.
+              Computing analytics...
             </p>
           </div>
         ) : (

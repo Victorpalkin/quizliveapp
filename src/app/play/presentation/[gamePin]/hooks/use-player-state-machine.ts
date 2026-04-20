@@ -47,6 +47,7 @@ export function usePlayerStateMachine(gamePin: string, playerId: string) {
   const [playerStreak, setPlayerStreak] = useState(0);
   const [loading, setLoading] = useState(true);
   const respondedRef = useRef<Set<string>>(new Set());
+  const [respondedVersion, setRespondedVersion] = useState(0);
   const quizResultsRef = useRef<Map<string, QuizResult>>(new Map());
   const [quizResultsVersion, setQuizResultsVersion] = useState(0);
 
@@ -184,11 +185,13 @@ export function usePlayerStateMachine(gamePin: string, playerId: string) {
   // Track responded elements
   const markResponded = useCallback((elementId: string) => {
     respondedRef.current.add(elementId);
+    setRespondedVersion((v) => v + 1);
   }, []);
 
   const hasResponded = useCallback((elementId: string) => {
     return respondedRef.current.has(elementId);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [respondedVersion]);
 
   // Store quiz result for an element
   const storeQuizResult = useCallback((elementId: string, result: QuizResult) => {

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useResponses } from '@/firebase/presentation';
-import { Star } from 'lucide-react';
+import { useResponses, useDynamicItems } from '@/firebase/presentation';
+import { Star, Loader2 } from 'lucide-react';
 import type { SlideElement, PresentationSlide } from '@/lib/types';
 
 interface HostRatingResultsElementProps {
@@ -21,6 +21,9 @@ export function HostRatingResultsElement({ element, slides, gameId }: HostRating
   const sourceElement = sourceSlide?.elements.find((el) => el.id === element.sourceElementId);
   const config = sourceElement?.ratingConfig;
 
+  // Load dynamic items from AI step if configured on source element
+  const { items: dynamicItems, isLoading } = useDynamicItems(gameId, sourceElement?.dynamicItemsSource);
+
   useEffect(() => {
     if (!config || !element.sourceElementId) return;
 
@@ -31,10 +34,10 @@ export function HostRatingResultsElement({ element, slides, gameId }: HostRating
       const hasMultiItem = responses.some((r) => r.ratingValues && Object.keys(r.ratingValues).length > 0);
 
       if (hasMultiItem) {
-        // Resolve items from config
-        const items = config.items && config.items.length > 0
-          ? config.items
-          : [{ id: 'legacy', text: config.itemTitle }];
+        // Resolve items: dynamic > static config > legacy
+        const items = dynamicItems
+          || (config.items && config.items.length > 0 ? config.items : null)
+          || [{ id: 'legacy', text: config.itemTitle }];
 
         const avgs = items.map((item) => {
           const values = responses
@@ -47,13 +50,11 @@ export function HostRatingResultsElement({ element, slides, gameId }: HostRating
         setItemAverages(avgs);
         setTotal(responses.length);
 
-        // Overall average across all items
         const allValues = avgs.filter((a) => a.count > 0);
         if (allValues.length > 0) {
           setAverage(allValues.reduce((sum, a) => sum + a.avg, 0) / allValues.length);
         }
       } else {
-        // Legacy single-item
         const values = responses.filter((r) => r.ratingValue !== undefined).map((r) => r.ratingValue!);
         setTotal(values.length);
         setItemAverages([]);
@@ -64,12 +65,20 @@ export function HostRatingResultsElement({ element, slides, gameId }: HostRating
     };
 
     loadResponses();
-  }, [config, element.sourceElementId, getElementResponses]);
+  }, [config, element.sourceElementId, getElementResponses, dynamicItems]);
 
   if (!config) {
     return (
       <div className="w-full h-full flex items-center justify-center text-muted-foreground">
         No source rating element linked
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
