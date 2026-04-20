@@ -163,7 +163,8 @@ export async function callGeminiWithTools(
         throw new HttpsError('resource-exhausted', 'AI rate limit exceeded. Please wait a moment and try again.');
       }
       if (error.message?.includes('400') || error.message?.toLowerCase().includes('token limit')) {
-        throw new HttpsError('invalid-argument', 'Request too large. Please reduce the amount of context.');
+        console.error('Gemini 400 error during tool calling:', error.message);
+        throw new HttpsError('invalid-argument', `AI request failed (400): ${error.message?.substring(0, 200)}`);
       }
       const isRetryable = error.message?.includes('500') || error.message?.includes('503') || error.message?.includes('504')
         || error.message?.toLowerCase().includes('internal') || error.message?.toLowerCase().includes('overloaded');

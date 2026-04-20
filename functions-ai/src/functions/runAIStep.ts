@@ -228,36 +228,47 @@ function createAgentTrackerTool(): ToolDefinition {
   return {
     declaration: {
       name: 'searchAgentTracker',
-      description: 'Search the AI Agent Tracker database to find AI agents relevant to a topic, use case, or business area. Returns matching agents with name, summary, maturity score, functional area, and industry. Use this when you need to identify existing AI agents or solutions relevant to specific use cases or topics.',
+      description: 'Search the AI Agent Tracker database to find AI agents relevant to topics, use cases, or business areas. Accepts multiple queries at once — pass ALL your search queries in a single call rather than making separate calls. Returns matching agents with name, summary, maturity score, functional area, and industry.',
       parameters: {
         type: Type.OBJECT,
         properties: {
-          query: {
-            type: Type.STRING,
-            description: 'A descriptive search query about the use case, topic, or business area to find relevant AI agents for.',
+          queries: {
+            type: Type.ARRAY,
+            description: 'List of search queries. Each query should describe a use case, topic, or business area. Pass ALL queries in one call.',
+            items: {
+              type: Type.STRING,
+            },
           },
-          limit: {
+          limitPerQuery: {
             type: Type.INTEGER,
-            description: 'Maximum number of agents to return. Defaults to 5.',
+            description: 'Maximum number of agents to return per query. Defaults to 3.',
           },
         },
-        required: ['query'],
+        required: ['queries'],
       },
     },
     execute: async (args) => {
-      const query = args.query as string;
-      const limit = (args.limit as number) || 3;
-      const agents = await findSimilarAgents(query, limit);
-      return {
-        agents: agents.map((a) => ({
-          agentName: a.agentName,
-          summary: a.summary ? a.summary.substring(0, 150) : '',
-          functionalArea: a.functionalArea,
-          industry: a.industry,
-          maturity: a.maturity,
-        })),
-        resultCount: agents.length,
-      };
+      const queries = args.queries as string[];
+      const limit = (args.limitPerQuery as number) || 3;
+
+      // Run all searches in parallel
+      const searchResults = await Promise.all(
+        queries.map(async (query) => {
+          const agents = await findSimilarAgents(query, limit);
+          return {
+            query,
+            agents: agents.map((a) => ({
+              agentName: a.agentName,
+              summary: a.summary ? a.summary.substring(0, 150) : '',
+              functionalArea: a.functionalArea,
+              industry: a.industry,
+              maturity: a.maturity,
+            })),
+          };
+        })
+      );
+
+      return { results: searchResults, totalQueries: queries.length };
     },
   };
 }
@@ -393,7 +404,7 @@ export const runAIStep = onCall(
       if (config.enableAgentTracker) {
         const agentTrackerTool = createAgentTrackerTool();
         const result = await callGeminiWithTools(client, model, systemPrompt, fullPrompt, [agentTrackerTool], {
-          maxToolCalls: 10,
+          maxToolCalls: 3,
           useSearch,
         });
         aiOutput = result.text;
