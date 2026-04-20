@@ -77,7 +77,11 @@ export function HostOverlay({ gamePin, slideIndex, totalSlides, playerCount, pin
   // Show when mouse enters top zone (only when unpinned)
   useEffect(() => {
     if (pinned) return;
+    let lastCall = 0;
     const handleMove = (e: MouseEvent) => {
+      const now = Date.now();
+      if (now - lastCall < 100) return;
+      lastCall = now;
       if (e.clientY <= 80) {
         showOverlay();
       }

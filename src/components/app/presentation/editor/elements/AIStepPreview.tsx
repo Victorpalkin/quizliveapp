@@ -5,13 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
 } from '@/components/ui/resizable';
-import { Play, MessageSquare, Lightbulb, Layers, ToggleRight } from 'lucide-react';
+import { Play, MessageSquare, Layers, ToggleRight } from 'lucide-react';
 import type { SlideElement } from '@/lib/types';
 
 interface AIStepPreviewProps {

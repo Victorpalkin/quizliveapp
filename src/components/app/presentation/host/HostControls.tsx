@@ -123,7 +123,11 @@ export function HostControls({
 
   useEffect(() => {
     if (pinned) return;
+    let lastCall = 0;
     const handleMove = (e: MouseEvent) => {
+      const now = Date.now();
+      if (now - lastCall < 100) return;
+      lastCall = now;
       if (e.clientY >= window.innerHeight - 80) {
         showControls();
       }
