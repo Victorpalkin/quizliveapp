@@ -5,6 +5,7 @@ import { useStorage } from '@/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { nanoid } from 'nanoid';
 import type { PresentationSlide, SlideElement, SlideElementType, PresentationTheme } from '@/lib/types';
+import { INTERACTIVE_ELEMENT_TYPES } from '@/lib/types';
 import { TextElement } from './elements/TextElement';
 import { ImageElement } from './elements/ImageElement';
 import { ShapeElement } from './elements/ShapeElement';
@@ -57,8 +58,7 @@ interface SlideCanvasProps {
   onEndDrag: () => void;
 }
 
-const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation', 'agentic-designer'];
-const RESULTS_TYPES = ['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results', 'agentic-designer-results'];
+const RESULTS_TYPES = ['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results', 'agentic-designer-results', 'ai-step-results'];
 const SPECIAL_TYPES = ['leaderboard', 'qa', 'spin-wheel'];
 
 const SNAP_THRESHOLD = 2; // % threshold for snapping
@@ -111,7 +111,7 @@ function ElementRenderer({
   if (element.type === 'ai-step') {
     return <AIStepPreview element={element} />;
   }
-  if (INTERACTIVE_TYPES.includes(element.type) || SPECIAL_TYPES.includes(element.type)) {
+  if (INTERACTIVE_ELEMENT_TYPES.includes(element.type) || SPECIAL_TYPES.includes(element.type)) {
     return <InteractiveElement element={element} />;
   }
   if (RESULTS_TYPES.includes(element.type)) {

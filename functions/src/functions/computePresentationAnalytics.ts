@@ -86,7 +86,7 @@ export const computePresentationAnalytics = onCall(
     for (let si = 0; si < slides.length; si++) {
       const slide = slides[si];
       for (const element of slide.elements || []) {
-        if (!['quiz', 'poll', 'thoughts', 'rating'].includes(element.type)) continue;
+        if (!['quiz', 'poll', 'thoughts', 'rating', 'evaluation', 'agentic-designer', 'ai-step'].includes(element.type)) continue;
 
         const elementResponses = responses.filter(
           (r: Record<string, unknown>) => r.elementId === element.id

@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 import type { PresentationSlide, SlideElement } from '@/lib/types';
+import { INTERACTIVE_ELEMENT_TYPES } from '@/lib/types';
 
 /**
  * Types matching the AI-generated presentation structure from the Cloud Function.
@@ -115,7 +116,7 @@ export function convertAIPresentation(generated: GeneratedPresentation): Convert
     // Register the AI slide ID in the map (for results linking)
     if (aiSlide.id) {
       const interactiveEl = elements.find(
-        (el) => ['quiz', 'poll', 'thoughts', 'rating'].includes(el.type)
+        (el) => INTERACTIVE_ELEMENT_TYPES.includes(el.type)
       );
       idMap.set(aiSlide.id, {
         frontendSlideId: slideId,

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Presentation, Play, Pencil, Trash2, MoreVertical, Image as ImageIcon, Eye, Share2, Loader2 } from 'lucide-react';
+import { Presentation, Play, Pencil, Trash2, MoreVertical, Eye, Share2, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { Presentation as PresentationType } from '@/lib/types';
+import { INTERACTIVE_ELEMENT_TYPES } from '@/lib/types';
 
 interface PresentationCardProps {
   presentation: PresentationType;
@@ -37,11 +38,8 @@ export function PresentationCard({ presentation, onHost, onPreview, onShare, onD
 
   const slideCount = presentation.slides?.length || 0;
   const interactiveSlideCount = presentation.slides?.filter(
-    (s) => s.elements?.some((el) => ['quiz', 'poll', 'thoughts', 'rating'].includes(el.type))
+    (s) => s.elements?.some((el) => INTERACTIVE_ELEMENT_TYPES.includes(el.type))
   ).length || 0;
-  const firstImageElement = presentation.slides
-    ?.flatMap((s) => s.elements || [])
-    .find((el) => el.type === 'image' && el.imageUrl);
 
   return (
     <>
@@ -97,24 +95,6 @@ export function PresentationCard({ presentation, onHost, onPreview, onShare, onD
             )}
           </CardDescription>
         </CardHeader>
-
-        {/* Thumbnail preview */}
-        <div className="px-4">
-          <div className="aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center">
-            {firstImageElement?.imageUrl ? (
-              <img
-                src={firstImageElement.imageUrl}
-                alt="First slide"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <ImageIcon className="h-8 w-8" />
-                <span className="text-xs">No preview</span>
-              </div>
-            )}
-          </div>
-        </div>
 
         <CardContent className="flex-grow flex flex-col justify-end gap-2 p-4 pt-3">
           <Button

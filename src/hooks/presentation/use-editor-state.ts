@@ -10,12 +10,12 @@ import type {
   PresentationSettings,
   PresentationTheme,
 } from '@/lib/types';
+import { INTERACTIVE_ELEMENT_TYPES } from '@/lib/types';
 import {
   computeAnchorPosition,
   computeConnectorBoundingBox,
 } from '@/lib/utils/connector-paths';
 
-const INTERACTIVE_TYPES: SlideElementType[] = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
 
 interface EditorState {
   slides: PresentationSlide[];
@@ -321,8 +321,8 @@ export function useEditorState(initial?: {
       if (!slide) return s;
 
       // Check max 1 interactive element per slide
-      if (INTERACTIVE_TYPES.includes(type)) {
-        const hasInteractive = slide.elements.some((el) => INTERACTIVE_TYPES.includes(el.type));
+      if (INTERACTIVE_ELEMENT_TYPES.includes(type)) {
+        const hasInteractive = slide.elements.some((el) => INTERACTIVE_ELEMENT_TYPES.includes(el.type));
         if (hasInteractive) return s; // Reject - already has one
       }
 
@@ -654,8 +654,8 @@ export function useEditorState(initial?: {
       const slide = s.slides[s.currentSlideIndex];
       if (!slide) return s;
       // Block pasting interactive element if slide already has one
-      if (INTERACTIVE_TYPES.includes(clipboardRef.current!.type)) {
-        const hasInteractive = slide.elements.some((el) => INTERACTIVE_TYPES.includes(el.type));
+      if (INTERACTIVE_ELEMENT_TYPES.includes(clipboardRef.current!.type)) {
+        const hasInteractive = slide.elements.some((el) => INTERACTIVE_ELEMENT_TYPES.includes(el.type));
         if (hasInteractive) return s;
       }
       const maxZ = slide.elements.reduce((max, el) => Math.max(max, el.zIndex), 0);
@@ -677,8 +677,8 @@ export function useEditorState(initial?: {
     const el = slide?.elements.find((e) => e.id === state.selectedElementId);
     if (!el) return;
     // Block duplicating interactive element if slide already has one
-    if (INTERACTIVE_TYPES.includes(el.type)) {
-      const hasInteractive = slide.elements.some((e) => e.id !== el.id && INTERACTIVE_TYPES.includes(e.type));
+    if (INTERACTIVE_ELEMENT_TYPES.includes(el.type)) {
+      const hasInteractive = slide.elements.some((e) => e.id !== el.id && INTERACTIVE_ELEMENT_TYPES.includes(e.type));
       if (hasInteractive) return;
     }
     pushHistory();
@@ -802,13 +802,13 @@ export function useEditorState(initial?: {
 
   // Count interactive elements across all slides
   const interactiveElementCount = state.slides.reduce(
-    (count, slide) => count + slide.elements.filter((el) => INTERACTIVE_TYPES.includes(el.type)).length,
+    (count, slide) => count + slide.elements.filter((el) => INTERACTIVE_ELEMENT_TYPES.includes(el.type)).length,
     0
   );
 
   // Check if current slide has an interactive element
   const currentSlideHasInteractive = currentSlide?.elements.some(
-    (el) => INTERACTIVE_TYPES.includes(el.type)
+    (el) => INTERACTIVE_ELEMENT_TYPES.includes(el.type)
   ) || false;
 
   return {
