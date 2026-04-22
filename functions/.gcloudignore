@@ -1,0 +1,12 @@
+# Dependencies (installed from package.json during deployment)
+node_modules/
+
+# TypeScript source (compiled output is in lib/)
+src/
+
+# Local environment files
+.env
+.env.local
+
+# Git
+.gitignore
