@@ -235,6 +235,7 @@ export function useWorkflowStatePlayer(
   const firestore = useFirestore();
   const [slideOutput, setSlideOutput] = useState<SlideOutput | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [myNudges, setMyNudges] = useState<AIStepNudge[]>([]);
   const [nudgesOpen, setNudgesOpen] = useState(true);
 
@@ -271,8 +272,12 @@ export function useWorkflowStatePlayer(
       if (snapshot.exists()) {
         const state = snapshot.data() as PresentationWorkflowState;
         setSlideOutput(state.slideOutputs[slideId] ?? null);
+        setIsProcessing(
+          state.isProcessing === true && state.processingSlideId === slideId
+        );
       } else {
         setSlideOutput(null);
+        setIsProcessing(false);
       }
       setIsLoading(false);
     });
@@ -329,6 +334,7 @@ export function useWorkflowStatePlayer(
   return {
     slideOutput,
     isLoading,
+    isProcessing,
     myNudges,
     nudgesOpen,
     submitNudge,

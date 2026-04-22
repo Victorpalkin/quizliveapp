@@ -32,7 +32,7 @@ export function PlayerAIStep({
   const config = element.aiStepConfig;
   const slideId = currentSlide.id;
 
-  const { slideOutput, isLoading, myNudges, nudgesOpen, submitNudge } =
+  const { slideOutput, isLoading, isProcessing, myNudges, nudgesOpen, submitNudge } =
     useWorkflowStatePlayer(gameId, slideId, playerId);
 
   const [nudgeText, setNudgeText] = useState('');
@@ -42,7 +42,6 @@ export function PlayerAIStep({
   const nudgeHints = config?.nudgeHints ?? [];
   const aiOutput = slideOutput?.aiOutput ?? null;
   const imageUrl = slideOutput?.imageUrl ?? null;
-  const isProcessing = !slideOutput && !isLoading;
 
   // Step title from slide text content
   const stepTitle =
@@ -98,19 +97,7 @@ export function PlayerAIStep({
 
       {/* AI output area */}
       <AnimatePresence mode="wait">
-        {isProcessing ? (
-          <motion.div
-            key="processing"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center py-12 text-muted-foreground"
-          >
-            <Loader2 className="h-8 w-8 animate-spin mb-3" />
-            <p className="text-sm font-medium">Generating analysis...</p>
-            <p className="text-xs mt-1">This may take a moment</p>
-          </motion.div>
-        ) : aiOutput ? (
+        {aiOutput ? (
           <motion.div
             key="output"
             initial={{ opacity: 0, y: 10 }}
@@ -131,6 +118,18 @@ export function PlayerAIStep({
                 />
               </div>
             )}
+          </motion.div>
+        ) : isProcessing ? (
+          <motion.div
+            key="processing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center py-12 text-muted-foreground"
+          >
+            <Loader2 className="h-8 w-8 animate-spin mb-3" />
+            <p className="text-sm font-medium">Generating analysis...</p>
+            <p className="text-xs mt-1">This may take a moment</p>
           </motion.div>
         ) : (
           <motion.div

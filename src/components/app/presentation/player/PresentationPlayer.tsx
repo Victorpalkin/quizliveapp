@@ -17,6 +17,7 @@ import { PlayerAIStep } from './elements/PlayerAIStep';
 import { PlayerQuizResult } from './elements/PlayerQuizResult';
 import { PlayerLeaderboardView } from './elements/PlayerLeaderboardView';
 import { PlayerQA } from './elements/PlayerQA';
+import { CheckCircle } from 'lucide-react';
 import type { PresentationGame, PresentationSlide, SlideElement } from '@/lib/types';
 import type { QuizResult } from '@/app/play/presentation/[gamePin]/hooks/use-player-state-machine';
 
@@ -79,6 +80,7 @@ export function PresentationPlayer({
   resultsElement,
   leaderboardElement,
   qaElement,
+  slides,
   playerScore,
   playerStreak,
   joinGame,
@@ -90,6 +92,11 @@ export function PresentationPlayer({
 }: PresentationPlayerProps) {
   const [name, setName] = useState('');
   const [joining, setJoining] = useState(false);
+
+  const hasQuizElements = slides.some((s) =>
+    s.elements.some((el) => el.type === 'quiz')
+  );
+  const enableReactions = game?.settings.enableReactions ?? false;
 
   const handleJoin = async () => {
     if (!name.trim()) return;
@@ -213,9 +220,14 @@ export function PresentationPlayer({
               initial={{ scale: 0, rotate: -20 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
-              className="text-6xl"
             >
-              🏆
+              {hasQuizElements ? (
+                <span className="text-6xl">🏆</span>
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mx-auto">
+                  <CheckCircle className="h-10 w-10 text-primary" />
+                </div>
+              )}
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
@@ -223,27 +235,41 @@ export function PresentationPlayer({
               transition={{ delay: 0.4 }}
               className="text-2xl font-bold"
             >
-              Game Over!
+              Presentation Ended
             </motion.h1>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.6, type: 'spring' }}
-              className="glass rounded-2xl p-6 inline-block"
-            >
-              <div className="text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                <AnimatedScore value={playerScore} />
-              </div>
-              <p className="text-muted-foreground mt-1">points</p>
-            </motion.div>
-            {playerStreak > 0 && (
+            {hasQuizElements && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.6, type: 'spring' }}
+                  className="glass rounded-2xl p-6 inline-block"
+                >
+                  <div className="text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                    <AnimatedScore value={playerScore} />
+                  </div>
+                  <p className="text-muted-foreground mt-1">points</p>
+                </motion.div>
+                {playerStreak > 0 && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 1 }}
+                    className="text-sm text-muted-foreground"
+                  >
+                    Best streak: {playerStreak} 🔥
+                  </motion.p>
+                )}
+              </>
+            )}
+            {!hasQuizElements && (
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 1 }}
+                transition={{ delay: 0.6 }}
                 className="text-sm text-muted-foreground"
               >
-                Best streak: {playerStreak} 🔥
+                Thanks for participating!
               </motion.p>
             )}
           </div>
@@ -263,6 +289,7 @@ export function PresentationPlayer({
             playerName={session?.playerName || ''}
             score={playerScore}
             streak={playerStreak}
+            showScore={hasQuizElements}
           />
 
           <div className="flex-1 overflow-y-auto">
@@ -364,6 +391,7 @@ export function PresentationPlayer({
                     <IdleView
                       currentSlide={currentSlide}
                       responded={false}
+                      enableReactions={enableReactions}
                     />
                   )}
                 </motion.div>
@@ -409,6 +437,7 @@ export function PresentationPlayer({
                   <IdleView
                     currentSlide={currentSlide}
                     responded={interactiveElement ? hasResponded(interactiveElement.id) : false}
+                    enableReactions={enableReactions}
                   />
                 </motion.div>
               )}
