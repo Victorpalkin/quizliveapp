@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileQuestion, Cloud, BarChart3, Presentation, Vote, ArrowUpDown, Sparkles, Search } from 'lucide-react';
+import { FileQuestion, Cloud, BarChart3, Presentation, Vote, ArrowUpDown, Sparkles, Search, Upload } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { CreateDropdown } from './create-dropdown';
@@ -12,6 +12,7 @@ import { ContentCard } from './content-card';
 import { PresentationCard } from './presentation-card';
 import { EmptyContentState } from './empty-content-state';
 import { ACTIVITY_CONFIG } from '@/lib/activity-config';
+import { exportActivity } from '@/lib/export-import';
 import { formatRelativeTime } from '@/lib/utils/format-date';
 import type { Quiz, ThoughtsGatheringActivity, EvaluationActivity, PollActivity, Presentation as PresentationType, ActivityType } from '@/lib/types';
 
@@ -42,7 +43,9 @@ interface ContentListProps {
   onSharePoll: (data: { id: string; title: string }) => void;
   onDeleteActivity: (activityId: string) => void;
   onHostPresentation: (presentationId: string) => void | Promise<void>;
+  onSharePresentation?: (data: { id: string; title: string }) => void;
   onDeletePresentation: (presentationId: string) => void;
+  onImport?: () => void;
 }
 
 function getActivityDescription(item: ContentItem): string {
@@ -90,7 +93,9 @@ export function ContentList({
   onSharePoll,
   onDeleteActivity,
   onHostPresentation,
+  onSharePresentation,
   onDeletePresentation,
+  onImport,
 }: ContentListProps) {
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [sortType, setSortType] = useState<SortType>('recent');
@@ -159,6 +164,8 @@ export function ContentList({
           key={pres.id}
           presentation={pres}
           onHost={onHostPresentation}
+          onShare={onSharePresentation ? (p) => onSharePresentation(p) : undefined}
+          onExport={(p) => exportActivity('presentation', p.title, p as unknown as Record<string, unknown>)}
           onDelete={onDeletePresentation}
         />
       );
@@ -182,6 +189,7 @@ export function ContentList({
           onPreview={() => onPreviewQuiz(quiz)}
           previewLabel="Preview Quiz"
           onShare={() => onShareQuiz({ id: quiz.id, title: quiz.title })}
+          onExport={() => exportActivity('quiz', quiz.title, quiz as unknown as Record<string, unknown>)}
         />
       );
     }
@@ -203,6 +211,7 @@ export function ContentList({
           onPreview={() => onPreviewPoll(poll)}
           previewLabel="Preview Poll"
           onShare={() => onSharePoll({ id: poll.id, title: poll.title })}
+          onExport={() => exportActivity('poll', poll.title, poll as unknown as Record<string, unknown>)}
         />
       );
     }
@@ -221,6 +230,7 @@ export function ContentList({
         hostHref={config.detailPath(activity.id)}
         hostGradient={config.gradient}
         onDelete={onDeleteActivity}
+        onExport={() => exportActivity(item.type, activity.title, activity as unknown as Record<string, unknown>)}
       />
     );
   };
@@ -237,6 +247,12 @@ export function ContentList({
           )}
         </div>
         <div className="flex items-center gap-3">
+          {onImport && (
+            <Button variant="outline" onClick={onImport}>
+              <Upload className="mr-2 h-4 w-4" />
+              Import
+            </Button>
+          )}
           <Button asChild variant="outline">
             <Link href="/host/create">
               <Sparkles className="mr-2 h-4 w-4 text-amber-500" />

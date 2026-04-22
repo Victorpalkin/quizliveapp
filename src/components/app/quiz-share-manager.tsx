@@ -10,6 +10,7 @@ import { collection, addDoc, deleteDoc, doc, serverTimestamp, setDoc, Collection
 import type { QuizShare } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { quizShareConverter } from '@/firebase/converters';
+import { ShareLinkSection } from './share-link-section';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -206,6 +207,14 @@ export function QuizShareManager({ quizId, quizTitle }: QuizShareManagerProps) {
               Not shared with anyone yet
             </p>
           )}
+        </div>
+
+        <div className="border-t pt-4">
+          <ShareLinkSection
+            contentId={quizId}
+            contentTitle={quizTitle}
+            contentType="quiz"
+          />
         </div>
       </CardContent>
     </Card>

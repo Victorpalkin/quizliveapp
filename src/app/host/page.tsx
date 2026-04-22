@@ -10,7 +10,8 @@ import { QuizShareManager } from '@/components/app/quiz-share-manager';
 import { ContentShareManager } from '@/components/app/content-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
 import { PollPreview } from '@/components/app/poll-preview';
-import { Loader2, XCircle, LogIn, ChevronDown } from 'lucide-react';
+import { ImportDialog } from '@/components/app/import-dialog';
+import { Loader2, XCircle, LogIn, ChevronDown, Upload } from 'lucide-react';
 import { CompletedActivityCard } from './components/completed-activity-card';
 import { ContentList } from './components/content-list';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
@@ -88,10 +89,14 @@ export default function HostDashboardPage() {
   // State for share dialogs
   const [shareDialogQuiz, setShareDialogQuiz] = useState<{ id: string; title: string } | null>(null);
   const [shareDialogPoll, setShareDialogPoll] = useState<{ id: string; title: string } | null>(null);
+  const [shareDialogPresentation, setShareDialogPresentation] = useState<{ id: string; title: string } | null>(null);
 
   // State for preview dialogs
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
   const [previewPoll, setPreviewPoll] = useState<PollActivity | null>(null);
+
+  // State for import dialog
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   if (userLoading || !user) {
     return <FullPageLoader />;
@@ -183,7 +188,9 @@ export default function HostDashboardPage() {
           onSharePoll={setShareDialogPoll}
           onDeleteActivity={handleDeleteActivity}
           onHostPresentation={handleHostPresentation}
+          onSharePresentation={setShareDialogPresentation}
           onDeletePresentation={handleDeletePresentation}
+          onImport={() => setImportDialogOpen(true)}
         />
 
         {/* Quick-jump to completed activities */}
@@ -270,6 +277,28 @@ export default function HostDashboardPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Share Presentation Dialog */}
+        <Dialog open={!!shareDialogPresentation} onOpenChange={(open) => !open && setShareDialogPresentation(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl shadow-xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-semibold">Share Presentation</DialogTitle>
+              <DialogDescription className="text-base">
+                Share &quot;{shareDialogPresentation?.title}&quot; with other hosts by entering their email address
+              </DialogDescription>
+            </DialogHeader>
+            {shareDialogPresentation && (
+              <ContentShareManager
+                contentId={shareDialogPresentation.id}
+                contentTitle={shareDialogPresentation.title}
+                contentType="presentation"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Import Dialog */}
+        <ImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
 
         {/* Preview Quiz Dialog */}
         <Dialog open={!!previewQuiz} onOpenChange={(open) => !open && setPreviewQuiz(null)}>

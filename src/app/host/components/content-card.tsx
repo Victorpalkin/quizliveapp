@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2, Trash2, Edit, Share2, Eye, Loader2 } from 'lucide-react';
+import { Gamepad2, Trash2, Edit, Share2, Eye, Loader2, Download } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +47,8 @@ interface ContentCardProps {
   previewLabel?: string;
   /** Optional share callback */
   onShare?: () => void;
+  /** Optional export callback */
+  onExport?: () => void;
 }
 
 export function ContentCard({
@@ -64,6 +66,7 @@ export function ContentCard({
   onPreview,
   previewLabel = 'Preview',
   onShare,
+  onExport,
 }: ContentCardProps) {
   const [isHosting, setIsHosting] = useState(false);
 
@@ -78,6 +81,17 @@ export function ContentCard({
           <CardDescription className="text-sm">{description}</CardDescription>
         </div>
         <div className="flex items-center gap-1">
+          {onExport && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onExport}
+              title="Export"
+              className="h-8 w-8 hover:bg-muted rounded-lg"
+            >
+              <Download className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          )}
           {onShare && (
             <Button
               variant="ghost"

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Presentation, Play, Pencil, Trash2, MoreVertical, Eye, Share2, Loader2 } from 'lucide-react';
+import { Presentation, Play, Pencil, Trash2, MoreVertical, Eye, Share2, Download, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,10 +29,11 @@ interface PresentationCardProps {
   onHost: (presentationId: string) => void | Promise<void>;
   onPreview?: (presentation: PresentationType) => void;
   onShare?: (presentation: { id: string; title: string }) => void;
+  onExport?: (presentation: PresentationType) => void;
   onDelete: (presentationId: string) => void;
 }
 
-export function PresentationCard({ presentation, onHost, onPreview, onShare, onDelete }: PresentationCardProps) {
+export function PresentationCard({ presentation, onHost, onPreview, onShare, onExport, onDelete }: PresentationCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
 
@@ -73,6 +74,12 @@ export function PresentationCard({ presentation, onHost, onPreview, onShare, onD
                   >
                     <Share2 className="mr-2 h-4 w-4" />
                     Share
+                  </DropdownMenuItem>
+                )}
+                {onExport && (
+                  <DropdownMenuItem onClick={() => onExport(presentation)}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem

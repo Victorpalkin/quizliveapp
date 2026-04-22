@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Share2, Copy, Trash2, Loader2, Play, Eye, FileQuestion, Vote } from 'lucide-react';
+import { Share2, Copy, Trash2, Loader2, Play, Eye, FileQuestion, Vote, ChevronDown } from 'lucide-react';
 import { useFirestore, useUser, useStorage, trackEvent } from '@/firebase';
 import { useSharedQuizzes } from '@/firebase/firestore/use-shared-quizzes';
 import { useSharedPolls } from '@/firebase/firestore/use-shared-polls';
@@ -45,6 +45,20 @@ export function SharedContent() {
   const { user } = useUser();
   const { toast } = useToast();
   const router = useRouter();
+
+  // Collapsed state (persisted in localStorage)
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('zivo-shared-section-collapsed') === 'true';
+  });
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('zivo-shared-section-collapsed', String(next));
+      return next;
+    });
+  }, []);
 
   // Filter state
   const [filterType, setFilterType] = useState<FilterType>('all');
@@ -288,7 +302,13 @@ export function SharedContent() {
   return (
     <div className="mb-12">
       <div className="flex flex-wrap items-center gap-3 mb-6">
-        <h2 className="text-3xl font-semibold">Shared With Me</h2>
+        <button
+          onClick={toggleCollapsed}
+          className="flex items-center gap-2 group cursor-pointer"
+        >
+          <h2 className="text-3xl font-semibold">Shared With Me</h2>
+          <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`} />
+        </button>
         {allItems.length > 0 && (
           <span className="px-2.5 py-0.5 text-sm font-medium bg-muted text-muted-foreground rounded-full">
             {allItems.length}
@@ -296,6 +316,7 @@ export function SharedContent() {
         )}
       </div>
 
+      {collapsed ? null : <>
       {/* Filter Tabs */}
       {allItems.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 bg-muted p-1.5 rounded-xl mb-6 w-fit">
@@ -476,6 +497,7 @@ export function SharedContent() {
           {previewPoll && <PollPreview poll={previewPoll} />}
         </DialogContent>
       </Dialog>
+      </>}
 
     </div>
   );

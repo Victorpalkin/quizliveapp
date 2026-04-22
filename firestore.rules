@@ -181,6 +181,20 @@ service cloud.firestore {
              request.auth.uid == get(/databases/$(database)/documents/activities/$(activityId)).data.hostId;
     }
 
+    // Share links for URL-based sharing
+    match /shareLinks/{token} {
+      // Any authenticated user can read a share link (needed for claiming)
+      allow read: if request.auth != null;
+
+      // Only the owner can create share links
+      allow create: if request.auth != null &&
+                       request.auth.uid == request.resource.data.ownerId;
+
+      // Only the owner can update or delete their share links
+      allow update, delete: if request.auth != null &&
+                               request.auth.uid == resource.data.ownerId;
+    }
+
     // Game sessions
     match /games/{gameId} {
       // Anyone can read game state
