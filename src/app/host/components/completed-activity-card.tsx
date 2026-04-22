@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2, Eye, BarChart3, Gamepad2, RotateCcw, FileQuestion, Vote, Cloud, Presentation } from 'lucide-react';
+import { Trash2, Eye, BarChart3, Gamepad2, RotateCcw } from 'lucide-react';
+import { ACTIVITY_CONFIG } from '@/lib/activity-config';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,75 +17,40 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { Game } from '@/lib/types';
-import type { LucideIcon } from 'lucide-react';
+import type { Game, ActivityType } from '@/lib/types';
 
-// Activity type for games (undefined = quiz for backwards compatibility)
-type GameActivityType = Game['activityType'];
-
-interface ActivityConfig {
-  icon: LucideIcon;
-  label: string;
-  badgeClass: string;
-  analyticsPath: ((gameId: string) => string) | null;
+// Completed-game-specific config (extends shared ACTIVITY_CONFIG)
+const COMPLETED_CONFIG: Record<string, {
   reopenPath: ((gameId: string) => string) | null;
-  resultsPath: ((gameId: string) => string);
+  resultsPath: (gameId: string) => string;
   hostAgainPath: ((game: Game) => string | null) | null;
-}
-
-// Activity type configuration - easy to extend
-const ACTIVITY_CONFIG: Record<string, ActivityConfig> = {
+}> = {
   quiz: {
-    icon: FileQuestion,
-    label: 'Quiz',
-    badgeClass: 'bg-purple-500/20 text-purple-500',
-    analyticsPath: (gameId) => `/host/quiz/analytics/${gameId}`,
     reopenPath: null,
     resultsPath: (gameId) => `/host/quiz/game/${gameId}`,
-    hostAgainPath: null, // Uses callback with quizId
+    hostAgainPath: null,
   },
   poll: {
-    icon: Vote,
-    label: 'Poll',
-    badgeClass: 'bg-teal-500/20 text-teal-500',
-    analyticsPath: (gameId) => `/host/poll/analytics/${gameId}`,
     reopenPath: null,
     resultsPath: (gameId) => `/host/poll/game/${gameId}`,
     hostAgainPath: (game) => game.activityId ? `/host/poll/${game.activityId}` : null,
   },
   'thoughts-gathering': {
-    icon: Cloud,
-    label: 'Thoughts',
-    badgeClass: 'bg-blue-500/20 text-blue-500',
-    analyticsPath: null, // No analytics yet
     reopenPath: null,
     resultsPath: (gameId) => `/host/thoughts-gathering/game/${gameId}`,
     hostAgainPath: (game) => game.activityId ? `/host/thoughts-gathering/${game.activityId}` : null,
   },
   evaluation: {
-    icon: BarChart3,
-    label: 'Evaluation',
-    badgeClass: 'bg-orange-500/20 text-orange-500',
-    analyticsPath: null, // No analytics yet
     reopenPath: (gameId) => `/host/evaluation/game/${gameId}`,
     resultsPath: (gameId) => `/host/evaluation/game/${gameId}`,
     hostAgainPath: null,
   },
   presentation: {
-    icon: Presentation,
-    label: 'Presentation',
-    badgeClass: 'bg-pink-500/20 text-pink-500',
-    analyticsPath: (gameId) => `/host/presentation/analytics/${gameId}`,
     reopenPath: null,
     resultsPath: (gameId) => `/host/presentation/present/${gameId}`,
-    hostAgainPath: null, // Uses callback with presentationId
+    hostAgainPath: null,
   },
 };
-
-// Get activity type from game, defaulting to 'quiz' for backwards compatibility
-function getActivityType(game: Game): string {
-  return game.activityType || 'quiz';
-}
 
 interface CompletedActivityCardProps {
   game: Game;
@@ -95,14 +61,15 @@ interface CompletedActivityCardProps {
 
 export function CompletedActivityCard({ game, title, onDelete, onHostAgain }: CompletedActivityCardProps) {
   const router = useRouter();
-  const activityType = getActivityType(game);
-  const config = ACTIVITY_CONFIG[activityType] || ACTIVITY_CONFIG.quiz;
+  const activityType = (game.activityType || 'quiz') as ActivityType;
+  const sharedConfig = ACTIVITY_CONFIG[activityType] || ACTIVITY_CONFIG.quiz;
+  const completedConfig = COMPLETED_CONFIG[activityType] || COMPLETED_CONFIG.quiz;
 
-  const Icon = config.icon;
-  const analyticsPath = config.analyticsPath?.(game.id);
-  const reopenPath = config.reopenPath?.(game.id);
-  const resultsPath = config.resultsPath(game.id);
-  const hostAgainPath = config.hostAgainPath?.(game);
+  const Icon = sharedConfig.icon;
+  const analyticsPath = sharedConfig.analyticsPath?.(game.id);
+  const reopenPath = completedConfig.reopenPath?.(game.id);
+  const resultsPath = completedConfig.resultsPath(game.id);
+  const hostAgainPath = completedConfig.hostAgainPath?.(game);
 
   // Determine if we should show "Host Again" button
   const showHostAgain = activityType === 'quiz' && onHostAgain && game.quizId;
@@ -116,7 +83,7 @@ export function CompletedActivityCard({ game, title, onDelete, onHostAgain }: Co
       <CardHeader className="p-4 pb-3">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Icon className={`h-3 w-3 ${config.badgeClass.split(' ')[1]}`} />
+            <Icon className={`h-3 w-3 ${sharedConfig.badgeClass.split(' ')[1]}`} />
             <CardTitle className="text-lg font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
           </div>
           <AlertDialog>

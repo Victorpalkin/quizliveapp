@@ -21,6 +21,31 @@ export default {
         headline: ['"Space Grotesk"', 'sans-serif'],
         code: ['monospace'],
       },
+      typography: {
+        DEFAULT: {
+          css: {
+            table: {
+              display: 'block',
+              overflowX: 'auto',
+              fontSize: '0.8125rem',
+            },
+            'th, td': {
+              padding: '0.5rem 0.75rem',
+              minWidth: '100px',
+            },
+            th: {
+              fontWeight: '600',
+              backgroundColor: 'hsl(var(--muted))',
+            },
+            blockquote: {
+              borderLeftColor: 'hsl(var(--primary))',
+              backgroundColor: 'hsl(var(--muted) / 0.3)',
+              padding: '0.75rem 1rem',
+              borderRadius: '0.375rem',
+            },
+          },
+        },
+      },
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
@@ -122,5 +147,5 @@ export default {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [require('tailwindcss-animate'), require('@tailwindcss/typography')],
 } satisfies Config;

@@ -10,6 +10,7 @@ interface ThoughtsGroupedViewProps {
   topics: TopicEntry[];
   submissions: ThoughtSubmission[];
   agentMatches?: TopicAgentMatch[];
+  anonymousMode?: boolean;
   className?: string;
 }
 
@@ -25,7 +26,7 @@ const COLORS = [
   { bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', text: 'text-indigo-600 dark:text-indigo-400' },
 ];
 
-export function ThoughtsGroupedView({ topics, submissions, agentMatches, className = '' }: ThoughtsGroupedViewProps) {
+export function ThoughtsGroupedView({ topics, submissions, agentMatches, anonymousMode, className = '' }: ThoughtsGroupedViewProps) {
   // Track which groups are expanded
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -129,7 +130,7 @@ export function ThoughtsGroupedView({ topics, submissions, agentMatches, classNa
                         >
                           <Users className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <span className="font-medium text-sm">{sub.playerName}</span>
+                            <span className="font-medium text-sm">{anonymousMode ? 'Participant' : sub.playerName}</span>
                             <p className="text-sm text-muted-foreground mt-0.5">{sub.rawText}</p>
                           </div>
                         </div>

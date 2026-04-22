@@ -85,6 +85,7 @@ export function EditorToolbar({
 }: EditorToolbarProps) {
   const [isLaunching, setIsLaunching] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const hasAISteps = slides.some(s => s.elements.some(el => el.type === 'ai-step'));
 
   const handleBackClick = () => {
     if (isDirty) {
@@ -155,6 +156,7 @@ export function EditorToolbar({
             onUpdate={onUpdateSettings}
             description={description}
             onDescriptionChange={onDescriptionChange}
+            hasAISteps={hasAISteps}
           />
         </div>
 

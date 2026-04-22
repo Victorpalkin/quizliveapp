@@ -1,34 +1,17 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { SettingToggle } from '@/components/app/setting-toggle';
-import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/app/header';
-import { Cloud, ArrowLeft, Loader2, Lightbulb, Eye, Bot } from 'lucide-react';
+import { Cloud, ArrowLeft } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useUnsavedChangesWarning } from '@/hooks/use-unsaved-changes-warning';
 import Link from 'next/link';
-import type { ThoughtsGatheringConfig, ThoughtsGatheringActivity } from '@/lib/types';
+import type { ThoughtsGatheringActivity } from '@/lib/types';
 import { thoughtsGatheringActivityConverter } from '@/firebase/converters';
-import { FeatureTooltip } from '@/components/ui/feature-tooltip';
-
-// Example prompts for inspiration
-const EXAMPLE_PROMPTS = [
-  { label: 'Team interests', prompt: 'What topics interest you most?' },
-  { label: 'Workshop topics', prompt: 'What would you like to learn more about?' },
-  { label: 'Icebreaker', prompt: 'Share a hobby or passion of yours!' },
-  { label: 'Brainstorming', prompt: 'What ideas do you have for our next project?' },
-  { label: 'Feedback', prompt: 'What should we focus on improving?' },
-  { label: 'Expectations', prompt: 'What do you hope to get out of this session?' },
-];
+import { ActivityForm, type ActivityFormValues } from '../components/activity-form';
 
 export default function CreateThoughtsGatheringPage() {
   const router = useRouter();
@@ -36,19 +19,10 @@ export default function CreateThoughtsGatheringPage() {
   const firestore = useFirestore();
   const { user } = useUser();
 
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [prompt, setPrompt] = useState('What topics interest you most?');
-  const [maxSubmissions, setMaxSubmissions] = useState(3);
-  const [allowMultipleRounds, setAllowMultipleRounds] = useState(false);
-  const [agenticUseCasesCollection, setAgenticUseCasesCollection] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
+  // TODO: useUnsavedChangesWarning is no longer tracked here since form state moved to ActivityForm.
+  // This is acceptable since the form is a dedicated create page.
 
-  // Track if form has been modified
-  const hasUnsavedChanges = title.trim() !== '' || description.trim() !== '' || prompt !== 'What topics interest you most?';
-  useUnsavedChangesWarning(hasUnsavedChanges && !isCreating);
-
-  const handleCreate = async () => {
+  const handleCreate = async (values: ActivityFormValues) => {
     if (!user) {
       toast({
         variant: "destructive",
@@ -58,7 +32,7 @@ export default function CreateThoughtsGatheringPage() {
       return;
     }
 
-    if (!title.trim()) {
+    if (!values.title.trim()) {
       toast({
         variant: "destructive",
         title: "Title required",
@@ -67,31 +41,13 @@ export default function CreateThoughtsGatheringPage() {
       return;
     }
 
-    if (!prompt.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Prompt required",
-        description: "Please enter a prompt for participants.",
-      });
-      return;
-    }
-
-    setIsCreating(true);
-
     try {
-      const config: ThoughtsGatheringConfig = {
-        prompt: prompt.trim(),
-        maxSubmissionsPerPlayer: maxSubmissions,
-        allowMultipleRounds,
-        agenticUseCasesCollection,
-      };
-
       const activityData = {
         type: 'thoughts-gathering',
-        title: title.trim(),
-        description: description.trim() || undefined,
+        title: values.title,
+        description: values.description || undefined,
         hostId: user.uid,
-        config,
+        config: values.config,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       } as unknown as ThoughtsGatheringActivity;
@@ -114,9 +70,20 @@ export default function CreateThoughtsGatheringPage() {
         title: "Error",
         description: "Could not create the activity. Please try again.",
       });
-    } finally {
-      setIsCreating(false);
     }
+  };
+
+  const initialValues: ActivityFormValues = {
+    title: '',
+    description: '',
+    config: {
+      prompt: 'What topics interest you most?',
+      maxSubmissionsPerPlayer: 3,
+      allowMultipleRounds: false,
+      agenticUseCasesCollection: false,
+      anonymousMode: false,
+      enableModeration: false,
+    },
   };
 
   return (
@@ -138,162 +105,15 @@ export default function CreateThoughtsGatheringPage() {
           </div>
         </div>
 
-        <Card className="shadow-lg rounded-2xl border border-card-border">
-          <CardHeader>
-            <CardTitle>Activity Details</CardTitle>
-            <CardDescription>
-              Configure your Thoughts Gathering session
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="title">Title *</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Team Interests, Workshop Topics"
-                className="text-lg"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add a description for this activity..."
-                rows={2}
-              />
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="prompt">Prompt for Participants *</Label>
-                <FeatureTooltip
-                  content="This is the question your audience will see. Make it clear and engaging!"
-                  icon="tip"
-                />
-              </div>
-              <Textarea
-                id="prompt"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="What would you like participants to share?"
-                rows={3}
-                className="text-lg"
-              />
-              <p className="text-sm text-muted-foreground">
-                This is what participants will see when submitting their interests
-              </p>
-
-              {/* Example prompts */}
-              <div className="pt-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <Lightbulb className="h-4 w-4 text-amber-500" />
-                  <span className="text-sm font-medium">Need inspiration? Try these:</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {EXAMPLE_PROMPTS.map(({ label, prompt: examplePrompt }) => (
-                    <Badge
-                      key={label}
-                      variant="outline"
-                      className="cursor-pointer hover:bg-primary/10 transition-colors"
-                      onClick={() => setPrompt(examplePrompt)}
-                    >
-                      {label}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="maxSubmissions">Max Submissions per Person</Label>
-              <Input
-                id="maxSubmissions"
-                type="number"
-                min={1}
-                max={10}
-                value={maxSubmissions}
-                onChange={(e) => setMaxSubmissions(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-                className="w-32"
-              />
-              <p className="text-sm text-muted-foreground">
-                How many topics can each participant submit (1-10)
-              </p>
-            </div>
-
-            <SettingToggle
-              id="multipleRounds"
-              label="Allow Multiple Rounds"
-              description="Let participants submit more after viewing results"
-              checked={allowMultipleRounds}
-              onCheckedChange={setAllowMultipleRounds}
-              tooltip="When enabled, participants can add more responses after seeing the initial word cloud. Great for iterative brainstorming!"
-            />
-
-            <SettingToggle
-              id="agenticUseCases"
-              label="Agentic Use Cases Collection"
-              description="Match topics with AI agents from the tracker database"
-              checked={agenticUseCasesCollection}
-              onCheckedChange={setAgenticUseCasesCollection}
-              icon={<Bot className="h-4 w-4 text-violet-500" />}
-              tooltip="When enabled, collected topics will be matched with AI agents from the tracker database. Shows related AI use cases for each topic group."
-              className="border-violet-500/30 bg-violet-500/5"
-            />
-
-            {/* Participant Preview */}
-            <Card className="bg-muted/30 border-dashed">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Eye className="h-4 w-4 text-muted-foreground" />
-                  <CardTitle className="text-sm font-medium">Participant Preview</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-lg bg-background border p-4 space-y-3">
-                  <p className="text-lg font-medium">{prompt || 'Your prompt will appear here...'}</p>
-                  <div className="space-y-2">
-                    {Array.from({ length: Math.min(maxSubmissions, 3) }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                          {i + 1}
-                        </div>
-                        <div className="flex-1 h-10 rounded-md border border-dashed bg-muted/50" />
-                      </div>
-                    ))}
-                    {maxSubmissions > 3 && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        + {maxSubmissions - 3} more fields
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="pt-4 border-t">
-              <Button
-                onClick={handleCreate}
-                disabled={isCreating || !title.trim() || !prompt.trim()}
-                className="w-full py-6 text-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:opacity-90 rounded-xl"
-              >
-                {isCreating ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Creating...
-                  </>
-                ) : (
-                  <>
-                    <Cloud className="mr-2 h-5 w-5" /> Create Thoughts Gathering
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <ActivityForm
+          initialValues={initialValues}
+          onSubmit={handleCreate}
+          submitLabel="Create Thoughts Gathering"
+          submitIcon={<Cloud className="mr-2 h-5 w-5" />}
+          loadingLabel="Creating..."
+          showExamplePrompts
+          showPreview
+        />
       </main>
     </div>
   );

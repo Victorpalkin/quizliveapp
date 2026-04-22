@@ -7,9 +7,10 @@ import type { PresentationSlide } from '@/lib/types';
 interface IdleViewProps {
   currentSlide: PresentationSlide | null;
   responded: boolean;
+  enableReactions?: boolean;
 }
 
-export function IdleView({ responded }: IdleViewProps) {
+export function IdleView({ responded, enableReactions }: IdleViewProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full p-8 text-center">
       <div className="relative w-20 h-20 mb-6">
@@ -53,7 +54,7 @@ export function IdleView({ responded }: IdleViewProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
           >
-            <h2 className="text-lg font-semibold mb-1">Answer submitted!</h2>
+            <h2 className="text-lg font-semibold mb-1">Response submitted!</h2>
             <p className="text-sm text-muted-foreground">Waiting for the next slide...</p>
           </motion.div>
         ) : (
@@ -63,9 +64,11 @@ export function IdleView({ responded }: IdleViewProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
           >
-            <h2 className="text-lg font-semibold mb-1">Listening...</h2>
+            <h2 className="text-lg font-semibold mb-1">Following along...</h2>
             <p className="text-sm text-muted-foreground">
-              The presenter is showing content. React using the emojis below!
+              {enableReactions
+                ? 'The presenter is sharing content. React using the emojis below!'
+                : 'The presenter is sharing content.'}
             </p>
           </motion.div>
         )}

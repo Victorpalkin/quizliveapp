@@ -42,3 +42,16 @@ export interface PresentationShare {
 // Generic content share type for unified handling
 export type ContentShare = QuizShare | PollShare | PresentationShare;
 export type ContentType = 'quiz' | 'poll' | 'presentation';
+
+// Share link for URL-based sharing
+export interface ShareLink {
+  token: string;
+  contentType: ContentType | 'thoughts-gathering' | 'evaluation';
+  contentCollection: 'quizzes' | 'activities' | 'presentations';
+  contentId: string;
+  contentTitle: string;
+  ownerId: string;
+  ownerEmail: string;
+  createdAt: Date;
+  active: boolean;
+}

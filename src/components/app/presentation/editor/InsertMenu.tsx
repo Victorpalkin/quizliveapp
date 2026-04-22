@@ -35,6 +35,8 @@ import {
   Spline,
   MoveRight,
   GitBranch,
+  Workflow,
+  Sparkles,
 } from 'lucide-react';
 import type { SlideElement, SlideElementType } from '@/lib/types';
 
@@ -197,6 +199,18 @@ export function InsertMenu({ onInsert, disableInteractive }: InsertMenuProps) {
           </IconCircle>
           Evaluation
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsert('agentic-designer')} disabled={disableInteractive}>
+          <IconCircle className="bg-cyan-500/10 mr-2">
+            <Workflow className="h-3.5 w-3.5 text-cyan-500" />
+          </IconCircle>
+          Agentic Designer
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsert('ai-step')} disabled={disableInteractive}>
+          <IconCircle className="bg-violet-500/10 mr-2">
+            <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+          </IconCircle>
+          AI Step
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
@@ -231,6 +245,12 @@ export function InsertMenu({ onInsert, disableInteractive }: InsertMenuProps) {
             <BarChart3 className="h-3.5 w-3.5 text-indigo-400" />
           </IconCircle>
           Evaluation Results
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsert('agentic-designer-results')}>
+          <IconCircle className="bg-cyan-400/10 mr-2">
+            <BarChart3 className="h-3.5 w-3.5 text-cyan-400" />
+          </IconCircle>
+          Agentic Designer Results
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsert('leaderboard')}>
           <IconCircle className="bg-yellow-500/10 mr-2">

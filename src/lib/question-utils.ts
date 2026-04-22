@@ -6,6 +6,7 @@ import type {
   FreeResponseQuestion,
   Answer,
 } from './types';
+import type { PresentationSlide, SlideElement } from './types/presentation';
 import { isSingleChoice, isMultipleChoice, hasAnswers } from './type-guards';
 
 // ============================================
@@ -98,6 +99,24 @@ export function sanitizeQuestionForPlayer(q: Question): Question {
       // Slides and polls have no secret data
       return q;
   }
+}
+
+/**
+ * Creates a sanitized version of a slide with correct answers removed.
+ * Same pattern as sanitizeQuestionForPlayer — strips answer data from
+ * interactive elements so slides are safe to send to players.
+ */
+export function sanitizeSlideForPlayer(slide: PresentationSlide): PresentationSlide {
+  return {
+    ...slide,
+    elements: slide.elements.map((el: SlideElement) => {
+      if (el.type === 'quiz' && el.quizConfig) {
+        const { correctAnswerIndex, ...safeConfig } = el.quizConfig;
+        return { ...el, quizConfig: safeConfig } as SlideElement;
+      }
+      return el;
+    }),
+  };
 }
 
 // ============================================

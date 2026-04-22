@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc, collection, updateDoc, deleteDoc, DocumentReference, Query } from 'firebase/firestore';
+import { doc, collection, updateDoc, deleteDoc, addDoc, serverTimestamp, DocumentReference, Query } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { gameConverter, thoughtsGatheringActivityConverter, thoughtSubmissionConverter } from '@/firebase/converters';
-import { clearHostSession, saveHostSession } from '@/lib/host-session';
+import { clearHostSession } from '@/lib/host-session';
+import { useHostSession } from '../../../../hooks/use-host-session';
 import { exportThoughtsToMarkdown, downloadMarkdown, generateExportFilename } from '@/lib/export-thoughts';
-import type { Game, ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
+import type { Game, ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult, TopicEntry } from '@/lib/types';
 
 export function useThoughtsGatheringGame() {
   const params = useParams();
@@ -63,12 +64,16 @@ export function useThoughtsGatheringGame() {
   );
   const { data: topicCloud } = useDoc(topicsRef);
 
-  // Save host session
-  useEffect(() => {
-    if (game && activity && user) {
-      saveHostSession(gameId, game.gamePin, game.activityId || '', activity.title, user.uid, 'thoughts-gathering', game.state, `/host/thoughts-gathering/game/${gameId}`);
-    }
-  }, [gameId, game, activity, user, game?.state]);
+  // Host session tracking
+  useHostSession({
+    gameId,
+    game,
+    contentId: game?.activityId || '',
+    contentTitle: activity?.title || '',
+    userId: user?.uid,
+    activityType: 'thoughts-gathering',
+    returnPath: `/host/thoughts-gathering/game/${gameId}`,
+  });
 
   const handleCancelGame = useCallback(() => {
     if (!gameDocRef) return;
@@ -88,18 +93,25 @@ export function useThoughtsGatheringGame() {
     }
   };
 
-  const handleStopAndProcess = async () => {
+  const callExtractTopics = useCallback(async (options: {
+    customInstructions?: string;
+    revertState?: string;
+    closeSubmissions?: boolean;
+  } = {}) => {
     if (!gameDocRef) return;
 
     setIsProcessing(true);
 
     try {
-      await updateDoc(gameDocRef, { state: 'processing', submissionsOpen: false });
+      await updateDoc(gameDocRef, {
+        state: 'processing',
+        ...(options.closeSubmissions && { submissionsOpen: false }),
+      });
 
       const functions = getFunctions(undefined, 'europe-west4');
       const extractTopics = httpsCallable(functions, 'extractTopics');
 
-      await extractTopics({ gameId });
+      await extractTopics({ gameId, customInstructions: options.customInstructions });
     } catch (error) {
       console.error("Error processing submissions: ", error);
       toast({
@@ -107,10 +119,17 @@ export function useThoughtsGatheringGame() {
         title: "Processing Error",
         description: "Could not process submissions. Please try again.",
       });
-      await updateDoc(gameDocRef, { state: 'collecting', submissionsOpen: true });
+      await updateDoc(gameDocRef, {
+        state: options.revertState || 'collecting',
+        ...(options.closeSubmissions && { submissionsOpen: true }),
+      });
     } finally {
       setIsProcessing(false);
     }
+  }, [gameDocRef, gameId, toast]);
+
+  const handleStopAndProcess = async () => {
+    await callExtractTopics({ revertState: 'collecting', closeSubmissions: true });
   };
 
   const handleCollectMore = async () => {
@@ -139,6 +158,55 @@ export function useThoughtsGatheringGame() {
     router.push('/host');
   };
 
+  const handleUpdateTopics = useCallback(async (updatedTopics: TopicEntry[]) => {
+    if (!firestore || !gameId) return;
+
+    try {
+      const topicsDocRef = doc(firestore, 'games', gameId, 'aggregates', 'topics');
+      await updateDoc(topicsDocRef, { topics: updatedTopics });
+      toast({
+        title: 'Groups Updated',
+        description: 'Your changes have been saved.',
+      });
+    } catch (error) {
+      console.error("Error updating topics: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not save changes. Please try again.",
+      });
+    }
+  }, [firestore, gameId, toast]);
+
+  const handleReprocess = useCallback(async (customInstructions?: string) => {
+    await callExtractTopics({ customInstructions, revertState: 'display' });
+  }, [callExtractTopics]);
+
+  const handleToggleSubmissionVisibility = useCallback(async (submissionId: string, hidden: boolean) => {
+    if (!firestore || !gameId) return;
+
+    try {
+      const submissionRef = doc(firestore, 'games', gameId, 'submissions', submissionId);
+      await updateDoc(submissionRef, { hidden });
+    } catch (error) {
+      console.error("Error toggling submission visibility: ", error);
+    }
+  }, [firestore, gameId]);
+
+  const handleHostSubmit = async (text: string) => {
+    if (!gameId || !text.trim() || !user) return;
+
+    await addDoc(
+      collection(firestore, 'games', gameId, 'submissions'),
+      {
+        playerId: user.uid,
+        playerName: user.displayName || 'Host',
+        rawText: text.trim(),
+        submittedAt: serverTimestamp(),
+      }
+    );
+  };
+
   const handleExportResults = useCallback(() => {
     if (!topicCloud?.topics || !submissions || !activity) return;
 
@@ -149,7 +217,9 @@ export function useThoughtsGatheringGame() {
       players?.length || 0,
       topicCloud.processedAt?.toDate?.(),
       topicCloud.agentMatches,
-      topicCloud.topMatureAgents
+      topicCloud.topMatureAgents,
+      topicCloud.summary,
+      activity.config.anonymousMode
     );
 
     const filename = generateExportFilename(activity.title);
@@ -208,6 +278,10 @@ export function useThoughtsGatheringGame() {
     handleEndSession,
     handleReturnToDashboard,
     handleExportResults,
+    handleReprocess,
+    handleUpdateTopics,
+    handleToggleSubmissionVisibility,
+    handleHostSubmit,
 
     // Navigation
     router,

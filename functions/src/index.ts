@@ -18,6 +18,9 @@ export { submitPresentationAnswer } from './functions/submitPresentationAnswer';
 export { computePresentationAnalytics } from './functions/computePresentationAnalytics';
 export { computePresentationEvaluationResults } from './functions/computePresentationEvaluationResults';
 
+// Share Link
+export { claimShareLink } from './functions/claimShareLink';
+
 // Export Cleanup Triggers
 export { onGameDeleted } from './functions/cleanupSubmissions';
 export { onPresentationDeleted } from './functions/cleanupPresentations';

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { ExpandableTextarea } from './ExpandableTextarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BackgroundPicker } from '../BackgroundPicker';
 import type { PresentationSlide, SlideBackground } from '@/lib/types';
@@ -104,7 +104,8 @@ export function SlideProperties({ slide, onUpdateBackground, onUpdateNotes, onUp
 
       <div>
         <Label className="text-xs">Speaker Notes</Label>
-        <Textarea
+        <ExpandableTextarea
+          label="Speaker Notes"
           value={slide.notes || ''}
           onChange={(e) => onUpdateNotes(e.target.value)}
           rows={4}

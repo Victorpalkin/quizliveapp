@@ -2,8 +2,8 @@
 
 import { Badge } from '@/components/ui/badge';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
-import { GameHeader, KeyboardShortcutsHint } from '@/components/app/game-header';
-import { HostActionHint, ReadinessChecklist } from '@/components/app/host-action-hint';
+import { GameHeader } from '@/components/app/game-header';
+import { HostActionHint } from '@/components/app/host-action-hint';
 import { useThoughtsGatheringGame } from './hooks/use-thoughts-gathering-game';
 import { CollectingState } from './components/collecting-state';
 import { ProcessingState } from './components/processing-state';
@@ -26,6 +26,11 @@ export default function ThoughtsGatheringGamePage() {
     handleEndSession,
     handleReturnToDashboard,
     handleExportResults,
+    handleReprocess,
+    handleUpdateTopics,
+    handleToggleSubmissionVisibility,
+    handleHostSubmit,
+    isProcessing,
     router,
   } = useThoughtsGatheringGame();
 
@@ -49,6 +54,8 @@ export default function ThoughtsGatheringGamePage() {
             handleToggleSubmissions={handleToggleSubmissions}
             handleStopAndProcess={handleStopAndProcess}
             handleEndSession={handleEndSession}
+            handleToggleSubmissionVisibility={handleToggleSubmissionVisibility}
+            onHostSubmit={handleHostSubmit}
           />
         );
 
@@ -67,6 +74,9 @@ export default function ThoughtsGatheringGamePage() {
             handleCollectMore={handleCollectMore}
             handleEndSession={handleEndSession}
             handleExportResults={handleExportResults}
+            handleReprocess={handleReprocess}
+            handleUpdateTopics={handleUpdateTopics}
+            isProcessing={isProcessing}
             onCreateEvaluation={handleCreateEvaluation}
           />
         );
@@ -74,6 +84,8 @@ export default function ThoughtsGatheringGamePage() {
       case 'ended':
         return (
           <EndedState
+            activity={activity}
+            players={players as { id: string; name: string }[] | null}
             submissions={submissions}
             topicCloud={topicCloud}
             handleReturnToDashboard={handleReturnToDashboard}
@@ -119,37 +131,7 @@ export default function ThoughtsGatheringGamePage() {
           </div>
         )}
 
-        {game?.state === 'collecting' && (
-          <div className="mb-6">
-            <ReadinessChecklist
-              items={[
-                { label: 'Participants joined', isReady: (players?.length || 0) > 0, detail: `${players?.length || 0}` },
-                { label: 'Submissions received', isReady: (submissions?.length || 0) > 0, detail: `${submissions?.length || 0}` },
-              ]}
-            />
-          </div>
-        )}
-
         {renderContent()}
-
-        {game?.state !== 'ended' && game?.state !== 'processing' && (
-          <KeyboardShortcutsHint
-            shortcuts={
-              game?.state === 'collecting'
-                ? [
-                    { key: 'Space', action: game.submissionsOpen ? 'Pause' : 'Resume' },
-                    { key: 'Enter', action: 'Analyze' },
-                  ]
-                : game?.state === 'display'
-                ? [
-                    ...(activity?.config.allowMultipleRounds ? [{ key: 'Space', action: 'Collect More' }] : []),
-                    { key: 'Enter', action: 'End Session' },
-                  ]
-                : []
-            }
-            className="justify-center mt-6"
-          />
-        )}
       </main>
     </div>
   );

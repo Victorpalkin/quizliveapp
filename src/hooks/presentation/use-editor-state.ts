@@ -10,12 +10,12 @@ import type {
   PresentationSettings,
   PresentationTheme,
 } from '@/lib/types';
+import { INTERACTIVE_ELEMENT_TYPES } from '@/lib/types';
 import {
   computeAnchorPosition,
   computeConnectorBoundingBox,
 } from '@/lib/utils/connector-paths';
 
-const INTERACTIVE_TYPES: SlideElementType[] = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
 
 interface EditorState {
   slides: PresentationSlide[];
@@ -321,8 +321,8 @@ export function useEditorState(initial?: {
       if (!slide) return s;
 
       // Check max 1 interactive element per slide
-      if (INTERACTIVE_TYPES.includes(type)) {
-        const hasInteractive = slide.elements.some((el) => INTERACTIVE_TYPES.includes(el.type));
+      if (INTERACTIVE_ELEMENT_TYPES.includes(type)) {
+        const hasInteractive = slide.elements.some((el) => INTERACTIVE_ELEMENT_TYPES.includes(el.type));
         if (hasInteractive) return s; // Reject - already has one
       }
 
@@ -343,6 +343,10 @@ export function useEditorState(initial?: {
         'rating-results': { x: 10, y: 10, width: 80, height: 70 },
         evaluation: { x: 5, y: 10, width: 90, height: 75 },
         'evaluation-results': { x: 5, y: 5, width: 90, height: 85 },
+        'agentic-designer': { x: 2, y: 5, width: 96, height: 90 },
+        'agentic-designer-results': { x: 5, y: 5, width: 90, height: 85 },
+        'ai-step': { x: 2, y: 5, width: 96, height: 90 },
+        'ai-step-results': { x: 5, y: 5, width: 90, height: 85 },
         leaderboard: { x: 10, y: 5, width: 80, height: 90 },
         qa: { x: 10, y: 10, width: 80, height: 70 },
         'spin-wheel': { x: 20, y: 10, width: 60, height: 80 },
@@ -371,7 +375,7 @@ export function useEditorState(initial?: {
           thoughtsConfig: { prompt: 'Share your thoughts...', maxPerPlayer: 3 },
         }),
         ...(type === 'rating' && {
-          ratingConfig: { itemTitle: 'Rate this item', metricType: 'stars' as const, min: 1, max: 5 },
+          ratingConfig: { itemTitle: 'Rate this item', metricType: 'stars' as const, min: 1, max: 5, items: [] },
         }),
         ...(type === 'evaluation' && {
           evaluationConfig: {
@@ -384,6 +388,14 @@ export function useEditorState(initial?: {
               { id: nanoid(), name: 'Rating', scaleType: 'stars' as const, scaleMin: 1, scaleMax: 5, weight: 1, lowerIsBetter: false },
             ],
           },
+        }),
+        ...(type === 'agentic-designer' && {
+          x: 2, y: 5, width: 96, height: 90,
+          agenticDesignerConfig: { target: 'Enter target industry or customer...', enablePlayerNudges: true },
+        }),
+        ...(type === 'ai-step' && {
+          x: 2, y: 5, width: 96, height: 90,
+          aiStepConfig: { stepPrompt: '', enablePlayerNudges: true },
         }),
         ...(type === 'leaderboard' && {
           leaderboardConfig: { maxDisplay: 10, showScores: true },
@@ -642,8 +654,8 @@ export function useEditorState(initial?: {
       const slide = s.slides[s.currentSlideIndex];
       if (!slide) return s;
       // Block pasting interactive element if slide already has one
-      if (INTERACTIVE_TYPES.includes(clipboardRef.current!.type)) {
-        const hasInteractive = slide.elements.some((el) => INTERACTIVE_TYPES.includes(el.type));
+      if (INTERACTIVE_ELEMENT_TYPES.includes(clipboardRef.current!.type)) {
+        const hasInteractive = slide.elements.some((el) => INTERACTIVE_ELEMENT_TYPES.includes(el.type));
         if (hasInteractive) return s;
       }
       const maxZ = slide.elements.reduce((max, el) => Math.max(max, el.zIndex), 0);
@@ -665,8 +677,8 @@ export function useEditorState(initial?: {
     const el = slide?.elements.find((e) => e.id === state.selectedElementId);
     if (!el) return;
     // Block duplicating interactive element if slide already has one
-    if (INTERACTIVE_TYPES.includes(el.type)) {
-      const hasInteractive = slide.elements.some((e) => e.id !== el.id && INTERACTIVE_TYPES.includes(e.type));
+    if (INTERACTIVE_ELEMENT_TYPES.includes(el.type)) {
+      const hasInteractive = slide.elements.some((e) => e.id !== el.id && INTERACTIVE_ELEMENT_TYPES.includes(e.type));
       if (hasInteractive) return;
     }
     pushHistory();
@@ -790,13 +802,13 @@ export function useEditorState(initial?: {
 
   // Count interactive elements across all slides
   const interactiveElementCount = state.slides.reduce(
-    (count, slide) => count + slide.elements.filter((el) => INTERACTIVE_TYPES.includes(el.type)).length,
+    (count, slide) => count + slide.elements.filter((el) => INTERACTIVE_ELEMENT_TYPES.includes(el.type)).length,
     0
   );
 
   // Check if current slide has an interactive element
   const currentSlideHasInteractive = currentSlide?.elements.some(
-    (el) => INTERACTIVE_TYPES.includes(el.type)
+    (el) => INTERACTIVE_ELEMENT_TYPES.includes(el.type)
   ) || false;
 
   return {

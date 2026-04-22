@@ -43,6 +43,14 @@ export const submitPresentationAnswer = onCall(
       throw new HttpsError('invalid-argument', 'Missing required fields');
     }
 
+    // Verify player identity: authenticated user must match the playerId
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Authentication required');
+    }
+    if (request.auth.uid !== playerId) {
+      throw new HttpsError('permission-denied', 'Player ID must match authenticated user');
+    }
+
     if (typeof answerIndex !== 'number' || answerIndex < 0) {
       throw new HttpsError('invalid-argument', 'Invalid answerIndex');
     }

@@ -15,3 +15,6 @@ export { useReactions, useReactionCounts } from './use-reactions';
 export { useQuestions } from './use-questions';
 export { useLeaderboard } from './use-leaderboard';
 export { useTemplates } from './use-templates';
+export { useAgenticSession, useAgenticSessionPlayer } from './use-agentic-session';
+export { useWorkflowState, useSlideNudges, useWorkflowStatePlayer } from './use-workflow-state';
+export { useDynamicItems } from './use-dynamic-items';

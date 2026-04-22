@@ -22,7 +22,7 @@ export function ReactionBar({ gameId, playerId }: ReactionBarProps) {
   }, [sendReaction, playerId]);
 
   return (
-    <div className="relative flex items-center justify-center gap-3 px-4 py-3 glass-subtle flex-shrink-0">
+    <div className="relative flex items-center justify-center gap-3 px-4 py-3 glass-subtle flex-shrink-0 border-t">
       {EMOJIS.map((emoji) => (
         <motion.button
           key={emoji}

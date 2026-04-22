@@ -21,11 +21,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { QrCode, Copy, Users, XCircle, FileQuestion, Cloud, BarChart3, Keyboard, Presentation, Vote } from 'lucide-react';
+import { QrCode, Users, XCircle, Keyboard } from 'lucide-react';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { cn } from '@/lib/utils';
+import { ACTIVITY_CONFIG } from '@/lib/activity-config';
+import type { ActivityType } from '@/lib/types';
 
-export type ActivityType = 'quiz' | 'poll' | 'thoughts-gathering' | 'evaluation' | 'presentation';
+export type { ActivityType };
 
 interface GameHeaderProps {
   /** The game PIN to display */
@@ -46,13 +48,10 @@ interface GameHeaderProps {
   className?: string;
 }
 
-const activityConfig: Record<ActivityType, { icon: React.ElementType; color: string; label: string }> = {
-  'quiz': { icon: FileQuestion, color: 'text-purple-500', label: 'Quiz' },
-  'poll': { icon: Vote, color: 'text-teal-500', label: 'Poll' },
-  'thoughts-gathering': { icon: Cloud, color: 'text-blue-500', label: 'Thoughts Gathering' },
-  'evaluation': { icon: BarChart3, color: 'text-orange-500', label: 'Evaluation' },
-  'presentation': { icon: Presentation, color: 'text-indigo-500', label: 'Presentation' },
-};
+function getActivityDisplay(type: ActivityType) {
+  const cfg = ACTIVITY_CONFIG[type];
+  return { icon: cfg.icon, color: cfg.color, label: cfg.label };
+}
 
 /**
  * GameHeader - Shared header component for all live game/lobby pages
@@ -75,7 +74,7 @@ export function GameHeader({
   className,
 }: GameHeaderProps) {
   const [joinUrl, setJoinUrl] = useState('');
-  const config = activityConfig[activityType];
+  const config = getActivityDisplay(activityType);
   const ActivityIcon = config.icon;
 
   useEffect(() => {
@@ -127,20 +126,13 @@ export function GameHeader({
           </PopoverContent>
         </Popover>
 
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => navigator.clipboard.writeText(joinUrl)}
-          title="Copy join link"
-        >
-          <Copy className="h-4 w-4" />
-        </Button>
+        <CopyButton text={joinUrl} />
       </div>
 
       {/* Right: Player Count and Actions */}
       <div className="flex items-center gap-3">
         {/* Player Count */}
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm" role="status" aria-live="polite">
           <Users className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">{playerCount}</span>
           <span className="text-muted-foreground hidden sm:inline">

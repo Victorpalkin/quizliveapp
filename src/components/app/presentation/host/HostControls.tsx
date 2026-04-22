@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ChevronLeft, ChevronRight, Pause, Play, Square, LayoutGrid, Maximize, Minimize } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play, Square, LayoutGrid, Maximize, Minimize, PanelBottomClose, PanelBottomOpen } from 'lucide-react';
 import type { PresentationGameState, PresentationSlide } from '@/lib/types';
 import { SlideThumbnail } from '../shared/SlideThumbnail';
 
@@ -30,6 +30,8 @@ interface HostControlsProps {
   onEnd: () => void;
   onToggleFullscreen?: () => void;
   isFullscreen?: boolean;
+  pinned?: boolean;
+  onTogglePin?: () => void;
 }
 
 export function HostControls({
@@ -45,13 +47,49 @@ export function HostControls({
   onEnd,
   onToggleFullscreen,
   isFullscreen,
+  pinned,
+  onTogglePin,
 }: HostControlsProps) {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(!!pinned);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const navigatorRef = useRef<HTMLDivElement>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Single function to show controls and reset the shared hide timer
+  const showControls = useCallback(() => {
+    setVisible(true);
+    if (pinned) return;
+    clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      setVisible(false);
+      setNavigatorOpen(false);
+    }, 3000);
+  }, [pinned]);
+
+  // When pinned changes, ensure visibility matches
+  useEffect(() => {
+    if (pinned) {
+      setVisible(true);
+      clearTimeout(hideTimerRef.current);
+    }
+  }, [pinned]);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => clearTimeout(hideTimerRef.current);
+  }, []);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    const target = e.target as Element;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target.closest('[contenteditable]')
+    ) {
+      return;
+    }
+
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
       e.preventDefault();
       onNextSlide();
@@ -71,12 +109,12 @@ export function HostControls({
     }
     if (e.key === 'g' || e.key === 'G') {
       setNavigatorOpen((prev) => !prev);
-      setVisible(true);
+      showControls();
     }
     if ((e.key === 'f' || e.key === 'F') && onToggleFullscreen) {
       onToggleFullscreen();
     }
-  }, [onNextSlide, onPrevSlide, navigatorOpen, isFullscreen, onToggleFullscreen]);
+  }, [onNextSlide, onPrevSlide, navigatorOpen, isFullscreen, onToggleFullscreen, showControls]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -84,26 +122,20 @@ export function HostControls({
   }, [handleKeyDown]);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-
+    if (pinned) return;
+    let lastCall = 0;
     const handleMove = (e: MouseEvent) => {
-      const inBottomZone = e.clientY >= window.innerHeight - 80;
-      if (inBottomZone) {
-        setVisible(true);
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          setVisible(false);
-          setNavigatorOpen(false);
-        }, 3000);
+      const now = Date.now();
+      if (now - lastCall < 100) return;
+      lastCall = now;
+      if (e.clientY >= window.innerHeight - 80) {
+        showControls();
       }
     };
 
     window.addEventListener('mousemove', handleMove);
-    return () => {
-      window.removeEventListener('mousemove', handleMove);
-      clearTimeout(timer);
-    };
-  }, []);
+    return () => window.removeEventListener('mousemove', handleMove);
+  }, [showControls, pinned]);
 
   // Scroll active thumbnail into view when navigator opens
   useEffect(() => {
@@ -237,6 +269,21 @@ export function HostControls({
             <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setShowEndConfirm(true); }} className="text-white hover:bg-white/20 h-10 w-10">
               <Square className="h-4 w-4" />
             </Button>
+
+            {onTogglePin && (
+              <>
+                <div className="w-px h-6 bg-white/20 mx-1" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
+                  className="text-white hover:bg-white/20 h-10 w-10"
+                  title={pinned ? 'Hide panels' : 'Pin panels'}
+                >
+                  {pinned ? <PanelBottomClose className="h-4 w-4" /> : <PanelBottomOpen className="h-4 w-4" />}
+                </Button>
+              </>
+            )}
           </div>
         </motion.div>
       )}

@@ -1,25 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileQuestion, Cloud, BarChart3, Presentation, Vote, ArrowUpDown, Sparkles } from 'lucide-react';
+import { FileQuestion, Cloud, BarChart3, Presentation, Vote, ArrowUpDown, Sparkles, Search, Upload } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { CreateDropdown } from './create-dropdown';
-import { QuizCard } from './quiz-card';
-import { PollCard } from './poll-card';
-import { ActivityCard } from './activity-card';
+import { ContentCard } from './content-card';
 import { PresentationCard } from './presentation-card';
 import { EmptyContentState } from './empty-content-state';
-import type { Quiz, ThoughtsGatheringActivity, EvaluationActivity, PollActivity, Presentation as PresentationType } from '@/lib/types';
+import { ACTIVITY_CONFIG } from '@/lib/activity-config';
+import { exportActivity } from '@/lib/export-import';
+import { formatRelativeTime } from '@/lib/utils/format-date';
+import type { Quiz, ThoughtsGatheringActivity, EvaluationActivity, PollActivity, Presentation as PresentationType, ActivityType } from '@/lib/types';
 
 type Activity = ThoughtsGatheringActivity | EvaluationActivity | PollActivity;
-type FilterType = 'all' | 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation' | 'poll';
+type FilterType = 'all' | ActivityType;
 type SortType = 'recent' | 'alphabetical' | 'created';
 
 type ContentItem = {
-  type: 'quiz' | 'thoughts-gathering' | 'evaluation' | 'presentation' | 'poll';
+  type: ActivityType;
   data: Quiz | Activity | PresentationType;
   title: string;
   updatedAt?: Date;
@@ -41,7 +43,39 @@ interface ContentListProps {
   onSharePoll: (data: { id: string; title: string }) => void;
   onDeleteActivity: (activityId: string) => void;
   onHostPresentation: (presentationId: string) => void | Promise<void>;
+  onSharePresentation?: (data: { id: string; title: string }) => void;
   onDeletePresentation: (presentationId: string) => void;
+  onImport?: () => void;
+}
+
+function getActivityDescription(item: ContentItem): string {
+  const dateDisplay = formatRelativeTime(item.updatedAt || item.createdAt);
+  const dateSuffix = dateDisplay ? ` \u00b7 ${dateDisplay}` : '';
+
+  if (item.type === 'quiz') {
+    const quiz = item.data as Quiz;
+    return `${quiz.questions.length} questions${dateSuffix}`;
+  }
+  if (item.type === 'poll') {
+    const poll = item.data as PollActivity;
+    const count = poll.questions?.length || 0;
+    return `${count} ${count === 1 ? 'question' : 'questions'}${dateSuffix}`;
+  }
+  if (item.type === 'evaluation') {
+    const evaluation = item.data as EvaluationActivity;
+    const count = evaluation.config.metrics?.length || 0;
+    return `Evaluation \u00b7 ${count} metric${count !== 1 ? 's' : ''}${dateSuffix}`;
+  }
+  if (item.type === 'thoughts-gathering') {
+    const tg = item.data as ThoughtsGatheringActivity;
+    const prompt = tg.config.prompt;
+    const summary = prompt
+      ? prompt.length > 30 ? `"${prompt.substring(0, 30)}..."` : `"${prompt}"`
+      : '';
+    return `Thoughts Gathering${summary ? ` \u00b7 ${summary}` : ''}${dateSuffix}`;
+  }
+
+  return `${ACTIVITY_CONFIG[item.type].label}${dateSuffix}`;
 }
 
 export function ContentList({
@@ -59,12 +93,147 @@ export function ContentList({
   onSharePoll,
   onDeleteActivity,
   onHostPresentation,
+  onSharePresentation,
   onDeletePresentation,
+  onImport,
 }: ContentListProps) {
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [sortType, setSortType] = useState<SortType>('recent');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const totalCount = (quizzes?.length || 0) + (activities?.length || 0) + (presentations?.length || 0);
+
+  const sortedItems = useMemo(() => {
+    const allItems: ContentItem[] = [
+      ...(quizzes?.map(q => ({
+        type: 'quiz' as const,
+        data: q,
+        title: q.title,
+        updatedAt: q.updatedAt,
+        createdAt: q.createdAt,
+      })) || []),
+      ...(activities?.map(a => ({
+        type: a.type,
+        data: a,
+        title: a.title,
+        updatedAt: a.updatedAt,
+        createdAt: a.createdAt,
+      })) || []),
+      ...(presentations?.map(p => ({
+        type: 'presentation' as const,
+        data: p,
+        title: p.title,
+        updatedAt: p.updatedAt,
+        createdAt: p.createdAt,
+      })) || []),
+    ];
+
+    const searchedItems = searchQuery
+      ? allItems.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()))
+      : allItems;
+
+    const filteredItems = filterType === 'all'
+      ? searchedItems
+      : searchedItems.filter(item => item.type === filterType);
+
+    return [...filteredItems].sort((a, b) => {
+      const getDate = (item: ContentItem, field: 'updatedAt' | 'createdAt') => {
+        const date = item[field];
+        return date ? new Date(date).getTime() : 0;
+      };
+
+      switch (sortType) {
+        case 'recent':
+          return getDate(b, 'updatedAt') - getDate(a, 'updatedAt') || getDate(b, 'createdAt') - getDate(a, 'createdAt');
+        case 'created':
+          return getDate(b, 'createdAt') - getDate(a, 'createdAt');
+        case 'alphabetical':
+          return a.title.localeCompare(b.title);
+        default:
+          return 0;
+      }
+    });
+  }, [quizzes, activities, presentations, searchQuery, filterType, sortType]);
+
+  const renderItem = (item: ContentItem) => {
+    // Presentation cards have a unique layout (thumbnail, dropdown menu)
+    if (item.type === 'presentation') {
+      const pres = item.data as PresentationType;
+      return (
+        <PresentationCard
+          key={pres.id}
+          presentation={pres}
+          onHost={onHostPresentation}
+          onShare={onSharePresentation ? (p) => onSharePresentation(p) : undefined}
+          onExport={(p) => exportActivity('presentation', p.title, p as unknown as Record<string, unknown>)}
+          onDelete={onDeletePresentation}
+        />
+      );
+    }
+
+    const config = ACTIVITY_CONFIG[item.type];
+
+    if (item.type === 'quiz') {
+      const quiz = item.data as Quiz;
+      return (
+        <ContentCard
+          key={quiz.id}
+          id={quiz.id}
+          title={quiz.title}
+          description={getActivityDescription(item)}
+          icon={config.icon}
+          iconColor={config.color}
+          editPath={config.editPath(quiz.id)}
+          onHost={onHostGame}
+          onDelete={onDeleteQuiz}
+          onPreview={() => onPreviewQuiz(quiz)}
+          previewLabel="Preview Quiz"
+          onShare={() => onShareQuiz({ id: quiz.id, title: quiz.title })}
+          onExport={() => exportActivity('quiz', quiz.title, quiz as unknown as Record<string, unknown>)}
+        />
+      );
+    }
+
+    if (item.type === 'poll') {
+      const poll = item.data as PollActivity;
+      return (
+        <ContentCard
+          key={poll.id}
+          id={poll.id}
+          title={poll.title}
+          description={getActivityDescription(item)}
+          icon={config.icon}
+          iconColor={config.color}
+          editPath={config.editPath(poll.id)}
+          hostGradient={config.gradient}
+          onHost={onHostActivity}
+          onDelete={onDeleteActivity}
+          onPreview={() => onPreviewPoll(poll)}
+          previewLabel="Preview Poll"
+          onShare={() => onSharePoll({ id: poll.id, title: poll.title })}
+          onExport={() => exportActivity('poll', poll.title, poll as unknown as Record<string, unknown>)}
+        />
+      );
+    }
+
+    // thoughts-gathering, evaluation
+    const activity = item.data as Activity;
+    return (
+      <ContentCard
+        key={activity.id}
+        id={activity.id}
+        title={activity.title}
+        description={getActivityDescription(item)}
+        icon={config.icon}
+        iconColor={config.color}
+        editPath={config.editPath(activity.id)}
+        hostHref={config.detailPath(activity.id)}
+        hostGradient={config.gradient}
+        onDelete={onDeleteActivity}
+        onExport={() => exportActivity(item.type, activity.title, activity as unknown as Record<string, unknown>)}
+      />
+    );
+  };
 
   return (
     <div className="mb-12">
@@ -78,6 +247,12 @@ export function ContentList({
           )}
         </div>
         <div className="flex items-center gap-3">
+          {onImport && (
+            <Button variant="outline" onClick={onImport}>
+              <Upload className="mr-2 h-4 w-4" />
+              Import
+            </Button>
+          )}
           <Button asChild variant="outline">
             <Link href="/host/create">
               <Sparkles className="mr-2 h-4 w-4 text-amber-500" />
@@ -88,7 +263,19 @@ export function ContentList({
         </div>
       </div>
 
-      {/* Filter and Sort Controls */}
+      {/* Search and Filter Controls */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-4 mb-6">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search activities..."
+            className="pl-9"
+          />
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-4 mb-6">
         <div className="grid grid-cols-2 sm:flex items-center gap-1 bg-muted p-1.5 rounded-xl w-full sm:w-auto">
           {[
@@ -143,113 +330,15 @@ export function ContentList({
             </Card>
           ))}
         </div>
-      ) : (() => {
-        const allItems: ContentItem[] = [
-          ...(quizzes?.map(q => ({
-            type: 'quiz' as const,
-            data: q,
-            title: q.title,
-            updatedAt: q.updatedAt,
-            createdAt: q.createdAt,
-          })) || []),
-          ...(activities?.map(a => ({
-            type: a.type,
-            data: a,
-            title: a.title,
-            updatedAt: a.updatedAt,
-            createdAt: a.createdAt,
-          })) || []),
-          ...(presentations?.map(p => ({
-            type: 'presentation' as const,
-            data: p,
-            title: p.title,
-            updatedAt: p.updatedAt,
-            createdAt: p.createdAt,
-          })) || []),
-        ];
-
-        const filteredItems = filterType === 'all'
-          ? allItems
-          : allItems.filter(item => item.type === filterType);
-
-        const sortedItems = [...filteredItems].sort((a, b) => {
-          const getDate = (item: ContentItem, field: 'updatedAt' | 'createdAt') => {
-            const date = item[field];
-            return date ? new Date(date).getTime() : 0;
-          };
-
-          switch (sortType) {
-            case 'recent':
-              return getDate(b, 'updatedAt') - getDate(a, 'updatedAt') || getDate(b, 'createdAt') - getDate(a, 'createdAt');
-            case 'created':
-              return getDate(b, 'createdAt') - getDate(a, 'createdAt');
-            case 'alphabetical':
-              return a.title.localeCompare(b.title);
-            default:
-              return 0;
-          }
-        });
-
-        if (sortedItems.length === 0) {
-          return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <EmptyContentState filterType={filterType} />
-            </div>
-          );
-        }
-
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedItems.map(item => {
-              if (item.type === 'quiz') {
-                const quiz = item.data as Quiz;
-                return (
-                  <QuizCard
-                    key={quiz.id}
-                    quiz={quiz}
-                    onHost={onHostGame}
-                    onPreview={onPreviewQuiz}
-                    onShare={onShareQuiz}
-                    onDelete={onDeleteQuiz}
-                  />
-                );
-              }
-              if (item.type === 'poll') {
-                const poll = item.data as PollActivity;
-                return (
-                  <PollCard
-                    key={poll.id}
-                    poll={poll}
-                    onHost={onHostActivity}
-                    onPreview={onPreviewPoll}
-                    onShare={onSharePoll}
-                    onDelete={onDeleteActivity}
-                  />
-                );
-              }
-              if (item.type === 'presentation') {
-                const pres = item.data as PresentationType;
-                return (
-                  <PresentationCard
-                    key={pres.id}
-                    presentation={pres}
-                    onHost={onHostPresentation}
-                    onDelete={onDeletePresentation}
-                  />
-                );
-              }
-              const activity = item.data as Activity;
-              return (
-                <ActivityCard
-                  key={activity.id}
-                  activity={activity}
-                  onDelete={onDeleteActivity}
-                />
-              );
-            })}
-          </div>
-        );
-      })()}
+      ) : sortedItems.length === 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <EmptyContentState filterType={filterType} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {sortedItems.map(renderItem)}
+        </div>
+      )}
     </div>
   );
 }

@@ -3,19 +3,22 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { ExpandableTextarea } from './ExpandableTextarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Link2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
-import type { SlideElement } from '@/lib/types';
+import { EXTRACTABLE_STEPS } from '@/lib/types';
+import { AGENTIC_DESIGNER_STEPS } from '@/lib/agentic-designer-steps';
+import type { SlideElement, PresentationSlide } from '@/lib/types';
 
 interface EvaluationPropertiesProps {
   element: SlideElement;
+  slides?: PresentationSlide[];
   onUpdate: (updates: Partial<SlideElement>) => void;
 }
 
-export function EvaluationProperties({ element, onUpdate }: EvaluationPropertiesProps) {
+export function EvaluationProperties({ element, slides, onUpdate }: EvaluationPropertiesProps) {
   const config = element.evaluationConfig;
   if (!config) return null;
 
@@ -85,7 +88,8 @@ export function EvaluationProperties({ element, onUpdate }: EvaluationProperties
       {/* Description */}
       <div>
         <Label className="text-xs">Description</Label>
-        <Textarea
+        <ExpandableTextarea
+          label="Description"
           value={config.description || ''}
           onChange={(e) => updateConfig({ description: e.target.value || undefined })}
           className="mt-1"
@@ -238,6 +242,132 @@ export function EvaluationProperties({ element, onUpdate }: EvaluationProperties
           </Button>
         )}
       </div>
+
+      {/* Dynamic Items Source */}
+      {slides && (() => {
+        const currentSlide = slides.find((s) => s.elements.some((el) => el.id === element.id));
+        const currentOrder = currentSlide?.order ?? Infinity;
+
+        // Agentic designer sources
+        const agenticElements: { slideId: string; slideIndex: number; el: SlideElement }[] = [];
+        slides.forEach((s, idx) => {
+          s.elements.forEach((el) => {
+            if (el.type === 'agentic-designer') {
+              agenticElements.push({ slideId: s.id, slideIndex: idx, el });
+            }
+          });
+        });
+
+        // AI step sources (prior slides with structured extraction)
+        const aiStepElements: { slideId: string; slideIndex: number; el: SlideElement }[] = [];
+        slides.forEach((s, idx) => {
+          if (s.order >= currentOrder) return;
+          s.elements.forEach((el) => {
+            if (el.type === 'ai-step' && el.aiStepConfig?.enableStructuredExtraction) {
+              aiStepElements.push({ slideId: s.id, slideIndex: idx, el });
+            }
+          });
+        });
+
+        if (agenticElements.length === 0 && aiStepElements.length === 0) return null;
+
+        const ref = element.agenticSourceRef;
+        const dynSrc = element.dynamicItemsSource;
+        const selectedKey = dynSrc
+          ? `aistep__${dynSrc.sourceSlideId}__${dynSrc.sourceElementId}`
+          : ref
+            ? `agentic__${ref.slideId}__${ref.elementId}__${ref.step}`
+            : '';
+
+        const handleSourceChange = (key: string) => {
+          if (!key || key === 'none') {
+            onUpdate({ agenticSourceRef: undefined, dynamicItemsSource: undefined });
+            return;
+          }
+          if (key.startsWith('aistep__')) {
+            const [, slideId, elementId] = key.split('__');
+            onUpdate({
+              dynamicItemsSource: { sourceSlideId: slideId, sourceElementId: elementId },
+              agenticSourceRef: undefined,
+            });
+          } else if (key.startsWith('agentic__')) {
+            const [, slideId, elementId, step] = key.split('__');
+            onUpdate({
+              agenticSourceRef: { slideId, elementId, step: Number(step) },
+              dynamicItemsSource: undefined,
+            });
+          }
+        };
+
+        return (
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Link2 className="h-3.5 w-3.5 text-cyan-500" />
+              <Label className="text-xs font-medium">Dynamic Items Source</Label>
+            </div>
+            <p className="text-[10px] text-muted-foreground mb-2">
+              Source items from an AI step or Agentic Designer at runtime. Overrides static items above during presentation.
+            </p>
+            <Select value={selectedKey} onValueChange={handleSourceChange}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="None (use static items)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None (use static items)</SelectItem>
+                {aiStepElements.length > 0 && (
+                  <>
+                    <SelectItem value="__header_ai_steps" disabled className="text-[10px] font-semibold text-muted-foreground">
+                      AI Steps
+                    </SelectItem>
+                    {aiStepElements.map(({ slideId, slideIndex, el }) => {
+                      const title = slides[slideIndex]?.elements.find((e) => e.type === 'text')?.content;
+                      return (
+                        <SelectItem
+                          key={`aistep__${slideId}__${el.id}`}
+                          value={`aistep__${slideId}__${el.id}`}
+                        >
+                          Slide {slideIndex + 1}{title ? `: ${title.slice(0, 40)}` : ''}
+                        </SelectItem>
+                      );
+                    })}
+                  </>
+                )}
+                {agenticElements.length > 0 && (
+                  <>
+                    <SelectItem value="__header_agentic" disabled className="text-[10px] font-semibold text-muted-foreground">
+                      Agentic Designer
+                    </SelectItem>
+                    {agenticElements.flatMap(({ slideId, slideIndex, el }) =>
+                      EXTRACTABLE_STEPS.map((step) => {
+                        const stepTitle = AGENTIC_DESIGNER_STEPS[step - 1]?.title || `Step ${step}`;
+                        const target = el.agenticDesignerConfig?.target || '';
+                        return (
+                          <SelectItem
+                            key={`agentic__${slideId}__${el.id}__${step}`}
+                            value={`agentic__${slideId}__${el.id}__${step}`}
+                          >
+                            Slide {slideIndex + 1}: {target ? `${target} - ` : ''}{stepTitle}
+                          </SelectItem>
+                        );
+                      })
+                    )}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+            {(ref || dynSrc) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full mt-1 text-xs text-muted-foreground"
+                onClick={() => onUpdate({ agenticSourceRef: undefined, dynamicItemsSource: undefined })}
+              >
+                Clear source
+              </Button>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

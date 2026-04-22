@@ -9,6 +9,7 @@ import { useFirestore, useUser, trackEvent } from '@/firebase';
 import { collection, deleteDoc, doc, serverTimestamp, setDoc, onSnapshot } from 'firebase/firestore';
 import type { ContentType } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { ShareLinkSection } from './share-link-section';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -256,6 +257,14 @@ export function ContentShareManager({ contentId, contentTitle, contentType }: Co
               Not shared with anyone yet
             </p>
           )}
+        </div>
+
+        <div className="border-t pt-4">
+          <ShareLinkSection
+            contentId={contentId}
+            contentTitle={contentTitle}
+            contentType={contentType}
+          />
         </div>
       </CardContent>
     </Card>

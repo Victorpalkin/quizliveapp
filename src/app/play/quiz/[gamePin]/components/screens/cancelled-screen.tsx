@@ -12,7 +12,7 @@ export function CancelledScreen({ onReturnHome }: CancelledScreenProps) {
       <h1 className="text-5xl font-bold">Game Canceled</h1>
       <p className="text-2xl mt-4">The host has canceled the game.</p>
       <Button onClick={onReturnHome} size="lg" variant="secondary" className="mt-12 text-xl">
-        Return Home
+        Join Another Game
       </Button>
     </div>
   );

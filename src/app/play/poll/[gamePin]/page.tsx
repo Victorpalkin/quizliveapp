@@ -2,9 +2,11 @@
 
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { ThemeToggle } from '@/components/app/theme-toggle';
+import { PlayerLeaveButton } from '@/components/app/player-leave-button';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Vote } from 'lucide-react';
+import { useAnonymousAuth } from '@/hooks/use-anonymous-auth';
 import { usePlayerPoll } from './hooks/use-player-poll';
 import { JoiningScreen } from './components/joining-screen';
 import { LobbyScreen } from './components/lobby-screen';
@@ -13,6 +15,18 @@ import { WaitingScreen } from './components/waiting-screen';
 import { EndedScreen } from './components/ended-screen';
 
 export default function PollPlayerPage() {
+  const { uid, loading: authLoading } = useAnonymousAuth();
+
+  if (authLoading || !uid) return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <FullPageLoader />
+    </div>
+  );
+
+  return <PollPlayerContent playerId={uid} />;
+}
+
+function PollPlayerContent({ playerId }: { playerId: string }) {
   const {
     state,
     player,
@@ -32,7 +46,7 @@ export default function PollPlayerPage() {
     toggleMultipleChoice,
     isAnswerValid,
     router,
-  } = usePlayerPoll();
+  } = usePlayerPoll(playerId);
 
   // Keep awake
   const shouldKeepAwake = ['answering', 'waiting', 'results'].includes(state);
@@ -81,21 +95,27 @@ export default function PollPlayerPage() {
             <CardContent className="p-8">
               <Vote className="h-16 w-16 mx-auto mb-4 text-teal-500" />
               <h2 className="text-2xl font-bold mb-2">Results Are In!</h2>
-              <p className="text-muted-foreground">
-                The host is reviewing the results...
+              <p className="text-muted-foreground mb-6">
+                Waiting for the host to continue...
               </p>
+              <div className="flex justify-center">
+                <div className="relative">
+                  <div className="w-3 h-3 bg-teal-500 rounded-full animate-ping absolute" />
+                  <div className="w-3 h-3 bg-teal-500 rounded-full" />
+                </div>
+              </div>
             </CardContent>
           </Card>
         );
 
       case 'reconnecting':
-        return <FullPageLoader />;
+        return <FullPageLoader message="Reconnecting to game..." />;
 
       case 'ended':
         return (
           <EndedScreen
             playerName={player?.name || 'Anonymous'}
-            onReturnHome={() => router.push('/')}
+            onReturnHome={() => router.push('/join')}
           />
         );
 
@@ -106,6 +126,9 @@ export default function PollPlayerPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background relative">
+      <div className="absolute top-6 left-6 z-20">
+        <PlayerLeaveButton />
+      </div>
       <div className="absolute top-6 right-6 z-20">
         <ThemeToggle />
       </div>

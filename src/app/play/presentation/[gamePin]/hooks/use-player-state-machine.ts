@@ -12,7 +12,6 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import { nanoid } from 'nanoid';
 import type { PresentationGame, PresentationSlide, SlideElement } from '@/lib/types';
 
 type PlayerState = 'joining' | 'lobby' | 'active' | 'ended';
@@ -29,7 +28,7 @@ export interface QuizResult {
   wasTimeout: boolean;
 }
 
-const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation'];
+const INTERACTIVE_TYPES = ['quiz', 'poll', 'thoughts', 'rating', 'evaluation', 'agentic-designer', 'ai-step'];
 const SESSION_KEY = 'zivo-pres-player-session';
 
 function toDate(val: unknown): Date | undefined {
@@ -38,7 +37,7 @@ function toDate(val: unknown): Date | undefined {
   return undefined;
 }
 
-export function usePlayerStateMachine(gamePin: string) {
+export function usePlayerStateMachine(gamePin: string, playerId: string) {
   const firestore = useFirestore();
   const [state, setState] = useState<PlayerState>('joining');
   const [game, setGame] = useState<PresentationGame | null>(null);
@@ -48,23 +47,28 @@ export function usePlayerStateMachine(gamePin: string) {
   const [playerStreak, setPlayerStreak] = useState(0);
   const [loading, setLoading] = useState(true);
   const respondedRef = useRef<Set<string>>(new Set());
+  const [respondedVersion, setRespondedVersion] = useState(0);
   const quizResultsRef = useRef<Map<string, QuizResult>>(new Map());
   const [quizResultsVersion, setQuizResultsVersion] = useState(0);
 
-  // Restore session from localStorage
+  // Restore session from localStorage (only if playerId matches current auth identity)
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem(`${SESSION_KEY}-${gamePin}`);
       if (stored) {
         const parsed = JSON.parse(stored) as PlayerSession;
-        setSession(parsed);
-        setState('lobby');
+        if (parsed.playerId === playerId) {
+          setSession(parsed);
+          setState('lobby');
+        } else {
+          sessionStorage.removeItem(`${SESSION_KEY}-${gamePin}`);
+        }
       }
     } catch {
       // No session to restore
     }
     setLoading(false);
-  }, [gamePin]);
+  }, [gamePin, playerId]);
 
   // Find game by PIN
   useEffect(() => {
@@ -96,6 +100,11 @@ export function usePlayerStateMachine(gamePin: string) {
         timerStartedAt: toDate(data.timerStartedAt),
         timerElementId: data.timerElementId ?? undefined,
       });
+
+      // Load sanitized slides from game document (no correct answers)
+      if (data.sanitizedSlides) {
+        setSlides(data.sanitizedSlides);
+      }
     });
 
     return () => unsubscribe();
@@ -113,23 +122,6 @@ export function usePlayerStateMachine(gamePin: string) {
       setState('lobby');
     }
   }, [game?.state, session]);
-
-  // Load presentation slides
-  useEffect(() => {
-    if (!firestore || !game?.presentationId) return;
-
-    const unsubscribe = onSnapshot(
-      doc(firestore, 'presentations', game.presentationId),
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          setSlides(data.slides || []);
-        }
-      }
-    );
-
-    return () => unsubscribe();
-  }, [firestore, game?.presentationId]);
 
   // Subscribe to own player doc for score/streak
   useEffect(() => {
@@ -153,7 +145,6 @@ export function usePlayerStateMachine(gamePin: string) {
   const joinGame = useCallback(async (name: string) => {
     if (!firestore || !game) throw new Error('Cannot join game');
 
-    const playerId = nanoid();
     await setDoc(
       doc(firestore, 'games', game.id, 'players', playerId),
       {
@@ -170,8 +161,8 @@ export function usePlayerStateMachine(gamePin: string) {
     const newSession: PlayerSession = { playerId, playerName: name, gameId: game.id };
     sessionStorage.setItem(`${SESSION_KEY}-${gamePin}`, JSON.stringify(newSession));
     setSession(newSession);
-    setState('lobby');
-  }, [firestore, game, gamePin]);
+    setState(game.state === 'active' ? 'active' : 'lobby');
+  }, [firestore, game, gamePin, playerId]);
 
   // Get current slide interactive element
   const currentSlide = game ? slides[game.currentSlideIndex] : null;
@@ -194,11 +185,13 @@ export function usePlayerStateMachine(gamePin: string) {
   // Track responded elements
   const markResponded = useCallback((elementId: string) => {
     respondedRef.current.add(elementId);
+    setRespondedVersion((v) => v + 1);
   }, []);
 
   const hasResponded = useCallback((elementId: string) => {
     return respondedRef.current.has(elementId);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [respondedVersion]);
 
   // Store quiz result for an element
   const storeQuizResult = useCallback((elementId: string, result: QuizResult) => {

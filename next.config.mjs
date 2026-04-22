@@ -1,7 +1,5 @@
-
-import type {NextConfig} from 'next';
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   /* config options here */
   output: 'standalone', // Required for Cloud Run deployment
   // TypeScript and ESLint errors are now enforced during builds

@@ -3,7 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 import * as admin from 'firebase-admin';
 import { ALLOWED_ORIGINS, REGION, GEMINI_MODEL, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
-import { enforceRateLimitInMemory } from '../utils/rateLimit';
+import { enforceRateLimitFirestore } from '../utils/rateLimit';
 
 interface EvaluateSubmissionsRequest {
   gameId: string;
@@ -127,7 +127,8 @@ export const evaluateSubmissions = onCall(
 
     // Rate limiting: 5 requests per hour per user (high cost operation)
     if (request.auth?.uid) {
-      enforceRateLimitInMemory(request.auth.uid, 5, 3600);
+      const db = admin.firestore();
+      await enforceRateLimitFirestore(db, `ai-eval:${request.auth.uid}`, 5, 3600);
     }
 
     // Verify user is authenticated

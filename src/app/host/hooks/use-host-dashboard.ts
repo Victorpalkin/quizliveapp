@@ -13,6 +13,7 @@ import { quizConverter, gameConverter, thoughtsGatheringActivityConverter, evalu
 import { usePresentations, usePresentationMutations } from '@/firebase/presentation/use-presentation';
 import { useCreatePresentationGame } from '@/firebase/presentation/use-presentation-game';
 import type { Quiz, Game, ThoughtsGatheringActivity, EvaluationActivity, PollActivity, Presentation as PresentationType } from '@/lib/types';
+import { getGameRoutePath } from '@/lib/activity-config';
 
 type Activity = ThoughtsGatheringActivity | EvaluationActivity | PollActivity;
 
@@ -107,6 +108,9 @@ export function useHostDashboard() {
   const handleHostGame = async (quizId: string) => {
     if (!user) return;
 
+    // Copy crowdsource settings to game doc so players don't need to read the quiz
+    const quiz = quizzes?.find(q => q.id === quizId);
+
     const gameData = {
       quizId: quizId,
       hostId: user.uid,
@@ -114,6 +118,7 @@ export function useHostDashboard() {
       currentQuestionIndex: 0,
       gamePin: nanoid(8).toUpperCase(),
       createdAt: serverTimestamp(),
+      ...(quiz?.crowdsource ? { crowdsource: quiz.crowdsource } : {}),
     };
 
     try {
@@ -214,31 +219,8 @@ export function useHostDashboard() {
   };
 
   const handleOpenGame = (game: Game) => {
-    if (game.state === 'lobby') {
-        if (game.activityType === 'thoughts-gathering') {
-            router.push(`/host/thoughts-gathering/lobby/${game.id}`);
-        } else if (game.activityType === 'evaluation') {
-            router.push(`/host/evaluation/game/${game.id}`);
-        } else if (game.activityType === 'poll') {
-            router.push(`/host/poll/lobby/${game.id}`);
-        } else if (game.activityType === 'presentation') {
-            router.push(`/host/presentation/lobby/${game.id}`);
-        } else {
-            router.push(`/host/quiz/lobby/${game.id}`);
-        }
-    } else {
-        if (game.activityType === 'thoughts-gathering') {
-            router.push(`/host/thoughts-gathering/game/${game.id}`);
-        } else if (game.activityType === 'evaluation') {
-            router.push(`/host/evaluation/game/${game.id}`);
-        } else if (game.activityType === 'poll') {
-            router.push(`/host/poll/game/${game.id}`);
-        } else if (game.activityType === 'presentation') {
-            router.push(`/host/presentation/present/${game.id}`);
-        } else {
-            router.push(`/host/quiz/game/${game.id}`);
-        }
-    }
+    const path = getGameRoutePath(game.activityType, game.state, game.id);
+    router.push(path);
   };
 
   const handleHostActivity = (activityId: string) => {
@@ -276,7 +258,7 @@ export function useHostDashboard() {
       const pres = presentations?.find(p => p.id === presentationId);
       if (!pres) return;
       const gameId = await createPresentationGame(presentationId, user.uid, pres.settings);
-      router.push(`/host/presentation/lobby/${gameId}`);
+      router.push(`/host/presentation/present/${gameId}`);
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not create game.' });
     }

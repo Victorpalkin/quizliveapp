@@ -33,6 +33,8 @@ import { SpinWheelProperties } from './properties/SpinWheelProperties';
 import { EvaluationProperties } from './properties/EvaluationProperties';
 import { ConnectorProperties } from './properties/ConnectorProperties';
 import { ResultsProperties } from './properties/ResultsProperties';
+import { AgenticDesignerProperties } from './properties/AgenticDesignerProperties';
+import { AIStepProperties } from './properties/AIStepProperties';
 import { SlideProperties } from './properties/SlideProperties';
 
 interface PropertiesPanelProps {
@@ -80,7 +82,7 @@ export function PropertiesPanel({
   // If nothing selected, show slide properties
   if (!selectedElement && !isMultiSelect) {
     return (
-      <div ref={containerRef} className="w-[280px] flex-shrink-0 bg-background border-l overflow-y-auto">
+      <div ref={containerRef} className="h-full bg-background border-l overflow-y-auto">
         <SlideProperties
           slide={slide}
           onUpdateBackground={onUpdateBackground}
@@ -94,7 +96,7 @@ export function PropertiesPanel({
   // Multi-select: show shared controls only
   if (isMultiSelect) {
     return (
-      <div ref={containerRef} className="w-[280px] flex-shrink-0 bg-background border-l overflow-y-auto">
+      <div ref={containerRef} className="h-full bg-background border-l overflow-y-auto">
         <div className="p-4 border-b flex items-center gap-2">
           <div className="w-1 h-4 rounded-full bg-gradient-to-b from-primary to-accent" />
           <h3 className="text-sm font-medium flex-1">{selectedElements!.length} Elements Selected</h3>
@@ -152,7 +154,7 @@ export function PropertiesPanel({
 
   // Single element selected — show full properties
   return (
-    <div ref={containerRef} className="w-[280px] flex-shrink-0 bg-background border-l overflow-y-auto">
+    <div ref={containerRef} className="h-full bg-background border-l overflow-y-auto">
       {/* Element header with lock toggle */}
       <div className="p-4 border-b flex items-center gap-2">
         <div className="w-1 h-4 rounded-full bg-gradient-to-b from-primary to-accent" />
@@ -234,13 +236,13 @@ export function PropertiesPanel({
         <QuizProperties element={selectedElement!} onUpdate={onUpdateElement} />
       )}
       {selectedElement!.type === 'poll' && (
-        <PollProperties element={selectedElement!} onUpdate={onUpdateElement} />
+        <PollProperties element={selectedElement!} slides={slides} onUpdate={onUpdateElement} />
       )}
       {selectedElement!.type === 'thoughts' && (
         <ThoughtsProperties element={selectedElement!} onUpdate={onUpdateElement} />
       )}
       {selectedElement!.type === 'rating' && (
-        <RatingProperties element={selectedElement!} onUpdate={onUpdateElement} />
+        <RatingProperties element={selectedElement!} slides={slides} onUpdate={onUpdateElement} />
       )}
       {selectedElement!.type === 'leaderboard' && (
         <LeaderboardProperties element={selectedElement!} onUpdate={onUpdateElement} />
@@ -252,9 +254,15 @@ export function PropertiesPanel({
         <SpinWheelProperties element={selectedElement!} onUpdate={onUpdateElement} />
       )}
       {selectedElement!.type === 'evaluation' && (
-        <EvaluationProperties element={selectedElement!} onUpdate={onUpdateElement} />
+        <EvaluationProperties element={selectedElement!} slides={slides} onUpdate={onUpdateElement} />
       )}
-      {['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results'].includes(selectedElement!.type) && (
+      {selectedElement!.type === 'agentic-designer' && (
+        <AgenticDesignerProperties element={selectedElement!} onUpdate={onUpdateElement} />
+      )}
+      {selectedElement!.type === 'ai-step' && (
+        <AIStepProperties element={selectedElement!} slides={slides} onUpdate={onUpdateElement} />
+      )}
+      {['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results', 'agentic-designer-results'].includes(selectedElement!.type) && (
         <ResultsProperties element={selectedElement!} slides={slides} onUpdate={onUpdateElement} />
       )}
 

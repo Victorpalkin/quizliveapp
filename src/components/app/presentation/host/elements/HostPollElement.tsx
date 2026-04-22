@@ -2,7 +2,8 @@
 
 import { motion } from 'motion/react';
 import { ANSWER_COLORS } from '@/lib/constants';
-import { useResponseCount, useElementResponses } from '@/firebase/presentation';
+import { useResponseCount, useElementResponses, useDynamicItems } from '@/firebase/presentation';
+import { Loader2 } from 'lucide-react';
 import type { SlideElement } from '@/lib/types';
 
 interface HostPollElementProps {
@@ -15,11 +16,24 @@ export function HostPollElement({ element, gameId, playerCount }: HostPollElemen
   const config = element.pollConfig;
   const count = useResponseCount(gameId, element.id);
   const responses = useElementResponses(gameId, element.id);
+  const { items: aiStepItems, isLoading: loadingDynamic } = useDynamicItems(gameId, element.dynamicItemsSource);
 
   if (!config) return null;
 
+  if (loadingDynamic) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const options = aiStepItems
+    ? aiStepItems.map((item) => ({ text: item.text }))
+    : config.options;
+
   // Calculate vote counts per option from live responses
-  const voteCounts = config.options.map((_, i) =>
+  const voteCounts = options.map((_, i) =>
     responses.filter((r) =>
       r.answerIndex === i || (r.answerIndices && r.answerIndices.includes(i))
     ).length
@@ -40,7 +54,7 @@ export function HostPollElement({ element, gameId, playerCount }: HostPollElemen
 
       {/* Options as bars */}
       <div className="flex-1 flex flex-col justify-center gap-3">
-        {config.options.map((opt, i) => {
+        {options.map((opt, i) => {
           const pct = maxVotes > 0 ? (voteCounts[i] / maxVotes) * 100 : 0;
           return (
             <motion.div

@@ -47,7 +47,7 @@ export function useCreatePresentationGame() {
         gamePin: nanoid(8).toUpperCase(),
         activityType: 'presentation',
         presentationId,
-        state: 'lobby',
+        state: 'active',
         currentSlideIndex: 0,
         settings,
         createdAt: serverTimestamp(),

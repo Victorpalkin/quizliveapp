@@ -1,22 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { SettingToggle } from '@/components/app/setting-toggle';
+import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
-import { Cloud, ArrowLeft, Loader2, Save, Bot } from 'lucide-react';
+import { Cloud, ArrowLeft, Save } from 'lucide-react';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp, DocumentReference } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import type { ThoughtsGatheringConfig, ThoughtsGatheringActivity } from '@/lib/types';
+import type { ThoughtsGatheringActivity } from '@/lib/types';
 import { thoughtsGatheringActivityConverter } from '@/firebase/converters';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
+import { ActivityForm, type ActivityFormValues } from '../../components/activity-form';
 
 export default function EditThoughtsGatheringPage() {
   const params = useParams();
@@ -25,15 +21,6 @@ export default function EditThoughtsGatheringPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user, loading: userLoading } = useUser();
-
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [prompt, setPrompt] = useState('');
-  const [maxSubmissions, setMaxSubmissions] = useState(3);
-  const [allowMultipleRounds, setAllowMultipleRounds] = useState(false);
-  const [agenticUseCasesCollection, setAgenticUseCasesCollection] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   // Fetch existing activity
   const activityRef = useMemoFirebase(
@@ -48,20 +35,7 @@ export default function EditThoughtsGatheringPage() {
     [firestore, activityId]
   );
 
-  // Initialize form with existing data
-  useEffect(() => {
-    if (activity && !isInitialized) {
-      setTitle(activity.title);
-      setDescription(activity.description || '');
-      setPrompt(activity.config.prompt);
-      setMaxSubmissions(activity.config.maxSubmissionsPerPlayer);
-      setAllowMultipleRounds(activity.config.allowMultipleRounds);
-      setAgenticUseCasesCollection(activity.config.agenticUseCasesCollection || false);
-      setIsInitialized(true);
-    }
-  }, [activity, isInitialized]);
-
-  const handleSave = async () => {
+  const handleSave = async (values: ActivityFormValues) => {
     if (!user || !activityDocRef) {
       toast({
         variant: "destructive",
@@ -71,38 +45,11 @@ export default function EditThoughtsGatheringPage() {
       return;
     }
 
-    if (!title.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Title required",
-        description: "Please enter a title for your Thoughts Gathering activity.",
-      });
-      return;
-    }
-
-    if (!prompt.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Prompt required",
-        description: "Please enter a prompt for participants.",
-      });
-      return;
-    }
-
-    setIsSaving(true);
-
     try {
-      const config: ThoughtsGatheringConfig = {
-        prompt: prompt.trim(),
-        maxSubmissionsPerPlayer: maxSubmissions,
-        allowMultipleRounds,
-        agenticUseCasesCollection,
-      };
-
       await updateDoc(activityDocRef, {
-        title: title.trim(),
-        description: description.trim() || null,
-        config,
+        title: values.title,
+        description: values.description || null,
+        config: values.config,
         updatedAt: serverTimestamp(),
       });
 
@@ -119,8 +66,6 @@ export default function EditThoughtsGatheringPage() {
         title: "Error",
         description: "Could not save changes. Please try again.",
       });
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -147,7 +92,6 @@ export default function EditThoughtsGatheringPage() {
     );
   }
 
-  // Check ownership
   if (activity.hostId !== user?.uid) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
@@ -166,6 +110,19 @@ export default function EditThoughtsGatheringPage() {
       </div>
     );
   }
+
+  const initialValues: ActivityFormValues = {
+    title: activity.title,
+    description: activity.description || '',
+    config: {
+      prompt: activity.config.prompt,
+      maxSubmissionsPerPlayer: activity.config.maxSubmissionsPerPlayer,
+      allowMultipleRounds: activity.config.allowMultipleRounds,
+      agenticUseCasesCollection: activity.config.agenticUseCasesCollection || false,
+      anonymousMode: activity.config.anonymousMode || false,
+      enableModeration: activity.config.enableModeration || false,
+    },
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -186,104 +143,13 @@ export default function EditThoughtsGatheringPage() {
           </div>
         </div>
 
-        <Card className="shadow-lg rounded-2xl border border-card-border">
-          <CardHeader>
-            <CardTitle>Activity Details</CardTitle>
-            <CardDescription>
-              Configure your Thoughts Gathering session
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="title">Title *</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Team Interests, Workshop Topics"
-                className="text-lg"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add a description for this activity..."
-                rows={2}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="prompt">Prompt for Participants *</Label>
-              <Textarea
-                id="prompt"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="What would you like participants to share?"
-                rows={3}
-                className="text-lg"
-              />
-              <p className="text-sm text-muted-foreground">
-                This is what participants will see when submitting their interests
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="maxSubmissions">Max Submissions per Person</Label>
-              <Input
-                id="maxSubmissions"
-                type="number"
-                min={1}
-                max={10}
-                value={maxSubmissions}
-                onChange={(e) => setMaxSubmissions(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-                className="w-32"
-              />
-              <p className="text-sm text-muted-foreground">
-                How many topics can each participant submit (1-10)
-              </p>
-            </div>
-
-            <SettingToggle
-              id="multipleRounds"
-              label="Allow Multiple Rounds"
-              description="Let participants submit more after viewing results"
-              checked={allowMultipleRounds}
-              onCheckedChange={setAllowMultipleRounds}
-            />
-
-            <SettingToggle
-              id="agenticUseCases"
-              label="Agentic Use Cases Collection"
-              description="Match topics with AI agents from the tracker database"
-              checked={agenticUseCasesCollection}
-              onCheckedChange={setAgenticUseCasesCollection}
-              icon={<Bot className="h-4 w-4 text-violet-500" />}
-              className="border-violet-500/30 bg-violet-500/5"
-            />
-
-            <div className="pt-4 border-t">
-              <Button
-                onClick={handleSave}
-                disabled={isSaving || !title.trim() || !prompt.trim()}
-                className="w-full py-6 text-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:opacity-90 rounded-xl"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-5 w-5" /> Save Changes
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <ActivityForm
+          initialValues={initialValues}
+          onSubmit={handleSave}
+          submitLabel="Save Changes"
+          submitIcon={<Save className="mr-2 h-5 w-5" />}
+          loadingLabel="Saving..."
+        />
       </main>
     </div>
   );

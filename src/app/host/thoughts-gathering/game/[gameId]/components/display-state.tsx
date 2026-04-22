@@ -1,10 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { RefreshCw, BarChart3, Download } from 'lucide-react';
-import { ThoughtsGroupedView } from '@/components/app/thoughts-grouped-view';
-import { MatureAgentsCard } from './mature-agents-card';
+import { Badge } from '@/components/ui/badge';
+import { RefreshCw, Pencil, Download, BarChart3 } from 'lucide-react';
+import { ReprocessDialog } from './reprocess-dialog';
+import { EditableGroupedView } from './editable-grouped-view';
+import { ResultsView } from './results-view';
+import { AIStudioPromptDialog } from './ai-studio-prompt-dialog';
 import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
 
 interface DisplayStateProps {
@@ -17,7 +21,39 @@ interface DisplayStateProps {
   handleCollectMore: () => void;
   handleEndSession: () => void;
   handleExportResults: () => void;
+  handleReprocess: (customInstructions?: string) => Promise<void>;
+  handleUpdateTopics: (updatedTopics: import('@/lib/types').TopicEntry[]) => Promise<void>;
+  isProcessing: boolean;
   onCreateEvaluation: (source: string) => void;
+}
+
+function StatsRow({ players, submissions, topicCloud }: {
+  players: { id: string; name: string }[] | null;
+  submissions: ThoughtSubmission[] | null;
+  topicCloud: TopicCloudResult | null;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <Card>
+        <CardContent className="p-3 text-center">
+          <p className="text-2xl font-bold">{players?.length || 0}</p>
+          <p className="text-xs text-muted-foreground">Participants</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-3 text-center">
+          <p className="text-2xl font-bold">{submissions?.length || 0}</p>
+          <p className="text-xs text-muted-foreground">Submissions</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-3 text-center">
+          <p className="text-2xl font-bold">{topicCloud?.topics?.length || 0}</p>
+          <p className="text-xs text-muted-foreground">Groups</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 export function DisplayState({
@@ -28,63 +64,95 @@ export function DisplayState({
   handleCollectMore,
   handleEndSession,
   handleExportResults,
+  handleReprocess,
+  handleUpdateTopics,
+  isProcessing,
   onCreateEvaluation,
 }: DisplayStateProps) {
-  return (
-    <div className="space-y-6">
-      {/* Results Display */}
-      <Card className="border-2 border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-purple-500/5">
-        <CardContent className="p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Grouped Submissions</h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportResults}
-              className="h-8"
-              disabled={!topicCloud?.topics?.length}
-            >
-              <Download className="h-4 w-4 mr-1.5" />
-              Export
-            </Button>
-          </div>
-          {topicCloud?.topics && topicCloud.topics.length > 0 ? (
-            <ThoughtsGroupedView
+  const [isEditing, setIsEditing] = useState(false);
+
+  if (isEditing && topicCloud?.topics) {
+    return (
+      <div className="space-y-4">
+        <StatsRow players={players} submissions={submissions} topicCloud={topicCloud} />
+
+        <Card className="border-2 border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-purple-500/5">
+          <CardContent className="p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Edit Groups</h2>
+              <Badge variant="outline">Editing</Badge>
+            </div>
+            <EditableGroupedView
               topics={topicCloud.topics}
               submissions={submissions || []}
-              agentMatches={topicCloud.agentMatches}
+              anonymousMode={activity?.config.anonymousMode}
+              onSave={(updatedTopics) => {
+                handleUpdateTopics(updatedTopics);
+                setIsEditing(false);
+              }}
+              onCancel={() => setIsEditing(false)}
             />
-          ) : (
-            <p className="text-center text-muted-foreground py-12">
-              No groups extracted
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <MatureAgentsCard agents={topicCloud?.topMatureAgents} />
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-3xl font-bold">{players?.length || 0}</p>
-            <p className="text-muted-foreground">Participants</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-3xl font-bold">{submissions?.length || 0}</p>
-            <p className="text-muted-foreground">Submissions</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-3xl font-bold">{topicCloud?.topics?.length || 0}</p>
-            <p className="text-muted-foreground">Groups</p>
           </CardContent>
         </Card>
       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <StatsRow players={players} submissions={submissions} topicCloud={topicCloud} />
+
+      <ResultsView
+        activity={activity}
+        submissions={submissions}
+        topicCloud={topicCloud}
+        headerSlot={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(true)}
+              className="h-8"
+              disabled={!topicCloud?.topics?.length}
+            >
+              <Pencil className="h-4 w-4 mr-1.5" />
+              Edit
+            </Button>
+            <ReprocessDialog onReprocess={handleReprocess} isProcessing={isProcessing} />
+          </>
+        }
+      />
+
+      {/* Next Steps — consolidated CTAs */}
+      {topicCloud?.topics && topicCloud.topics.length > 0 && (
+        <Card className="border border-card-border">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Next Steps</p>
+            <Button
+              onClick={() => onCreateEvaluation('topics')}
+              variant="outline"
+              className="w-full justify-start"
+            >
+              <BarChart3 className="mr-2 h-4 w-4 text-orange-500" />
+              Create Evaluation from Topics
+            </Button>
+            <AIStudioPromptDialog
+              activity={activity}
+              submissions={submissions}
+              topicCloud={topicCloud}
+              playerCount={players?.length || 0}
+            />
+            <Button
+              onClick={handleExportResults}
+              variant="outline"
+              className="w-full justify-start"
+            >
+              <Download className="mr-2 h-4 w-4 text-muted-foreground" />
+              Export to Markdown
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Actions */}
       <div className="flex gap-4">
@@ -107,33 +175,18 @@ export function DisplayState({
           End Session
         </Button>
       </div>
-
-      {/* Create Evaluation from Topics */}
-      {topicCloud?.topics && topicCloud.topics.length > 0 && (
-        <Card className="border border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-red-500/5">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <BarChart3 className="h-6 w-6 text-orange-500" />
-                <div>
-                  <h3 className="font-semibold">Create Evaluation</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Turn these topics into a prioritization session
-                  </p>
-                </div>
-              </div>
-              <Button
-                onClick={() => onCreateEvaluation('topics')}
-                variant="outline"
-                className="border-orange-500/30 hover:bg-orange-500/10"
-              >
-                <BarChart3 className="mr-2 h-4 w-4" />
-                Create
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <div className="flex items-center justify-center gap-4">
+        {activity?.config.allowMultipleRounds && (
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <kbd className="px-1 py-0.5 bg-muted rounded font-mono">{'\u2423'}</kbd>
+            Collect More
+          </span>
+        )}
+        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <kbd className="px-1 py-0.5 bg-muted rounded font-mono">{'\u21B5'}</kbd>
+          End Session
+        </span>
+      </div>
     </div>
   );
 }
