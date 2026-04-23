@@ -90,21 +90,6 @@ export function useHostDashboard() {
     }
   }, [user, userLoading, router]);
 
-  // Redirect first-time users (no content at all) to the create page
-  useEffect(() => {
-    if (quizzesLoading || activitiesLoading || !user) return;
-
-    const quizzesLoaded = Array.isArray(quizzes);
-    const activitiesLoaded = Array.isArray(activities);
-
-    if (!quizzesLoaded || !activitiesLoaded) return;
-
-    const hasNoContent = quizzes.length === 0 && activities.length === 0 && (!presentations || presentations.length === 0);
-    if (hasNoContent) {
-      router.push('/host/create');
-    }
-  }, [quizzes, activities, quizzesLoading, activitiesLoading, user, router]);
-
   const handleHostGame = async (quizId: string) => {
     if (!user) return;
 
