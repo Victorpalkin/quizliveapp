@@ -158,7 +158,6 @@ export function useThoughtsPlayer(playerId: string) {
       );
 
       setSubmissionText('');
-      setSubmissionCount(prev => prev + 1);
     } catch (error) {
       console.error('Error submitting interest:', error);
     } finally {
