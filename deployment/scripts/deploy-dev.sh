@@ -90,8 +90,11 @@ firebase deploy --only firestore --config $FIREBASE_CONFIG --project $PROJECT_ID
 echo "Deploying Storage rules..."
 firebase deploy --only storage --config $FIREBASE_CONFIG --project $PROJECT_ID
 
-echo "Deploying Cloud Functions to $REGION..."
-firebase deploy --only functions --config $FIREBASE_CONFIG --project $PROJECT_ID
+echo "Deploying Cloud Functions (default codebase) to $REGION..."
+firebase deploy --only functions:default --config $FIREBASE_CONFIG --project $PROJECT_ID
+
+echo "Deploying Cloud Functions (AI codebase) to $REGION..."
+firebase deploy --only functions:ai --config $FIREBASE_CONFIG --project $PROJECT_ID
 
 echo "✅ Firebase services deployed successfully"
 

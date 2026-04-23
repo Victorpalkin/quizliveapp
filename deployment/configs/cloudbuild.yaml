@@ -98,7 +98,7 @@ steps:
     waitFor: ['deploy-firestore']
 
   # ============================================================================
-  # Step 7: Deploy Cloud Functions (all codebases: default + ai)
+  # Step 7a: Deploy Cloud Functions - default codebase
   # ============================================================================
   - name: 'node:22'
     entrypoint: 'bash'
@@ -106,16 +106,32 @@ steps:
       - '-c'
       - |
         npm install -g firebase-tools
-        echo "Deploying Cloud Functions to ${PROJECT_ID}..."
-        echo "  - Codebase 'default': submitAnswer, createHostAccount, computeQuestionResults, onGameUpdated, onGameDeleted, cleanupOldGames"
-        echo "  - Codebase 'ai': generateQuizWithAI, generateQuestionImage, evaluateSubmissions"
-        firebase deploy --only functions --config ${_FIREBASE_CONFIG} --project ${PROJECT_ID} --non-interactive --force
-        echo "✅ Cloud Functions deployed successfully (all codebases)"
-    id: 'deploy-functions'
+        echo "Deploying Cloud Functions (default codebase) to ${PROJECT_ID}..."
+        echo "  - submitAnswer, createHostAccount, computeQuestionResults, onGameUpdated, onGameDeleted, cleanupOldGames"
+        firebase deploy --only functions:default --config ${_FIREBASE_CONFIG} --project ${PROJECT_ID} --non-interactive --force
+        echo "✅ Default Cloud Functions deployed successfully"
+    id: 'deploy-functions-default'
     waitFor: ['deploy-storage']
 
   # ============================================================================
-  # Step 7b: Allow unauthenticated access for AI functions (required for CORS)
+  # Step 7b: Deploy Cloud Functions - AI codebase
+  # Deployed separately to prevent source_token cross-contamination between codebases
+  # ============================================================================
+  - name: 'node:22'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        npm install -g firebase-tools
+        echo "Deploying Cloud Functions (AI codebase) to ${PROJECT_ID}..."
+        echo "  - generateQuizWithAI, generateQuestionImage, evaluateSubmissions, extractTopics, generatePollWithAI, generatePresentationWithAI"
+        firebase deploy --only functions:ai --config ${_FIREBASE_CONFIG} --project ${PROJECT_ID} --non-interactive --force
+        echo "✅ AI Cloud Functions deployed successfully"
+    id: 'deploy-functions-ai'
+    waitFor: ['deploy-functions-default']
+
+  # ============================================================================
+  # Step 7c: Allow unauthenticated access for AI functions (required for CORS)
   # ============================================================================
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
@@ -149,7 +165,7 @@ steps:
 
         echo "✅ AI function invoker policies configured"
     id: 'configure-ai-functions-access'
-    waitFor: ['deploy-functions']
+    waitFor: ['deploy-functions-ai']
 
   # ============================================================================
   # Step 8: Load environment variables from Secret Manager
