@@ -25,10 +25,10 @@ import {
 } from '@/components/ui/resizable';
 
 const FONT_SIZES = [
-  { label: 'S', scale: 0.875 },
-  { label: 'M', scale: 1 },
-  { label: 'L', scale: 1.125 },
-  { label: 'XL', scale: 1.25 },
+  { label: 'S', scale: 1.125 },
+  { label: 'M', scale: 1.25 },
+  { label: 'L', scale: 1.5 },
+  { label: 'XL', scale: 2 },
 ] as const;
 
 interface HostAIStepElementProps {
