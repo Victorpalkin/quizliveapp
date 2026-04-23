@@ -6,6 +6,7 @@ import { BarChart3 } from 'lucide-react';
 import { PlayerLeaveButton } from '@/components/app/player-leave-button';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { useAnonymousAuth } from '@/hooks/use-anonymous-auth';
+import { AuthErrorScreen } from '@/components/app/auth-error-screen';
 import { usePlayerEvaluation } from './hooks/use-player-evaluation';
 import { JoiningScreen } from './components/joining-screen';
 import { CollectingScreen } from './components/collecting-screen';
@@ -15,7 +16,9 @@ import { ResultsScreen } from './components/results-screen';
 import { EndedScreen } from './components/ended-screen';
 
 export default function PlayerEvaluationPage() {
-  const { uid, loading: authLoading } = useAnonymousAuth();
+  const { uid, loading: authLoading, error: authError, retry: retryAuth } = useAnonymousAuth();
+
+  if (authError) return <AuthErrorScreen onRetry={retryAuth} />;
 
   if (authLoading || !uid) return <FullPageLoader />;
 

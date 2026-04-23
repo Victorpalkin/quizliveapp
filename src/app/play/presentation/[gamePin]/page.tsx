@@ -7,12 +7,15 @@ import { Button } from '@/components/ui/button';
 import { PresentationPlayer } from '@/components/app/presentation/player/PresentationPlayer';
 import { PlayerLeaveButton } from '@/components/app/player-leave-button';
 import { useAnonymousAuth } from '@/hooks/use-anonymous-auth';
+import { AuthErrorScreen } from '@/components/app/auth-error-screen';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { usePlayerStateMachine } from './hooks/use-player-state-machine';
 
 export default function PlayPresentationPage({ params }: { params: Promise<{ gamePin: string }> }) {
   const { gamePin } = use(params);
-  const { uid, loading: authLoading } = useAnonymousAuth();
+  const { uid, loading: authLoading, error: authError, retry: retryAuth } = useAnonymousAuth();
+
+  if (authError) return <AuthErrorScreen onRetry={retryAuth} />;
 
   if (authLoading || !uid) {
     return (
