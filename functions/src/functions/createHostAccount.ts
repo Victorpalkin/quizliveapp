@@ -46,11 +46,12 @@ export const createHostAccount = onCall(
     await enforceRateLimitFirestore(db, `create-account:${clientIp}`, 5, 3600);
 
     const data = request.data as CreateHostAccountRequest;
-    const { email, password, name, jobRole, team } = data;
+    const { email, password } = data;
 
-    // Validate and sanitize input
-    const { trimmedEmail, trimmedName, trimmedJobRole, trimmedTeam } =
-      validateHostAccountRequest(email, password, name, jobRole, team);
+    const { trimmedEmail } =
+      validateHostAccountRequest(email, password);
+
+    const displayName = trimmedEmail.split('@')[0];
 
     try {
       // Check if user already exists with this email
@@ -74,8 +75,8 @@ export const createHostAccount = onCall(
       const userRecord = await admin.auth().createUser({
         email: trimmedEmail,
         password: password,
-        displayName: trimmedName,
-        emailVerified: false, // Require email verification
+        displayName: displayName,
+        emailVerified: false,
       });
 
       console.log(`[REGISTRATION] Created Firebase Auth user: ${userRecord.uid} (${trimmedEmail})`);
@@ -90,9 +91,7 @@ export const createHostAccount = onCall(
       await userProfileRef.set({
         id: userRecord.uid,
         email: trimmedEmail,
-        name: trimmedName,
-        jobRole: trimmedJobRole,
-        team: trimmedTeam,
+        name: displayName,
         emailVerified: false,
         createdAt: now,
         updatedAt: now,

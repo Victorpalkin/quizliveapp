@@ -224,27 +224,19 @@ export function validateQuestionData(data: SubmitAnswerRequest): void {
  *
  * @param email - Email address
  * @param password - Password
- * @param name - Display name
- * @param jobRole - Job role
- * @param team - Team name
  * @throws HttpsError if validation fails
  */
 export function validateHostAccountRequest(
   email: string,
-  password: string,
-  name: string,
-  jobRole: string,
-  team: string
-): { trimmedEmail: string; trimmedName: string; trimmedJobRole: string; trimmedTeam: string } {
-  // Validate required fields
-  if (!email || !password || !name || !jobRole || !team) {
+  password: string
+): { trimmedEmail: string } {
+  if (!email || !password) {
     throw new HttpsError(
       'invalid-argument',
-      'Missing required fields: email, password, name, jobRole, team'
+      'Missing required fields: email, password'
     );
   }
 
-  // Trim and lowercase email for consistent validation
   const trimmedEmail = email.trim().toLowerCase();
 
   // Server-side domain validation - CRITICAL SECURITY CHECK
@@ -255,18 +247,5 @@ export function validateHostAccountRequest(
     );
   }
 
-  // Validate name is not empty after trimming
-  const trimmedName = name.trim();
-  if (trimmedName.length === 0) {
-    throw new HttpsError('invalid-argument', 'Name cannot be empty');
-  }
-
-  // Validate job role and team are not empty
-  const trimmedJobRole = jobRole.trim();
-  const trimmedTeam = team.trim();
-  if (trimmedJobRole.length === 0 || trimmedTeam.length === 0) {
-    throw new HttpsError('invalid-argument', 'Job role and team cannot be empty');
-  }
-
-  return { trimmedEmail, trimmedName, trimmedJobRole, trimmedTeam };
+  return { trimmedEmail };
 }
