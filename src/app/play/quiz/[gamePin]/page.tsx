@@ -7,6 +7,7 @@ import { doc, collection, query, where, DocumentReference, Query } from 'firebas
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { useAnonymousAuth } from '@/hooks/use-anonymous-auth';
+import { AuthErrorScreen } from '@/components/app/auth-error-screen';
 import type { Player, Game, GameLeaderboard, QuestionSubmission } from '@/lib/types';
 
 // Hooks
@@ -35,7 +36,9 @@ import { ReconnectingScreen } from './components/screens/reconnecting-screen';
 import { SessionInvalidScreen } from './components/screens/session-invalid-screen';
 
 export default function QuizPlayerPage() {
-  const { uid, loading: authLoading } = useAnonymousAuth();
+  const { uid, loading: authLoading, error: authError, retry: retryAuth } = useAnonymousAuth();
+
+  if (authError) return <AuthErrorScreen onRetry={retryAuth} />;
 
   if (authLoading || !uid) return (
     <div className="flex items-center justify-center min-h-screen bg-background">

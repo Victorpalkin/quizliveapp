@@ -15,10 +15,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore } from '@/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, ArrowLeft, Search, Loader2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Search, Loader2, RefreshCw } from 'lucide-react';
+import { logError } from '@/lib/error-logging';
 
 type ErrorType = 'not-found' | 'ended' | 'network' | null;
 
@@ -50,6 +51,8 @@ const errorMessages: Record<Exclude<ErrorType, null>, GameError> = {
   },
 };
 
+const LOOKUP_TIMEOUT_MS = 15_000;
+
 export default function PlayRouterPage() {
   const params = useParams();
   const gamePin = (params.gameId as string).toUpperCase();
@@ -57,14 +60,38 @@ export default function PlayRouterPage() {
   const firestore = useFirestore();
   const [error, setError] = useState<GameError | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    const routeToGame = async () => {
-      setIsLoading(true);
-      try {
-        const gamesRef = collection(firestore, 'games');
-        const q = query(gamesRef, where('gamePin', '==', gamePin));
-        const snapshot = await getDocs(q);
+    setIsLoading(true);
+    setError(null);
+    let settled = false;
+
+    const gamesRef = collection(firestore, 'games');
+    const q = query(gamesRef, where('gamePin', '==', gamePin));
+
+    const timeoutId = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        logError(new Error('Game lookup timed out'), {
+          context: 'PlayRouter:timeout',
+          additionalInfo: { gamePin },
+        });
+        setError(errorMessages['network']);
+        setIsLoading(false);
+      }
+    }, LOOKUP_TIMEOUT_MS);
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (snapshot.empty && snapshot.metadata.fromCache) {
+          return;
+        }
+
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
 
         if (snapshot.empty) {
           setError(errorMessages['not-found']);
@@ -74,7 +101,6 @@ export default function PlayRouterPage() {
 
         const gameData = snapshot.docs[0].data();
 
-        // Check if game has ended
         if (gameData.state === 'ended') {
           setError(errorMessages['ended']);
           setIsLoading(false);
@@ -83,7 +109,6 @@ export default function PlayRouterPage() {
 
         const activityType = gameData.activityType || 'quiz';
 
-        // Route to appropriate player page
         if (activityType === 'thoughts-gathering') {
           router.replace(`/play/thoughts-gathering/${gamePin}`);
         } else if (activityType === 'evaluation') {
@@ -93,18 +118,27 @@ export default function PlayRouterPage() {
         } else if (activityType === 'poll') {
           router.replace(`/play/poll/${gamePin}`);
         } else {
-          // Default to quiz for backward compatibility
           router.replace(`/play/quiz/${gamePin}`);
         }
-      } catch (err) {
-        console.error('Error routing to game:', err);
+      },
+      (err) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        logError(err instanceof Error ? err : new Error(String(err)), {
+          context: 'PlayRouter:onSnapshot',
+          additionalInfo: { gamePin },
+        });
         setError(errorMessages['network']);
         setIsLoading(false);
       }
-    };
+    );
 
-    routeToGame();
-  }, [firestore, gamePin, router]);
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribe();
+    };
+  }, [firestore, gamePin, router, retryCount]);
 
   if (error) {
     return (
@@ -118,23 +152,23 @@ export default function PlayRouterPage() {
             <p className="text-muted-foreground mb-2">{error.message}</p>
             <p className="text-sm text-muted-foreground mb-6">{error.suggestion}</p>
             <div className="space-y-3">
+              {(error.type === 'not-found' || error.type === 'network') && (
+                <Button
+                  onClick={() => setRetryCount((c) => c + 1)}
+                  size="lg"
+                  className="w-full"
+                >
+                  <RefreshCw className="mr-2 h-5 w-5" /> Try Again
+                </Button>
+              )}
               <Button
                 onClick={() => router.push('/join')}
+                variant={error.type === 'ended' ? 'default' : 'outline'}
                 size="lg"
                 className="w-full"
               >
                 <ArrowLeft className="mr-2 h-5 w-5" /> Enter Different PIN
               </Button>
-              {error.type === 'network' && (
-                <Button
-                  onClick={() => window.location.reload()}
-                  variant="outline"
-                  size="lg"
-                  className="w-full"
-                >
-                  Try Again
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>

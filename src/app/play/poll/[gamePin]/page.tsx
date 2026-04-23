@@ -7,6 +7,7 @@ import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Vote } from 'lucide-react';
 import { useAnonymousAuth } from '@/hooks/use-anonymous-auth';
+import { AuthErrorScreen } from '@/components/app/auth-error-screen';
 import { usePlayerPoll } from './hooks/use-player-poll';
 import { JoiningScreen } from './components/joining-screen';
 import { LobbyScreen } from './components/lobby-screen';
@@ -15,7 +16,9 @@ import { WaitingScreen } from './components/waiting-screen';
 import { EndedScreen } from './components/ended-screen';
 
 export default function PollPlayerPage() {
-  const { uid, loading: authLoading } = useAnonymousAuth();
+  const { uid, loading: authLoading, error: authError, retry: retryAuth } = useAnonymousAuth();
+
+  if (authError) return <AuthErrorScreen onRetry={retryAuth} />;
 
   if (authLoading || !uid) return (
     <div className="flex items-center justify-center min-h-screen bg-background">

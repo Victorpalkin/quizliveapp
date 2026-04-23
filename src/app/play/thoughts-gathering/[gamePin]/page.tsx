@@ -4,6 +4,7 @@ import { ThemeToggle } from '@/components/app/theme-toggle';
 import { PlayerLeaveButton } from '@/components/app/player-leave-button';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
 import { useAnonymousAuth } from '@/hooks/use-anonymous-auth';
+import { AuthErrorScreen } from '@/components/app/auth-error-screen';
 import { useThoughtsPlayer } from './hooks/use-thoughts-player';
 import { JoiningState } from './components/joining-state';
 import { SubmittingState } from './components/submitting-state';
@@ -12,7 +13,9 @@ import { ViewingState } from './components/viewing-state';
 import { PlayerEndedState } from './components/player-ended-state';
 
 export default function ThoughtsGatheringPlayerPage() {
-  const { uid, loading: authLoading } = useAnonymousAuth();
+  const { uid, loading: authLoading, error: authError, retry: retryAuth } = useAnonymousAuth();
+
+  if (authError) return <AuthErrorScreen onRetry={retryAuth} />;
 
   if (authLoading || !uid) return (
     <div className="flex items-center justify-center min-h-screen bg-background">
