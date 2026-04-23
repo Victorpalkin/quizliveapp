@@ -1,0 +1,9 @@
+# Dependencies (installed from package.json during deployment)
+node_modules/
+
+# Local environment files
+.env
+.env.local
+
+# Git
+.gitignore
