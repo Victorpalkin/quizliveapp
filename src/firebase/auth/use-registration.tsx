@@ -9,9 +9,6 @@ import { validateEmailDomain } from '@/lib/validation';
 interface RegistrationData {
   email: string;
   password: string;
-  name: string;
-  jobRole: string;
-  team: string;
 }
 
 interface CreateHostAccountResponse {

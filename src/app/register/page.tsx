@@ -17,10 +17,7 @@ import { validateEmailDomain, passwordsMatch } from '@/lib/validation';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
-    jobRole: '',
-    team: '',
     password: '',
     confirmPassword: '',
   });
@@ -74,13 +71,9 @@ export default function RegisterPage() {
       return;
     }
 
-    // Call registration function
     const result = await register({
       email: formData.email.trim(),
       password: formData.password,
-      name: formData.name.trim(),
-      jobRole: formData.jobRole.trim(),
-      team: formData.team.trim(),
     });
 
     if (result.success) {
@@ -135,19 +128,6 @@ export default function RegisterPage() {
                 </AlertDescription>
               </Alert>
 
-              {/* Name */}
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="John Doe"
-                  value={formData.name}
-                  onChange={handleInputChange('name')}
-                  required
-                />
-              </div>
-
               {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email">Email (@google.com)</Label>
@@ -164,32 +144,6 @@ export default function RegisterPage() {
                 {emailError && (
                   <p className="text-sm text-red-600">{emailError}</p>
                 )}
-              </div>
-
-              {/* Job Role */}
-              <div className="space-y-2">
-                <Label htmlFor="jobRole">Job Role</Label>
-                <Input
-                  id="jobRole"
-                  type="text"
-                  placeholder="Software Engineer"
-                  value={formData.jobRole}
-                  onChange={handleInputChange('jobRole')}
-                  required
-                />
-              </div>
-
-              {/* Team */}
-              <div className="space-y-2">
-                <Label htmlFor="team">Team</Label>
-                <Input
-                  id="team"
-                  type="text"
-                  placeholder="Engineering"
-                  value={formData.team}
-                  onChange={handleInputChange('team')}
-                  required
-                />
               </div>
 
               {/* Password */}

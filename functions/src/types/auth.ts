@@ -4,9 +4,6 @@
 export interface CreateHostAccountRequest {
   email: string;
   password: string;
-  name: string;
-  jobRole: string;
-  team: string;
 }
 
 /**
