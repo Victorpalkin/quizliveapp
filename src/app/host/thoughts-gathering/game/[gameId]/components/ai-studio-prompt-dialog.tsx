@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,20 +12,22 @@ import { Sparkles, Download, Copy, Check, ChevronDown, ChevronRight } from 'luci
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { generateAIStudioPrompt, type AIStudioPromptOptions } from '@/lib/generate-ai-studio-prompt';
 import { downloadMarkdown } from '@/lib/export-thoughts';
-import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
+import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicEntry } from '@/lib/types';
 
 interface AIStudioPromptDialogProps {
-  activity: ThoughtsGatheringActivity | null;
-  submissions: ThoughtSubmission[] | null;
-  topicCloud: TopicCloudResult | null;
+  topic: TopicEntry;
+  activity: ThoughtsGatheringActivity;
+  submissions: ThoughtSubmission[];
   playerCount: number;
+  children: React.ReactNode;
 }
 
 export function AIStudioPromptDialog({
+  topic,
   activity,
   submissions,
-  topicCloud,
   playerCount,
+  children,
 }: AIStudioPromptDialogProps) {
   const [appType, setAppType] = useState<string>('web');
   const [techStack, setTechStack] = useState('');
@@ -32,9 +35,12 @@ export function AIStudioPromptDialog({
   const [configOpen, setConfigOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const generatedPrompt = useMemo(() => {
-    if (!topicCloud?.topics || !submissions || !activity) return '';
+  const relevantSubmissions = useMemo(() => {
+    const idSet = new Set(topic.submissionIds);
+    return submissions.filter(s => idSet.has(s.id));
+  }, [topic.submissionIds, submissions]);
 
+  const generatedPrompt = useMemo(() => {
     const options: AIStudioPromptOptions = {
       appType: appType as AIStudioPromptOptions['appType'],
       techStack: techStack.trim() || undefined,
@@ -45,12 +51,12 @@ export function AIStudioPromptDialog({
     return generateAIStudioPrompt(
       activity.title,
       activity.config.prompt,
-      topicCloud.topics,
-      submissions,
+      [topic],
+      relevantSubmissions,
       playerCount,
       options
     );
-  }, [topicCloud?.topics, submissions, activity, playerCount, appType, techStack, additionalContext]);
+  }, [topic, relevantSubmissions, activity, playerCount, appType, techStack, additionalContext]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedPrompt);
@@ -59,36 +65,27 @@ export function AIStudioPromptDialog({
   };
 
   const handleDownload = () => {
-    const sanitizedTitle = (activity?.title || 'thoughts')
+    const sanitizedTopic = topic.topic
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
     const date = new Date().toISOString().split('T')[0];
-    downloadMarkdown(generatedPrompt, `${sanitizedTitle}-ai-studio-prompt-${date}.txt`);
+    downloadMarkdown(generatedPrompt, `${sanitizedTopic}-ai-studio-prompt-${date}.txt`);
   };
-
-  const isDisabled = !topicCloud?.topics?.length || !submissions?.length;
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          className="w-full justify-start border-teal-500/30 hover:bg-teal-500/10"
-          disabled={isDisabled}
-        >
-          <Sparkles className="mr-2 h-4 w-4 text-teal-500" />
-          Generate AI Studio Prompt
-        </Button>
+        {children}
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-teal-500" />
-            AI Studio Prompt Generator
+            AI Studio Prompt: {topic.topic}
           </DialogTitle>
           <DialogDescription>
-            Generate a prompt to paste into Google AI Studio for building a demo app based on collected requirements
+            Generate a prompt for this topic group ({topic.count} {topic.count === 1 ? 'submission' : 'submissions'})
           </DialogDescription>
         </DialogHeader>
 

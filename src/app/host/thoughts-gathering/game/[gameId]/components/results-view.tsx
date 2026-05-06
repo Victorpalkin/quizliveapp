@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ThoughtsGroupedView } from '@/components/app/thoughts-grouped-view';
 import { MatureAgentsCard } from './mature-agents-card';
 import { SessionSummaryCard } from './session-summary-card';
-import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
+import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult, TopicEntry } from '@/lib/types';
 
 interface ResultsViewProps {
   activity: ThoughtsGatheringActivity | null;
@@ -13,6 +13,7 @@ interface ResultsViewProps {
   headerSlot?: React.ReactNode;
   headerTitle?: string;
   borderColor?: string;
+  renderGroupActions?: (topic: TopicEntry) => React.ReactNode;
 }
 
 export function ResultsView({
@@ -22,6 +23,7 @@ export function ResultsView({
   headerSlot,
   headerTitle = 'Grouped Submissions',
   borderColor = 'border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-purple-500/5',
+  renderGroupActions,
 }: ResultsViewProps) {
   return (
     <>
@@ -45,6 +47,7 @@ export function ResultsView({
               submissions={submissions || []}
               agentMatches={topicCloud.agentMatches}
               anonymousMode={activity?.config.anonymousMode}
+              renderGroupActions={renderGroupActions}
             />
           ) : (
             <p className="text-center text-muted-foreground py-12">

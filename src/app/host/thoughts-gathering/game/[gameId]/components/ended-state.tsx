@@ -1,10 +1,12 @@
 'use client';
 
+import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Home, MessageSquare, BarChart3, Download } from 'lucide-react';
+import { Home, MessageSquare, BarChart3, Download, Sparkles } from 'lucide-react';
 import { ResultsView } from './results-view';
-import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
+import { AIStudioPromptDialog } from './ai-studio-prompt-dialog';
+import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult, TopicEntry } from '@/lib/types';
 
 interface EndedStateProps {
   activity: ThoughtsGatheringActivity | null;
@@ -25,12 +27,34 @@ export function EndedState({
   handleExportResults,
   onCreateEvaluation,
 }: EndedStateProps) {
+  const renderGroupActions = useCallback((topic: TopicEntry) => {
+    if (!activity || !submissions) return null;
+    return (
+      <AIStudioPromptDialog
+        topic={topic}
+        activity={activity}
+        submissions={submissions}
+        playerCount={players?.length || 0}
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-teal-500/30 hover:bg-teal-500/10"
+        >
+          <Sparkles className="mr-2 h-4 w-4 text-teal-500" />
+          Generate AI Studio Prompt
+        </Button>
+      </AIStudioPromptDialog>
+    );
+  }, [activity, submissions, players]);
+
   return (
     <div className="space-y-4">
       <ResultsView
         activity={activity}
         submissions={submissions}
         topicCloud={topicCloud}
+        renderGroupActions={renderGroupActions}
         headerTitle="Session Complete!"
         borderColor="border-green-500/20 bg-gradient-to-br from-green-500/5 to-blue-500/5"
       />

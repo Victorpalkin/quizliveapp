@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Pencil, Download, BarChart3 } from 'lucide-react';
+import { RefreshCw, Pencil, Download, BarChart3, Sparkles } from 'lucide-react';
 import { ReprocessDialog } from './reprocess-dialog';
 import { EditableGroupedView } from './editable-grouped-view';
 import { ResultsView } from './results-view';
 import { AIStudioPromptDialog } from './ai-studio-prompt-dialog';
-import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult } from '@/lib/types';
+import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult, TopicEntry } from '@/lib/types';
 
 interface DisplayStateProps {
   gameId: string;
@@ -71,6 +71,27 @@ export function DisplayState({
 }: DisplayStateProps) {
   const [isEditing, setIsEditing] = useState(false);
 
+  const renderGroupActions = useCallback((topic: TopicEntry) => {
+    if (!activity || !submissions) return null;
+    return (
+      <AIStudioPromptDialog
+        topic={topic}
+        activity={activity}
+        submissions={submissions}
+        playerCount={players?.length || 0}
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-teal-500/30 hover:bg-teal-500/10"
+        >
+          <Sparkles className="mr-2 h-4 w-4 text-teal-500" />
+          Generate AI Studio Prompt
+        </Button>
+      </AIStudioPromptDialog>
+    );
+  }, [activity, submissions, players]);
+
   if (isEditing && topicCloud?.topics) {
     return (
       <div className="space-y-4">
@@ -106,6 +127,7 @@ export function DisplayState({
         activity={activity}
         submissions={submissions}
         topicCloud={topicCloud}
+        renderGroupActions={renderGroupActions}
         headerSlot={
           <>
             <Button
@@ -136,12 +158,6 @@ export function DisplayState({
               <BarChart3 className="mr-2 h-4 w-4 text-orange-500" />
               Create Evaluation from Topics
             </Button>
-            <AIStudioPromptDialog
-              activity={activity}
-              submissions={submissions}
-              topicCloud={topicCloud}
-              playerCount={players?.length || 0}
-            />
             <Button
               onClick={handleExportResults}
               variant="outline"
