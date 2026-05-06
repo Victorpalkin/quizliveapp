@@ -56,6 +56,7 @@ interface SlideCanvasProps {
   onZoomChange: (zoom: number) => void;
   onStartDrag: () => void;
   onEndDrag: () => void;
+  readOnly?: boolean;
 }
 
 const RESULTS_TYPES = ['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results', 'agentic-designer-results', 'ai-step-results'];
@@ -147,6 +148,7 @@ export function SlideCanvas({
   onZoomChange,
   onStartDrag,
   onEndDrag,
+  readOnly,
 }: SlideCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -192,6 +194,7 @@ export function SlideCanvas({
   const sortedElements = [...slide.elements].sort((a, b) => a.zIndex - b.zIndex);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
+    if (readOnly) return;
     if (e.target === canvasRef.current || (e.target as HTMLElement).dataset.canvas) {
       onSelectElement(null);
     }
@@ -265,6 +268,7 @@ export function SlideCanvas({
   };
 
   const handleMouseDown = (e: React.MouseEvent, element: SlideElement) => {
+    if (readOnly) return;
     if (element.locked) return;
     if (editingElementId === element.id) return;
     e.stopPropagation();
@@ -365,6 +369,7 @@ export function SlideCanvas({
 
   // Context menu
   const handleContextMenu = (e: React.MouseEvent, element: SlideElement) => {
+    if (readOnly) { e.preventDefault(); return; }
     e.preventDefault();
     e.stopPropagation();
     onSelectElement(element.id);
@@ -535,7 +540,7 @@ export function SlideCanvas({
                 zIndex: element.zIndex,
                 opacity: element.opacity ?? 1,
                 transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
-                cursor: element.locked ? 'default' : isDragging ? 'grabbing' : 'grab',
+                cursor: readOnly ? 'default' : element.locked ? 'default' : isDragging ? 'grabbing' : 'grab',
               }}
               onMouseDown={(e) => handleMouseDown(e, element)}
               onContextMenu={(e) => handleContextMenu(e, element)}

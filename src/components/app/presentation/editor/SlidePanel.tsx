@@ -45,6 +45,7 @@ interface SlidePanelProps {
   onDuplicateSlide: (index: number) => void;
   onDeleteSlide: (index: number) => void;
   onReorderSlides: (fromIndex: number, toIndex: number) => void;
+  readOnly?: boolean;
 }
 
 function SortableSlideItem({
@@ -143,6 +144,7 @@ export function SlidePanel({
   onDuplicateSlide,
   onDeleteSlide,
   onReorderSlides,
+  readOnly,
 }: SlidePanelProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(() => {
@@ -210,54 +212,64 @@ export function SlidePanel({
           {expanded ? <PanelLeftClose className="h-3 w-3" /> : <PanelLeftOpen className="h-3 w-3" />}
         </Button>
       </div>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onDragCancel={handleDragCancel}
-      >
-        <SortableContext
-          items={slides.map((s) => s.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {slides.map((slide, index) => (
-            <SortableSlideItem
-              key={slide.id}
-              slide={slide}
-              index={index}
-              isActive={index === currentSlideIndex}
-              onSelectSlide={onSelectSlide}
-              onAddSlide={onAddSlide}
-              onDuplicateSlide={onDuplicateSlide}
-              onDeleteSlide={onDeleteSlide}
-              totalSlides={slides.length}
-            />
-          ))}
-        </SortableContext>
+      {readOnly ? (
+        slides.map((slide, index) => (
+          <div key={slide.id} className="cursor-pointer" onClick={() => onSelectSlide(index)}>
+            <SlideThumbnail slide={slide} index={index} isActive={index === currentSlideIndex} />
+          </div>
+        ))
+      ) : (
+        <>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            <SortableContext
+              items={slides.map((s) => s.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {slides.map((slide, index) => (
+                <SortableSlideItem
+                  key={slide.id}
+                  slide={slide}
+                  index={index}
+                  isActive={index === currentSlideIndex}
+                  onSelectSlide={onSelectSlide}
+                  onAddSlide={onAddSlide}
+                  onDuplicateSlide={onDuplicateSlide}
+                  onDeleteSlide={onDeleteSlide}
+                  totalSlides={slides.length}
+                />
+              ))}
+            </SortableContext>
 
-        <DragOverlay>
-          {activeSlide && (
-            <div className="opacity-90 shadow-xl rounded-md">
-              <SlideThumbnail
-                slide={activeSlide}
-                index={activeSlideIndex}
-                isActive={false}
-              />
-            </div>
-          )}
-        </DragOverlay>
-      </DndContext>
+            <DragOverlay>
+              {activeSlide && (
+                <div className="opacity-90 shadow-xl rounded-md">
+                  <SlideThumbnail
+                    slide={activeSlide}
+                    index={activeSlideIndex}
+                    isActive={false}
+                  />
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
 
-      {/* Add slide button */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-full aspect-video flex items-center justify-center border-dashed hover:border-primary hover:bg-primary/5 transition-colors"
-        onClick={() => onAddSlide()}
-      >
-        <Plus className="h-4 w-4" />
-      </Button>
+          {/* Add slide button */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full aspect-video flex items-center justify-center border-dashed hover:border-primary hover:bg-primary/5 transition-colors"
+            onClick={() => onAddSlide()}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </>
+      )}
     </div>
   );
 }

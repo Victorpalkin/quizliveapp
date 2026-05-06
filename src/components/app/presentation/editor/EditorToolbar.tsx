@@ -58,6 +58,7 @@ interface EditorToolbarProps {
   onBack: () => void;
   description?: string;
   onDescriptionChange?: (description: string) => void;
+  readOnly?: boolean;
 }
 
 export function EditorToolbar({
@@ -82,6 +83,7 @@ export function EditorToolbar({
   onBack,
   description,
   onDescriptionChange,
+  readOnly,
 }: EditorToolbarProps) {
   const [isLaunching, setIsLaunching] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
@@ -94,6 +96,21 @@ export function EditorToolbar({
       onBack();
     }
   };
+
+  if (readOnly) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 backdrop-blur-md bg-background/90 border-b border-border/50 overflow-x-auto">
+        <Button variant="ghost" size="icon" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm font-medium truncate max-w-[300px]">{title}</span>
+        <span className="px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground rounded-full">
+          View Only
+        </span>
+        <div className="flex-1" />
+      </div>
+    );
+  }
 
   return (
     <>
