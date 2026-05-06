@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2, Eye, BarChart3, Gamepad2, RotateCcw } from 'lucide-react';
 import { ACTIVITY_CONFIG } from '@/lib/activity-config';
+import { formatRelativeTime } from '@/lib/utils/format-date';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +20,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { Game, ActivityType } from '@/lib/types';
 
-// Completed-game-specific config (extends shared ACTIVITY_CONFIG)
 const COMPLETED_CONFIG: Record<string, {
   reopenPath: ((gameId: string) => string) | null;
   resultsPath: (gameId: string) => string;
@@ -71,24 +71,23 @@ export function CompletedActivityCard({ game, title, onDelete, onHostAgain }: Co
   const resultsPath = completedConfig.resultsPath(game.id);
   const hostAgainPath = completedConfig.hostAgainPath?.(game);
 
-  // Determine if we should show "Host Again" button
   const showHostAgain = activityType === 'quiz' && onHostAgain && game.quizId;
   const showHostAgainLink = hostAgainPath != null;
-
-  // Determine if we should show "Reopen Session" button
   const showReopen = reopenPath !== null;
+
+  const dateDisplay = formatRelativeTime(game.createdAt);
 
   return (
     <Card variant="interactive" className="flex flex-col">
       <CardHeader className="p-4 pb-3">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Icon className={`h-3 w-3 ${sharedConfig.badgeClass.split(' ')[1]}`} />
-            <CardTitle className="text-lg font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-2 min-w-0">
+            <Icon className={`h-4 w-4 flex-shrink-0 ${sharedConfig.color}`} />
+            <CardTitle className="text-lg font-semibold truncate">{title}</CardTitle>
           </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+              <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
@@ -96,7 +95,7 @@ export function CompletedActivityCard({ game, title, onDelete, onHostAgain }: Co
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-2xl font-semibold">Delete this record?</AlertDialogTitle>
                 <AlertDialogDescription className="text-base">
-                  This will permanently delete the record for &apos;{game.gamePin}&apos;.
+                  This will permanently delete the session record for &ldquo;{title}&rdquo;.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -108,8 +107,18 @@ export function CompletedActivityCard({ game, title, onDelete, onHostAgain }: Co
             </AlertDialogContent>
           </AlertDialog>
         </div>
-        <CardDescription className="text-sm">
-          {title}
+        <CardDescription className="text-sm flex items-center gap-1.5 flex-wrap">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${sharedConfig.badgeClass}`}>
+            {sharedConfig.label}
+          </span>
+          {dateDisplay && (
+            <>
+              <span className="text-muted-foreground">·</span>
+              <span>{dateDisplay}</span>
+            </>
+          )}
+          <span className="text-muted-foreground">·</span>
+          <span className="font-mono text-xs text-muted-foreground">{game.gamePin}</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-2 p-4 pt-0">

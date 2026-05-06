@@ -12,6 +12,7 @@ interface ThoughtsGroupedViewProps {
   agentMatches?: TopicAgentMatch[];
   anonymousMode?: boolean;
   className?: string;
+  renderGroupActions?: (topic: TopicEntry) => React.ReactNode;
 }
 
 // Color palette for group headers (matching word cloud colors)
@@ -26,7 +27,7 @@ const COLORS = [
   { bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', text: 'text-indigo-600 dark:text-indigo-400' },
 ];
 
-export function ThoughtsGroupedView({ topics, submissions, agentMatches, anonymousMode, className = '' }: ThoughtsGroupedViewProps) {
+export function ThoughtsGroupedView({ topics, submissions, agentMatches, anonymousMode, className = '', renderGroupActions }: ThoughtsGroupedViewProps) {
   // Track which groups are expanded
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -212,6 +213,13 @@ export function ThoughtsGroupedView({ topics, submissions, agentMatches, anonymo
                               </div>
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    )}
+                    {renderGroupActions && (
+                      <div className="pt-3 border-t border-border/30 mt-3">
+                        <div className="flex items-center gap-2">
+                          {renderGroupActions(topic)}
                         </div>
                       </div>
                     )}
