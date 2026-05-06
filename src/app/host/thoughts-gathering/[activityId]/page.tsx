@@ -52,6 +52,7 @@ export default function ThoughtsGatheringDetailPage() {
       const gameData = {
         activityType: 'thoughts-gathering' as const,
         activityId: activityId,
+        title: activity.title,
         quizId: '',
         hostId: user.uid,
         state: 'collecting' as const,

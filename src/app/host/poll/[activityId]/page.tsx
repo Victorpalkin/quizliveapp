@@ -104,6 +104,7 @@ export default function PollDetailPage() {
       const gameData = {
         activityType: 'poll' as const,
         activityId: poll.id,
+        title: poll.title,
         hostId: user.uid,
         state: 'lobby' as const,
         currentQuestionIndex: 0,

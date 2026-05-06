@@ -233,6 +233,7 @@ export function SharedContent() {
     try {
       const gameDoc = await addDoc(collection(firestore, 'games'), {
         quizId: share.quizId,
+        title: share.quizTitle,
         hostId: user.uid,
         state: 'lobby',
         currentQuestionIndex: 0,
@@ -261,6 +262,7 @@ export function SharedContent() {
       const gameDoc = await addDoc(collection(firestore, 'games'), {
         activityId: share.pollId,
         activityType: 'poll',
+        title: share.pollTitle,
         hostId: user.uid,
         state: 'lobby',
         gamePin: nanoid(8).toUpperCase(),
@@ -303,7 +305,7 @@ export function SharedContent() {
     }
     setHosting(share.id);
     try {
-      const gameId = await createPresentationGame(share.presentationId, user.uid, share.presentation.settings);
+      const gameId = await createPresentationGame(share.presentationId, user.uid, share.presentation.settings, share.presentationTitle);
       router.push(`/host/presentation/present/${gameId}`);
     } catch {
       toast({ variant: 'destructive', title: 'Failed to launch presentation' });

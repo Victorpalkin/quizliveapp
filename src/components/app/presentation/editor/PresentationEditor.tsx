@@ -115,7 +115,7 @@ export function PresentationEditor({ presentation, readOnly }: PresentationEdito
       if (editor.isDirty) {
         await handleSave();
       }
-      const gameId = await createPresentationGame(presentation.id, user.uid, editor.settings);
+      const gameId = await createPresentationGame(presentation.id, user.uid, editor.settings, editor.title);
       router.push(`/host/presentation/present/${gameId}`);
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not start presentation.' });
