@@ -114,7 +114,7 @@ export default function HostDashboardPage() {
       <Header>
         <TabsList className="h-auto bg-transparent p-0 gap-1">
           <TabsTrigger value="templates" className="rounded-none border-b-2 border-transparent px-3 py-3.5 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground transition-colors">
-            Activity Templates
+            Session Templates
           </TabsTrigger>
           <TabsTrigger value="live" className="rounded-none border-b-2 border-transparent px-3 py-3.5 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground transition-colors">
             Live Sessions
@@ -142,7 +142,7 @@ export default function HostDashboardPage() {
         {/* Host Reconnection Banner */}
         <HostReconnectBanner />
 
-          {/* Activity Templates Tab */}
+          {/* Session Templates Tab */}
           <TabsContent value="templates">
             <ContentList
               quizzes={quizzes || null}
@@ -222,7 +222,7 @@ export default function HostDashboardPage() {
                 </div>
               ) : liveCount === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <p className="text-muted-foreground">No live sessions right now. Start one from your Activity Templates.</p>
+                  <p className="text-muted-foreground">No live sessions right now. Start one from your Session Templates.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
