@@ -239,7 +239,7 @@ export function ContentList({
     <div className="mb-12">
       <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-semibold">My Content</h1>
+          <h1 className="text-3xl font-semibold">Activity Templates</h1>
           {!quizzesLoading && !activitiesLoading && totalCount > 0 && (
             <span className="px-3 py-1 text-sm font-medium bg-muted text-muted-foreground rounded-full">
               {totalCount}

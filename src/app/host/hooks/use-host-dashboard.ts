@@ -278,6 +278,19 @@ export function useHostDashboard() {
   const activeGames = games?.filter(g => g.state !== 'ended');
   const completedGames = games?.filter(g => g.state === 'ended');
 
+  const handleDeleteAllActiveGames = async () => {
+    if (!firestore || !activeGames?.length) return;
+    const results = await Promise.allSettled(
+      activeGames.map(game => deleteDoc(doc(firestore, 'games', game.id)))
+    );
+    const failed = results.filter(r => r.status === 'rejected').length;
+    if (failed > 0) {
+      toast({ variant: 'destructive', title: 'Error', description: `Failed to close ${failed} session(s).` });
+    } else {
+      toast({ title: 'All Sessions Closed', description: `${activeGames.length} session(s) have been ended.` });
+    }
+  };
+
   return {
     // Loading
     userLoading,
@@ -303,6 +316,7 @@ export function useHostDashboard() {
     handleDeleteActivity,
     handleHostPresentation,
     handleDeletePresentation,
+    handleDeleteAllActiveGames,
     getGameTitle,
   };
 }

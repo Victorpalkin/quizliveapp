@@ -11,12 +11,15 @@ import { ContentShareManager } from '@/components/app/content-share-manager';
 import { QuizPreview } from '@/components/app/quiz-preview';
 import { PollPreview } from '@/components/app/poll-preview';
 import { ImportDialog } from '@/components/app/import-dialog';
-import { Loader2, XCircle, LogIn, ChevronDown, Upload } from 'lucide-react';
+import { Loader2, XCircle, LogIn, Upload } from 'lucide-react';
 import { CompletedActivityCard } from './components/completed-activity-card';
 import { ContentList } from './components/content-list';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useHostDashboard } from './hooks/use-host-dashboard';
-import type { Quiz, Game, PollActivity } from '@/lib/types';
+import { ACTIVITY_CONFIG } from '@/lib/activity-config';
+import { formatRelativeTime } from '@/lib/utils/format-date';
+import type { Quiz, Game, PollActivity, ActivityType } from '@/lib/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -78,6 +81,7 @@ export default function HostDashboardPage() {
     handleHostGame,
     handleDeleteQuiz,
     handleDeleteGame,
+    handleDeleteAllActiveGames,
     handleOpenGame,
     handleHostActivity,
     handleDeleteActivity,
@@ -102,6 +106,9 @@ export default function HostDashboardPage() {
     return <FullPageLoader />;
   }
 
+  const liveCount = activeGames?.length || 0;
+  const historyCount = completedGames?.length || 0;
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
@@ -110,136 +117,237 @@ export default function HostDashboardPage() {
         {/* Host Reconnection Banner */}
         <HostReconnectBanner />
 
-        {/* Active Games Section */}
-        {activeGames && activeGames.length > 0 && (
+        <Tabs defaultValue="templates" className="w-full">
+          <TabsList className="w-full justify-start mb-8 h-auto flex-wrap gap-1 bg-muted p-1.5 rounded-xl">
+            <TabsTrigger value="templates" className="rounded-lg px-4 py-2 text-sm font-medium">
+              Activity Templates
+            </TabsTrigger>
+            <TabsTrigger value="live" className="rounded-lg px-4 py-2 text-sm font-medium">
+              Live Sessions
+              {liveCount > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-green-500/20 text-green-600 dark:text-green-400 rounded-full">
+                  {liveCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="history" className="rounded-lg px-4 py-2 text-sm font-medium">
+              Session History
+              {historyCount > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-muted-foreground/20 text-muted-foreground rounded-full">
+                  {historyCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="shared" className="rounded-lg px-4 py-2 text-sm font-medium">
+              Shared With Me
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Activity Templates Tab */}
+          <TabsContent value="templates">
+            <ContentList
+              quizzes={quizzes || null}
+              activities={activities}
+              presentations={presentations || null}
+              quizzesLoading={quizzesLoading}
+              activitiesLoading={activitiesLoading}
+              onHostGame={handleHostGame}
+              onPreviewQuiz={setPreviewQuiz}
+              onShareQuiz={setShareDialogQuiz}
+              onDeleteQuiz={handleDeleteQuiz}
+              onHostActivity={handleHostActivity}
+              onPreviewPoll={setPreviewPoll}
+              onSharePoll={setShareDialogPoll}
+              onDeleteActivity={handleDeleteActivity}
+              onHostPresentation={handleHostPresentation}
+              onSharePresentation={setShareDialogPresentation}
+              onDeletePresentation={handleDeletePresentation}
+              onImport={() => setImportDialogOpen(true)}
+            />
+          </TabsContent>
+
+          {/* Live Sessions Tab */}
+          <TabsContent value="live">
             <div className="mb-12">
-                <div className="flex items-center gap-3 mb-6">
-                    <h2 className="text-3xl font-semibold">Active Games</h2>
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-3xl font-semibold">Live Sessions</h2>
+                  {liveCount > 0 && (
                     <span className="px-2.5 py-0.5 text-sm font-medium bg-green-500/20 text-green-600 dark:text-green-400 rounded-full">
-                        {activeGames.length} live
+                      {liveCount} live
                     </span>
+                  )}
                 </div>
+                {liveCount > 1 && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Close All Sessions
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="rounded-2xl shadow-xl">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl font-semibold">Close all sessions?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-base">
+                          This will end all {liveCount} active sessions. Players will be disconnected and this cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl">Back</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDeleteAllActiveGames}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+                        >
+                          Yes, Close All
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+
+              {gamesLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {gamesLoading ? (
-                        <Card><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
-                    ) : (
-                        activeGames.map(game => (
-                            <Card key={game.id} variant="interactive" className="flex flex-col">
-                                <CardHeader className="p-6">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <CardTitle className="text-2xl font-semibold font-mono tracking-widest">{game.gamePin}</CardTitle>
-                                        <GameStateBadge state={game.state} />
-                                    </div>
-                                    <CardDescription className="text-base">
-                                        {quizzes?.find(q => q.id === game.quizId)?.title || '...'}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
-                                    <Button
-                                        variant="gradient"
-                                        size="xl"
-                                        className="w-full"
-                                        onClick={() => handleOpenGame(game)}
-                                    >
-                                        <LogIn className="mr-2 h-4 w-4" /> Open Game
-                                    </Button>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button size="xl" className="w-full" variant="outline">
-                                                <XCircle className="mr-2 h-4 w-4" /> Cancel Game
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent className="rounded-2xl shadow-xl">
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle className="text-2xl font-semibold">Are you sure?</AlertDialogTitle>
-                                                <AlertDialogDescription className="text-base">
-                                                    This will cancel the game for all players and cannot be undone.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel className="rounded-xl">Back</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
-                                                    Yes, Cancel Game
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </CardContent>
-                            </Card>
-                        ))
-                    )}
+                  {[...Array(3)].map((_, i) => (
+                    <Card key={i}>
+                      <CardHeader className="p-6">
+                        <div className="h-6 bg-muted rounded-lg w-3/4 animate-pulse"></div>
+                        <div className="h-4 bg-muted rounded-lg w-1/2 mt-2 animate-pulse"></div>
+                      </CardHeader>
+                      <CardContent className="p-6 pt-0">
+                        <div className="h-10 bg-muted rounded-lg w-full animate-pulse"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-            </div>
-        )}
-
-        {/* My Content Section */}
-        <ContentList
-          quizzes={quizzes || null}
-          activities={activities}
-          presentations={presentations || null}
-          quizzesLoading={quizzesLoading}
-          activitiesLoading={activitiesLoading}
-          onHostGame={handleHostGame}
-          onPreviewQuiz={setPreviewQuiz}
-          onShareQuiz={setShareDialogQuiz}
-          onDeleteQuiz={handleDeleteQuiz}
-          onHostActivity={handleHostActivity}
-          onPreviewPoll={setPreviewPoll}
-          onSharePoll={setShareDialogPoll}
-          onDeleteActivity={handleDeleteActivity}
-          onHostPresentation={handleHostPresentation}
-          onSharePresentation={setShareDialogPresentation}
-          onDeletePresentation={handleDeletePresentation}
-          onImport={() => setImportDialogOpen(true)}
-        />
-
-        {/* Quick-jump to completed activities */}
-        {completedGames && completedGames.length > 0 && (
-          <div className="flex justify-end mb-4">
-            <a
-              href="#completed-activities"
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronDown className="h-4 w-4" />
-              Completed Activities
-              <span className="px-1.5 py-0.5 text-xs font-medium bg-muted rounded-full">
-                {completedGames.length}
-              </span>
-            </a>
-          </div>
-        )}
-
-        {/* Shared Content Section */}
-        <SharedContent />
-
-        {/* Completed Activities Section */}
-        {completedGames && completedGames.length > 0 && (
-            <div id="completed-activities" className="mb-12 scroll-mt-8">
-                <div className="border-t border-border pt-8 mb-6">
-                    <div className="flex items-center gap-3">
-                        <h2 className="text-3xl font-semibold">Completed Activities</h2>
-                        <span className="px-2.5 py-0.5 text-sm font-medium bg-muted text-muted-foreground rounded-full">
-                            {completedGames.length}
-                        </span>
-                    </div>
+              ) : liveCount === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <p className="text-muted-foreground">No live sessions right now. Start one from your Activity Templates.</p>
                 </div>
+              ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {gamesLoading ? (
-                        <Card><CardContent className="p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></CardContent></Card>
-                    ) : (
-                        completedGames.map(game => (
-                            <CompletedActivityCard
-                                key={game.id}
-                                game={game}
-                                title={getGameTitle(game)}
-                                onDelete={handleDeleteGame}
-                                onHostAgain={game.quizId ? () => handleHostGame(game.quizId) : undefined}
-                            />
-                        ))
-                    )}
+                  {activeGames!.map(game => {
+                    const gameTitle = getGameTitle(game);
+                    const activityType = (game.activityType || 'quiz') as ActivityType;
+                    const config = ACTIVITY_CONFIG[activityType] || ACTIVITY_CONFIG.quiz;
+                    const Icon = config.icon;
+                    const dateDisplay = formatRelativeTime(game.createdAt);
+
+                    return (
+                      <Card key={game.id} variant="interactive" className="flex flex-col">
+                        <CardHeader className="p-6">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Icon className={`h-4 w-4 flex-shrink-0 ${config.color}`} />
+                              <CardTitle className="text-lg font-semibold truncate">{gameTitle}</CardTitle>
+                            </div>
+                            <GameStateBadge state={game.state} />
+                          </div>
+                          <CardDescription className="text-sm flex items-center gap-1.5 flex-wrap mt-1">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${config.badgeClass}`}>
+                              {config.label}
+                            </span>
+                            {dateDisplay && (
+                              <>
+                                <span className="text-muted-foreground">·</span>
+                                <span>{dateDisplay}</span>
+                              </>
+                            )}
+                            <span className="text-muted-foreground">·</span>
+                            <span className="font-mono text-xs text-muted-foreground">PIN: {game.gamePin}</span>
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-grow flex flex-col justify-end gap-3 p-6 pt-0">
+                          <Button
+                            variant="gradient"
+                            size="xl"
+                            className="w-full"
+                            onClick={() => handleOpenGame(game)}
+                          >
+                            <LogIn className="mr-2 h-4 w-4" /> Open Session
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="xl" className="w-full" variant="outline">
+                                <XCircle className="mr-2 h-4 w-4" /> Cancel Session
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="rounded-2xl shadow-xl">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-2xl font-semibold">Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription className="text-base">
+                                  This will cancel the session for all players and cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="rounded-xl">Back</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteGame(game.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
+                                  Yes, Cancel Session
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
+              )}
             </div>
-        )}
+          </TabsContent>
+
+          {/* Session History Tab */}
+          <TabsContent value="history">
+            <div className="mb-12">
+              <div className="flex items-center gap-3 mb-6">
+                <h2 className="text-3xl font-semibold">Session History</h2>
+                {historyCount > 0 && (
+                  <span className="px-2.5 py-0.5 text-sm font-medium bg-muted text-muted-foreground rounded-full">
+                    {historyCount}
+                  </span>
+                )}
+              </div>
+
+              {gamesLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(3)].map((_, i) => (
+                    <Card key={i}>
+                      <CardHeader className="p-6">
+                        <div className="h-6 bg-muted rounded-lg w-3/4 animate-pulse"></div>
+                        <div className="h-4 bg-muted rounded-lg w-1/2 mt-2 animate-pulse"></div>
+                      </CardHeader>
+                      <CardContent className="p-6 pt-0">
+                        <div className="h-10 bg-muted rounded-lg w-full animate-pulse"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : historyCount === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <p className="text-muted-foreground">No completed sessions yet. Sessions will appear here once they end.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {completedGames!.map(game => (
+                    <CompletedActivityCard
+                      key={game.id}
+                      game={game}
+                      title={getGameTitle(game)}
+                      onDelete={handleDeleteGame}
+                      onHostAgain={game.quizId ? () => handleHostGame(game.quizId) : undefined}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Shared With Me Tab */}
+          <TabsContent value="shared">
+            <SharedContent />
+          </TabsContent>
+        </Tabs>
 
         {/* Share Quiz Dialog */}
         <Dialog open={!!shareDialogQuiz} onOpenChange={(open) => !open && setShareDialogQuiz(null)}>
