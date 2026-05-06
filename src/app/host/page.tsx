@@ -110,38 +110,37 @@ export default function HostDashboardPage() {
   const historyCount = completedGames?.length || 0;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Header />
+    <Tabs defaultValue="templates" className="flex min-h-screen flex-col bg-background">
+      <Header>
+        <TabsList className="h-auto bg-transparent p-0 gap-1">
+          <TabsTrigger value="templates" className="rounded-none border-b-2 border-transparent px-3 py-3.5 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground transition-colors">
+            Activity Templates
+          </TabsTrigger>
+          <TabsTrigger value="live" className="rounded-none border-b-2 border-transparent px-3 py-3.5 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground transition-colors">
+            Live Sessions
+            {liveCount > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 text-xs font-semibold bg-green-500/20 text-green-600 dark:text-green-400 rounded-full">
+                {liveCount}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="history" className="rounded-none border-b-2 border-transparent px-3 py-3.5 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground transition-colors">
+            Session History
+            {historyCount > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground rounded-full">
+                {historyCount}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="shared" className="rounded-none border-b-2 border-transparent px-3 py-3.5 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground transition-colors">
+            Shared With Me
+          </TabsTrigger>
+        </TabsList>
+      </Header>
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-7xl">
 
         {/* Host Reconnection Banner */}
         <HostReconnectBanner />
-
-        <Tabs defaultValue="templates" className="w-full">
-          <TabsList className="w-full justify-start mb-8 h-auto flex-wrap gap-1 bg-muted p-1.5 rounded-xl">
-            <TabsTrigger value="templates" className="rounded-lg px-4 py-2 text-sm font-medium">
-              Activity Templates
-            </TabsTrigger>
-            <TabsTrigger value="live" className="rounded-lg px-4 py-2 text-sm font-medium">
-              Live Sessions
-              {liveCount > 0 && (
-                <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-green-500/20 text-green-600 dark:text-green-400 rounded-full">
-                  {liveCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="history" className="rounded-lg px-4 py-2 text-sm font-medium">
-              Session History
-              {historyCount > 0 && (
-                <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-muted-foreground/20 text-muted-foreground rounded-full">
-                  {historyCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="shared" className="rounded-lg px-4 py-2 text-sm font-medium">
-              Shared With Me
-            </TabsTrigger>
-          </TabsList>
 
           {/* Activity Templates Tab */}
           <TabsContent value="templates">
@@ -347,7 +346,6 @@ export default function HostDashboardPage() {
           <TabsContent value="shared">
             <SharedContent />
           </TabsContent>
-        </Tabs>
 
         {/* Share Quiz Dialog */}
         <Dialog open={!!shareDialogQuiz} onOpenChange={(open) => !open && setShareDialogQuiz(null)}>
@@ -429,6 +427,6 @@ export default function HostDashboardPage() {
         </Dialog>
 
       </main>
-    </div>
+    </Tabs>
   );
 }

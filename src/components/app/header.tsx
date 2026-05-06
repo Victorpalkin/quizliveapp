@@ -6,8 +6,13 @@ import { Button } from '../ui/button';
 import { ThemeToggle } from './theme-toggle';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import type { ReactNode } from 'react';
 
-export function Header() {
+interface HeaderProps {
+  children?: ReactNode;
+}
+
+export function Header({ children }: HeaderProps) {
   const { user, loading } = useUser();
   const auth = useAuth();
   const router = useRouter();
@@ -20,11 +25,17 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
-        <Link href="/" className="flex items-center gap-2 font-bold text-lg mr-auto">
+        <Link href="/" className="flex items-center gap-2 font-bold text-lg mr-4 flex-shrink-0">
           <Zap className="h-6 w-6 text-primary" />
           <span className="text-foreground">Zivo</span>
         </Link>
-        <div className="flex items-center gap-2">
+        {children && (
+          <nav className="flex-1 flex items-center overflow-x-auto min-w-0">
+            {children}
+          </nav>
+        )}
+        {!children && <div className="flex-1" />}
+        <div className="flex items-center gap-2 flex-shrink-0 ml-4">
           <ThemeToggle />
           {!loading && user && !user.isAnonymous && (
             <Button variant="ghost" onClick={handleSignOut}>
