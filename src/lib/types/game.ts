@@ -44,6 +44,7 @@ export type PollGameState = 'lobby' | 'question' | 'results' | 'ended';
 
 export interface Game {
     id: string;
+    title?: string;
     quizId: string;
     hostId: string;
     state: QuizGameState | ThoughtsGatheringGameState | EvaluationGameState | PollGameState;

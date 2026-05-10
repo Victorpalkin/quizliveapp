@@ -39,11 +39,12 @@ export function useCreatePresentationGame() {
   const functions = useFunctions();
 
   const createGame = useCallback(
-    async (presentationId: string, hostId: string, settings: PresentationSettings): Promise<string> => {
+    async (presentationId: string, hostId: string, settings: PresentationSettings, title?: string): Promise<string> => {
       if (!firestore) throw new Error('Firestore not initialized');
 
       const gameDoc = await addDoc(collection(firestore, 'games'), removeUndefined({
         hostId,
+        title,
         gamePin: nanoid(8).toUpperCase(),
         activityType: 'presentation',
         presentationId,

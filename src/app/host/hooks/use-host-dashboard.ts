@@ -98,6 +98,7 @@ export function useHostDashboard() {
 
     const gameData = {
       quizId: quizId,
+      title: quiz?.title,
       hostId: user.uid,
       state: 'lobby' as const,
       currentQuestionIndex: 0,
@@ -242,7 +243,7 @@ export function useHostDashboard() {
     try {
       const pres = presentations?.find(p => p.id === presentationId);
       if (!pres) return;
-      const gameId = await createPresentationGame(presentationId, user.uid, pres.settings);
+      const gameId = await createPresentationGame(presentationId, user.uid, pres.settings, pres.title);
       router.push(`/host/presentation/present/${gameId}`);
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not create game.' });
@@ -260,6 +261,7 @@ export function useHostDashboard() {
 
   // Helper to get activity/quiz title for a game
   const getGameTitle = (game: Game): string => {
+    if (game.title) return game.title;
     if (game.activityType === 'thoughts-gathering') {
       return activities.find(a => a.id === game.activityId)?.title || 'Thoughts Gathering';
     }

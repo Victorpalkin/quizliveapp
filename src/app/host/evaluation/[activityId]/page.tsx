@@ -39,6 +39,7 @@ export default function EvaluationDetailPage() {
       const gameData = {
         activityType: 'evaluation' as const,
         activityId: activityId,
+        title: activity.title,
         quizId: '',
         hostId: user.uid,
         state: 'collecting' as const,

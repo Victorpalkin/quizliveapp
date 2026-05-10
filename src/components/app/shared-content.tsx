@@ -3,13 +3,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Share2, Copy, Trash2, Loader2, Play, Eye, FileQuestion, Vote, ChevronDown } from 'lucide-react';
+import { Share2, Copy, Trash2, Loader2, Play, Eye, FileQuestion, Vote, ChevronDown, Presentation } from 'lucide-react';
 import { useFirestore, useUser, useStorage, trackEvent } from '@/firebase';
 import { useSharedQuizzes } from '@/firebase/firestore/use-shared-quizzes';
 import { useSharedPolls } from '@/firebase/firestore/use-shared-polls';
+import { useSharedPresentations } from '@/firebase/firestore/use-shared-presentations';
+import { useCreatePresentationGame } from '@/firebase/presentation/use-presentation-game';
 import { collection, addDoc, deleteDoc, doc, serverTimestamp, getDoc, updateDoc } from 'firebase/firestore';
 import { ref, getDownloadURL, uploadBytes } from 'firebase/storage';
-import type { QuizShare, Quiz, PollShare, PollActivity, ContentType } from '@/lib/types';
+import type { QuizShare, Quiz, PollShare, PollActivity, PresentationShare, Presentation as PresentationType, ContentType } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { nanoid } from 'nanoid';
@@ -37,7 +39,8 @@ type FilterType = 'all' | ContentType;
 
 type SharedItem =
   | { type: 'quiz'; share: QuizShare & { quiz?: Quiz }; title: string; sharedByEmail: string; createdAt: Date }
-  | { type: 'poll'; share: PollShare & { poll?: PollActivity }; title: string; sharedByEmail: string; createdAt: Date };
+  | { type: 'poll'; share: PollShare & { poll?: PollActivity }; title: string; sharedByEmail: string; createdAt: Date }
+  | { type: 'presentation'; share: PresentationShare & { presentation?: PresentationType }; title: string; sharedByEmail: string; createdAt: Date };
 
 export function SharedContent() {
   const firestore = useFirestore();
@@ -72,11 +75,12 @@ export function SharedContent() {
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
   const [previewPoll, setPreviewPoll] = useState<PollActivity | null>(null);
 
-  // Fetch shared content
   const { shares: quizShares, loading: quizzesLoading } = useSharedQuizzes();
   const { shares: pollShares, loading: pollsLoading } = useSharedPolls();
+  const { shares: presentationShares, loading: presentationsLoading } = useSharedPresentations();
+  const { createGame: createPresentationGame } = useCreatePresentationGame();
 
-  const loading = quizzesLoading || pollsLoading;
+  const loading = quizzesLoading || pollsLoading || presentationsLoading;
 
   // Local state for managing removes
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
@@ -98,6 +102,13 @@ export function SharedContent() {
         sharedByEmail: share.sharedByEmail,
         createdAt: share.createdAt,
       })),
+      ...(presentationShares || []).map(share => ({
+        type: 'presentation' as const,
+        share,
+        title: share.presentationTitle,
+        sharedByEmail: share.sharedByEmail,
+        createdAt: share.createdAt,
+      })),
     ];
 
     // Filter out removed items
@@ -105,7 +116,7 @@ export function SharedContent() {
 
     // Sort by createdAt descending (most recent first)
     return filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  }, [quizShares, pollShares, removedIds]);
+  }, [quizShares, pollShares, presentationShares, removedIds]);
 
   // Apply type filter
   const filteredItems = useMemo(() => {
@@ -118,6 +129,7 @@ export function SharedContent() {
     all: allItems.length,
     quiz: allItems.filter(i => i.type === 'quiz').length,
     poll: allItems.filter(i => i.type === 'poll').length,
+    presentation: allItems.filter(i => i.type === 'presentation').length,
   }), [allItems]);
 
   /**
@@ -221,6 +233,7 @@ export function SharedContent() {
     try {
       const gameDoc = await addDoc(collection(firestore, 'games'), {
         quizId: share.quizId,
+        title: share.quizTitle,
         hostId: user.uid,
         state: 'lobby',
         currentQuestionIndex: 0,
@@ -249,6 +262,7 @@ export function SharedContent() {
       const gameDoc = await addDoc(collection(firestore, 'games'), {
         activityId: share.pollId,
         activityType: 'poll',
+        title: share.pollTitle,
         hostId: user.uid,
         state: 'lobby',
         gamePin: nanoid(8).toUpperCase(),
@@ -267,9 +281,11 @@ export function SharedContent() {
     try {
       let docPath: string;
       if (item.type === 'quiz') {
-        docPath = `quizzes/${item.share.quizId}/shares/${item.share.id}`;
+        docPath = `quizzes/${(item.share as QuizShare).quizId}/shares/${item.share.id}`;
+      } else if (item.type === 'presentation') {
+        docPath = `presentations/${(item.share as PresentationShare).presentationId}/shares/${item.share.id}`;
       } else {
-        docPath = `activities/${item.share.pollId}/shares/${item.share.id}`;
+        docPath = `activities/${(item.share as PollShare).pollId}/shares/${item.share.id}`;
       }
 
       await deleteDoc(doc(firestore, docPath));
@@ -281,12 +297,59 @@ export function SharedContent() {
     }
   };
 
+  const handleHostPresentation = async (share: PresentationShare & { presentation?: PresentationType }) => {
+    if (!user) return;
+    if (!share.presentation?.settings) {
+      toast({ variant: 'destructive', title: 'Presentation data not available' });
+      return;
+    }
+    setHosting(share.id);
+    try {
+      const gameId = await createPresentationGame(share.presentationId, user.uid, share.presentation.settings, share.presentationTitle);
+      router.push(`/host/presentation/present/${gameId}`);
+    } catch {
+      toast({ variant: 'destructive', title: 'Failed to launch presentation' });
+      setHosting(null);
+    }
+  };
+
+  const handleCopyPresentation = async (share: PresentationShare & { presentation?: PresentationType }) => {
+    if (!user) return;
+    setCopying(share.id);
+    try {
+      const presDoc = await getDoc(doc(firestore, 'presentations', share.presentationId));
+      if (!presDoc.exists()) throw new Error('Presentation not found');
+
+      const original = presDoc.data();
+      const { ...dataWithoutId } = original;
+
+      const newPres = {
+        ...dataWithoutId,
+        title: `${original.title || share.presentationTitle} (Copy)`,
+        hostId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      const newDoc = await addDoc(collection(firestore, 'presentations'), newPres);
+      trackEvent('presentation_copied');
+      toast({ title: 'Presentation copied', description: 'Added to your presentations' });
+      router.push(`/host/presentation/edit/${newDoc.id}`);
+    } catch (error) {
+      console.error('Error copying presentation:', error);
+      toast({ variant: 'destructive', title: 'Failed to copy presentation' });
+    } finally {
+      setCopying(null);
+    }
+  };
+
   if (!user?.email) return null;
 
   const getTypeIcon = (type: ContentType) => {
     switch (type) {
       case 'quiz': return <FileQuestion className="h-4 w-4 text-purple-500" />;
       case 'poll': return <Vote className="h-4 w-4 text-teal-500" />;
+      case 'presentation': return <Presentation className="h-4 w-4 text-indigo-500" />;
       default: return <FileQuestion className="h-4 w-4 text-muted-foreground" />;
     }
   };
@@ -324,6 +387,7 @@ export function SharedContent() {
             { value: 'all', label: 'All', icon: null },
             { value: 'quiz', label: 'Quizzes', icon: FileQuestion },
             { value: 'poll', label: 'Polls', icon: Vote },
+            { value: 'presentation', label: 'Presentations', icon: Presentation },
           ].map(({ value, label, icon: Icon }) => {
             const count = counts[value as keyof typeof counts];
             if (value !== 'all' && count === 0) return null;
@@ -387,6 +451,7 @@ export function SharedContent() {
                   onClick={() => {
                     if (item.type === 'quiz') handleHostQuiz(item.share as QuizShare);
                     else if (item.type === 'poll') handleHostPoll(item.share as PollShare);
+                    else if (item.type === 'presentation') handleHostPresentation(item.share as PresentationShare & { presentation?: PresentationType });
                   }}
                   disabled={hosting === item.share.id}
                 >
@@ -398,26 +463,38 @@ export function SharedContent() {
                   Host
                 </Button>
 
-                {/* Preview button */}
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (item.type === 'quiz') handlePreviewQuiz(item.share as QuizShare & { quiz?: Quiz });
-                    else if (item.type === 'poll') handlePreviewPoll(item.share as PollShare & { poll?: PollActivity });
-                  }}
-                  disabled={loadingPreview}
-                >
-                  {loadingPreview ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
+                {/* Preview/View button */}
+                {item.type === 'presentation' ? (
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push(`/host/presentation/view/${(item.share as PresentationShare).presentationId}`)}
+                  >
                     <Eye className="mr-2 h-4 w-4" />
-                  )}
-                  Preview
-                </Button>
+                    View
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (item.type === 'quiz') handlePreviewQuiz(item.share as QuizShare & { quiz?: Quiz });
+                      else if (item.type === 'poll') handlePreviewPoll(item.share as PollShare & { poll?: PollActivity });
+                    }}
+                    disabled={loadingPreview}
+                  >
+                    {loadingPreview ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Eye className="mr-2 h-4 w-4" />
+                    )}
+                    Preview
+                  </Button>
+                )}
 
-                {/* Copy button (quiz only) */}
+                {/* Copy button (quiz & presentation) */}
                 {item.type === 'quiz' && (
                   <Button
                     className="w-full"
@@ -432,6 +509,22 @@ export function SharedContent() {
                       <Copy className="mr-2 h-4 w-4" />
                     )}
                     Copy to My Quizzes
+                  </Button>
+                )}
+                {item.type === 'presentation' && (
+                  <Button
+                    className="w-full"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleCopyPresentation(item.share as PresentationShare & { presentation?: PresentationType })}
+                    disabled={copying === item.share.id}
+                  >
+                    {copying === item.share.id ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Copy className="mr-2 h-4 w-4" />
+                    )}
+                    Copy to My Presentations
                   </Button>
                 )}
 

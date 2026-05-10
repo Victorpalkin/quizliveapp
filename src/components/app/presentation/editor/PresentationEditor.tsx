@@ -23,11 +23,11 @@ import { Button } from '@/components/ui/button';
 import type { Presentation } from '@/lib/types';
 
 interface PresentationEditorProps {
-  /** Existing presentation to edit, or undefined for new */
   presentation?: Presentation;
+  readOnly?: boolean;
 }
 
-export function PresentationEditor({ presentation }: PresentationEditorProps) {
+export function PresentationEditor({ presentation, readOnly }: PresentationEditorProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useUser();
@@ -47,7 +47,7 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
   );
 
   // --- Phase 1: Unsaved changes warning ---
-  useUnsavedChangesWarning(editor.isDirty);
+  useUnsavedChangesWarning(!readOnly && editor.isDirty);
 
   // --- Auto-save state ---
   const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -88,8 +88,8 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
     }
   }, [presentation, editor, createPresentation, updatePresentation, router, toast]);
 
-  // --- Phase 1: Auto-save with 30-second debounce ---
   useEffect(() => {
+    if (readOnly) return;
     if (editor.isDirty) {
       autoSaveTimerRef.current = setTimeout(async () => {
         setIsAutoSaving(true);
@@ -115,7 +115,7 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
       if (editor.isDirty) {
         await handleSave();
       }
-      const gameId = await createPresentationGame(presentation.id, user.uid, editor.settings);
+      const gameId = await createPresentationGame(presentation.id, user.uid, editor.settings, editor.title);
       router.push(`/host/presentation/present/${gameId}`);
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not start presentation.' });
@@ -157,10 +157,9 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
     setZoom(1);
   }, []);
 
-  // Keyboard shortcuts
   useEffect(() => {
+    if (readOnly) return;
     const handler = (e: KeyboardEvent) => {
-      // Ignore when typing in inputs or inline editing
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return;
@@ -229,7 +228,7 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [editor, handleSave, handleZoomReset]);
+  }, [editor, handleSave, handleZoomReset, readOnly]);
 
   // Selected element type label for status bar
   const selectedTypeLabel = editor.selectedElementIds.length > 1
@@ -263,6 +262,7 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
         onBack={handleBack}
         description={editor.description}
         onDescriptionChange={editor.setDescription}
+        readOnly={readOnly}
       />
 
       {/* 3-panel layout */}
@@ -276,6 +276,7 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
           onDuplicateSlide={editor.duplicateSlide}
           onDeleteSlide={editor.deleteSlide}
           onReorderSlides={editor.reorderSlides}
+          readOnly={readOnly}
         />
 
         {/* Center + Right: Canvas and Properties (resizable) */}
@@ -303,12 +304,13 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
               onZoomChange={setZoom}
               onStartDrag={editor.startDrag}
               onEndDrag={editor.endDrag}
+              readOnly={readOnly}
             />
           </ResizablePanel>
 
-          <ResizableHandle withHandle />
+          {!readOnly && <ResizableHandle withHandle />}
 
-          <ResizablePanel defaultSize="30" minSize="15" maxSize="60">
+          {!readOnly && <ResizablePanel defaultSize="30" minSize="15" maxSize="60">
             <PropertiesPanel
               selectedElement={editor.selectedElement}
               selectedElements={editor.selectedElements}
@@ -330,7 +332,7 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
               onMoveBackward={editor.moveBackward}
               onAlignElement={editor.alignElement}
             />
-          </ResizablePanel>
+          </ResizablePanel>}
         </ResizablePanelGroup>
       </div>
 
@@ -370,25 +372,29 @@ export function PresentationEditor({ presentation }: PresentationEditorProps) {
 
           <div className="w-px h-3 bg-border/50" />
 
-          <span className="flex items-center gap-1.5">
-            <span className={`inline-block w-1.5 h-1.5 rounded-full ${editor.isDirty ? 'bg-orange-400' : 'bg-green-400'}`} />
-            {isAutoSaving ? 'Auto-saving...' : editor.isDirty ? 'Unsaved changes' : 'All changes saved'}
-          </span>
-          {editor.interactiveElementCount > 0 && (
+          {!readOnly && (
+            <span className="flex items-center gap-1.5">
+              <span className={`inline-block w-1.5 h-1.5 rounded-full ${editor.isDirty ? 'bg-orange-400' : 'bg-green-400'}`} />
+              {isAutoSaving ? 'Auto-saving...' : editor.isDirty ? 'Unsaved changes' : 'All changes saved'}
+            </span>
+          )}
+          {!readOnly && editor.interactiveElementCount > 0 && (
             <> &middot; {editor.interactiveElementCount} interactive</>
           )}
 
           <div className="w-px h-3 bg-border/50" />
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5"
-            onClick={() => setShortcutsOpen(true)}
-            title="Keyboard shortcuts (?)"
-          >
-            <Keyboard className="h-3 w-3" />
-          </Button>
+          {!readOnly && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              onClick={() => setShortcutsOpen(true)}
+              title="Keyboard shortcuts (?)"
+            >
+              <Keyboard className="h-3 w-3" />
+            </Button>
+          )}
         </span>
       </div>
 

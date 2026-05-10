@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Share2, Trash2, Loader2, UserPlus } from 'lucide-react';
+import { Trash2, Loader2, UserPlus } from 'lucide-react';
 import { useCollection, useMemoFirebase, useFirestore, useUser, trackEvent } from '@/firebase';
 import { collection, addDoc, deleteDoc, doc, serverTimestamp, setDoc, CollectionReference } from 'firebase/firestore';
 import type { QuizShare } from '@/lib/types';
@@ -122,101 +121,90 @@ export function QuizShareManager({ quizId, quizTitle }: QuizShareManagerProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Share2 className="h-5 w-5 text-primary" />
-          <CardTitle>Share Quiz</CardTitle>
-        </div>
-        <CardDescription>
-          Share this quiz with other hosts by entering their email address
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex gap-2">
-          <Input
-            type="email"
-            placeholder="Enter email address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleShare(e as any);
-              }
-            }}
-            disabled={sharing}
-            className="flex-1"
-          />
-          <Button type="button" onClick={handleShare} disabled={sharing}>
-            {sharing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Share
-              </>
-            )}
-          </Button>
-        </div>
-
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">Shared with ({shares?.length || 0})</h4>
-          {loading ? (
-            <div className="space-y-2">
-              <div className="h-10 bg-muted rounded animate-pulse" />
-              <div className="h-10 bg-muted rounded animate-pulse" />
-            </div>
-          ) : shares && shares.length > 0 ? (
-            <div className="space-y-2">
-              {shares.map((share) => (
-                <div
-                  key={share.id}
-                  className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                >
-                  <span className="text-sm">{share.sharedWith}</span>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Remove share?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {share.sharedWith} will no longer be able to host games with this quiz or see it in their shared quizzes.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleRemoveShare(share.id, share.sharedWith)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Remove
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              ))}
-            </div>
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Input
+          type="email"
+          placeholder="Enter email address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleShare(e as any);
+            }
+          }}
+          disabled={sharing}
+          className="flex-1"
+        />
+        <Button type="button" onClick={handleShare} disabled={sharing}>
+          {sharing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <p className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
-              Not shared with anyone yet
-            </p>
+            <>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Share
+            </>
           )}
-        </div>
+        </Button>
+      </div>
 
-        <div className="border-t pt-4">
-          <ShareLinkSection
-            contentId={quizId}
-            contentTitle={quizTitle}
-            contentType="quiz"
-          />
-        </div>
-      </CardContent>
-    </Card>
+      <div className="space-y-2">
+        <h4 className="text-sm font-medium">Shared with ({shares?.length || 0})</h4>
+        {loading ? (
+          <div className="space-y-2">
+            <div className="h-10 bg-muted rounded animate-pulse" />
+            <div className="h-10 bg-muted rounded animate-pulse" />
+          </div>
+        ) : shares && shares.length > 0 ? (
+          <div className="space-y-2">
+            {shares.map((share) => (
+              <div
+                key={share.id}
+                className="flex items-center justify-between p-3 bg-muted rounded-lg"
+              >
+                <span className="text-sm">{share.sharedWith}</span>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remove share?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {share.sharedWith} will no longer be able to host games with this quiz or see it in their shared quizzes.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleRemoveShare(share.id, share.sharedWith)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Remove
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
+            Not shared with anyone yet
+          </p>
+        )}
+      </div>
+
+      <div className="border-t pt-4">
+        <ShareLinkSection
+          contentId={quizId}
+          contentTitle={quizTitle}
+          contentType="quiz"
+        />
+      </div>
+    </div>
   );
 }
