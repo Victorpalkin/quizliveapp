@@ -7,6 +7,7 @@ import { useFirestore } from '@/firebase';
 interface ElementStats {
   elementId: string;
   elementType: string;
+  slideIndex?: number;
   totalResponses: number;
   averageTimeRemaining?: number;
   correctPercentage?: number;
@@ -31,6 +32,7 @@ export interface PresentationAnalytics {
   totalReactions: number;
   totalQuestions: number;
   averageScore: number;
+  presentationId?: string;
   elementStats: ElementStats[];
   playerEngagement: PlayerEngagement[];
   completedAt?: Date;
@@ -57,6 +59,7 @@ export function useAnalytics(gameId: string) {
           totalReactions: data.totalReactions ?? 0,
           totalQuestions: data.totalQuestions ?? 0,
           averageScore: data.averageScore ?? 0,
+          presentationId: data.presentationId,
           elementStats: data.elementStats || [],
           playerEngagement: data.playerEngagement || [],
           completedAt: data.completedAt instanceof Timestamp ? data.completedAt.toDate() : undefined,

@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useUser, useFunctions } from '@/firebase';
+import { usePresentationById } from '@/firebase/presentation';
 import { useAnalytics } from './hooks/use-analytics';
+import { useWorkflowOutputs } from './hooks/use-workflow-outputs';
 import { OverviewTab } from './components/overview-tab';
 import { SlidesTab } from './components/slides-tab';
 import { EngagementTab } from './components/engagement-tab';
@@ -20,6 +22,8 @@ export default function PresentationAnalyticsPage({ params }: { params: Promise<
   const { user, loading: authLoading } = useUser();
   const functions = useFunctions();
   const { analytics, loading } = useAnalytics(gameId);
+  const { slideOutputs } = useWorkflowOutputs(gameId);
+  const { presentation } = usePresentationById(analytics?.presentationId ?? null);
   const [tab, setTab] = useState('overview');
   const generationAttempted = useRef(false);
 
@@ -85,7 +89,7 @@ export default function PresentationAnalyticsPage({ params }: { params: Promise<
                   <OverviewTab analytics={analytics} />
                 </TabsContent>
                 <TabsContent value="slides" className="mt-6" forceMount={tab === 'slides' ? true : undefined}>
-                  <SlidesTab analytics={analytics} />
+                  <SlidesTab analytics={analytics} slideOutputs={slideOutputs} slides={presentation?.slides} />
                 </TabsContent>
                 <TabsContent value="engagement" className="mt-6" forceMount={tab === 'engagement' ? true : undefined}>
                   <EngagementTab analytics={analytics} />
