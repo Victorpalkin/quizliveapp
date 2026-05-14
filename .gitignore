@@ -56,3 +56,5 @@ firestore-debug.log
 # Cloud Build artifacts
 cloud_run_url.txt
 env_vars.txt
+# Gemini Security Audit
+.gemini_security

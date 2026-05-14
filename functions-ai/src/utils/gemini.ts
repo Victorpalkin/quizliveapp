@@ -252,7 +252,8 @@ export async function callGeminiWithTools(
  */
 export async function extractJsonFromText(
   client: GoogleGenAI,
-  extractionPrompt: string
+  extractionPrompt: string,
+  responseSchema?: Record<string, unknown>
 ): Promise<Record<string, unknown> | null> {
   try {
     const response = await client.models.generateContent({
@@ -260,6 +261,7 @@ export async function extractJsonFromText(
       contents: [{ role: 'user', parts: [{ text: extractionPrompt }] }],
       config: {
         responseMimeType: 'application/json',
+        ...(responseSchema ? { responseSchema } : {}),
         temperature: 0.3,
         maxOutputTokens: 8192,
       },

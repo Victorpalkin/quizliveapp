@@ -46,17 +46,55 @@ async function deleteSubcollection(gameId: string, subcollectionName: string): P
   return deletedCount;
 }
 
+const SIMPLE_SUBCOLLECTIONS = [
+  'players', 'submissions', 'aggregates', 'responses', 'reactions',
+  'workflowState', 'questions', 'leaderboard', 'analytics', 'items', 'ratings',
+];
+
 /**
- * Deletes all subcollections for a game (players, submissions, aggregates).
+ * Deletes all documents in a subcollection that itself contains a nested subcollection.
  */
-async function deleteAllGameSubcollections(gameId: string): Promise<{ players: number; submissions: number; aggregates: number }> {
-  const [players, submissions, aggregates] = await Promise.all([
-    deleteSubcollection(gameId, 'players'),
-    deleteSubcollection(gameId, 'submissions'),
-    deleteSubcollection(gameId, 'aggregates'),
+async function deleteNestedSubcollection(gameId: string, subcollectionName: string, nestedName: string): Promise<void> {
+  const db = admin.firestore();
+  const parentSnapshot = await db.collection('games').doc(gameId).collection(subcollectionName).get();
+  if (parentSnapshot.empty) return;
+
+  for (const parentDoc of parentSnapshot.docs) {
+    const nestedSnapshot = await parentDoc.ref.collection(nestedName).get();
+    if (nestedSnapshot.empty) continue;
+
+    const batchSize = 500;
+    let currentBatch = db.batch();
+    let count = 0;
+    for (const doc of nestedSnapshot.docs) {
+      currentBatch.delete(doc.ref);
+      count++;
+      if (count % batchSize === 0) {
+        await currentBatch.commit();
+        currentBatch = db.batch();
+      }
+    }
+    if (count % batchSize !== 0) await currentBatch.commit();
+  }
+}
+
+/**
+ * Deletes all subcollections for a game.
+ */
+async function deleteAllGameSubcollections(gameId: string): Promise<number> {
+  // Delete nested subcollections first
+  await Promise.all([
+    deleteNestedSubcollection(gameId, 'slideNudges', 'nudges'),
+    deleteNestedSubcollection(gameId, 'agenticSessions', 'nudges'),
   ]);
 
-  return { players, submissions, aggregates };
+  // Delete all simple subcollections (including the parent slideNudges/agenticSessions docs)
+  const allSubcollections = [...SIMPLE_SUBCOLLECTIONS, 'slideNudges', 'agenticSessions'];
+  const counts = await Promise.all(
+    allSubcollections.map(name => deleteSubcollection(gameId, name))
+  );
+
+  return counts.reduce((sum, c) => sum + c, 0);
 }
 
 // Note: onGameUpdated was removed. Submissions are now preserved for analytics
@@ -75,7 +113,7 @@ export const onGameDeleted = onDocumentDeleted(
     const gameId = event.params.gameId;
     console.log(`[Cleanup] Game ${gameId} deleted, cleaning up all subcollections...`);
 
-    const deleted = await deleteAllGameSubcollections(gameId);
-    console.log(`[Cleanup] Deleted for game ${gameId}: ${deleted.players} players, ${deleted.submissions} submissions, ${deleted.aggregates} aggregates`);
+    const totalDeleted = await deleteAllGameSubcollections(gameId);
+    console.log(`[Cleanup] Deleted ${totalDeleted} documents for game ${gameId}`);
   }
 );
