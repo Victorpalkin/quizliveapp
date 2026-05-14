@@ -330,7 +330,6 @@ export function PresentationPlayer({
                       gameId={game.id}
                       playerId={session.playerId}
                       playerName={session.playerName}
-                      onSubmitted={() => markResponded(interactiveElement.id)}
                     />
                   )}
                   {interactiveElement.type === 'rating' && game && session && (

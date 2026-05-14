@@ -9,6 +9,7 @@ interface SlideElement {
   thoughtsConfig?: { prompt: string };
   ratingConfig?: { itemTitle: string; items?: { id: string; text: string }[]; question?: string };
   thoughtsSourceRef?: { sourceSlideId: string; sourceElementId: string; mode: 'raw' | 'groups' };
+  dynamicItemsSource?: { sourceSlideId: string; sourceElementId: string };
   [key: string]: unknown;
 }
 
@@ -61,6 +62,25 @@ async function resolveEvaluationItems(
   gameId: string,
   el: SlideElement
 ): Promise<{ id: string; text: string }[]> {
+  // Priority: dynamicItemsSource (AI step) > thoughtsSourceRef > static items
+  const dynSrc = el.dynamicItemsSource;
+  if (dynSrc) {
+    const stateDoc = await db
+      .collection('games').doc(gameId)
+      .collection('workflowState').doc('state')
+      .get();
+    if (stateDoc.exists) {
+      const slideOutputs = (stateDoc.data()?.slideOutputs || {}) as Record<string, { structuredItems?: { id: string; name: string; description?: string }[] }>;
+      const output = slideOutputs[dynSrc.sourceSlideId];
+      if (output?.structuredItems?.length) {
+        return output.structuredItems.map((item) => ({
+          id: item.id,
+          text: item.name,
+        }));
+      }
+    }
+  }
+
   const ref = el.thoughtsSourceRef;
   if (!ref) return el.evaluationConfig?.items || [];
 
