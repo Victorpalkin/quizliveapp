@@ -316,6 +316,7 @@ export function PresentationEditor({ presentation, readOnly }: PresentationEdito
               selectedElements={editor.selectedElements}
               slide={editor.currentSlide}
               slides={editor.slides}
+              presentationId={presentation?.id}
               onUpdateElement={(updates) => {
                 if (editor.selectedElementIds.length > 1) {
                   editor.updateElements(editor.selectedElementIds, updates);

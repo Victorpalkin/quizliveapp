@@ -42,6 +42,7 @@ interface PropertiesPanelProps {
   selectedElements?: SlideElement[];
   slide: PresentationSlide | null;
   slides: PresentationSlide[];
+  presentationId?: string;
   onUpdateElement: (updates: Partial<SlideElement>) => void;
   onUpdateBackground: (bg: SlideBackground) => void;
   onUpdateNotes: (notes: string) => void;
@@ -58,6 +59,7 @@ export function PropertiesPanel({
   selectedElements,
   slide,
   slides,
+  presentationId,
   onUpdateElement,
   onUpdateBackground,
   onUpdateNotes,
@@ -224,7 +226,7 @@ export function PropertiesPanel({
         <TextProperties element={selectedElement!} onUpdate={onUpdateElement} />
       )}
       {selectedElement!.type === 'image' && (
-        <ImageProperties element={selectedElement!} onUpdate={onUpdateElement} />
+        <ImageProperties element={selectedElement!} onUpdate={onUpdateElement} presentationId={presentationId} slideId={slide?.id} />
       )}
       {selectedElement!.type === 'shape' && (
         <ShapeProperties element={selectedElement!} onUpdate={onUpdateElement} />
