@@ -1,25 +1,12 @@
 import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
-import { GoogleGenAI } from '@google/genai';
 import { getStorage } from 'firebase-admin/storage';
 import { randomUUID } from 'crypto';
 import { AI_SERVICE_ACCOUNT, REGION, ALLOWED_ORIGINS } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
 import { enforceRateLimitInMemory } from '../utils/rateLimit';
+import { GEMINI_IMAGE, createGeminiClient } from '../utils/gemini';
 import type { GenerateImageRequest, GenerateImageResponse } from '../types';
 
-// Image generation model (different from text model)
-const GEMINI_IMAGE_MODEL = 'gemini-3-pro-image-preview';
-// Must use 'global' location for image generation on Vertex AI
-const IMAGE_LOCATION = 'global';
-
-/**
- * Cloud Function to generate quiz question images using Gemini 3 Pro Image
- *
- * Uses the Gemini 3 Pro Image model (gemini-3-pro-image-preview) for native
- * image generation. The generated image is uploaded to Firebase Storage.
- *
- * @see https://ai.google.dev/gemini-api/docs/image-generation
- */
 export const generateQuestionImage = onCall(
   {
     region: REGION, // Function region (API uses global location)
@@ -86,26 +73,17 @@ export const generateQuestionImage = onCall(
     }
 
     try {
-      // Initialize Gemini client with GLOBAL location for image generation
-      const client = new GoogleGenAI({
-        vertexai: true,
-        project: process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT,
-        location: IMAGE_LOCATION, // Must be 'global' for image generation
-      });
+      const client = createGeminiClient();
 
       // Combine style guide with prompt if provided
       const fullPrompt = styleGuide ? `${styleGuide}. ${prompt}` : prompt;
 
-      // Generate image with Gemini 3 Pro Image
       const response = await client.models.generateContent({
-        model: GEMINI_IMAGE_MODEL,
+        model: GEMINI_IMAGE,
         contents: fullPrompt,
         config: {
-          responseModalities: ['TEXT', 'IMAGE'], // Must include both
-          imageConfig: {
-            aspectRatio: '16:9', // Good for quiz display
-            imageSize: '1K', // 1K resolution (sufficient for web)
-          },
+          responseModalities: ['TEXT', 'IMAGE'],
+          imageConfig: { aspectRatio: '16:9' },
         },
       });
 
