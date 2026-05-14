@@ -18,3 +18,4 @@ export { useTemplates } from './use-templates';
 export { useAgenticSession, useAgenticSessionPlayer } from './use-agentic-session';
 export { useWorkflowState, useSlideNudges, useWorkflowStatePlayer } from './use-workflow-state';
 export { useDynamicItems } from './use-dynamic-items';
+export { useThoughtsItems } from './use-thoughts-items';

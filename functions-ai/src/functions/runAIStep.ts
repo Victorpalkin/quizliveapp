@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { ALLOWED_ORIGINS, REGION, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
@@ -83,6 +83,7 @@ interface PresentationSlide {
     evaluationConfig?: { title: string; items: { id: string; text: string }[]; metrics: { id: string; name: string }[] };
     thoughtsConfig?: { prompt: string };
     ratingConfig?: { itemTitle: string; items?: { id: string; text: string }[]; question?: string };
+    thoughtsSourceRef?: { sourceSlideId: string; sourceElementId: string; mode: 'raw' | 'groups' };
     [key: string]: unknown;
   }[];
   [key: string]: unknown;
@@ -284,7 +285,7 @@ export const runAIStep = onCall(
     serviceAccount: AI_SERVICE_ACCOUNT,
     enforceAppCheck: false,
   },
-  async (request): Promise<RunAIStepResponse> => {
+  async (request: CallableRequest): Promise<RunAIStepResponse> => {
     verifyAppCheck(request);
 
     if (!request.auth) {
@@ -370,7 +371,7 @@ export const runAIStep = onCall(
 
         if (!nudgesSnapshot.empty) {
           const nudgeTexts = nudgesSnapshot.docs
-            .map(d => {
+            .map((d: admin.firestore.QueryDocumentSnapshot) => {
               const nd = d.data();
               return `- ${sanitizeInput(nd.playerName)}: "${sanitizeInput(nd.text)}"`;
             })
@@ -486,7 +487,7 @@ export const summarizeSlideNudges = onCall(
     serviceAccount: AI_SERVICE_ACCOUNT,
     enforceAppCheck: false,
   },
-  async (request): Promise<SummarizeSlideNudgesResponse> => {
+  async (request: CallableRequest): Promise<SummarizeSlideNudgesResponse> => {
     verifyAppCheck(request);
 
     if (!request.auth) {
@@ -525,12 +526,12 @@ export const summarizeSlideNudges = onCall(
         return { success: true, summary: '' };
       }
 
-      const nudges = nudgesSnapshot.docs.map(d => d.data());
+      const nudges = nudgesSnapshot.docs.map((d: admin.firestore.QueryDocumentSnapshot) => d.data());
 
       const client = createGeminiClient();
 
       const suggestionsText = nudges
-        .map(n => `- ${sanitizeInput(n.playerName)}: "${sanitizeInput(n.text)}"`)
+        .map((n: admin.firestore.DocumentData) => `- ${sanitizeInput(n.playerName)}: "${sanitizeInput(n.text)}"`)
         .join('\n');
 
       const prompt = `Given these audience suggestions, synthesize them into a single, coherent refinement request that captures the key themes and specific guidance. Be concise (1-3 sentences).

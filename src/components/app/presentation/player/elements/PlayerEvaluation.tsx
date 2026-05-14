@@ -5,7 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
-import { useResponses, useDynamicItems } from '@/firebase/presentation';
+import { useResponses, useDynamicItems, useThoughtsItems } from '@/firebase/presentation';
 import { StarScale, NumericScale, LabelScale } from '@/components/app/scale-renderers';
 import { ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
 import type { SlideElement, EvaluationMetric } from '@/lib/types';
@@ -25,6 +25,7 @@ export function PlayerEvaluation({ element, gameId, playerId, playerName, onSubm
   const ref = element.agenticSourceRef;
   const { submitResponse } = useResponses(gameId);
   const { items: aiStepItems, isLoading: loadingAIStep } = useDynamicItems(gameId, element.dynamicItemsSource);
+  const { items: thoughtsItems, isLoading: loadingThoughts } = useThoughtsItems(gameId, element.thoughtsSourceRef);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [ratings, setRatings] = useState<Record<string, Record<string, number>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -71,7 +72,7 @@ export function PlayerEvaluation({ element, gameId, playerId, playerName, onSubm
 
   if (!config) return null;
 
-  if (loadingDynamic || loadingAIStep) {
+  if (loadingDynamic || loadingAIStep || loadingThoughts) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -79,7 +80,7 @@ export function PlayerEvaluation({ element, gameId, playerId, playerName, onSubm
     );
   }
 
-  const items = aiStepItems || dynamicItems || config.items;
+  const items = aiStepItems || dynamicItems || thoughtsItems || config.items;
   const metrics: EvaluationMetric[] = config.metrics.map((m) => ({
     id: m.id,
     name: m.name,

@@ -184,6 +184,13 @@ export interface SlideElement {
     sourceElementId: string;
   };
 
+  // === Thoughts gathering source (items from thoughts element for evaluation) ===
+  thoughtsSourceRef?: {
+    sourceSlideId: string;
+    sourceElementId: string;
+    mode: 'raw' | 'groups';
+  };
+
   // Results elements - reference source
   sourceElementId?: string;
   sourceSlideId?: string;
