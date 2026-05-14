@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import { GoogleGenAI } from '@google/genai';
 import * as admin from 'firebase-admin';
 import { ALLOWED_ORIGINS, REGION, GEMINI_MODEL, AI_SERVICE_ACCOUNT } from '../config';
@@ -158,7 +158,7 @@ export const extractTopics = onCall(
     serviceAccount: AI_SERVICE_ACCOUNT,
     enforceAppCheck: false,
   },
-  async (request): Promise<ExtractTopicsResponse> => {
+  async (request: CallableRequest): Promise<ExtractTopicsResponse> => {
     verifyAppCheck(request);
 
     // Verify user is authenticated
@@ -281,11 +281,11 @@ export const extractTopics = onCall(
       }
 
       submissions = submissionsSnapshot.docs
-        .map(doc => ({
+        .map((doc: admin.firestore.QueryDocumentSnapshot) => ({
           id: doc.id,
           ...doc.data() as Omit<InterestSubmission, 'id'>,
         }))
-        .filter(sub => !(sub as Record<string, unknown>).hidden);
+        .filter((sub: InterestSubmission & Record<string, unknown>) => !sub.hidden);
     }
 
     // Build the extraction request

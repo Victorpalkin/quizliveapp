@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import { GoogleGenAI } from '@google/genai';
 import * as admin from 'firebase-admin';
 import { ALLOWED_ORIGINS, REGION, GEMINI_MODEL, AI_SERVICE_ACCOUNT } from '../config';
@@ -122,7 +122,7 @@ export const evaluateSubmissions = onCall(
     // App Check enabled - verifies requests come from genuine app instances
     enforceAppCheck: true,
   },
-  async (request): Promise<EvaluateSubmissionsResponse> => {
+  async (request: CallableRequest): Promise<EvaluateSubmissionsResponse> => {
     verifyAppCheck(request);
 
     // Rate limiting: 5 requests per hour per user (high cost operation)
@@ -184,7 +184,7 @@ export const evaluateSubmissions = onCall(
     }
 
     // Prepare submissions for evaluation
-    const submissions: QuestionSubmission[] = submissionsSnapshot.docs.map(doc => ({
+    const submissions: QuestionSubmission[] = submissionsSnapshot.docs.map((doc: admin.firestore.QueryDocumentSnapshot) => ({
       id: doc.id,
       ...doc.data() as Omit<QuestionSubmission, 'id'>,
     }));

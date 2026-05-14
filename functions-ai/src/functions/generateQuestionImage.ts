@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import { GoogleGenAI } from '@google/genai';
 import { getStorage } from 'firebase-admin/storage';
 import { randomUUID } from 'crypto';
@@ -32,7 +32,7 @@ export const generateQuestionImage = onCall(
     // App Check enabled - verifies requests come from genuine app instances
     enforceAppCheck: true,
   },
-  async (request): Promise<GenerateImageResponse> => {
+  async (request: CallableRequest): Promise<GenerateImageResponse> => {
     // Verify App Check token
     verifyAppCheck(request);
 
