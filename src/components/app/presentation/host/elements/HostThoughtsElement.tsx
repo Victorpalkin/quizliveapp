@@ -49,7 +49,7 @@ export function HostThoughtsElement({ element, gameId, playerCount }: HostThough
         responses from {playerCount} player{playerCount !== 1 ? 's' : ''}
       </p>
 
-      {recentThoughts.length > 0 && (
+      {config.showSubmissionStream !== false && recentThoughts.length > 0 && (
         <div className="w-full max-w-lg space-y-1.5 overflow-y-auto max-h-[50%]">
           <AnimatePresence initial={false}>
             {recentThoughts.map((t) => (

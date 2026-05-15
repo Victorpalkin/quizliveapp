@@ -123,6 +123,7 @@ export interface SlideElement {
     prompt: string;
     maxPerPlayer: number;
     timeLimit?: number;
+    showSubmissionStream?: boolean;
   };
 
   ratingConfig?: {

@@ -123,7 +123,7 @@ export function HostThoughtsResultsElement({ element, slides, gameId }: HostThou
 
       <div className="flex-1 overflow-y-auto">
         {topics.length > 0 ? (
-          <ThoughtsGroupedView topics={topics} submissions={submissions} />
+          <ThoughtsGroupedView topics={topics} submissions={submissions} hideSubmissions={config.showSubmissionStream === false} />
         ) : submissions.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground">
             No responses yet

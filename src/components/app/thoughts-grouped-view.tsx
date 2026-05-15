@@ -11,6 +11,7 @@ interface ThoughtsGroupedViewProps {
   submissions: ThoughtSubmission[];
   agentMatches?: TopicAgentMatch[];
   anonymousMode?: boolean;
+  hideSubmissions?: boolean;
   className?: string;
   renderGroupActions?: (topic: TopicEntry) => React.ReactNode;
 }
@@ -27,7 +28,7 @@ const COLORS = [
   { bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', text: 'text-indigo-600 dark:text-indigo-400' },
 ];
 
-export function ThoughtsGroupedView({ topics, submissions, agentMatches, anonymousMode, className = '', renderGroupActions }: ThoughtsGroupedViewProps) {
+export function ThoughtsGroupedView({ topics, submissions, agentMatches, anonymousMode, hideSubmissions, className = '', renderGroupActions }: ThoughtsGroupedViewProps) {
   // Track which groups are expanded
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -123,7 +124,7 @@ export function ThoughtsGroupedView({ topics, submissions, agentMatches, anonymo
               <CollapsibleContent>
                 <div className="border-t border-border/50 bg-background/50">
                   <div className="p-4 space-y-2">
-                    {topicSubmissions.length > 0 ? (
+                    {!hideSubmissions && (topicSubmissions.length > 0 ? (
                       topicSubmissions.map((sub) => (
                         <div
                           key={sub.id}
@@ -141,7 +142,7 @@ export function ThoughtsGroupedView({ topics, submissions, agentMatches, anonymo
                         <MessageSquare className="h-4 w-4" />
                         <span className="text-sm">Original submissions not available</span>
                       </div>
-                    )}
+                    ))}
                     {topic.variations && topic.variations.length > 0 && (
                       <div className="pt-2 border-t border-border/30 mt-3">
                         <p className="text-xs text-muted-foreground">
