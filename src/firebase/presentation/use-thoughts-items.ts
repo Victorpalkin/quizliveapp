@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { doc, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirestore, useFunctions } from '@/firebase';
+import { logError } from '@/lib/error-logging';
 
 interface ThoughtsSourceRef {
   sourceSlideId: string;
@@ -81,6 +82,13 @@ export function useThoughtsItems(
           });
         }
       }
+    }, (err) => {
+      logError(err instanceof Error ? err : new Error(String(err)), {
+        context: 'useThoughtsItems:groups',
+        additionalInfo: { gameId, sourceElementId },
+      });
+      setItems(null);
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
@@ -125,6 +133,13 @@ export function useThoughtsItems(
       }
 
       setItems(rawItems.length > 0 ? rawItems : null);
+      setIsLoading(false);
+    }, (err) => {
+      logError(err instanceof Error ? err : new Error(String(err)), {
+        context: 'useThoughtsItems:raw',
+        additionalInfo: { gameId, sourceElementId },
+      });
+      setItems(null);
       setIsLoading(false);
     });
 

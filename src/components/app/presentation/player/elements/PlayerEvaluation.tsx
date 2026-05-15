@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { logError } from '@/lib/error-logging';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { useResponses, useDynamicItems, useThoughtsItems } from '@/firebase/presentation';
@@ -57,6 +58,13 @@ export function PlayerEvaluation({ element, gameId, playerId, playerName, onSubm
           setDynamicItems(null);
         }
       }
+      setLoadingDynamic(false);
+    }, (err) => {
+      logError(err instanceof Error ? err : new Error(String(err)), {
+        context: 'PlayerEvaluation:agenticSource',
+        additionalInfo: { gameId, elementId: ref.elementId },
+      });
+      setDynamicItems(null);
       setLoadingDynamic(false);
     });
 

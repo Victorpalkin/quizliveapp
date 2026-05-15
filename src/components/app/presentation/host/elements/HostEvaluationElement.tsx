@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { logError } from '@/lib/error-logging';
 import { motion } from 'motion/react';
 import { useResponseCount, useDynamicItems, useThoughtsItems } from '@/firebase/presentation';
 import { ClipboardList, Loader2 } from 'lucide-react';
@@ -56,6 +57,13 @@ export function HostEvaluationElement({ element, gameId, playerCount }: HostEval
           setDynamicItems(null);
         }
       }
+      setLoadingDynamic(false);
+    }, (err) => {
+      logError(err instanceof Error ? err : new Error(String(err)), {
+        context: 'HostEvaluationElement:agenticSource',
+        additionalInfo: { gameId, elementId: ref.elementId },
+      });
+      setDynamicItems(null);
       setLoadingDynamic(false);
     });
 

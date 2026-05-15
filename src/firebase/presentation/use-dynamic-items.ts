@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { logError } from '@/lib/error-logging';
 import type { PresentationWorkflowState } from '@/lib/types';
 
 interface DynamicItemsSource {
@@ -56,6 +57,13 @@ export function useDynamicItems(
       } else {
         setItems(null);
       }
+      setIsLoading(false);
+    }, (err) => {
+      logError(err instanceof Error ? err : new Error(String(err)), {
+        context: 'useDynamicItems',
+        additionalInfo: { gameId, sourceSlideId: dynamicItemsSource.sourceSlideId },
+      });
+      setItems(null);
       setIsLoading(false);
     });
 

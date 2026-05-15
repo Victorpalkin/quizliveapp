@@ -236,14 +236,12 @@ service cloud.firestore {
       // Leaderboard, analytics, and answer key aggregates subcollection
       match /aggregates/{aggId} {
         // answerKey is NEVER readable by clients - only Cloud Functions (admin SDK)
-        // topics-* and evaluation-* contain verbatim user excerpts — host only
+        // evaluation-* contain detailed results — host only
         // Analytics only by host
+        // topics-* readable by all (players need them for evaluation elements)
         // Leaderboard and other aggregates readable by all (for gameplay)
         allow read: if aggId != 'answerKey' &&
                       (aggId != 'analytics' ||
-                        (request.auth != null &&
-                         request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId)) &&
-                      (!aggId.matches('topics-.*') ||
                         (request.auth != null &&
                          request.auth.uid == get(/databases/$(database)/documents/games/$(gameId)).data.hostId)) &&
                       (!aggId.matches('evaluation-.*') ||
