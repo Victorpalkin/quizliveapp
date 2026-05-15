@@ -1,4 +1,5 @@
 import { HttpsError } from 'firebase-functions/v2/https';
+import * as admin from 'firebase-admin';
 
 /**
  * Simple In-Memory Rate Limiting for Cloud Functions
@@ -121,7 +122,7 @@ export function enforceRateLimitInMemory(
  * (e.g., account creation, AI generation).
  */
 export async function enforceRateLimitFirestore(
-  db: FirebaseFirestore.Firestore,
+  db: admin.firestore.Firestore,
   identifier: string,
   maxRequests: number,
   windowSeconds: number
@@ -130,7 +131,7 @@ export async function enforceRateLimitFirestore(
   const ref = db.collection('rateLimits').doc(docId);
   const now = Date.now();
 
-  await db.runTransaction(async (tx) => {
+  await db.runTransaction(async (tx: admin.firestore.Transaction) => {
     const doc = await tx.get(ref);
     const data = doc.data();
 

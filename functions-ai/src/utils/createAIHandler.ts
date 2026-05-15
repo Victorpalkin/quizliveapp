@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import { GoogleGenAI } from '@google/genai';
 import { ALLOWED_ORIGINS, REGION, GEMINI_MODEL, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from './appCheck';
@@ -39,7 +39,7 @@ export function createAIHandler<TRequest extends { prompt: string }, TResponse>(
       serviceAccount: AI_SERVICE_ACCOUNT,
       enforceAppCheck: true,
     },
-    async (request): Promise<TResponse> => {
+    async (request: CallableRequest): Promise<TResponse> => {
       verifyAppCheck(request);
 
       if (request.auth?.uid) {

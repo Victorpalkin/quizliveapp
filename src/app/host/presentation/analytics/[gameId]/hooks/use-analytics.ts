@@ -4,26 +4,26 @@ import { useState, useEffect } from 'react';
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
-interface ElementStats {
+export interface ElementStats {
   elementId: string;
   elementType: string;
   slideIndex?: number;
   totalResponses: number;
-  averageTimeRemaining?: number;
-  correctPercentage?: number;
-  averageRating?: number;
-  distribution?: number[];
+  responseRate: number;
+  correctCount?: number;
+  correctRate?: number;
+  answerDistribution?: Record<string, number>;
+  avgRating?: number;
+  itemRatings?: Record<string, number>;
 }
 
-interface PlayerEngagement {
+export interface PlayerEngagement {
   playerId: string;
   playerName: string;
   score: number;
   responsesSubmitted: number;
-  averageResponseTime: number;
-  maxStreak: number;
-  reactionsCount: number;
-  questionsAsked: number;
+  responseRate: number;
+  streak: number;
 }
 
 export interface PresentationAnalytics {

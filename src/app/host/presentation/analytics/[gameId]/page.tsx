@@ -6,15 +6,17 @@ import { httpsCallable } from 'firebase/functions';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, Loader2 } from 'lucide-react';
 import { useUser, useFunctions } from '@/firebase';
-import { usePresentationById } from '@/firebase/presentation';
+import { usePresentationById, useQuestions } from '@/firebase/presentation';
 import { useAnalytics } from './hooks/use-analytics';
 import { useWorkflowOutputs } from './hooks/use-workflow-outputs';
+import { useSlideAggregates } from './hooks/use-slide-aggregates';
 import { OverviewTab } from './components/overview-tab';
 import { SlidesTab } from './components/slides-tab';
-import { EngagementTab } from './components/engagement-tab';
+import { QATab } from './components/qa-tab';
 import { LeaderboardTab } from './components/leaderboard-tab';
+import { exportAnalyticsReport } from './utils/export';
 
 export default function PresentationAnalyticsPage({ params }: { params: Promise<{ gameId: string }> }) {
   const { gameId } = use(params);
@@ -24,6 +26,8 @@ export default function PresentationAnalyticsPage({ params }: { params: Promise<
   const { analytics, loading } = useAnalytics(gameId);
   const { slideOutputs } = useWorkflowOutputs(gameId);
   const { presentation } = usePresentationById(analytics?.presentationId ?? null);
+  const aggregates = useSlideAggregates(gameId, analytics?.elementStats ?? [], presentation?.slides);
+  const { questions } = useQuestions(gameId);
   const [tab, setTab] = useState('overview');
   const generationAttempted = useRef(false);
 
@@ -35,6 +39,18 @@ export default function PresentationAnalyticsPage({ params }: { params: Promise<
     const fn = httpsCallable(functions, 'computePresentationAnalytics');
     fn({ gameId }).catch(() => {});
   }, [loading, authLoading, user, functions, analytics, gameId]);
+
+  const handleExport = () => {
+    if (!analytics) return;
+    exportAnalyticsReport({
+      analytics,
+      slides: presentation?.slides,
+      slideOutputs,
+      aggregates,
+      questions,
+      presentationTitle: presentation?.title,
+    });
+  };
 
   if (authLoading || loading) {
     return (
@@ -56,7 +72,13 @@ export default function PresentationAnalyticsPage({ params }: { params: Promise<
         <Button variant="ghost" size="icon" onClick={() => router.push('/host')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-xl font-bold">Presentation Analytics</h1>
+        <h1 className="text-xl font-bold flex-1">Presentation Analytics</h1>
+        {analytics && (
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            Download Report
+          </Button>
+        )}
       </div>
 
       {/* Content */}
@@ -73,7 +95,7 @@ export default function PresentationAnalyticsPage({ params }: { params: Promise<
             <TabsList className="grid w-full grid-cols-4 glass-subtle">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="slides">Slides</TabsTrigger>
-              <TabsTrigger value="engagement">Engagement</TabsTrigger>
+              <TabsTrigger value="qa">Q&A</TabsTrigger>
               <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
             </TabsList>
 
@@ -89,10 +111,16 @@ export default function PresentationAnalyticsPage({ params }: { params: Promise<
                   <OverviewTab analytics={analytics} />
                 </TabsContent>
                 <TabsContent value="slides" className="mt-6" forceMount={tab === 'slides' ? true : undefined}>
-                  <SlidesTab analytics={analytics} slideOutputs={slideOutputs} slides={presentation?.slides} />
+                  <SlidesTab
+                    analytics={analytics}
+                    slideOutputs={slideOutputs}
+                    slides={presentation?.slides}
+                    aggregates={aggregates}
+                    gameId={gameId}
+                  />
                 </TabsContent>
-                <TabsContent value="engagement" className="mt-6" forceMount={tab === 'engagement' ? true : undefined}>
-                  <EngagementTab analytics={analytics} />
+                <TabsContent value="qa" className="mt-6" forceMount={tab === 'qa' ? true : undefined}>
+                  <QATab questions={questions} />
                 </TabsContent>
                 <TabsContent value="leaderboard" className="mt-6" forceMount={tab === 'leaderboard' ? true : undefined}>
                   <LeaderboardTab analytics={analytics} />

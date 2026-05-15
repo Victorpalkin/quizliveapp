@@ -2,6 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { ExpandableTextarea } from './ExpandableTextarea';
 import type { SlideElement } from '@/lib/types';
 
@@ -53,6 +54,14 @@ export function ThoughtsProperties({ element, onUpdate }: ThoughtsPropertiesProp
             className="mt-1"
           />
         </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <Label htmlFor="show-stream" className="text-xs">Show live submissions</Label>
+        <Switch
+          id="show-stream"
+          checked={config.showSubmissionStream !== false}
+          onCheckedChange={(checked) => updateConfig({ showSubmissionStream: checked })}
+        />
       </div>
     </div>
   );

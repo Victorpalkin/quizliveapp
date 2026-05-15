@@ -107,7 +107,7 @@ export async function findSimilarAgents(
 
   // Map results and include distance
   const agents = results.docs
-    .map(doc => {
+    .map((doc: admin.firestore.QueryDocumentSnapshot) => {
       const data = doc.data() as AIAgent & { vectorDistance?: number };
       return {
         uniqueId: data.uniqueId,
@@ -125,7 +125,7 @@ export async function findSimilarAgents(
 
   console.log(`Vector search for "${topicText.substring(0, 50)}..." returned ${agents.length} agents`);
   if (agents.length > 0) {
-    console.log(`  Matches: ${agents.map(a => `${a.agentName} (d=${a.distance?.toFixed(3)})`).join(', ')}`);
+    console.log(`  Matches: ${agents.map((a: MatchingAgent) => `${a.agentName} (d=${a.distance?.toFixed(3)})`).join(', ')}`);
   }
 
   return agents;

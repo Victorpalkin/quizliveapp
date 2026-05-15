@@ -46,24 +46,48 @@ async function deleteSubcollection(gameRef: admin.firestore.DocumentReference, s
 }
 
 /**
+ * Deletes all documents in a subcollection that itself contains a nested subcollection.
+ * Enumerates parent docs, deletes the nested subcollection for each, then deletes the parents.
+ */
+async function deleteSubcollectionWithNested(
+  gameRef: admin.firestore.DocumentReference,
+  subcollectionName: string,
+  nestedName: string
+): Promise<number> {
+  const parentSnapshot = await gameRef.collection(subcollectionName).get();
+  if (parentSnapshot.empty) return 0;
+
+  for (const parentDoc of parentSnapshot.docs) {
+    await deleteSubcollection(parentDoc.ref, nestedName);
+  }
+
+  return deleteSubcollection(gameRef, subcollectionName);
+}
+
+const SIMPLE_SUBCOLLECTIONS = [
+  'players', 'submissions', 'aggregates', 'responses', 'reactions',
+  'workflowState', 'questions', 'leaderboard', 'analytics', 'items', 'ratings',
+];
+
+/**
  * Deletes a game and all its subcollections.
  */
-async function deleteGameWithSubcollections(gameRef: admin.firestore.DocumentReference): Promise<{
-  players: number;
-  submissions: number;
-  aggregates: number;
-}> {
-  // Delete all subcollections first
-  const [players, submissions, aggregates] = await Promise.all([
-    deleteSubcollection(gameRef, 'players'),
-    deleteSubcollection(gameRef, 'submissions'),
-    deleteSubcollection(gameRef, 'aggregates'),
+async function deleteGameWithSubcollections(gameRef: admin.firestore.DocumentReference): Promise<number> {
+  // Delete nested subcollections first (slideNudges/*/nudges, agenticSessions/*/nudges)
+  await Promise.all([
+    deleteSubcollectionWithNested(gameRef, 'slideNudges', 'nudges'),
+    deleteSubcollectionWithNested(gameRef, 'agenticSessions', 'nudges'),
   ]);
+
+  // Delete all simple subcollections
+  const counts = await Promise.all(
+    SIMPLE_SUBCOLLECTIONS.map(name => deleteSubcollection(gameRef, name))
+  );
 
   // Delete the game document
   await gameRef.delete();
 
-  return { players, submissions, aggregates };
+  return counts.reduce((sum, c) => sum + c, 0);
 }
 
 /**
@@ -91,9 +115,7 @@ export const cleanupOldGames = onSchedule(
 
     let oldGamesDeleted = 0;
     let orphanedCollectionsDeleted = 0;
-    let totalPlayersDeleted = 0;
-    let totalSubmissionsDeleted = 0;
-    let totalAggregatesDeleted = 0;
+    let totalDocsDeleted = 0;
 
     try {
       // 1. Delete games older than 30 days
@@ -107,11 +129,8 @@ export const cleanupOldGames = onSchedule(
         const gameId = gameDoc.id;
         console.log(`[Cleanup] Deleting old game: ${gameId}`);
 
-        const deleted = await deleteGameWithSubcollections(gameDoc.ref);
+        totalDocsDeleted += await deleteGameWithSubcollections(gameDoc.ref);
         oldGamesDeleted++;
-        totalPlayersDeleted += deleted.players;
-        totalSubmissionsDeleted += deleted.submissions;
-        totalAggregatesDeleted += deleted.aggregates;
       }
 
       console.log(`[Cleanup] Deleted ${oldGamesDeleted} old games`);
@@ -139,25 +158,24 @@ export const cleanupOldGames = onSchedule(
         if (!gameDoc.exists) {
           console.log(`[Cleanup] Found orphaned subcollections for game: ${gameId}`);
 
-          const [players, submissions, aggregates] = await Promise.all([
-            deleteSubcollection(gameRef, 'players'),
-            deleteSubcollection(gameRef, 'submissions'),
-            deleteSubcollection(gameRef, 'aggregates'),
+          await Promise.all([
+            deleteSubcollectionWithNested(gameRef, 'slideNudges', 'nudges'),
+            deleteSubcollectionWithNested(gameRef, 'agenticSessions', 'nudges'),
           ]);
 
+          const counts = await Promise.all(
+            SIMPLE_SUBCOLLECTIONS.map(name => deleteSubcollection(gameRef, name))
+          );
+
           orphanedCollectionsDeleted++;
-          totalPlayersDeleted += players;
-          totalSubmissionsDeleted += submissions;
-          totalAggregatesDeleted += aggregates;
+          totalDocsDeleted += counts.reduce((sum, c) => sum + c, 0);
         }
       }
 
       console.log(`[Cleanup] Cleanup complete:
         - Old games deleted: ${oldGamesDeleted}
         - Orphaned collections cleaned: ${orphanedCollectionsDeleted}
-        - Total players deleted: ${totalPlayersDeleted}
-        - Total submissions deleted: ${totalSubmissionsDeleted}
-        - Total aggregates deleted: ${totalAggregatesDeleted}`);
+        - Total documents deleted: ${totalDocsDeleted}`);
 
     } catch (error) {
       console.error('[Cleanup] Error during cleanup:', error);

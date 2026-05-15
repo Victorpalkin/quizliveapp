@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { logError } from '@/lib/error-logging';
 import { motion } from 'motion/react';
-import { useResponseCount, useDynamicItems } from '@/firebase/presentation';
+import { useResponseCount, useDynamicItems, useThoughtsItems } from '@/firebase/presentation';
 import { ClipboardList, Loader2 } from 'lucide-react';
 import type { SlideElement } from '@/lib/types';
 import type { AgenticDesignerSession } from '@/lib/types/agentic-designer';
@@ -23,6 +24,9 @@ export function HostEvaluationElement({ element, gameId, playerCount }: HostEval
 
   // Dynamic items from ai-step structured output
   const { items: aiStepItems, isLoading: loadingAIStep } = useDynamicItems(gameId, element.dynamicItemsSource);
+
+  // Dynamic items from thoughts gathering
+  const { items: thoughtsItems, isLoading: loadingThoughts } = useThoughtsItems(gameId, element.thoughtsSourceRef);
 
   // Dynamic items from agentic designer session
   const [dynamicItems, setDynamicItems] = useState<{ id: string; text: string; description?: string }[] | null>(null);
@@ -54,6 +58,13 @@ export function HostEvaluationElement({ element, gameId, playerCount }: HostEval
         }
       }
       setLoadingDynamic(false);
+    }, (err) => {
+      logError(err instanceof Error ? err : new Error(String(err)), {
+        context: 'HostEvaluationElement:agenticSource',
+        additionalInfo: { gameId, elementId: ref.elementId },
+      });
+      setDynamicItems(null);
+      setLoadingDynamic(false);
     });
 
     return () => unsubscribe();
@@ -61,7 +72,7 @@ export function HostEvaluationElement({ element, gameId, playerCount }: HostEval
 
   if (!config) return null;
 
-  const items = aiStepItems || dynamicItems || config.items;
+  const items = aiStepItems || dynamicItems || thoughtsItems || config.items;
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-4">
@@ -78,7 +89,7 @@ export function HostEvaluationElement({ element, gameId, playerCount }: HostEval
 
       {/* Items list */}
       <div className="w-full max-w-lg space-y-2 mb-6">
-        {(loadingDynamic || loadingAIStep) ? (
+        {(loadingDynamic || loadingAIStep || loadingThoughts) ? (
           <div className="flex items-center justify-center py-4">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>

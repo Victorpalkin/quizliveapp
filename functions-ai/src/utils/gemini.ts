@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from '@google/genai';
-import type { FunctionDeclaration, Content, Part, Tool } from '@google/genai';
+import type { FunctionDeclaration, FunctionCall, Content, Part, Tool } from '@google/genai';
 import { HttpsError } from 'firebase-functions/v2/https';
 
 export { Type };
@@ -208,7 +208,7 @@ export async function callGeminiWithTools(
     // Append model's function call response to conversation
     contents.push({
       role: 'model',
-      parts: functionCalls.map((fc) => ({ functionCall: fc })),
+      parts: functionCalls.map((fc: FunctionCall) => ({ functionCall: fc })),
     });
 
     // Execute each function call and collect responses
@@ -252,7 +252,8 @@ export async function callGeminiWithTools(
  */
 export async function extractJsonFromText(
   client: GoogleGenAI,
-  extractionPrompt: string
+  extractionPrompt: string,
+  responseSchema?: Record<string, unknown>
 ): Promise<Record<string, unknown> | null> {
   try {
     const response = await client.models.generateContent({
@@ -260,6 +261,7 @@ export async function extractJsonFromText(
       contents: [{ role: 'user', parts: [{ text: extractionPrompt }] }],
       config: {
         responseMimeType: 'application/json',
+        ...(responseSchema ? { responseSchema } : {}),
         temperature: 0.3,
         maxOutputTokens: 8192,
       },

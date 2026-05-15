@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { ALLOWED_ORIGINS, REGION, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
@@ -383,7 +383,7 @@ export const runAgenticDesignerStep = onCall(
     serviceAccount: AI_SERVICE_ACCOUNT,
     enforceAppCheck: false,
   },
-  async (request): Promise<RunStepResponse> => {
+  async (request: CallableRequest): Promise<RunStepResponse> => {
     verifyAppCheck(request);
 
     // Verify user is authenticated
@@ -577,7 +577,7 @@ export const summarizeAgenticNudges = onCall(
     serviceAccount: AI_SERVICE_ACCOUNT,
     enforceAppCheck: false,
   },
-  async (request): Promise<SummarizeNudgesResponse> => {
+  async (request: CallableRequest): Promise<SummarizeNudgesResponse> => {
     verifyAppCheck(request);
 
     // Verify user is authenticated
@@ -628,13 +628,13 @@ export const summarizeAgenticNudges = onCall(
         return { success: true, summary: '' };
       }
 
-      const nudges = nudgesSnapshot.docs.map(doc => doc.data() as AgenticDesignerNudge);
+      const nudges = nudgesSnapshot.docs.map((doc: admin.firestore.QueryDocumentSnapshot) => doc.data() as AgenticDesignerNudge);
 
       const client = createGeminiClient();
 
       // Build prompt
       const suggestionsText = nudges
-        .map(n => `- ${sanitizeInput(n.playerName)}: "${sanitizeInput(n.text)}"`)
+        .map((n: AgenticDesignerNudge) => `- ${sanitizeInput(n.playerName)}: "${sanitizeInput(n.text)}"`)
         .join('\n');
 
       const prompt = `Given these audience suggestions for step analysis, synthesize them into a single, coherent refinement request that captures the key themes and specific guidance. Be concise (1-3 sentences).

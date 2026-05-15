@@ -8,6 +8,8 @@ interface SlideElement {
   evaluationConfig?: { title: string; items: { id: string; text: string }[]; metrics: { id: string; name: string }[] };
   thoughtsConfig?: { prompt: string };
   ratingConfig?: { itemTitle: string; items?: { id: string; text: string }[]; question?: string };
+  thoughtsSourceRef?: { sourceSlideId: string; sourceElementId: string; mode: 'raw' | 'groups' };
+  dynamicItemsSource?: { sourceSlideId: string; sourceElementId: string };
   [key: string]: unknown;
 }
 
@@ -55,6 +57,67 @@ async function loadPollResult(
   return `[Poll Result — "${question}"] Audience voted: ${winner[0]} (${pct}%, ${total} total votes). All options: ${sorted.map(([opt, cnt]) => `${opt}: ${cnt}`).join(', ')}`;
 }
 
+async function resolveEvaluationItems(
+  db: admin.firestore.Firestore,
+  gameId: string,
+  el: SlideElement
+): Promise<{ id: string; text: string }[]> {
+  // Priority: dynamicItemsSource (AI step) > thoughtsSourceRef > static items
+  const dynSrc = el.dynamicItemsSource;
+  if (dynSrc) {
+    const stateDoc = await db
+      .collection('games').doc(gameId)
+      .collection('workflowState').doc('state')
+      .get();
+    if (stateDoc.exists) {
+      const slideOutputs = (stateDoc.data()?.slideOutputs || {}) as Record<string, { structuredItems?: { id: string; name: string; description?: string }[] }>;
+      const output = slideOutputs[dynSrc.sourceSlideId];
+      if (output?.structuredItems?.length) {
+        return output.structuredItems.map((item) => ({
+          id: item.id,
+          text: item.name,
+        }));
+      }
+    }
+  }
+
+  const ref = el.thoughtsSourceRef;
+  if (!ref) return el.evaluationConfig?.items || [];
+
+  if (ref.mode === 'groups') {
+    const topicsDoc = await db
+      .collection('games').doc(gameId)
+      .collection('aggregates').doc(`topics-${ref.sourceElementId}`)
+      .get();
+    if (topicsDoc.exists) {
+      const topics = (topicsDoc.data()?.topics || []) as { topic: string }[];
+      if (topics.length > 0) {
+        return topics.map((t, i) => ({ id: `topic-${i}`, text: t.topic }));
+      }
+    }
+  } else {
+    const rawSnapshot = await db
+      .collection('games').doc(gameId)
+      .collection('responses')
+      .where('elementId', '==', ref.sourceElementId)
+      .get();
+    const items: { id: string; text: string }[] = [];
+    const seen = new Set<string>();
+    for (const docSnap of rawSnapshot.docs) {
+      const textAnswers = (docSnap.data().textAnswers || []) as string[];
+      textAnswers.forEach((text, idx) => {
+        if (text && !seen.has(text)) {
+          seen.add(text);
+          items.push({ id: `${docSnap.id}-${idx}`, text });
+        }
+      });
+    }
+    if (items.length > 0) return items;
+  }
+
+  return el.evaluationConfig?.items || [];
+}
+
 async function loadEvaluationResult(
   db: admin.firestore.Firestore,
   gameId: string,
@@ -68,7 +131,7 @@ async function loadEvaluationResult(
 
   if (snapshot.empty) return null;
 
-  const configItems = el.evaluationConfig?.items || [];
+  const configItems = await resolveEvaluationItems(db, gameId, el);
   const metrics = el.evaluationConfig?.metrics || [];
   if (configItems.length === 0 || metrics.length === 0) return null;
 
@@ -84,8 +147,9 @@ async function loadEvaluationResult(
     if (!evaluationRatings) continue;
 
     for (const [itemId, metricRatings] of Object.entries(evaluationRatings)) {
-      if (!itemScores[itemId]) continue;
-      // Average across metrics for this item
+      if (!itemScores[itemId]) {
+        itemScores[itemId] = { total: 0, count: 0 };
+      }
       const values = Object.values(metricRatings).filter((v): v is number => typeof v === 'number');
       if (values.length > 0) {
         const avg = values.reduce((a, b) => a + b, 0) / values.length;
@@ -95,19 +159,48 @@ async function loadEvaluationResult(
     }
   }
 
-  const ranked = configItems
-    .map((item) => ({
-      name: item.text,
-      avg: itemScores[item.id].count > 0 ? itemScores[item.id].total / itemScores[item.id].count : 0,
-      count: itemScores[item.id].count,
+  // Build a lookup from item IDs to names
+  const itemNameMap: Record<string, string> = {};
+  for (const item of configItems) {
+    itemNameMap[item.id] = item.text;
+  }
+
+  const ranked = Object.entries(itemScores)
+    .filter(([, s]) => s.count > 0)
+    .map(([itemId, s]) => ({
+      name: itemNameMap[itemId] || itemId,
+      avg: s.total / s.count,
+      count: s.count,
     }))
-    .filter((i) => i.count > 0)
     .sort((a, b) => b.avg - a.avg);
 
   if (ranked.length === 0) return null;
 
   const title = el.evaluationConfig?.title || 'Evaluation';
-  return `[Evaluation Result — "${title}"] Audience ranked: ${ranked.map((item, i) => `${i + 1}. ${item.name} (${item.avg.toFixed(1)}/5)`).join(', ')}`;
+  const parts: string[] = [];
+  parts.push(`[Evaluation Result — "${title}"] Audience ranked: ${ranked.map((item, i) => `${i + 1}. ${item.name} (${item.avg.toFixed(1)}/5)`).join(', ')}`);
+
+  // When items came from thoughts gathering, also include raw submissions for richer AI context
+  if (el.thoughtsSourceRef) {
+    const rawSnapshot = await db
+      .collection('games').doc(gameId)
+      .collection('responses')
+      .where('elementId', '==', el.thoughtsSourceRef.sourceElementId)
+      .limit(50)
+      .get();
+
+    const rawTexts: string[] = [];
+    for (const docSnap of rawSnapshot.docs) {
+      const textAnswers = (docSnap.data().textAnswers || []) as string[];
+      rawTexts.push(...textAnswers.filter(Boolean));
+    }
+
+    if (rawTexts.length > 0) {
+      parts.push(`[Raw submissions from thoughts gathering] ${rawTexts.length} audience submissions: ${rawTexts.slice(0, 20).map(t => `"${t}"`).join(', ')}${rawTexts.length > 20 ? ` ... and ${rawTexts.length - 20} more` : ''}`);
+    }
+  }
+
+  return parts.join('\n\n');
 }
 
 async function loadThoughtsResult(

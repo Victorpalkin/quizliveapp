@@ -7,9 +7,11 @@ import {
   query,
   where,
   setDoc,
+  getDoc,
   onSnapshot,
   serverTimestamp,
   Timestamp,
+  DocumentData,
 } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { PresentationGame, PresentationSlide, SlideElement } from '@/lib/types';
@@ -35,6 +37,22 @@ function toDate(val: unknown): Date | undefined {
   if (val instanceof Timestamp) return val.toDate();
   if (val instanceof Date) return val;
   return undefined;
+}
+
+function parseGameDoc(id: string, data: DocumentData): PresentationGame {
+  return {
+    id,
+    hostId: data.hostId,
+    gamePin: data.gamePin,
+    activityType: 'presentation',
+    presentationId: data.presentationId,
+    state: data.state,
+    currentSlideIndex: data.currentSlideIndex ?? 0,
+    settings: data.settings,
+    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+    timerStartedAt: toDate(data.timerStartedAt),
+    timerElementId: data.timerElementId ?? undefined,
+  };
 }
 
 export function usePlayerStateMachine(gamePin: string, playerId: string) {
@@ -87,21 +105,8 @@ export function usePlayerStateMachine(gamePin: string, playerId: string) {
       }
       const gameDoc = snapshot.docs[0];
       const data = gameDoc.data();
-      setGame({
-        id: gameDoc.id,
-        hostId: data.hostId,
-        gamePin: data.gamePin,
-        activityType: 'presentation',
-        presentationId: data.presentationId,
-        state: data.state,
-        currentSlideIndex: data.currentSlideIndex ?? 0,
-        settings: data.settings,
-        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
-        timerStartedAt: toDate(data.timerStartedAt),
-        timerElementId: data.timerElementId ?? undefined,
-      });
+      setGame(parseGameDoc(gameDoc.id, data));
 
-      // Load sanitized slides from game document (no correct answers)
       if (data.sanitizedSlides) {
         setSlides(data.sanitizedSlides);
       }
@@ -109,6 +114,30 @@ export function usePlayerStateMachine(gamePin: string, playerId: string) {
 
     return () => unsubscribe();
   }, [firestore, gamePin]);
+
+  // Re-sync game state immediately when page becomes visible again (e.g. after screen-off)
+  useEffect(() => {
+    if (!firestore || !game?.id) return;
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const snapshot = await getDoc(doc(firestore, 'games', game.id));
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          setGame(parseGameDoc(snapshot.id, data));
+          if (data.sanitizedSlides) {
+            setSlides(data.sanitizedSlides);
+          }
+        }
+      } catch {
+        // onSnapshot will eventually reconnect and deliver fresh data
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [firestore, game?.id]);
 
   // Update player state based on game state
   useEffect(() => {

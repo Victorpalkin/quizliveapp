@@ -123,6 +123,7 @@ export interface SlideElement {
     prompt: string;
     maxPerPlayer: number;
     timeLimit?: number;
+    showSubmissionStream?: boolean;
   };
 
   ratingConfig?: {
@@ -182,6 +183,13 @@ export interface SlideElement {
   dynamicItemsSource?: {
     sourceSlideId: string;
     sourceElementId: string;
+  };
+
+  // === Thoughts gathering source (items from thoughts element for evaluation) ===
+  thoughtsSourceRef?: {
+    sourceSlideId: string;
+    sourceElementId: string;
+    mode: 'raw' | 'groups';
   };
 
   // Results elements - reference source

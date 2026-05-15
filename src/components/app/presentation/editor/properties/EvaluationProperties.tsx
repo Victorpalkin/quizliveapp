@@ -269,19 +269,33 @@ export function EvaluationProperties({ element, slides, onUpdate }: EvaluationPr
           });
         });
 
-        if (agenticElements.length === 0 && aiStepElements.length === 0) return null;
+        // Thoughts gathering sources (prior slides with thoughts elements)
+        const thoughtsElements: { slideId: string; slideIndex: number; el: SlideElement }[] = [];
+        slides.forEach((s, idx) => {
+          if (s.order >= currentOrder) return;
+          s.elements.forEach((el) => {
+            if (el.type === 'thoughts') {
+              thoughtsElements.push({ slideId: s.id, slideIndex: idx, el });
+            }
+          });
+        });
+
+        if (agenticElements.length === 0 && aiStepElements.length === 0 && thoughtsElements.length === 0) return null;
 
         const ref = element.agenticSourceRef;
         const dynSrc = element.dynamicItemsSource;
+        const thoughtsSrc = element.thoughtsSourceRef;
         const selectedKey = dynSrc
           ? `aistep__${dynSrc.sourceSlideId}__${dynSrc.sourceElementId}`
           : ref
             ? `agentic__${ref.slideId}__${ref.elementId}__${ref.step}`
-            : '';
+            : thoughtsSrc
+              ? `thoughts__${thoughtsSrc.sourceSlideId}__${thoughtsSrc.sourceElementId}__${thoughtsSrc.mode}`
+              : '';
 
         const handleSourceChange = (key: string) => {
           if (!key || key === 'none') {
-            onUpdate({ agenticSourceRef: undefined, dynamicItemsSource: undefined });
+            onUpdate({ agenticSourceRef: undefined, dynamicItemsSource: undefined, thoughtsSourceRef: undefined });
             return;
           }
           if (key.startsWith('aistep__')) {
@@ -289,12 +303,21 @@ export function EvaluationProperties({ element, slides, onUpdate }: EvaluationPr
             onUpdate({
               dynamicItemsSource: { sourceSlideId: slideId, sourceElementId: elementId },
               agenticSourceRef: undefined,
+              thoughtsSourceRef: undefined,
             });
           } else if (key.startsWith('agentic__')) {
             const [, slideId, elementId, step] = key.split('__');
             onUpdate({
               agenticSourceRef: { slideId, elementId, step: Number(step) },
               dynamicItemsSource: undefined,
+              thoughtsSourceRef: undefined,
+            });
+          } else if (key.startsWith('thoughts__')) {
+            const [, slideId, elementId, mode] = key.split('__');
+            onUpdate({
+              thoughtsSourceRef: { sourceSlideId: slideId, sourceElementId: elementId, mode: mode as 'raw' | 'groups' },
+              dynamicItemsSource: undefined,
+              agenticSourceRef: undefined,
             });
           }
         };
@@ -332,6 +355,27 @@ export function EvaluationProperties({ element, slides, onUpdate }: EvaluationPr
                     })}
                   </>
                 )}
+                {thoughtsElements.length > 0 && (
+                  <>
+                    <SelectItem value="__header_thoughts" disabled className="text-[10px] font-semibold text-muted-foreground">
+                      Thoughts Gathering
+                    </SelectItem>
+                    {thoughtsElements.flatMap(({ slideId, slideIndex, el }) => [
+                      <SelectItem
+                        key={`thoughts__${slideId}__${el.id}__raw`}
+                        value={`thoughts__${slideId}__${el.id}__raw`}
+                      >
+                        Slide {slideIndex + 1}: {el.thoughtsConfig?.prompt?.slice(0, 30) || 'Thoughts'} (Raw)
+                      </SelectItem>,
+                      <SelectItem
+                        key={`thoughts__${slideId}__${el.id}__groups`}
+                        value={`thoughts__${slideId}__${el.id}__groups`}
+                      >
+                        Slide {slideIndex + 1}: {el.thoughtsConfig?.prompt?.slice(0, 30) || 'Thoughts'} (Groups)
+                      </SelectItem>,
+                    ])}
+                  </>
+                )}
                 {agenticElements.length > 0 && (
                   <>
                     <SelectItem value="__header_agentic" disabled className="text-[10px] font-semibold text-muted-foreground">
@@ -355,12 +399,12 @@ export function EvaluationProperties({ element, slides, onUpdate }: EvaluationPr
                 )}
               </SelectContent>
             </Select>
-            {(ref || dynSrc) && (
+            {(ref || dynSrc || thoughtsSrc) && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="w-full mt-1 text-xs text-muted-foreground"
-                onClick={() => onUpdate({ agenticSourceRef: undefined, dynamicItemsSource: undefined })}
+                onClick={() => onUpdate({ agenticSourceRef: undefined, dynamicItemsSource: undefined, thoughtsSourceRef: undefined })}
               >
                 Clear source
               </Button>

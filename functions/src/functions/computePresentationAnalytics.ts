@@ -181,14 +181,22 @@ export const computePresentationAnalytics = onCall(
       ? elementStats.reduce((sum, s) => sum + s.responseRate, 0) / elementStats.length
       : 0;
 
+    const totalResponses = responses.length;
+    const scores = playerEngagement.map((p) => p.score).filter((s) => s > 0);
+    const averageScore = scores.length > 0
+      ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+      : 0;
+
     const analytics = {
       gameId,
       presentationId: gameData.presentationId,
       presentationTitle: presData.title,
       totalSlides: slides.length,
       totalPlayers,
+      totalResponses,
       totalReactions,
       totalQuestions,
+      averageScore,
       elementStats,
       playerEngagement: playerEngagement.sort((a, b) => b.score - a.score),
       summary: {
