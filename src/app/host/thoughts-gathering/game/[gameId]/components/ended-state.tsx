@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Home, MessageSquare, BarChart3, Download, Sparkles } from 'lucide-react';
+import { ZivoLogo } from '@/components/app/zivo-logo';
 import { ResultsView } from './results-view';
 import { AIStudioPromptDialog } from './ai-studio-prompt-dialog';
 import type { ThoughtsGatheringActivity, ThoughtSubmission, TopicCloudResult, TopicEntry } from '@/lib/types';
@@ -50,6 +51,7 @@ export function EndedState({
 
   return (
     <div className="space-y-4">
+      <ZivoLogo className="mb-2" />
       <ResultsView
         activity={activity}
         submissions={submissions}
@@ -100,7 +102,7 @@ export function EndedState({
         className="w-full py-6 text-lg"
       >
         <Home className="mr-2 h-5 w-5" />
-        Return to Dashboard
+        Session History
       </Button>
     </div>
   );

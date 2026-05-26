@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { ZivoLogo } from '@/components/app/zivo-logo';
 import { Home, BarChart3 } from 'lucide-react';
 import { FinalLeaderboardView } from '../visualizations/final-leaderboard-view';
 import { DeleteGameButton } from '../controls/delete-game-button';
@@ -17,7 +18,10 @@ interface EndedStateProps {
 
 export function EndedState({ gameId, gameRef, topPlayers, totalPlayers }: EndedStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-8">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-8 relative">
+      <div className="absolute top-4 left-4">
+        <ZivoLogo />
+      </div>
       <h1 className="text-4xl font-bold mb-4">Quiz Over!</h1>
       <p className="text-muted-foreground mb-8">Here are the final results.</p>
       <FinalLeaderboardView topPlayers={topPlayers} totalPlayers={totalPlayers} />
@@ -29,9 +33,9 @@ export function EndedState({ gameId, gameRef, topPlayers, totalPlayers }: EndedS
           </Link>
         </Button>
         <Button asChild variant="outline">
-          <Link href="/host">
+          <Link href="/host?tab=history">
             <Home className="mr-2 h-4 w-4" />
-            Exit to Dashboard
+            Session History
           </Link>
         </Button>
         <DeleteGameButton gameRef={gameRef} />

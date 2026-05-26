@@ -157,7 +157,7 @@ export default function PollDetailPage() {
   if (!poll) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
-        <Header />
+        <Header logoHref="/host" />
         <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl">
           <Card className="text-center p-8">
             <CardContent>
@@ -177,13 +177,11 @@ export default function PollDetailPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header />
+      <Header logoHref="/host" />
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl">
         <div className="mb-8">
-          <Button asChild variant="ghost" className="mb-4">
-            <Link href="/host">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-            </Link>
+          <Button variant="ghost" className="mb-4" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">

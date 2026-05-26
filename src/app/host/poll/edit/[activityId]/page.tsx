@@ -95,7 +95,7 @@ export default function EditPollPage() {
   if (!poll) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
-        <Header />
+        <Header logoHref="/host" />
         <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl text-center">
           <h2 className="text-2xl font-bold mb-4">Poll Not Found</h2>
           <Button asChild>
@@ -115,13 +115,11 @@ export default function EditPollPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header />
+      <Header logoHref="/host" />
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl">
         <div className="mb-8">
-          <Button asChild variant="ghost" className="mb-4">
-            <Link href={`/host/poll/${activityId}`}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Poll
-            </Link>
+          <Button variant="ghost" className="mb-4" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
           <div className="flex items-center gap-3">
             <Vote className="h-10 w-10 text-teal-500" />

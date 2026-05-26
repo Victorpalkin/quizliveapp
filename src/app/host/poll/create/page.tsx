@@ -8,7 +8,6 @@ import { Vote, ArrowLeft } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
 import { pollActivityConverter } from '@/firebase/converters';
 import { PollForm, type PollFormData } from '@/components/app/poll-form';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
@@ -79,13 +78,11 @@ export default function CreatePollPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header />
+      <Header logoHref="/host" />
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl">
         <div className="mb-8">
-          <Button asChild variant="ghost" className="mb-4">
-            <Link href="/host">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-            </Link>
+          <Button variant="ghost" className="mb-4" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
           <div className="flex items-center gap-3">
             <Vote className="h-10 w-10 text-teal-500" />

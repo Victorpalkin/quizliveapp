@@ -244,15 +244,13 @@ export default function CreatePollWithAIPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header />
+      <Header logoHref="/host" />
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-6xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild className="rounded-xl">
-              <Link href="/host">
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
+            <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => router.back()}>
+              <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
               <h1 className="text-4xl font-semibold flex items-center gap-3">

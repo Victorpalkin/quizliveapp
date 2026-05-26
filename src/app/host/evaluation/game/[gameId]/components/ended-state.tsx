@@ -118,7 +118,7 @@ export function EndedState({
         size="lg"
         className="w-full"
       >
-        Back to Dashboard
+        Session History
       </Button>
     </>
   );

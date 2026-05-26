@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { QrCode, Users, XCircle, Keyboard } from 'lucide-react';
+import { ZivoLogo } from '@/components/app/zivo-logo';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { cn } from '@/lib/utils';
 import { ACTIVITY_CONFIG } from '@/lib/activity-config';
@@ -87,7 +88,7 @@ export function GameHeader({
     <header className={cn("flex flex-wrap justify-between items-center gap-4 mb-6", className)}>
       {/* Left: Logo and Activity Type */}
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-bold">Zivo</h1>
+        <ZivoLogo />
         <Badge variant="outline" className={cn("gap-1", config.color)}>
           <ActivityIcon className="h-3 w-3" />
           {config.label}

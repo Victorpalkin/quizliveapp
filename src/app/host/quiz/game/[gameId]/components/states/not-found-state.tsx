@@ -1,11 +1,15 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { ZivoLogo } from '@/components/app/zivo-logo';
 import { XCircle } from 'lucide-react';
 
 export function NotFoundState() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-8 text-center">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-8 text-center relative">
+      <div className="absolute top-4 left-4">
+        <ZivoLogo />
+      </div>
       <XCircle className="w-16 h-16 text-destructive mb-4" />
       <h1 className="text-4xl font-bold mb-4">Game Not Found</h1>
       <p className="text-muted-foreground mb-8">This game may have been canceled or never existed.</p>
