@@ -113,7 +113,7 @@ export function EvaluationBarChart({ items, className }: EvaluationBarChartProps
             <LabelList
               dataKey="score"
               position="right"
-              formatter={(value: number) => `${value}%`}
+              formatter={(value) => `${value}%`}
               style={{ fill: '#6b7280', fontSize: 12, fontWeight: 500 }}
             />
           </Bar>

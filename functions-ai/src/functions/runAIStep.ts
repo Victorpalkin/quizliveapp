@@ -97,7 +97,13 @@ interface PresentationSettings {
 // ── Utility Functions ──
 
 function sanitizeInput(input: string): string {
-  return input.replace(/<[^>]*>/g, '');
+  let result = input;
+  let prev;
+  do {
+    prev = result;
+    result = result.replace(/<[^>]*>/g, '');
+  } while (result !== prev);
+  return result;
 }
 
 /**

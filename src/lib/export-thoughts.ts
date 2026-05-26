@@ -124,7 +124,7 @@ ${summary}
       ? sub.submittedAt.toDate().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
       : '';
     // Escape pipe characters in submission text for markdown table
-    const escapedText = sub.rawText.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+    const escapedText = sub.rawText.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ');
     const playerName = anonymousMode ? 'Participant' : sub.playerName;
     md += `| ${index + 1} | ${playerName} | ${escapedText} | ${time} |\n`;
   });

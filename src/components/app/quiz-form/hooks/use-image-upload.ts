@@ -80,7 +80,7 @@ export function useImageUpload() {
     updateQuestion: (index: number, updatedQuestion: Question) => void
   ) => {
     if (question.imageUrl) {
-      if (question.imageUrl.startsWith('https://firebasestorage.googleapis.com')) {
+      if (question.imageUrl.startsWith('https://firebasestorage.googleapis.com/')) {
         imagesToDelete.current.push(question.imageUrl);
       } else {
         URL.revokeObjectURL(question.imageUrl);
