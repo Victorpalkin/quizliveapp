@@ -18,6 +18,8 @@ import { PlayerQuizResult } from './elements/PlayerQuizResult';
 import { PlayerLeaderboardView } from './elements/PlayerLeaderboardView';
 import { PlayerQA } from './elements/PlayerQA';
 import { CheckCircle } from 'lucide-react';
+import { ConnectionBanner } from './ConnectionBanner';
+import { useConnectionStatus } from '@/hooks/use-connection-status';
 import type { PresentationGame, PresentationSlide, SlideElement } from '@/lib/types';
 import type { QuizResult } from '@/app/play/presentation/[gamePin]/hooks/use-player-state-machine';
 
@@ -39,6 +41,7 @@ interface PresentationPlayerProps {
   slides: PresentationSlide[];
   playerScore: number;
   playerStreak: number;
+  firestoreFromCache: boolean;
   joinGame: (name: string) => Promise<void>;
   markResponded: (elementId: string) => void;
   hasResponded: (elementId: string) => boolean;
@@ -83,6 +86,7 @@ export function PresentationPlayer({
   slides,
   playerScore,
   playerStreak,
+  firestoreFromCache,
   joinGame,
   markResponded,
   hasResponded,
@@ -92,6 +96,7 @@ export function PresentationPlayer({
 }: PresentationPlayerProps) {
   const [name, setName] = useState('');
   const [joining, setJoining] = useState(false);
+  const connectionStatus = useConnectionStatus(firestoreFromCache);
 
   const hasQuizElements = slides.some((s) =>
     s.elements.some((el) => el.type === 'quiz')
@@ -285,6 +290,7 @@ export function PresentationPlayer({
           exit={{ opacity: 0 }}
           className="flex flex-col h-[100dvh]"
         >
+          <ConnectionBanner status={connectionStatus} />
           <PlayerHeader
             playerName={session?.playerName || ''}
             score={playerScore}
