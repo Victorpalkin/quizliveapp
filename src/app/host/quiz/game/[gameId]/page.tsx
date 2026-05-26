@@ -236,7 +236,7 @@ export default function HostGamePage() {
             )}
             {game?.state === 'leaderboard' && (
               <Button onClick={handleNext} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
-                {isLastQuestion ? 'End Game' : 'Next Question'}
+                {isLastQuestion ? 'End Quiz' : 'Next Question'}
               </Button>
             )}
           </div>

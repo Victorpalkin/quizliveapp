@@ -135,7 +135,7 @@ export function PresentationPlayer({
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/25">
                 <span className="text-2xl text-white font-bold">Z</span>
               </div>
-              <h1 className="text-2xl font-bold">Join Game</h1>
+              <h1 className="text-2xl font-bold">Join Presentation</h1>
             </motion.div>
             <div className="glass rounded-2xl p-6 space-y-4 shadow-xl">
               <Input

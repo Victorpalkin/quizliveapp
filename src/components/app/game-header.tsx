@@ -162,11 +162,11 @@ export function GameHeader({
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {isLive ? 'End this game?' : 'Cancel this game?'}
+                  {isLive ? `End this ${config.label.toLowerCase()}?` : `Cancel this ${config.label.toLowerCase()}?`}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {isLive
-                    ? 'This will end the game for all players. Final results will be shown.'
+                    ? `This will end the ${config.label.toLowerCase()} for all players. Final results will be shown.`
                     : 'This will remove all players and cannot be undone.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -176,7 +176,7 @@ export function GameHeader({
                   onClick={onCancel}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  {isLive ? 'Yes, End Game' : 'Yes, Cancel'}
+                  {isLive ? `Yes, End ${config.label}` : 'Yes, Cancel'}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

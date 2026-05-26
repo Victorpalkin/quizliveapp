@@ -31,15 +31,15 @@ export default function JoinGamePage() {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent text-accent-foreground">
               <Play className="h-8 w-8" />
             </div>
-            <CardTitle className="text-3xl">Join a Game</CardTitle>
-            <CardDescription>Enter the Game PIN to get started.</CardDescription>
+            <CardTitle className="text-3xl">Join a Session</CardTitle>
+            <CardDescription>Enter the session PIN to get started.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleJoin} className="space-y-6">
               <Input
                 value={gamePin}
                 onChange={(e) => setGamePin(e.target.value)}
-                placeholder="GAME PIN"
+                placeholder="SESSION PIN"
                 className="h-14 text-center text-2xl font-bold tracking-widest uppercase"
                 maxLength={8}
                 required

@@ -75,11 +75,11 @@ function extractContextFromUrl(): {
 
   // Generate human-readable context from path
   const contextMap: Record<string, string> = {
-    'play': 'Player Game',
+    'play': 'Player Session',
     'play/presentation': 'Player Presentation',
-    'join': 'Join Game',
+    'join': 'Join Session',
     'host': 'Host Dashboard',
-    'host/game': 'Host Game',
+    'host/game': 'Host Session',
     'host/lobby': 'Host Lobby',
     'host/edit': 'Quiz Editor',
     'host/create': 'Quiz Creator',

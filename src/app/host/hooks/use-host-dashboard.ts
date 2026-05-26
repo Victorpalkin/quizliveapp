@@ -110,8 +110,8 @@ export function useHostDashboard() {
     try {
       const gameDoc = await addDoc(collection(firestore, 'games'), gameData);
       toast({
-        title: 'Game Created!',
-        description: 'Your game lobby is now open.',
+        title: 'Session Created!',
+        description: 'Your lobby is now open.',
       });
       router.push(`/host/quiz/lobby/${gameDoc.id}`);
     } catch (error) {
@@ -185,8 +185,8 @@ export function useHostDashboard() {
     deleteDoc(gameRef)
       .then(() => {
         toast({
-          title: 'Game Record Deleted',
-          description: 'The game has been removed from your history.',
+          title: 'Session Record Deleted',
+          description: 'The session has been removed from your history.',
         });
       })
       .catch((error) => {

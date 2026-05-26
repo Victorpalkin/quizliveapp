@@ -19,8 +19,8 @@ export default function PlayerGameError({
       error={error}
       reset={reset}
       variant="game"
-      title="Game Error"
-      message="Oops! Something went wrong with the game. Your progress may have been saved."
+      title="Quiz Error"
+      message="Oops! Something went wrong with the quiz. Your progress may have been saved."
       primaryAction={{
         label: 'Try to Reconnect',
         icon: <RefreshCw className="mr-2 h-4 w-4" />,
@@ -36,7 +36,7 @@ export default function PlayerGameError({
           }
         },
       }}
-      footerMessage="If this keeps happening, ask the host for a new game PIN"
+      footerMessage="If this keeps happening, ask the host for a new session PIN"
     />
   );
 }

@@ -152,7 +152,7 @@ const stateLabels: Record<GameState, { label: string; color: string }> = {
   preparing: { label: 'Get Ready...', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
   question: { label: 'Question Active', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
   leaderboard: { label: 'Showing Results', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' },
-  ended: { label: 'Game Over', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300' },
+  ended: { label: 'Ended', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300' },
 };
 
 export function GameStateIndicator({ state, className }: GameStateIndicatorProps) {

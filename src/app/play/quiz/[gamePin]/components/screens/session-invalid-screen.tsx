@@ -12,14 +12,14 @@ export function SessionInvalidScreen({ onRejoin }: SessionInvalidScreenProps) {
         Your previous session could not be restored.
       </p>
       <p className="text-muted-foreground mt-2">
-        Please join the game again with the PIN.
+        Please join the quiz again with the PIN.
       </p>
       <Button
         onClick={onRejoin}
         size="lg"
         className="w-full mt-8"
       >
-        Join Game
+        Join Quiz
       </Button>
     </div>
   );

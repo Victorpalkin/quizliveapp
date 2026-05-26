@@ -40,7 +40,7 @@ export function HostReconnectBanner() {
           </div>
           <div>
             <p className="font-semibold text-foreground">
-              You have an active game!
+              You have an active session!
             </p>
             <p className="text-sm text-muted-foreground">
               {session.quizTitle} - PIN: <span className="font-mono font-semibold">{session.gamePin}</span>
@@ -53,13 +53,13 @@ export function HostReconnectBanner() {
             className="bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300"
           >
             <Gamepad2 className="mr-2 h-4 w-4" />
-            Rejoin Game
+            Rejoin Session
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={handleDismiss}
-            title="Dismiss (will not end the game)"
+            title="Dismiss (will not end the session)"
             className="text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
@@ -83,7 +83,7 @@ export function HostReconnectOverlay() {
     return (
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Checking for active games...</p>
+        <p className="text-muted-foreground">Checking for active sessions...</p>
       </div>
     );
   }
@@ -113,14 +113,14 @@ export function HostReconnectOverlay() {
               Welcome back!
             </h2>
             <p className="text-muted-foreground">
-              You have an active game in progress.
+              You have an active session in progress.
             </p>
           </div>
 
           <div className="bg-muted/50 rounded-xl p-4 space-y-1">
             <p className="font-semibold text-lg">{session.quizTitle}</p>
             <p className="text-sm text-muted-foreground">
-              Game PIN: <span className="font-mono font-bold text-foreground">{session.gamePin}</span>
+              Session PIN: <span className="font-mono font-bold text-foreground">{session.gamePin}</span>
             </p>
           </div>
 
@@ -131,7 +131,7 @@ export function HostReconnectOverlay() {
               className="w-full bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--accent))] hover:scale-[1.02] transition-all duration-300"
             >
               <Gamepad2 className="mr-2 h-5 w-5" />
-              Rejoin Game
+              Rejoin Session
             </Button>
             <Button
               variant="outline"
@@ -141,7 +141,7 @@ export function HostReconnectOverlay() {
               Dismiss
             </Button>
             <p className="text-xs text-muted-foreground">
-              Dismissing will not end the game. Players will still be waiting.
+              Dismissing will not end the session. Players will still be waiting.
             </p>
           </div>
         </CardContent>

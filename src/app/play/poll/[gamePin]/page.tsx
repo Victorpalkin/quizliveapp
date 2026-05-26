@@ -112,7 +112,7 @@ function PollPlayerContent({ playerId }: { playerId: string }) {
         );
 
       case 'reconnecting':
-        return <FullPageLoader message="Reconnecting to game..." />;
+        return <FullPageLoader message="Reconnecting to poll..." />;
 
       case 'ended':
         return (

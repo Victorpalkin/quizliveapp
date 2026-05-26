@@ -56,8 +56,8 @@ export function ErrorFallback({
     game: {
       icon: XCircle,
       iconColor: 'text-destructive',
-      defaultTitle: 'Game Error',
-      defaultMessage: 'Oops! Something went wrong with the game.',
+      defaultTitle: 'Session Error',
+      defaultMessage: 'Oops! Something went wrong with the session.',
     },
     dashboard: {
       icon: AlertTriangle,

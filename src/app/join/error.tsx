@@ -18,9 +18,9 @@ export default function JoinPageError({
       error={error}
       reset={reset}
       variant="generic"
-      title="Cannot Join Game"
+      title="Cannot Join Session"
       message="An error occurred while loading the join page."
-      footerMessage="Make sure you have a valid game PIN from the host"
+      footerMessage="Make sure you have a valid session PIN from the host"
     />
   );
 }
