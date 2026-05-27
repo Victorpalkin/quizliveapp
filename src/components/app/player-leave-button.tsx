@@ -34,7 +34,7 @@ export function PlayerLeaveButton({ onLeave }: PlayerLeaveButtonProps) {
           variant="ghost"
           size="icon"
           className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
-          title="Leave game"
+          title="Leave session"
         >
           <LogOut className="h-4 w-4" />
         </Button>

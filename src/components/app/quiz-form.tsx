@@ -304,7 +304,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                       <Users className="h-5 w-5 text-primary" />
                       <div>
                         <h4 className="font-medium">Crowdsourced Questions</h4>
-                        <p className="text-sm text-muted-foreground">Let players submit questions before the game starts</p>
+                        <p className="text-sm text-muted-foreground">Let players submit questions before the quiz starts</p>
                       </div>
                       <TooltipProvider>
                         <Tooltip>
@@ -312,7 +312,7 @@ export function QuizForm({ mode, initialData, onSubmit, isSubmitting, userId, ad
                             <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
-                            <p>When enabled, players can submit their own questions in the lobby before the game starts. AI will evaluate and rank submissions based on your topic, and you can review and select which ones to include.</p>
+                            <p>When enabled, players can submit their own questions in the lobby before the quiz starts. AI will evaluate and rank submissions based on your topic, and you can review and select which ones to include.</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>

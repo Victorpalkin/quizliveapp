@@ -19,7 +19,7 @@ export default function HostDashboardError({
       reset={reset}
       variant="dashboard"
       title="Dashboard Error"
-      message="Could not load your dashboard. Your quizzes and games are safe."
+      message="Could not load your dashboard. Your activities are safe."
       footerMessage="If the problem persists, try logging out and back in"
     />
   );

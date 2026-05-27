@@ -211,7 +211,7 @@ export function SharedQuizzes() {
       console.error('Error creating game:', error);
       toast({
         variant: 'destructive',
-        title: 'Failed to create game',
+        title: 'Failed to create session',
         description: 'Please try again.',
       });
       setHosting(null);

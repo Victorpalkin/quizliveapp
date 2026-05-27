@@ -78,16 +78,16 @@ export function HostActionHint({
         if (hasCrowdsourcing) {
           return {
             icon: <Lightbulb className="h-5 w-5" />,
-            text: 'Review crowdsourced questions, then start the game',
+            text: 'Review crowdsourced questions, then start the quiz',
             subtext: `${totalPlayers} player${totalPlayers !== 1 ? 's' : ''} joined`,
-            actionKey: 'Start Game',
+            actionKey: 'Start Quiz',
           };
         }
         return {
           icon: <ArrowRight className="h-5 w-5" />,
-          text: 'Click "Start Game" when ready',
+          text: 'Click "Start Quiz" when ready',
           subtext: `${totalPlayers} player${totalPlayers !== 1 ? 's' : ''} joined`,
-          actionKey: 'Start Game',
+          actionKey: 'Start Quiz',
         };
 
       case 'preparing':
@@ -116,14 +116,14 @@ export function HostActionHint({
       case 'leaderboard':
         return {
           icon: <ArrowRight className="h-5 w-5" />,
-          text: isLastQuestion ? 'Click to end the game and show final results' : 'Click "Next Question" to continue',
+          text: isLastQuestion ? 'Click to end the quiz and show final results' : 'Click "Next Question" to continue',
           actionKey: 'Space',
         };
 
       case 'ended':
         return {
           icon: <CheckCircle className="h-5 w-5" />,
-          text: 'Game complete! View analytics or return to dashboard.',
+          text: 'Quiz complete! View analytics or return to dashboard.',
         };
 
       default:

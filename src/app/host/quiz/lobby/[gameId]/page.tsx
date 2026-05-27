@@ -183,10 +183,10 @@ export default function HostLobbyPage() {
       players={players as Player[] | null}
       playersLoading={playersLoading}
       gameLoading={gameLoading}
-      startLabel="Start Game"
-      startDescription="No more players can join after starting"
-      startConfirmTitle="Start the game?"
-      startConfirmDescription={`No more players will be able to join after the game starts. ${playerCount} player${playerCount !== 1 ? 's' : ''} currently in the lobby.`}
+      startLabel="Start Quiz"
+      startDescription="No more players can join after the quiz starts"
+      startConfirmTitle="Start the quiz?"
+      startConfirmDescription={`No more players will be able to join after the quiz starts. ${playerCount} player${playerCount !== 1 ? 's' : ''} currently in the lobby.`}
       onStart={handleStartGame}
     >
       {game && quiz && (

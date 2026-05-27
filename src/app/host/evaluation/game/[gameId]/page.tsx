@@ -159,7 +159,7 @@ export default function EvaluationGamePage() {
               isTransitioning={isTransitioning}
               handleReopenKeepData={handleReopenKeepData}
               handleReopenClearData={handleReopenClearData}
-              onBackToDashboard={() => router.push('/host')}
+              onBackToDashboard={() => router.push('/host?tab=history')}
             />
           )}
 

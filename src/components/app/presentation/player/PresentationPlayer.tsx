@@ -18,6 +18,8 @@ import { PlayerQuizResult } from './elements/PlayerQuizResult';
 import { PlayerLeaderboardView } from './elements/PlayerLeaderboardView';
 import { PlayerQA } from './elements/PlayerQA';
 import { CheckCircle } from 'lucide-react';
+import { ConnectionBanner } from './ConnectionBanner';
+import { useConnectionStatus } from '@/hooks/use-connection-status';
 import type { PresentationGame, PresentationSlide, SlideElement } from '@/lib/types';
 import type { QuizResult } from '@/app/play/presentation/[gamePin]/hooks/use-player-state-machine';
 
@@ -39,6 +41,7 @@ interface PresentationPlayerProps {
   slides: PresentationSlide[];
   playerScore: number;
   playerStreak: number;
+  firestoreFromCache: boolean;
   joinGame: (name: string) => Promise<void>;
   markResponded: (elementId: string) => void;
   hasResponded: (elementId: string) => boolean;
@@ -83,6 +86,7 @@ export function PresentationPlayer({
   slides,
   playerScore,
   playerStreak,
+  firestoreFromCache,
   joinGame,
   markResponded,
   hasResponded,
@@ -92,6 +96,7 @@ export function PresentationPlayer({
 }: PresentationPlayerProps) {
   const [name, setName] = useState('');
   const [joining, setJoining] = useState(false);
+  const connectionStatus = useConnectionStatus(firestoreFromCache);
 
   const hasQuizElements = slides.some((s) =>
     s.elements.some((el) => el.type === 'quiz')
@@ -135,7 +140,7 @@ export function PresentationPlayer({
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/25">
                 <span className="text-2xl text-white font-bold">Z</span>
               </div>
-              <h1 className="text-2xl font-bold">Join Game</h1>
+              <h1 className="text-2xl font-bold">Join Presentation</h1>
             </motion.div>
             <div className="glass rounded-2xl p-6 space-y-4 shadow-xl">
               <Input
@@ -285,6 +290,7 @@ export function PresentationPlayer({
           exit={{ opacity: 0 }}
           className="flex flex-col h-[100dvh]"
         >
+          <ConnectionBanner status={connectionStatus} />
           <PlayerHeader
             playerName={session?.playerName || ''}
             score={playerScore}

@@ -16,6 +16,7 @@ import { ReactionOverlay } from './ReactionOverlay';
 import { ReactionCountBar } from './ReactionCountBar';
 import { StreakBanner } from './StreakBanner';
 import { Button } from '@/components/ui/button';
+import { ZivoLogo } from '@/components/app/zivo-logo';
 import { Trophy, BarChart3, Home } from 'lucide-react';
 import type { PresentationGame, PresentationSlide } from '@/lib/types';
 
@@ -281,6 +282,9 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
     const top3 = leaderboard.topPlayers.slice(0, 3);
     return (
       <div ref={rootRef} className="relative w-screen h-screen bg-background overflow-hidden flex items-center justify-center">
+        <div className="absolute top-4 left-4 z-10">
+          <ZivoLogo />
+        </div>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -357,11 +361,11 @@ export function PresentationHost({ game, players }: PresentationHostProps) {
               View Analytics
             </Button>
             <Button
-              onClick={() => router.push('/host')}
+              onClick={() => router.push('/host?tab=history')}
               variant="outline"
             >
               <Home className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              Session History
             </Button>
           </motion.div>
         </motion.div>

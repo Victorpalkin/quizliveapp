@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { QrCode, Users, XCircle, Keyboard } from 'lucide-react';
+import { ZivoLogo } from '@/components/app/zivo-logo';
 import { ThemeToggle } from '@/components/app/theme-toggle';
 import { cn } from '@/lib/utils';
 import { ACTIVITY_CONFIG } from '@/lib/activity-config';
@@ -87,7 +88,7 @@ export function GameHeader({
     <header className={cn("flex flex-wrap justify-between items-center gap-4 mb-6", className)}>
       {/* Left: Logo and Activity Type */}
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-bold">Zivo</h1>
+        <ZivoLogo />
         <Badge variant="outline" className={cn("gap-1", config.color)}>
           <ActivityIcon className="h-3 w-3" />
           {config.label}
@@ -162,11 +163,11 @@ export function GameHeader({
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {isLive ? 'End this game?' : 'Cancel this game?'}
+                  {isLive ? `End this ${config.label.toLowerCase()}?` : `Cancel this ${config.label.toLowerCase()}?`}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {isLive
-                    ? 'This will end the game for all players. Final results will be shown.'
+                    ? `This will end the ${config.label.toLowerCase()} for all players. Final results will be shown.`
                     : 'This will remove all players and cannot be undone.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -176,7 +177,7 @@ export function GameHeader({
                   onClick={onCancel}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  {isLive ? 'Yes, End Game' : 'Yes, Cancel'}
+                  {isLive ? `Yes, End ${config.label}` : 'Yes, Cancel'}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

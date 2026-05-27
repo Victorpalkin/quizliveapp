@@ -123,7 +123,7 @@ export default function EditEvaluationPage() {
   if (!activity) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
-        <Header />
+        <Header logoHref="/host" />
         <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl flex items-center justify-center">
           <Card className="text-center p-8">
             <CardTitle className="text-2xl mb-4">Activity Not Found</CardTitle>
@@ -142,7 +142,7 @@ export default function EditEvaluationPage() {
   if (user && activity.hostId !== user.uid) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
-        <Header />
+        <Header logoHref="/host" />
         <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl flex items-center justify-center">
           <Card className="text-center p-8">
             <CardTitle className="text-2xl mb-4">Access Denied</CardTitle>
@@ -160,13 +160,11 @@ export default function EditEvaluationPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header />
+      <Header logoHref="/host" />
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl">
         <div className="mb-8">
-          <Button asChild variant="ghost" className="mb-4">
-            <Link href={`/host/evaluation/${activityId}`}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Activity
-            </Link>
+          <Button variant="ghost" className="mb-4" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
           <div className="flex items-center gap-3">
             <BarChart3 className="h-10 w-10 text-orange-500" />

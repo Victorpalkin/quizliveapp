@@ -9,6 +9,7 @@ import { usePollAnalytics } from './hooks/use-poll-analytics';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
+import { ZivoLogo } from '@/components/app/zivo-logo';
 import { ArrowLeft, BarChart3, HelpCircle, AlertTriangle, Loader2, Clock, Vote } from 'lucide-react';
 import { OverviewTab } from './components/overview-tab';
 import { QuestionsTab } from './components/questions-tab';
@@ -201,11 +202,7 @@ export default function PollAnalyticsPage() {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/host">
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-            </Button>
+            <ZivoLogo />
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <Vote className="h-5 w-5 text-teal-500" />

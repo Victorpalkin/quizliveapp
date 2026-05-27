@@ -64,6 +64,7 @@ export function usePlayerStateMachine(gamePin: string, playerId: string) {
   const [playerScore, setPlayerScore] = useState(0);
   const [playerStreak, setPlayerStreak] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [firestoreFromCache, setFirestoreFromCache] = useState(false);
   const respondedRef = useRef<Set<string>>(new Set());
   const [respondedVersion, setRespondedVersion] = useState(0);
   const quizResultsRef = useRef<Map<string, QuizResult>>(new Map());
@@ -98,7 +99,9 @@ export function usePlayerStateMachine(gamePin: string, playerId: string) {
       where('activityType', '==', 'presentation')
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+      setFirestoreFromCache(snapshot.metadata.fromCache);
+
       if (snapshot.empty) {
         setGame(null);
         return;
@@ -260,6 +263,7 @@ export function usePlayerStateMachine(gamePin: string, playerId: string) {
     playerScore,
     playerStreak,
     loading,
+    firestoreFromCache,
     joinGame,
     markResponded,
     hasResponded,

@@ -6,6 +6,7 @@ import { httpsCallable } from 'firebase/functions';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ZivoLogo } from '@/components/app/zivo-logo';
 import { ArrowLeft, Download, Loader2 } from 'lucide-react';
 import { useUser, useFunctions } from '@/firebase';
 import { usePresentationById, useQuestions } from '@/firebase/presentation';
@@ -69,9 +70,7 @@ export default function PresentationAnalyticsPage({ params }: { params: Promise<
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="flex items-center gap-3 px-6 py-4 border-b backdrop-blur-md bg-background/90">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/host')}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
+        <ZivoLogo />
         <h1 className="text-xl font-bold flex-1">Presentation Analytics</h1>
         {analytics && (
           <Button variant="outline" size="sm" onClick={handleExport}>

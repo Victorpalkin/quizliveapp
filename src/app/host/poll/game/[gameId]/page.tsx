@@ -17,6 +17,7 @@ import { clearHostSession } from '@/lib/host-session';
 import { useHostSession } from '../../../hooks/use-host-session';
 import { gameConverter, playerConverter, pollActivityConverter } from '@/firebase/converters';
 import { FullPageLoader } from '@/components/ui/full-page-loader';
+import { ZivoLogo } from '@/components/app/zivo-logo';
 import { PollResultsChart } from './components/poll-results-chart';
 import Link from 'next/link';
 
@@ -176,6 +177,7 @@ export default function PollGamePage() {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <main className="flex-1 container mx-auto p-4 md:p-8 max-w-3xl">
+          <div className="mb-6"><ZivoLogo /></div>
           <Card className="shadow-2xl rounded-3xl text-center">
             <CardContent className="p-12">
               <CheckCircle className="h-20 w-20 mx-auto mb-6 text-green-500" />
@@ -190,8 +192,8 @@ export default function PollGamePage() {
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
-                  <Link href="/host">
-                    <Home className="mr-2 h-5 w-5" /> Return to Dashboard
+                  <Link href="/host?tab=history">
+                    <Home className="mr-2 h-5 w-5" /> Session History
                   </Link>
                 </Button>
               </div>

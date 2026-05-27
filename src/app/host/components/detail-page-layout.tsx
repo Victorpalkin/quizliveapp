@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
@@ -68,6 +69,7 @@ export function DetailPageLayout({
   notFoundLabel = 'Activity',
   children,
 }: DetailPageLayoutProps) {
+  const router = useRouter();
   const config = ACTIVITY_CONFIG[activityType];
   const Icon = config.icon;
   const cardStyle = CARD_STYLES[activityType] || CARD_STYLES.quiz;
@@ -79,7 +81,7 @@ export function DetailPageLayout({
   if (notFound) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
-        <Header />
+        <Header logoHref="/host" />
         <main className="flex-1 container mx-auto p-4 md:p-8 max-w-2xl flex items-center justify-center">
           <Card className="text-center p-8">
             <CardTitle className="text-2xl mb-4">{notFoundLabel} Not Found</CardTitle>
@@ -97,13 +99,11 @@ export function DetailPageLayout({
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header />
+      <Header logoHref="/host" />
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-2xl">
         <div className="mb-8">
-          <Button asChild variant="ghost" className="mb-4">
-            <Link href="/host">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-            </Link>
+          <Button variant="ghost" className="mb-4" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
           <div className="flex items-center gap-3">
             <Icon className={`h-10 w-10 ${config.color}`} />

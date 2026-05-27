@@ -8,7 +8,6 @@ import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useUnsavedChangesWarning } from '@/hooks/use-unsaved-changes-warning';
-import Link from 'next/link';
 import type { ThoughtsGatheringActivity } from '@/lib/types';
 import { thoughtsGatheringActivityConverter } from '@/firebase/converters';
 import { ActivityForm, type ActivityFormValues } from '../components/activity-form';
@@ -88,13 +87,11 @@ export default function CreateThoughtsGatheringPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header />
+      <Header logoHref="/host" />
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-2xl">
         <div className="mb-8">
-          <Button asChild variant="ghost" className="mb-4">
-            <Link href="/host">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-            </Link>
+          <Button variant="ghost" className="mb-4" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
           <div className="flex items-center gap-3">
             <Cloud className="h-10 w-10 text-blue-500" />

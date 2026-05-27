@@ -308,7 +308,13 @@ const EXTRACTABLE_STEPS = [3, 6, 7, 8];
  * Sanitize user input by stripping HTML tags
  */
 function sanitizeInput(input: string): string {
-  return input.replace(/<[^>]*>/g, '');
+  let result = input;
+  let prev;
+  do {
+    prev = result;
+    result = result.replace(/<[^>]*>/g, '');
+  } while (result !== prev);
+  return result;
 }
 
 /**

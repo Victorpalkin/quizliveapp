@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/app/header';
@@ -66,7 +67,25 @@ function GameStateBadge({ state }: { state: Game['state'] }) {
 }
 
 
+const VALID_TABS = ['templates', 'live', 'history', 'shared'] as const;
+
 export default function HostDashboardPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tabParam = searchParams.get('tab');
+  const activeTab = VALID_TABS.includes(tabParam as (typeof VALID_TABS)[number]) ? tabParam! : 'templates';
+
+  const handleTabChange = useCallback((value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === 'templates') {
+      params.delete('tab');
+    } else {
+      params.set('tab', value);
+    }
+    const query = params.toString();
+    router.replace(`/host${query ? `?${query}` : ''}`, { scroll: false });
+  }, [searchParams, router]);
+
   const {
     userLoading,
     quizzesLoading,
@@ -110,8 +129,8 @@ export default function HostDashboardPage() {
   const historyCount = completedGames?.length || 0;
 
   return (
-    <Tabs defaultValue="templates" className="flex min-h-screen flex-col bg-background">
-      <Header>
+    <Tabs value={activeTab} onValueChange={handleTabChange} className="flex min-h-screen flex-col bg-background">
+      <Header logoHref="/host">
         <TabsList className="h-auto bg-transparent p-0 gap-1">
           <TabsTrigger value="templates" className="rounded-none border-b-2 border-transparent px-3 py-3.5 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none hover:text-foreground transition-colors">
             Session Templates

@@ -12,7 +12,7 @@ interface JoiningScreenProps {
 export function JoiningScreen({ nickname, setNickname, onJoinGame, isLoading }: JoiningScreenProps) {
   return (
     <div className="text-center w-full max-w-sm">
-      <h1 className="text-4xl font-bold">Join Game</h1>
+      <h1 className="text-4xl font-bold">Join Quiz</h1>
       <form onSubmit={onJoinGame} className="space-y-4 mt-8">
         <Input
           value={nickname}

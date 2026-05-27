@@ -155,7 +155,7 @@ export function useThoughtsGatheringGame() {
 
   const handleReturnToDashboard = () => {
     clearHostSession();
-    router.push('/host');
+    router.push('/host?tab=history');
   };
 
   const handleUpdateTopics = useCallback(async (updatedTopics: TopicEntry[]) => {

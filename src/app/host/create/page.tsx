@@ -113,13 +113,11 @@ export default function CreateActivityPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header />
+      <Header logoHref="/host" />
       <main className="flex-1 container mx-auto p-4 md:p-8 max-w-6xl">
         {/* Back Button */}
-        <Button asChild variant="ghost" className="mb-6">
-          <Link href="/host">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-          </Link>
+        <Button variant="ghost" className="mb-6" onClick={() => router.back()}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
 
         {/* Header */}
