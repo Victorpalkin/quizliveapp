@@ -67,7 +67,7 @@ The current editor has a crowded toolbar (10+ actions in one row), a 20-item dro
 | Tab | Icon | Contents |
 |-----|------|----------|
 | **Slides** | 🗂 | Slide thumbnails with drag-to-reorder. Each thumbnail shows element-type badges (e.g., "quiz", "poll", "AI step") so the presentation flow is visible at a glance. Right-click context menu for duplicate/delete/add-after. |
-| **Elements** | ➕ | Visual grid of insertable elements organized by category. Search bar at top. Categories: **Basics** (Text, Image, Shape, Connector), **Interactive** (Quiz, Poll, Thoughts, Rating, Evaluation, Discovery Form, Priority Ranker, Scenario Cards, Agentic Designer, AI Step), **Results & Special** (Quiz Results, Poll Results, etc., Leaderboard, Q&A, Spin Wheel). Click to add at default position, or drag to position on canvas. Each element shows an icon and label. Interactive elements are color-coded. Disabled state with "(max 1 per slide)" hint when slide already has an interactive element. |
+| **Elements** | ➕ | Visual grid of insertable elements organized by category. Search bar at top. Categories: **Text & Content** (Text, List, Stat Callout, Code Block), **Media** (Image, Video, Icon), **Layout** (Shape, Connector, Divider, Table), **Interactive** (Quiz, Poll, Thoughts, Rating, Evaluation, Discovery Form, Priority Ranker, Scenario Cards, Agentic Designer, AI Step), **Results & Special** (Quiz/Poll/Thoughts/Rating/Evaluation/Agentic Results, Leaderboard, Q&A, Spin Wheel). Click to add at default position, or drag to position on canvas. Each element shows an icon and label. Interactive elements are color-coded. Disabled state with "(max 1 per slide)" hint when slide already has an interactive element. |
 | **Templates** | 📋 | Browse slide templates. Click to apply to current slide or insert as new slide. Includes built-in templates and user-saved templates. Save current slide as template option at the bottom. |
 | **AI** | ✨ | Context-aware AI editing chat. AI sees the current slide content and full presentation structure. Quick action chips at the top: "Generate slide", "Add a poll", "Improve text", "Add image", "Suggest layout". Free-form text input below for custom requests. AI can modify elements, add new elements, rewrite text, generate quiz/poll questions, and suggest layouts. |
 | **Configure** | ⚙ | Combined theme and settings panel. **Theme section:** background colors/gradients, font family, accent colors, dark/light mode. **Settings section:** presentation description, workflow config (system prompt, target), session settings. This replaces the current separate Theme selector, Settings dialog, and description input. |
@@ -128,6 +128,309 @@ Slides with no interactive elements show no badges. This lets presenters see the
 - New: `src/components/app/presentation/editor/ConfigurePanel.tsx` — Theme + settings combined
 - New: `src/components/app/presentation/editor/FloatingToolbar.tsx` — Contextual element toolbar
 - New: `src/components/app/presentation/editor/SlashCommand.tsx` — Command palette
+
+---
+
+## Phase 1C: Content Elements & Simplicity Upgrades
+
+The current content toolkit (Text, Image, Shape, Connector) is too thin for building professional presales slides. This phase adds 7 new content elements and 5 simplicity upgrades to existing elements.
+
+### New Content Elements
+
+#### 1. Icon Element
+
+Presales decks use icons everywhere — cloud, security, database, AI, API, users, charts. Instead of importing images for every icon, add a dedicated icon element with a searchable library using Lucide icons (already a project dependency).
+
+**Editor experience:**
+- Insert icon → opens searchable icon picker (Lucide's 1500+ icons)
+- Set icon size (16-256px), color (theme-aware picker), and optional background circle/square
+- Icon renders as SVG — crisp at any size
+
+**Type definition:**
+```typescript
+interface IconConfig {
+  iconName: string;         // Lucide icon name
+  iconColor: string;
+  iconSize: number;         // px
+  backgroundShape?: 'none' | 'circle' | 'rounded-square';
+  backgroundColor?: string;
+}
+```
+
+**Key files:**
+- New: `src/components/app/presentation/editor/elements/IconElement.tsx`
+- New: `src/components/app/presentation/editor/properties/IconProperties.tsx`
+- New: `src/components/app/presentation/editor/IconPicker.tsx` — searchable icon grid
+
+#### 2. Stat / Number Callout
+
+Big impactful numbers: "99.9% uptime", "3x faster", "$2.4M saved". A dedicated element with a large number, label text below, and optional accent color/icon. Looks polished without manual text sizing.
+
+**Editor experience:**
+- Insert stat → pre-styled with a large number and label
+- Edit: number/value text (large), label text (smaller below), optional prefix/suffix, accent color
+- Optional icon above the number
+
+**Type definition:**
+```typescript
+interface StatCalloutConfig {
+  value: string;            // "99.9%", "$2.4M", "3x"
+  label: string;            // "Uptime", "Saved", "Faster"
+  prefix?: string;          // "$", ">"
+  suffix?: string;          // "%", "x", "+"
+  accentColor?: string;
+  iconName?: string;        // optional Lucide icon above
+  alignment?: 'left' | 'center' | 'right';
+}
+```
+
+**Key files:**
+- New: `src/components/app/presentation/editor/elements/StatCalloutElement.tsx`
+- New: `src/components/app/presentation/editor/properties/StatCalloutProperties.tsx`
+
+#### 3. List Element
+
+Bullet lists with icons, checkmarks, or numbered. Currently you'd use a plain text element and manually type bullets. A proper list element auto-formats with icon bullets, consistent spacing, and easy add/remove.
+
+**Editor experience:**
+- Insert list → starts with 3 items, editable inline
+- Choose bullet style: dot, checkmark, arrow, numbered, custom icon-per-item
+- Add/remove items with + button or Enter key
+- Consistent spacing and indentation handled automatically
+- Optional title above the list
+
+**Type definition:**
+```typescript
+interface ListConfig {
+  title?: string;
+  items: { id: string; text: string; iconName?: string }[];
+  bulletStyle: 'dot' | 'check' | 'arrow' | 'number' | 'icon';
+  spacing: 'compact' | 'normal' | 'relaxed';
+}
+```
+
+**Key files:**
+- New: `src/components/app/presentation/editor/elements/ListElement.tsx`
+- New: `src/components/app/presentation/editor/properties/ListProperties.tsx`
+
+#### 4. Table / Comparison Grid
+
+Feature comparison tables, pricing grids, capability matrices. Essential for presales — "us vs. competitor" or "plan comparison" slides.
+
+**Editor experience:**
+- Insert table → starts with 3x3 grid
+- Click any cell to edit inline
+- Add/remove rows and columns via + buttons on edges
+- Toggle header row/column styling (bold, accent background)
+- Resize column widths by dragging borders
+- Cell text alignment (left/center/right per column)
+
+**Type definition:**
+```typescript
+interface TableConfig {
+  rows: { id: string; cells: { id: string; content: string; align?: 'left' | 'center' | 'right' }[] }[];
+  headerRow: boolean;
+  headerColumn: boolean;
+  borderColor?: string;
+  headerBackgroundColor?: string;
+  stripedRows?: boolean;
+}
+```
+
+**Key files:**
+- New: `src/components/app/presentation/editor/elements/TableElement.tsx`
+- New: `src/components/app/presentation/editor/properties/TableProperties.tsx`
+
+#### 5. Video / Embed
+
+Embed YouTube, Loom, or Vimeo videos directly on slides. Paste a URL, it renders as a playable embed.
+
+**Editor experience:**
+- Insert video → paste URL input
+- Auto-detects provider (YouTube, Loom, Vimeo) and extracts embed URL
+- Shows thumbnail preview in editor
+- In presentation mode: renders as playable iframe embed
+- Optional: border radius, drop shadow
+
+**Supported providers:**
+- YouTube (youtube.com, youtu.be)
+- Loom (loom.com/share)
+- Vimeo (vimeo.com)
+- Generic iframe URL fallback
+
+**Type definition:**
+```typescript
+interface VideoConfig {
+  url: string;
+  provider: 'youtube' | 'loom' | 'vimeo' | 'generic';
+  embedUrl: string;          // computed from url
+  thumbnailUrl?: string;
+  autoplay?: boolean;
+}
+```
+
+**Key files:**
+- New: `src/components/app/presentation/editor/elements/VideoElement.tsx`
+- New: `src/components/app/presentation/editor/properties/VideoProperties.tsx`
+
+#### 6. Code Block
+
+Syntax-highlighted code snippets for technical presales. Show API calls, configuration examples, SDK usage.
+
+**Editor experience:**
+- Insert code block → opens code editor area
+- Language selector dropdown (Python, JavaScript, TypeScript, JSON, YAML, SQL, Bash, Go, Java, etc.)
+- Syntax highlighting via a lightweight library (e.g., Prism.js or Shiki)
+- Theme: dark or light background
+- Optional: line numbers, filename header
+- In presentation mode: copy-to-clipboard button
+
+**Type definition:**
+```typescript
+interface CodeBlockConfig {
+  code: string;
+  language: string;
+  theme: 'dark' | 'light';
+  showLineNumbers?: boolean;
+  filename?: string;          // shown as a tab/header above the code
+}
+```
+
+**Key files:**
+- New: `src/components/app/presentation/editor/elements/CodeBlockElement.tsx`
+- New: `src/components/app/presentation/editor/properties/CodeBlockProperties.tsx`
+
+#### 7. Divider
+
+Simple horizontal or vertical line divider. Basic layout helper.
+
+**Editor experience:**
+- Insert divider → horizontal line at default position
+- Properties: orientation (horizontal/vertical), style (solid/dashed/dotted), color, thickness (1-8px)
+- Snap to slide edges and other elements
+
+**Type definition:**
+```typescript
+interface DividerConfig {
+  orientation: 'horizontal' | 'vertical';
+  style: 'solid' | 'dashed' | 'dotted';
+  color: string;
+  thickness: number;
+}
+```
+
+**Key files:**
+- New: `src/components/app/presentation/editor/elements/DividerElement.tsx`
+- New: `src/components/app/presentation/editor/properties/DividerProperties.tsx`
+
+### Simplicity Upgrades to Existing Elements
+
+#### 1. Text Style Presets
+
+Replace manual font size + weight + color configuration with one-click presets that inherit from the presentation theme.
+
+**Presets:**
+| Preset | Size | Weight | Use case |
+|--------|------|--------|----------|
+| Title | 32px | Bold | Slide titles |
+| Heading | 24px | Semibold | Section headers |
+| Body | 16px | Regular | Main content |
+| Caption | 12px | Regular | Fine print, labels |
+
+**Additional text improvements:**
+- Bullet/numbered list toggle within text elements (basic list formatting without needing the List element)
+- Vertical alignment within text box: top, middle, bottom
+- Text box background color with padding
+- Letter spacing slider
+
+**Implementation:**
+- Add preset selector to `TextProperties.tsx` (dropdown or button group at the top)
+- Presets read from the presentation theme — changing the theme updates all preset-styled text
+- Add `textPreset?: 'title' | 'heading' | 'body' | 'caption'` and `verticalAlign?: 'top' | 'middle' | 'bottom'` and `backgroundColor?: string` fields to text element type
+
+#### 2. Theme-Aware Color Picker
+
+Replace the raw hex color input across all elements with a smarter picker.
+
+**Layout:**
+1. **Theme colors row** (top) — primary, secondary, accent, background, text colors from the presentation theme. One click to apply.
+2. **Recently used colors** — last 8 colors used in this presentation.
+3. **Full color picker** — expandable section with the standard hex/HSL picker. Available but not the default view.
+
+**Implementation:**
+- New shared component: `src/components/app/presentation/editor/ThemeColorPicker.tsx`
+- Replace all `ColorPicker` usages in properties panels with `ThemeColorPicker`
+- Theme colors derived from `PresentationTheme` type
+
+#### 3. Image Element Upgrades
+
+**New properties:**
+- **Drop shadow** toggle (subtle box shadow preset, not a complex shadow editor)
+- **Border** — color + width (1-8px)
+- **Flip** — horizontal and vertical flip buttons
+- **Unified image source picker** — when clicking an empty image placeholder, show a single dialog with 3 tabs: Upload, URL, AI Generate (instead of 3 separate inputs in the properties panel)
+
+**Implementation:**
+- Add `shadow?: boolean`, `borderColor?: string`, `borderWidth?: number`, `flipH?: boolean`, `flipV?: boolean` to image element type
+- New: `src/components/app/presentation/editor/ImageSourcePicker.tsx` — tabbed dialog for upload/URL/AI
+
+#### 4. Shape Element Upgrades
+
+**New shapes (in addition to existing 7):**
+- Pentagon, Hexagon, Octagon
+- Star (5-point)
+- Speech bubble, Thought bubble
+- Callout (rectangular with pointer)
+- Banner/ribbon
+- Arrows: up, down, left (currently only right)
+- Chevron
+- Cross/plus
+
+**New properties:**
+- Gradient fills — two-color linear gradient with angle selector
+- Dashed/dotted border styles (currently solid only)
+- Drop shadow toggle
+
+**Implementation:**
+- Expand `shapeType` union in types
+- Add `fillGradient?: { color1: string; color2: string; angle: number }` and `borderStyle?: 'solid' | 'dashed' | 'dotted'` and `shadow?: boolean` to shape element type
+- Expand `ShapeElement.tsx` with new SVG/clipPath definitions
+
+#### 5. Smart Defaults & Quick Actions
+
+**Smart element positioning:**
+- When adding an element, auto-position based on existing elements on the slide:
+  - If slide is empty: center the element
+  - If slide has elements: place new element in the largest empty area
+  - Text defaults to sensible width (60% of slide) not tiny
+- Configurable in element insertion logic in `useEditorState`
+
+**Smart duplicate:**
+- Duplicate places the copy offset by ~2% down and right (not stacked exactly on top)
+- Already partially implemented — ensure consistent behavior
+
+**Element grouping:**
+- Select multiple elements → "Group" action in context menu / floating toolbar
+- Grouped elements move, resize, and rotate as one unit
+- "Ungroup" to break apart
+- Groups can be nested
+
+**Implementation:**
+- Add `groupId?: string` field to element type
+- New: group selection/movement logic in `useEditorState`
+- Add Group/Ungroup to context menu in `SlideCanvas.tsx`
+
+### Updated Elements tab categories
+
+With the new content elements, the Elements tab in the sidebar should organize as:
+
+| Category | Elements |
+|----------|----------|
+| **Text & Content** | Text, List, Stat Callout, Code Block |
+| **Media** | Image, Video, Icon |
+| **Layout** | Shape, Connector, Divider, Table |
+| **Interactive** | Quiz, Poll, Thoughts, Rating, Evaluation, Discovery Form, Priority Ranker, Scenario Cards, Agentic Designer, AI Step |
+| **Results & Special** | Quiz Results, Poll Results, Thoughts Results, Rating Results, Evaluation Results, Agentic Designer Results, Leaderboard, Q&A, Spin Wheel |
 
 ---
 
