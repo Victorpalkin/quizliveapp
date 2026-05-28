@@ -123,3 +123,43 @@ describe('canvasToSlides', () => {
     expect(slides.map((s) => s.id)).toEqual(['a', 'b']);
   });
 });
+
+describe('round-trip losslessness', () => {
+  function canonicalSlides(): PresentationSlide[] {
+    return [
+      {
+        id: 's1', order: 0,
+        elements: [
+          { id: 's1-text', type: 'text', x: 5, y: 5, width: 90, height: 12, zIndex: 1, content: 'Title', fontSize: 32 },
+          { id: 's1-quiz', type: 'quiz', x: 10, y: 20, width: 80, height: 60, zIndex: 2,
+            quizConfig: { question: 'Q?', answers: [{ text: 'A' }, { text: 'B' }], correctAnswerIndex: 0, timeLimit: 20, pointValue: 1000 } },
+        ],
+        background: { type: 'gradient', gradient: 'linear-gradient(...)' },
+        notes: 'speaker notes',
+        transition: 'zoom',
+      },
+      {
+        id: 's2', order: 1,
+        elements: [],
+        background: { type: 'solid', color: '#000000' },
+        transition: 'none',
+      },
+    ];
+  }
+
+  it('canvasToSlides(slidesToCanvas(x)) deep-equals x for canonical input', () => {
+    const slides = canonicalSlides();
+    const result = canvasToSlides(slidesToCanvas(slides));
+    expect(result).toEqual(slides);
+  });
+
+  it('normalizes non-sequential order values on round-trip', () => {
+    const slides = canonicalSlides();
+    slides[0].order = 7;
+    slides[1].order = 3;
+    const result = canvasToSlides(slidesToCanvas(slides));
+    // Order is normalized to 0..n-1 following the sorted order (s2 had order 3 < 7, so it comes first)
+    expect(result.map((s) => s.id)).toEqual(['s2', 's1']);
+    expect(result.map((s) => s.order)).toEqual([0, 1]);
+  });
+});
