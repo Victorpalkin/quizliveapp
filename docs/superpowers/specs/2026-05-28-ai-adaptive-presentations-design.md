@@ -16,41 +16,171 @@ Transform Zivo from an audience engagement platform into the definitive AI-drive
 
 ---
 
+## Design Principles: Simplicity First
+
+UI/UX simplicity is the core tenet of this redesign. The infinite canvas is powerful, but power without simplicity is complexity. Every feature must pass the "first-time user" test: can someone who has never seen Zivo create and present something in 10 minutes?
+
+**Progressive disclosure:** The default experience should feel as simple as a slide deck. Advanced features (free canvas navigation, multiple sequences, AI reordering) exist but stay hidden until the user reaches for them.
+
+| User level | What they see |
+|-----------|---------------|
+| **Beginner** | Frames in a row, Next/Previous navigation, click Elements tab to add things. Feels like Google Slides with better interactivity. |
+| **Intermediate** | Discovers AI tab, learns to zoom out and see the canvas, starts using topic clusters. |
+| **Advanced** | Creates multiple sequences, uses AI sequence reordering, free-navigates during sessions. |
+
+**Specific simplicity rules:**
+1. **Default to the simple path.** New presentations start with one frame and a linear sequence. The canvas is there but doesn't demand attention.
+2. **One-click over configuration.** Adding an element = one click. Applying a text preset = one click. No dialogs unless configuring interactive element logic.
+3. **AI handles complexity.** Topic clustering, frame positioning, sequence optimization — these are AI's job, not the user's. The user says "generate a frame about security" and AI places it in the right cluster.
+4. **Familiar patterns.** The sidebar tabs work like Canva. The floating toolbar works like Google Docs. The slash command works like Notion. Nothing novel for novelty's sake.
+5. **Hide what's not needed.** Properties flyout only appears when relevant. Mini-map is collapsible. Sequence selector only shows when multiple sequences exist. Advanced frame settings (transition config, topic cluster) are in a collapsed "Advanced" section.
+6. **Forgiving UX.** Undo/redo for everything. Auto-save. "Are you sure?" for destructive actions. AI suggestions are proposals, not automatic actions.
+
+---
+
+## Core Concept: Infinite Canvas with Frames
+
+Zivo replaces the traditional linear slide deck with an **infinite zoomable canvas**. Content lives anywhere on a 2D plane. Presentations are not sequences of slides — they are **navigable spaces**.
+
+### Key mental model
+
+| Traditional slides | Zivo canvas |
+|-------------------|-------------|
+| Fixed-size pages in a sequence | Infinite 2D plane with content anywhere |
+| Content belongs to a slide | Content exists on the canvas; frames define what's visible |
+| Linear order (slide 1 → 2 → 3) | Sequences define paths through frames; multiple paths possible |
+| Adding a slide = appending to list | Adding a frame = defining a new viewport region on the canvas |
+| AI generates a new slide | AI creates content in a new canvas area and adds the frame to the sequence |
+| Can't skip/reorder during session | Host can freely navigate; AI can reorder the sequence live |
+| Isolated slides, no spatial context | Zoom out to see the big picture; related content clusters together |
+
+### How it works
+
+1. **Canvas** — An infinite 2D plane. Elements (text, images, interactive elements, etc.) are placed at absolute coordinates. Scroll and zoom freely.
+
+2. **Frames** — Named rectangular regions on the canvas (like Figma frames). Each frame defines a viewport — what the audience sees at a given moment. Frames have a name, position, size, and optional background. Default aspect ratio is 16:9 but any size is allowed.
+
+3. **Sequences** — Ordered lists of frame references. A sequence defines a path through the canvas. The "happy path" is the default sequence the presenter follows with Next/Previous. Multiple sequences can exist (e.g., "Technical Deep-Dive" vs. "Executive Overview") for the same canvas.
+
+4. **Navigation** — During a live session, the presenter follows a sequence by default (Next/Previous advance through frames with smooth zoom+pan animation). The presenter can also zoom out and click any frame to jump there. AI can suggest jumps or reorder the active sequence in real-time.
+
+5. **AI dynamics** — AI can create new content on the canvas, define a frame around it, and insert that frame into the sequence — all during a live session. AI can also reorder the sequence based on audience signals (priority rankings, interest pulse, scenario selections) without physically moving any content.
+
+### Data model
+
+```typescript
+interface Presentation {
+  id: string;
+  title: string;
+  description?: string;
+  canvas: Canvas;
+  settings: PresentationSettings;
+  theme: PresentationTheme;
+}
+
+interface Canvas {
+  elements: CanvasElement[];
+  frames: Frame[];
+  sequences: Sequence[];
+  defaultSequenceId: string;
+}
+
+interface Frame {
+  id: string;
+  name: string;
+  x: number;                    // absolute canvas coordinate
+  y: number;
+  width: number;
+  height: number;
+  background?: FrameBackground;
+  notes?: string;
+  transition?: FrameTransition; // animation config for entering this frame
+  topicCluster?: string;        // AI-assigned topic grouping
+}
+
+interface FrameBackground {
+  type: 'solid' | 'gradient' | 'image';
+  value: string;                // hex color, CSS gradient, or image URL
+}
+
+interface FrameTransition {
+  type: 'zoom-pan' | 'fade' | 'instant';
+  durationMs?: number;          // default 800ms
+}
+
+interface Sequence {
+  id: string;
+  name: string;                 // "Main", "Technical Deep-Dive", "Executive Overview"
+  frameIds: string[];           // ordered list of frame references
+}
+
+interface CanvasElement {
+  id: string;
+  type: CanvasElementType;      // all existing + new element types
+  x: number;                    // absolute canvas coordinates
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+  opacity?: number;
+  zIndex?: number;
+  locked?: boolean;
+  groupId?: string;             // for element grouping
+  // ... element-specific configs (textConfig, imageConfig, quizConfig, etc.)
+}
+```
+
+**Frame ↔ element relationship:** Elements don't "belong to" frames. They exist on the canvas. An element is visible within a frame if its bounding box intersects with the frame's bounding box. This means elements can span multiple frames (e.g., a large background diagram visible across several zoom levels).
+
+**Interactive element constraint:** Max one interactive element per frame. Determined by which frame contains the element's center point.
+
+### Migration from current slide model
+
+The current slide-based data model maps cleanly:
+- Each existing slide becomes a frame arranged in a horizontal grid (left-to-right)
+- Each slide's elements get absolute coordinates based on their percentage positions within the frame
+- Slide order becomes the default sequence
+- No data loss — this is a structural transformation, not a lossy migration
+
+---
+
 ## Phasing
 
 ### Phase 1: UX Excellence
-Build the foundation — a redesigned editor and purpose-built interactive elements that generate quality data for AI.
+Build the infinite canvas editor, new content elements, new interactive elements, and simplicity upgrades.
 
 ### Phase 2: Polished Deliverables
 Turn every session into a tangible follow-up asset — an AI-generated executive brief.
 
 ### Phase 3: Intelligence Layer
-Add the presenter copilot and auto-triggering AI steps that orchestrate the session seamlessly.
+Add the presenter copilot, auto-triggering AI steps, and AI-driven sequence management.
 
 ---
 
-## Phase 1A: Editor Redesign (Canva-Style Sidebar)
+## Phase 1A: Canvas Editor (Canva-Style Sidebar)
 
 ### Problem
-The current editor has a crowded toolbar (10+ actions in one row), a 20-item dropdown for inserting elements, a permanently visible properties panel eating 30% of screen width, no contextual editing, blind slide thumbnails, and no AI assistance during editing.
+The current editor has a crowded toolbar (10+ actions in one row), a 20-item dropdown for inserting elements, a permanently visible properties panel eating 30% of screen width, no contextual editing, blind slide thumbnails, no AI assistance during editing, and a rigid slide-by-slide model that prevents spatial storytelling.
 
 ### Design
 
-**Layout: Left sidebar tabs + floating properties + contextual toolbar**
+**Layout: Left sidebar tabs + infinite canvas + floating properties + contextual toolbar + mini-map**
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  ←  │ Title input        │ ● Saved │ ↩ ↪ │      ▶ Present  │
 ├──┬──┴────────┬───────────────────────────────────────────────┤
-│  │           │                                               │
-│🗂│  Tab      │          ┌─ floating toolbar ─┐               │
-│➕│  Content  │          │ B I U │ 16px │ 🎨  │               │
-│📋│  Panel    │          └────────────────────┘               │
-│✨│           │       ┌──────────────────────────┐   ┌──────┐│
-│⚙│  (varies  │       │                          │   │Props ││
-│  │   by tab) │       │     Canvas               │   │flyout││
-│  │           │       │                          │   │      ││
-│  │           │       └──────────────────────────┘   └──────┘│
+│  │           │                                      ┌──────┐│
+│🎬│  Tab      │    ┌─ floating toolbar ─┐            │mini- ││
+│➕│  Content  │    │ B I U │ 16px │ 🎨  │            │ map  ││
+│📋│  Panel    │    └────────────────────┘            └──────┘│
+│✨│           │                                               │
+│⚙│  (varies  │     ┌─frame─┐  ┌─frame─┐  ┌─frame─┐         │
+│  │   by tab) │     │   1   │  │   2   │  │   3   │ ←canvas │
+│  │           │     └───────┘  └───────┘  └───────┘         │
+│  │           │              ┌─frame─┐                       │
+│  │           │              │   4   │    ← AI-generated     │
+│  │           │              └───────┘                       │
 └──┴───────────┴───────────────────────────────────────────────┘
 ```
 
@@ -59,378 +189,113 @@ The current editor has a crowded toolbar (10+ actions in one row), a 20-item dro
 - Title input (editable inline)
 - Save status indicator (auto-save, green dot when clean)
 - Undo / Redo buttons
+- Sequence selector dropdown (when multiple sequences exist)
 - Present button (primary action, right-aligned)
-- Nothing else — all other actions move to sidebar tabs
 
 **Left sidebar — 5 icon tabs:**
 
 | Tab | Icon | Contents |
 |-----|------|----------|
-| **Slides** | 🗂 | Slide thumbnails with drag-to-reorder. Each thumbnail shows element-type badges (e.g., "quiz", "poll", "AI step") so the presentation flow is visible at a glance. Right-click context menu for duplicate/delete/add-after. |
-| **Elements** | ➕ | Visual grid of insertable elements organized by category. Search bar at top. Categories: **Text & Content** (Text, List, Stat Callout, Code Block), **Media** (Image, Video, Icon), **Layout** (Shape, Connector, Divider, Table), **Interactive** (Quiz, Poll, Thoughts, Rating, Evaluation, Discovery Form, Priority Ranker, Scenario Cards, Agentic Designer, AI Step), **Results & Special** (Quiz/Poll/Thoughts/Rating/Evaluation/Agentic Results, Leaderboard, Q&A, Spin Wheel). Click to add at default position, or drag to position on canvas. Each element shows an icon and label. Interactive elements are color-coded. Disabled state with "(max 1 per slide)" hint when slide already has an interactive element. |
-| **Templates** | 📋 | Browse slide templates. Click to apply to current slide or insert as new slide. Includes built-in templates and user-saved templates. Save current slide as template option at the bottom. |
-| **AI** | ✨ | Context-aware AI editing chat. AI sees the current slide content and full presentation structure. Quick action chips at the top: "Generate slide", "Add a poll", "Improve text", "Add image", "Suggest layout". Free-form text input below for custom requests. AI can modify elements, add new elements, rewrite text, generate quiz/poll questions, and suggest layouts. |
-| **Configure** | ⚙ | Combined theme and settings panel. **Theme section:** background colors/gradients, font family, accent colors, dark/light mode. **Settings section:** presentation description, workflow config (system prompt, target), session settings. This replaces the current separate Theme selector, Settings dialog, and description input. |
+| **Frames** | 🎬 | Frame thumbnails in sequence order with drag-to-reorder. Each thumbnail shows element-type badges (quiz, poll, AI step, etc.) and the frame name. Drag frames to reorder the active sequence. Right-click context menu for duplicate/delete/rename. "Add frame" button creates a new frame on the canvas (auto-positioned in the nearest available space). Double-click a frame thumbnail to zoom the camera to that frame. Sequence tabs at the top to switch between sequences. |
+| **Elements** | ➕ | Visual grid of insertable elements organized by category. Search bar at top. Categories: **Text & Content** (Text, List, Stat Callout, Code Block), **Media** (Image, Video, Icon), **Layout** (Shape, Connector, Divider, Table), **Interactive** (Quiz, Poll, Thoughts, Rating, Evaluation, Discovery Form, Priority Ranker, Scenario Cards, Agentic Designer, AI Step), **Results & Special** (Quiz/Poll/Thoughts/Rating/Evaluation/Agentic Results, Leaderboard, Q&A, Spin Wheel). Click to add at camera center, or drag to position on canvas. Interactive elements are color-coded. Disabled state with "(max 1 per frame)" when the currently visible frame already has an interactive element. |
+| **Templates** | 📋 | Browse frame templates (pre-designed frame layouts with content). Click to add as a new frame on the canvas. Includes built-in templates and user-saved templates. Save current frame as template option. |
+| **AI** | ✨ | Context-aware AI editing chat. AI sees the entire canvas structure, the currently viewed frame, and all content. Quick action chips: "Generate a frame", "Add a poll", "Improve text", "Add image", "Suggest layout", "Create a sequence for [audience type]". Free-form text input for custom requests. AI can create new frames, modify elements, generate content, and suggest sequence reorderings. |
+| **Configure** | ⚙ | Combined theme and settings panel. **Theme section:** background colors/gradients, font family, accent colors, dark/light mode. **Settings section:** presentation description, workflow config (system prompt, target), session settings, Interest Pulse toggle. |
+
+**Infinite canvas:**
+- Pan: scroll/drag on empty space, or middle-mouse button
+- Zoom: pinch, Ctrl+scroll, or zoom controls in status bar (10%–400%)
+- Frames appear as labeled rectangles on the canvas with a subtle border and name badge
+- Elements outside any frame are still visible and editable — they're "floating" on the canvas
+- Snap guides: elements snap to frame edges, other elements, and a configurable grid
+- Grid overlay: optional dot grid for alignment (toggle in status bar)
+
+**Mini-map (bottom-right corner):**
+- Shows the entire canvas at a glance with all frames as small rectangles
+- Current viewport highlighted
+- Click on the mini-map to jump to that area
+- Frame names visible when hovered
+- Collapsible
 
 **Properties flyout (replaces permanent right panel):**
 - Hidden by default — canvas gets full width
-- Slides in from the right when an element is selected
-- Shows the same element-specific properties as today (text formatting, quiz config, AI step config, etc.)
+- Slides in from the right when an element or frame is selected
+- For elements: shows element-specific properties (text formatting, quiz config, AI step config, etc.)
+- For frames: shows frame name, background, notes, transition config, topic cluster
 - Close button (×) to dismiss manually, or auto-hides when clicking empty canvas
-- Contains: element-specific properties, layer order controls, alignment controls, transform (rotation, opacity)
-- When no element is selected and flyout is closed, canvas uses the full remaining width
+- Contains: type-specific properties, layer order controls, alignment controls, transform (rotation, opacity)
 
 **Floating contextual toolbar:**
 - Appears above/below the selected element on the canvas
 - Content varies by element type:
-  - **Text:** Bold, Italic, Underline | Font size | Text color | Alignment
-  - **Image:** Fit mode | Border | Opacity
+  - **Text:** Bold, Italic, Underline | Font size | Preset (Title/Heading/Body/Caption) | Text color | Alignment
+  - **Image:** Fit mode | Shadow | Border | Flip
   - **Shape:** Fill color | Border color | Border width
   - **Interactive elements:** A label showing the element type, click to open properties flyout
-- Disappears when element is deselected
+  - **Frame selected:** Frame name | Background color | Duplicate | Delete
+- Disappears when deselected
 - Positioned to avoid overlapping the element or going off-screen
 
 **Slash (/) command palette:**
 - Triggered by typing "/" on the canvas when no element is being edited
-- Shows a searchable command list: Insert Text, Insert Image, Insert Quiz, Insert Poll, etc.
-- Also includes actions: "AI: Generate slide content", "AI: Add poll about...", "Duplicate slide", "Delete slide"
+- Shows a searchable command list:
+  - Insert elements: Text, Image, Quiz, Poll, Icon, Table, etc.
+  - Frame actions: "New frame", "Duplicate frame", "Delete frame"
+  - AI actions: "AI: Generate frame content", "AI: Add poll about...", "AI: Create sequence for..."
+  - Navigation: "Go to frame [name]", "Zoom to fit all"
 - Keyboard-navigable (arrow keys + Enter)
-- Inspired by Notion's slash command — familiar to tech-savvy presales users
 
 **Status bar (bottom):**
-- Slide position (e.g., "Slide 3/12")
+- Current frame name (if camera is inside a frame) or "Canvas view"
+- Frame count: "Frame 3/12 in [sequence name]"
 - Selection info (element type, position)
-- Zoom controls (−, percentage, +, fit-to-view)
+- Zoom controls (−, percentage, +, fit-to-view, fit-all-frames)
+- Grid toggle
 - Keyboard shortcuts button (?)
 
-### Slide badges
-Each slide thumbnail in the Slides tab shows small colored badges indicating which interactive element types are present:
-- Purple badge: "quiz"
-- Teal badge: "poll"
-- Blue badge: "thoughts"
-- Orange badge: "rating"
-- Indigo badge: "eval"
-- Violet badge: "AI step"
-- Cyan badge: "agentic"
-- Green badge: "Q&A"
+### Frame badges
+Each frame thumbnail in the Frames tab shows small colored badges:
+- Purple: "quiz"
+- Teal: "poll"
+- Blue: "thoughts"
+- Orange: "rating"
+- Indigo: "eval"
+- Violet: "AI step"
+- Cyan: "agentic"
+- Green: "Q&A"
 
-Slides with no interactive elements show no badges. This lets presenters see the "flow" of interactivity across the deck at a glance.
+Frames with no interactive elements show no badges. This lets presenters see the "flow" of interactivity across the sequence at a glance.
+
+### Frame creation and layout
+
+**Default layout:** When creating a new presentation or generating frames with AI, frames are arranged in **topic clusters**. AI analyzes the content and groups related frames spatially (e.g., "Security" frames cluster together, "Architecture" frames nearby). Within each cluster, frames auto-arrange in a grid pattern.
+
+**Manual repositioning:** Users can freely drag frames to any position on the canvas. When repositioning, a grid with snap guides helps align frames accurately. Frames can be any distance apart.
+
+**Creating a new frame:**
+- Click "Add frame" in the Frames tab → frame appears at the nearest available space on the canvas
+- Drag from the Elements tab → new frame with that element pre-inserted
+- AI tab → "Generate a frame about [topic]" → AI creates content and positions the frame near related content
+- Right-click canvas → "New frame here" → frame at click position
 
 ### Key files affected
-- `src/components/app/presentation/editor/PresentationEditor.tsx` — Main layout restructure
-- `src/components/app/presentation/editor/EditorToolbar.tsx` — Simplify to minimal top bar
-- `src/components/app/presentation/editor/InsertMenu.tsx` — Replace dropdown with Elements tab panel
-- `src/components/app/presentation/editor/PropertiesPanel.tsx` — Convert to flyout behavior
-- `src/components/app/presentation/editor/SlidePanel.tsx` — Add badges, integrate into sidebar tab
-- New: `src/components/app/presentation/editor/SidebarTabs.tsx` — Tab container + icon rail
-- New: `src/components/app/presentation/editor/ElementsPanel.tsx` — Visual element grid
-- New: `src/components/app/presentation/editor/AIPanel.tsx` — AI chat interface
-- New: `src/components/app/presentation/editor/ConfigurePanel.tsx` — Theme + settings combined
-- New: `src/components/app/presentation/editor/FloatingToolbar.tsx` — Contextual element toolbar
-- New: `src/components/app/presentation/editor/SlashCommand.tsx` — Command palette
-
----
-
-## Phase 1C: Content Elements & Simplicity Upgrades
-
-The current content toolkit (Text, Image, Shape, Connector) is too thin for building professional presales slides. This phase adds 7 new content elements and 5 simplicity upgrades to existing elements.
-
-### New Content Elements
-
-#### 1. Icon Element
-
-Presales decks use icons everywhere — cloud, security, database, AI, API, users, charts. Instead of importing images for every icon, add a dedicated icon element with a searchable library using Lucide icons (already a project dependency).
-
-**Editor experience:**
-- Insert icon → opens searchable icon picker (Lucide's 1500+ icons)
-- Set icon size (16-256px), color (theme-aware picker), and optional background circle/square
-- Icon renders as SVG — crisp at any size
-
-**Type definition:**
-```typescript
-interface IconConfig {
-  iconName: string;         // Lucide icon name
-  iconColor: string;
-  iconSize: number;         // px
-  backgroundShape?: 'none' | 'circle' | 'rounded-square';
-  backgroundColor?: string;
-}
-```
-
-**Key files:**
-- New: `src/components/app/presentation/editor/elements/IconElement.tsx`
-- New: `src/components/app/presentation/editor/properties/IconProperties.tsx`
-- New: `src/components/app/presentation/editor/IconPicker.tsx` — searchable icon grid
-
-#### 2. Stat / Number Callout
-
-Big impactful numbers: "99.9% uptime", "3x faster", "$2.4M saved". A dedicated element with a large number, label text below, and optional accent color/icon. Looks polished without manual text sizing.
-
-**Editor experience:**
-- Insert stat → pre-styled with a large number and label
-- Edit: number/value text (large), label text (smaller below), optional prefix/suffix, accent color
-- Optional icon above the number
-
-**Type definition:**
-```typescript
-interface StatCalloutConfig {
-  value: string;            // "99.9%", "$2.4M", "3x"
-  label: string;            // "Uptime", "Saved", "Faster"
-  prefix?: string;          // "$", ">"
-  suffix?: string;          // "%", "x", "+"
-  accentColor?: string;
-  iconName?: string;        // optional Lucide icon above
-  alignment?: 'left' | 'center' | 'right';
-}
-```
-
-**Key files:**
-- New: `src/components/app/presentation/editor/elements/StatCalloutElement.tsx`
-- New: `src/components/app/presentation/editor/properties/StatCalloutProperties.tsx`
-
-#### 3. List Element
-
-Bullet lists with icons, checkmarks, or numbered. Currently you'd use a plain text element and manually type bullets. A proper list element auto-formats with icon bullets, consistent spacing, and easy add/remove.
-
-**Editor experience:**
-- Insert list → starts with 3 items, editable inline
-- Choose bullet style: dot, checkmark, arrow, numbered, custom icon-per-item
-- Add/remove items with + button or Enter key
-- Consistent spacing and indentation handled automatically
-- Optional title above the list
-
-**Type definition:**
-```typescript
-interface ListConfig {
-  title?: string;
-  items: { id: string; text: string; iconName?: string }[];
-  bulletStyle: 'dot' | 'check' | 'arrow' | 'number' | 'icon';
-  spacing: 'compact' | 'normal' | 'relaxed';
-}
-```
-
-**Key files:**
-- New: `src/components/app/presentation/editor/elements/ListElement.tsx`
-- New: `src/components/app/presentation/editor/properties/ListProperties.tsx`
-
-#### 4. Table / Comparison Grid
-
-Feature comparison tables, pricing grids, capability matrices. Essential for presales — "us vs. competitor" or "plan comparison" slides.
-
-**Editor experience:**
-- Insert table → starts with 3x3 grid
-- Click any cell to edit inline
-- Add/remove rows and columns via + buttons on edges
-- Toggle header row/column styling (bold, accent background)
-- Resize column widths by dragging borders
-- Cell text alignment (left/center/right per column)
-
-**Type definition:**
-```typescript
-interface TableConfig {
-  rows: { id: string; cells: { id: string; content: string; align?: 'left' | 'center' | 'right' }[] }[];
-  headerRow: boolean;
-  headerColumn: boolean;
-  borderColor?: string;
-  headerBackgroundColor?: string;
-  stripedRows?: boolean;
-}
-```
-
-**Key files:**
-- New: `src/components/app/presentation/editor/elements/TableElement.tsx`
-- New: `src/components/app/presentation/editor/properties/TableProperties.tsx`
-
-#### 5. Video / Embed
-
-Embed YouTube, Loom, or Vimeo videos directly on slides. Paste a URL, it renders as a playable embed.
-
-**Editor experience:**
-- Insert video → paste URL input
-- Auto-detects provider (YouTube, Loom, Vimeo) and extracts embed URL
-- Shows thumbnail preview in editor
-- In presentation mode: renders as playable iframe embed
-- Optional: border radius, drop shadow
-
-**Supported providers:**
-- YouTube (youtube.com, youtu.be)
-- Loom (loom.com/share)
-- Vimeo (vimeo.com)
-- Generic iframe URL fallback
-
-**Type definition:**
-```typescript
-interface VideoConfig {
-  url: string;
-  provider: 'youtube' | 'loom' | 'vimeo' | 'generic';
-  embedUrl: string;          // computed from url
-  thumbnailUrl?: string;
-  autoplay?: boolean;
-}
-```
-
-**Key files:**
-- New: `src/components/app/presentation/editor/elements/VideoElement.tsx`
-- New: `src/components/app/presentation/editor/properties/VideoProperties.tsx`
-
-#### 6. Code Block
-
-Syntax-highlighted code snippets for technical presales. Show API calls, configuration examples, SDK usage.
-
-**Editor experience:**
-- Insert code block → opens code editor area
-- Language selector dropdown (Python, JavaScript, TypeScript, JSON, YAML, SQL, Bash, Go, Java, etc.)
-- Syntax highlighting via a lightweight library (e.g., Prism.js or Shiki)
-- Theme: dark or light background
-- Optional: line numbers, filename header
-- In presentation mode: copy-to-clipboard button
-
-**Type definition:**
-```typescript
-interface CodeBlockConfig {
-  code: string;
-  language: string;
-  theme: 'dark' | 'light';
-  showLineNumbers?: boolean;
-  filename?: string;          // shown as a tab/header above the code
-}
-```
-
-**Key files:**
-- New: `src/components/app/presentation/editor/elements/CodeBlockElement.tsx`
-- New: `src/components/app/presentation/editor/properties/CodeBlockProperties.tsx`
-
-#### 7. Divider
-
-Simple horizontal or vertical line divider. Basic layout helper.
-
-**Editor experience:**
-- Insert divider → horizontal line at default position
-- Properties: orientation (horizontal/vertical), style (solid/dashed/dotted), color, thickness (1-8px)
-- Snap to slide edges and other elements
-
-**Type definition:**
-```typescript
-interface DividerConfig {
-  orientation: 'horizontal' | 'vertical';
-  style: 'solid' | 'dashed' | 'dotted';
-  color: string;
-  thickness: number;
-}
-```
-
-**Key files:**
-- New: `src/components/app/presentation/editor/elements/DividerElement.tsx`
-- New: `src/components/app/presentation/editor/properties/DividerProperties.tsx`
-
-### Simplicity Upgrades to Existing Elements
-
-#### 1. Text Style Presets
-
-Replace manual font size + weight + color configuration with one-click presets that inherit from the presentation theme.
-
-**Presets:**
-| Preset | Size | Weight | Use case |
-|--------|------|--------|----------|
-| Title | 32px | Bold | Slide titles |
-| Heading | 24px | Semibold | Section headers |
-| Body | 16px | Regular | Main content |
-| Caption | 12px | Regular | Fine print, labels |
-
-**Additional text improvements:**
-- Bullet/numbered list toggle within text elements (basic list formatting without needing the List element)
-- Vertical alignment within text box: top, middle, bottom
-- Text box background color with padding
-- Letter spacing slider
-
-**Implementation:**
-- Add preset selector to `TextProperties.tsx` (dropdown or button group at the top)
-- Presets read from the presentation theme — changing the theme updates all preset-styled text
-- Add `textPreset?: 'title' | 'heading' | 'body' | 'caption'` and `verticalAlign?: 'top' | 'middle' | 'bottom'` and `backgroundColor?: string` fields to text element type
-
-#### 2. Theme-Aware Color Picker
-
-Replace the raw hex color input across all elements with a smarter picker.
-
-**Layout:**
-1. **Theme colors row** (top) — primary, secondary, accent, background, text colors from the presentation theme. One click to apply.
-2. **Recently used colors** — last 8 colors used in this presentation.
-3. **Full color picker** — expandable section with the standard hex/HSL picker. Available but not the default view.
-
-**Implementation:**
-- New shared component: `src/components/app/presentation/editor/ThemeColorPicker.tsx`
-- Replace all `ColorPicker` usages in properties panels with `ThemeColorPicker`
-- Theme colors derived from `PresentationTheme` type
-
-#### 3. Image Element Upgrades
-
-**New properties:**
-- **Drop shadow** toggle (subtle box shadow preset, not a complex shadow editor)
-- **Border** — color + width (1-8px)
-- **Flip** — horizontal and vertical flip buttons
-- **Unified image source picker** — when clicking an empty image placeholder, show a single dialog with 3 tabs: Upload, URL, AI Generate (instead of 3 separate inputs in the properties panel)
-
-**Implementation:**
-- Add `shadow?: boolean`, `borderColor?: string`, `borderWidth?: number`, `flipH?: boolean`, `flipV?: boolean` to image element type
-- New: `src/components/app/presentation/editor/ImageSourcePicker.tsx` — tabbed dialog for upload/URL/AI
-
-#### 4. Shape Element Upgrades
-
-**New shapes (in addition to existing 7):**
-- Pentagon, Hexagon, Octagon
-- Star (5-point)
-- Speech bubble, Thought bubble
-- Callout (rectangular with pointer)
-- Banner/ribbon
-- Arrows: up, down, left (currently only right)
-- Chevron
-- Cross/plus
-
-**New properties:**
-- Gradient fills — two-color linear gradient with angle selector
-- Dashed/dotted border styles (currently solid only)
-- Drop shadow toggle
-
-**Implementation:**
-- Expand `shapeType` union in types
-- Add `fillGradient?: { color1: string; color2: string; angle: number }` and `borderStyle?: 'solid' | 'dashed' | 'dotted'` and `shadow?: boolean` to shape element type
-- Expand `ShapeElement.tsx` with new SVG/clipPath definitions
-
-#### 5. Smart Defaults & Quick Actions
-
-**Smart element positioning:**
-- When adding an element, auto-position based on existing elements on the slide:
-  - If slide is empty: center the element
-  - If slide has elements: place new element in the largest empty area
-  - Text defaults to sensible width (60% of slide) not tiny
-- Configurable in element insertion logic in `useEditorState`
-
-**Smart duplicate:**
-- Duplicate places the copy offset by ~2% down and right (not stacked exactly on top)
-- Already partially implemented — ensure consistent behavior
-
-**Element grouping:**
-- Select multiple elements → "Group" action in context menu / floating toolbar
-- Grouped elements move, resize, and rotate as one unit
-- "Ungroup" to break apart
-- Groups can be nested
-
-**Implementation:**
-- Add `groupId?: string` field to element type
-- New: group selection/movement logic in `useEditorState`
-- Add Group/Ungroup to context menu in `SlideCanvas.tsx`
-
-### Updated Elements tab categories
-
-With the new content elements, the Elements tab in the sidebar should organize as:
-
-| Category | Elements |
-|----------|----------|
-| **Text & Content** | Text, List, Stat Callout, Code Block |
-| **Media** | Image, Video, Icon |
-| **Layout** | Shape, Connector, Divider, Table |
-| **Interactive** | Quiz, Poll, Thoughts, Rating, Evaluation, Discovery Form, Priority Ranker, Scenario Cards, Agentic Designer, AI Step |
-| **Results & Special** | Quiz Results, Poll Results, Thoughts Results, Rating Results, Evaluation Results, Agentic Designer Results, Leaderboard, Q&A, Spin Wheel |
+- `src/components/app/presentation/editor/PresentationEditor.tsx` — Major restructure for canvas model
+- `src/components/app/presentation/editor/EditorToolbar.tsx` — Simplify to minimal top bar + sequence selector
+- `src/components/app/presentation/editor/InsertMenu.tsx` — Replace with Elements tab panel
+- `src/components/app/presentation/editor/PropertiesPanel.tsx` — Convert to flyout, add frame properties
+- `src/components/app/presentation/editor/SlidePanel.tsx` → `FramesPanel.tsx` — Sequence-aware frame thumbnails with badges
+- `src/components/app/presentation/editor/SlideCanvas.tsx` → `InfiniteCanvas.tsx` — Infinite pan/zoom with frame rendering
+- `src/lib/types/presentation.ts` — New canvas/frame/sequence data model
+- New: `src/components/app/presentation/editor/SidebarTabs.tsx`
+- New: `src/components/app/presentation/editor/ElementsPanel.tsx`
+- New: `src/components/app/presentation/editor/AIPanel.tsx`
+- New: `src/components/app/presentation/editor/ConfigurePanel.tsx`
+- New: `src/components/app/presentation/editor/FloatingToolbar.tsx`
+- New: `src/components/app/presentation/editor/SlashCommand.tsx`
+- New: `src/components/app/presentation/editor/MiniMap.tsx`
+- New: `src/components/app/presentation/editor/FrameOverlay.tsx` — Frame name badge + border rendering on canvas
+- New: `src/hooks/presentation/use-canvas-state.ts` — Replaces `use-editor-state.ts` with canvas-aware state
+- New: `src/hooks/presentation/use-canvas-navigation.ts` — Pan, zoom, frame-aware camera
 
 ---
 
@@ -465,7 +330,7 @@ Four new purpose-built elements that make common presales interaction patterns i
 - Structured JSON: `{ fieldLabel: string, fieldType: string, responses: { playerId, playerName, value }[] }`
 - Aggregated summary: `{ fieldLabel: string, summary: string }` (e.g., "Industry: 60% Financial Services, 40% Healthcare")
 
-**Type definition additions to `src/lib/types/presentation.ts`:**
+**Type definition:**
 ```typescript
 interface DiscoveryFormField {
   id: string;
@@ -473,10 +338,10 @@ interface DiscoveryFormField {
   label: string;
   placeholder?: string;
   helpText?: string;
-  options?: string[];        // for dropdown, multi-select, radio
-  min?: number;              // for slider
-  max?: number;              // for slider
-  step?: number;             // for slider
+  options?: string[];
+  min?: number;
+  max?: number;
+  step?: number;
   required?: boolean;
 }
 
@@ -489,7 +354,7 @@ interface DiscoveryFormConfig {
 
 ### 2. Priority Ranker
 
-**Purpose:** Participants drag-and-drop items into their priority order. Produces a consensus ranking that AI uses to prioritize content.
+**Purpose:** Participants drag-and-drop items into their priority order. Produces a consensus ranking that AI uses to prioritize content and reorder sequences.
 
 **Editor experience:**
 - Host enters 3-7 items (text label + optional description per item)
@@ -511,6 +376,7 @@ interface DiscoveryFormConfig {
 **Data output for AI steps:**
 - Consensus ranking: `{ items: { id, label, averageRank, voteCount }[], totalResponses: number }`
 - Per-participant rankings available for detailed analysis
+- AI can use rankings to reorder the active sequence (prioritize frames related to top-ranked items)
 
 **Type definition:**
 ```typescript
@@ -559,43 +425,185 @@ interface ScenarioCardsConfig {
   prompt: string;
   cards: ScenarioCard[];
   selectionMode: 'pick-1' | 'pick-n' | 'rank-all';
-  maxSelections?: number;  // for pick-n mode
+  maxSelections?: number;
 }
 ```
 
 ### 4. Interest Pulse
 
-**Purpose:** Persistent, lightweight engagement signal available on every slide (not a dedicated slide element). Captures structured interest data without interrupting the presentation flow.
+**Purpose:** Persistent, lightweight engagement signal available on every frame (not a dedicated element). Captures structured interest data without interrupting the presentation flow.
 
-**This is a presentation-level feature, not a per-slide element.**
+**This is a presentation-level feature, not a per-frame element.**
 
 **Player experience:**
-- Small floating button at the bottom of the player screen, always visible during presentation
+- Small floating button at the bottom of the player screen, always visible
 - Three signal types: "Interesting" (thumbs up), "Tell me more" (expand icon), "I have a question" (question mark)
 - One tap to signal — no forms, no friction
 - Subtle haptic/visual feedback on tap
-- Can signal multiple times across different slides (one signal per slide per type)
+- Can signal once per frame per signal type
 
 **Host view:**
-- Live engagement heatmap in the host overlay — small indicator showing pulse count for current slide
-- Post-session: per-slide engagement metrics visible in analytics
+- Live engagement indicator in host overlay — pulse count for current frame
+- Post-session: per-frame engagement metrics in analytics
 
 **Data output for AI steps:**
-- Aggregated per-slide: `{ slideId, interesting: number, tellMeMore: number, question: number, total: number }`
-- AI can reference: "Slides 3 and 7 had the highest 'tell me more' signals — the audience wants deeper content on these topics"
+- Aggregated per-frame: `{ frameId, interesting: number, tellMeMore: number, question: number, total: number }`
+- AI can reference: "Frames 3 and 7 had the highest 'tell me more' signals"
+- AI can use engagement data to suggest sequence reordering (spend more time on high-interest topics)
 
 **Implementation:**
-- Stored in `games/{gameId}/interestPulse/{slideId}` subcollection
-- Player writes: `{ playerId, playerName, slideId, signal: 'interesting' | 'tell-me-more' | 'question', timestamp }`
-- `loadInteractionResults` in `functions-ai/` extended to include pulse data when building AI step context
+- Stored in `games/{gameId}/interestPulse/{frameId}` subcollection
+- Player writes: `{ playerId, playerName, frameId, signal: 'interesting' | 'tell-me-more' | 'question', timestamp }`
+- `loadInteractionResults` extended to include pulse data when building AI step context
 
 **Configuration (presentation settings level):**
 ```typescript
 interface InterestPulseSettings {
   enabled: boolean;
-  signals?: ('interesting' | 'tell-me-more' | 'question')[];  // defaults to all three
+  signals?: ('interesting' | 'tell-me-more' | 'question')[];
 }
 ```
+
+---
+
+## Phase 1C: Content Elements & Simplicity Upgrades
+
+The current content toolkit (Text, Image, Shape, Connector) is too thin for building professional presales presentations. This phase adds 7 new content elements and 5 simplicity upgrades.
+
+### New Content Elements
+
+#### 1. Icon Element
+
+Searchable icon picker using Lucide icons (already in the project). Set icon size, color, and optional background shape.
+
+**Type definition:**
+```typescript
+interface IconConfig {
+  iconName: string;
+  iconColor: string;
+  iconSize: number;
+  backgroundShape?: 'none' | 'circle' | 'rounded-square';
+  backgroundColor?: string;
+}
+```
+
+#### 2. Stat / Number Callout
+
+Big impactful numbers ("99.9% uptime", "3x faster", "$2.4M saved") with a label, optional prefix/suffix, accent color, and icon.
+
+**Type definition:**
+```typescript
+interface StatCalloutConfig {
+  value: string;
+  label: string;
+  prefix?: string;
+  suffix?: string;
+  accentColor?: string;
+  iconName?: string;
+  alignment?: 'left' | 'center' | 'right';
+}
+```
+
+#### 3. List Element
+
+Bullet/numbered/icon lists with consistent styling. Supports bullet styles: dot, checkmark, arrow, numbered, custom icon-per-item. Add/remove items inline.
+
+**Type definition:**
+```typescript
+interface ListConfig {
+  title?: string;
+  items: { id: string; text: string; iconName?: string }[];
+  bulletStyle: 'dot' | 'check' | 'arrow' | 'number' | 'icon';
+  spacing: 'compact' | 'normal' | 'relaxed';
+}
+```
+
+#### 4. Table / Comparison Grid
+
+Feature comparison tables, pricing grids, capability matrices. Editable cells, add/remove rows and columns, header row/column styling, striped rows.
+
+**Type definition:**
+```typescript
+interface TableConfig {
+  rows: { id: string; cells: { id: string; content: string; align?: 'left' | 'center' | 'right' }[] }[];
+  headerRow: boolean;
+  headerColumn: boolean;
+  borderColor?: string;
+  headerBackgroundColor?: string;
+  stripedRows?: boolean;
+}
+```
+
+#### 5. Video / Embed
+
+Embed YouTube, Loom, or Vimeo videos. Paste URL → auto-detect provider → render embed. Playable in presentation mode.
+
+**Type definition:**
+```typescript
+interface VideoConfig {
+  url: string;
+  provider: 'youtube' | 'loom' | 'vimeo' | 'generic';
+  embedUrl: string;
+  thumbnailUrl?: string;
+  autoplay?: boolean;
+}
+```
+
+#### 6. Code Block
+
+Syntax-highlighted code snippets. Language selector, dark/light theme, optional line numbers and filename header. Copy button in presentation mode.
+
+**Type definition:**
+```typescript
+interface CodeBlockConfig {
+  code: string;
+  language: string;
+  theme: 'dark' | 'light';
+  showLineNumbers?: boolean;
+  filename?: string;
+}
+```
+
+#### 7. Divider
+
+Horizontal or vertical line divider. Solid, dashed, or dotted. Configurable color and thickness.
+
+**Type definition:**
+```typescript
+interface DividerConfig {
+  orientation: 'horizontal' | 'vertical';
+  style: 'solid' | 'dashed' | 'dotted';
+  color: string;
+  thickness: number;
+}
+```
+
+### Simplicity Upgrades
+
+#### 1. Text Style Presets
+One-click presets: Title (32px bold), Heading (24px semibold), Body (16px regular), Caption (12px regular). Presets inherit from the theme. Additional: vertical alignment (top/middle/bottom), text box background color, letter spacing slider.
+
+#### 2. Theme-Aware Color Picker
+Shows theme colors first (primary, secondary, accent, background, text), recently used colors second, full hex/HSL picker expandable. Replaces raw color input across all elements.
+
+#### 3. Image Element Upgrades
+Drop shadow toggle, border (color + width), flip H/V, unified image source picker (Upload | URL | AI Generate tabs in one dialog).
+
+#### 4. Shape Element Upgrades
+New shapes: pentagon, hexagon, octagon, star, speech bubble, thought bubble, callout, banner, arrows (all directions), chevron, cross/plus. New properties: gradient fills, dashed/dotted borders, drop shadow.
+
+#### 5. Smart Defaults & Quick Actions
+Smart element positioning (auto-place in largest empty area within current frame). Smart duplicate (offset, not stacked). Element grouping (select multiple → group as one unit, move/resize/rotate together).
+
+### Updated Elements tab categories
+
+| Category | Elements |
+|----------|----------|
+| **Text & Content** | Text, List, Stat Callout, Code Block |
+| **Media** | Image, Video, Icon |
+| **Layout** | Shape, Connector, Divider, Table |
+| **Interactive** | Quiz, Poll, Thoughts, Rating, Evaluation, Discovery Form, Priority Ranker, Scenario Cards, Agentic Designer, AI Step |
+| **Results & Special** | Quiz/Poll/Thoughts/Rating/Evaluation/Agentic Results, Leaderboard, Q&A, Spin Wheel |
 
 ---
 
@@ -648,29 +656,31 @@ Current export is a markdown file. Presales teams need branded, polished PDF doc
 
 **Purpose:** A separate mobile-optimized view the host opens on their phone while presenting from their laptop. Provides AI coaching and audience signals invisible to prospects (since the host's laptop screen is shared/projected).
 
-**Access:** Host gets a "Companion" link on the lobby screen (or in the present view's settings menu). Opens in a mobile browser — no app install needed.
+**Access:** Host gets a "Companion" link on the lobby screen. Opens in a mobile browser — no app install needed.
 
 **What the companion shows:**
 
-1. **Current Slide Info**
-   - Slide number and title
-   - Talking points generated by AI based on slide content and accumulated audience context
-   - If the slide has an interactive element: live response count and summary
+1. **Current Frame Info**
+   - Frame name and position in sequence
+   - Talking points generated by AI based on frame content and accumulated audience context
+   - If the frame has an interactive element: live response count and summary
 
 2. **Audience Signals Panel**
-   - Interest Pulse summary for current slide (e.g., "5 interested, 2 want more")
+   - Interest Pulse summary for current frame (e.g., "5 interested, 2 want more")
    - Active Q&A question count with top-voted question preview
    - Overall engagement trend (rising/falling/steady)
 
 3. **AI Suggestions**
-   - Contextual nudges: "8/10 ranked 'security' as top priority — emphasize compliance on the next slide"
+   - Contextual nudges: "8/10 ranked 'security' as top priority — emphasize compliance on the next frame"
    - Question alerts: "3 questions about pricing queued — consider addressing before moving on"
-   - Skip/depth suggestions: "Low interest on this topic — consider skipping to slide 9"
+   - Navigation suggestions: "Low interest on this topic — consider jumping to the Security cluster"
+   - **Sequence reorder proposals:** "Based on priorities, I suggest: Security → Data Pipeline → Monitoring. Skip Governance. [Apply]"
 
 4. **Quick Controls**
-   - Previous / Next slide buttons
+   - Previous / Next frame buttons
+   - Jump-to-frame picker (list of all frames)
    - Pause timer (if active)
-   - "Generate AI step" trigger for current slide
+   - "Generate AI step" trigger for current frame
 
 **Real-time sync:** Uses the same Firestore `onSnapshot` listeners as the player view. Companion subscribes to game state, interest pulse, Q&A, and workflow state documents.
 
@@ -679,26 +689,44 @@ Current export is a markdown file. Presales teams need branded, polished PDF doc
 - New component: `src/components/app/presentation/companion/CompanionView.tsx`
 - New component: `src/components/app/presentation/companion/TalkingPoints.tsx`
 - New component: `src/components/app/presentation/companion/AudienceSignals.tsx`
-- New Cloud Function (or client-side AI call): generate talking points per slide
 
 ### 3B: Auto-Trigger AI Steps
 
-**Purpose:** When the host advances to a slide with an AI step, generation starts automatically — no manual "Generate" click needed.
+**Purpose:** When the host navigates to a frame with an AI step, generation starts automatically — no manual "Generate" click needed.
 
 **Configuration:**
 - Per AI step element: `autoTrigger: boolean` (default: `false` for backward compatibility)
-- Configurable in the AI Step properties panel in the editor
+- Configurable in the AI Step properties panel
 
 **Behavior:**
-- When `autoTrigger` is `true` and the host navigates to the slide:
-  - If the AI step has never been run for this slide: automatically calls `runAIStep`
-  - If the AI step has already been run: shows existing output (host can manually re-trigger via "Regenerate" button)
-  - Shows a loading state on both host and player views during generation
+- When `autoTrigger` is `true` and the host navigates to the frame:
+  - If never run: automatically calls `runAIStep`
+  - If already run: shows existing output (host can manually re-trigger via "Regenerate")
+  - Shows loading state on both host and player views during generation
 - When `autoTrigger` is `false`: current manual behavior preserved
 
+### 3C: AI Sequence Management
+
+**Purpose:** AI dynamically reorders the active sequence and creates new frames based on accumulated audience signals. This is the payoff of the infinite canvas architecture — the presentation adapts its path, not just its content.
+
+**Triggers for AI sequence adjustment:**
+- After a Priority Ranker interaction: AI reorders remaining frames to prioritize topics matching top-ranked items
+- After a Scenario Card selection: AI moves the winning scenario's deep-dive frame(s) to next in the sequence
+- Interest Pulse accumulation: AI deprioritizes frames with low engagement, promotes high-engagement topics
+- Host approval: sequence changes are proposed on the phone companion, host approves with one tap
+
+**Dynamic frame creation:**
+- After interactive elements generate insights, AI can create new content on the canvas:
+  - "Based on your team's priorities, here's a custom architecture" → AI generates content, creates a frame, inserts it into the sequence
+  - This leverages the existing `ai-step` infrastructure but at the canvas/frame level
+- New frames appear on the canvas in the relevant topic cluster
+- Host sees the new frame added to the sequence on the companion
+
 **Implementation:**
-- In `PresentationHost.tsx` or the host game hook: detect slide change, check if current slide has an AI step with `autoTrigger: true`, and call `runAIStep` if no output exists for this slide yet
-- Add `autoTrigger` field to `AIStepConfig` type
+- New Cloud Function: `functions-ai/src/functions/reorderSequence.ts` — takes audience signals, current sequence, frame metadata, and returns a proposed reordering
+- Sequence changes written to `games/{gameId}/sequenceState` in Firestore
+- Host companion UI shows proposed changes with approve/reject
+- Player view unaffected — it just follows whatever frame the host navigates to
 
 ---
 
@@ -707,19 +735,21 @@ Current export is a markdown file. Presales teams need branded, polished PDF doc
 | Feature | Rationale for deferral |
 |---------|----------------------|
 | **Impact/Effort Matrix** (full drag grid) | Needs high-quality mobile drag UX. Do it right or don't do it. |
-| **Interactive Co-Creation elements** | Phase 2 direction — builds on Phase 1 foundation |
-| **Template/preset library** | Useful but not a differentiator. Can be added once core UX is solid. |
-| **Adaptive slide reordering** | Requires presentation-level AI orchestration — complex, Phase 3+ |
-| **Dynamic slide injection** | AI adding slides mid-session — needs careful UX design |
+| **Interactive Co-Creation elements** | Builds on Phase 1 foundation |
+| **Template/preset library** | Useful but not a differentiator |
+| **Multiple simultaneous sequences** | Core sequence management is Phase 3; multi-sequence editing is advanced |
 | **CRM integration** | Explicitly deprioritized. Self-contained is a feature. |
+| **Canvas sharing / collaboration** | Real-time multi-user editing of the same canvas |
 
 ---
 
 ## Success Criteria
 
-1. A presales user can create a presentation with interactive elements without reading documentation
-2. The AI tab in the editor can modify slide content from natural language instructions
-3. Every session produces a PDF executive brief the host is proud to send to prospects
-4. The phone companion provides useful AI suggestions that the host actually references during sessions
-5. AI steps auto-trigger seamlessly without latency breaking the presentation flow
-6. New interactive elements (Discovery Form, Priority Ranker, Scenario Cards, Interest Pulse) produce structured data that AI steps can reference
+1. A presales user can create a presentation on the infinite canvas with frames and interactive elements without reading documentation
+2. The AI tab can generate new frames, modify content, and suggest sequences from natural language
+3. Zoom out reveals the full canvas with topic clusters — the "big picture" of the presentation
+4. Presenters can freely navigate between frames during a live session with smooth zoom+pan transitions
+5. AI can propose sequence reorderings on the phone companion based on audience signals, and the host can apply them with one tap
+6. Every session produces a PDF executive brief the host is proud to send to prospects
+7. New interactive elements (Discovery Form, Priority Ranker, Scenario Cards, Interest Pulse) produce structured data that AI steps and sequence management can reference
+8. New content elements (Icon, Stat, List, Table, Video, Code, Divider) and simplicity upgrades make it possible to build professional-looking presentations entirely within Zivo
