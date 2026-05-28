@@ -144,16 +144,125 @@ The current slide-based data model maps cleanly:
 
 ---
 
+## The Persistent AI Copilot
+
+The second pillar of Zivo (alongside the infinite canvas) is a **single persistent AI copilot** that accompanies the user across the entire presentation lifecycle: authoring → delivery → follow-up. It is grounded in the **Presentation Brief** (a living document) so it has continuous context from the first interview question to the post-session debrief.
+
+The copilot's design borrows directly from the workflow patterns that make AI coding assistants effective: interview before building, plan before generating, approval gates, a durable spec, visible progress, parallel variants, and adversarial review.
+
+**Simplicity-first framing:** The copilot is *guidance, not automation*. It proposes; the user disposes. Every AI action is a suggestion the user can accept, edit, or reject. The copilot is the default path for new users but is always skippable for power users (progressive disclosure).
+
+### The Presentation Brief (foundation)
+
+A structured, editable document that captures the intent behind the presentation. Every copilot action references it. Analogous to a `CLAUDE.md` for the presentation.
+
+**Contents:**
+- **Audience:** who they are, roles, technical level
+- **Goal:** what the presenter wants to achieve (close a deal, get buy-in, educate)
+- **Key messages:** the 2-4 points that must land
+- **Expected objections:** what the prospect might push back on
+- **Tone & style:** formal/casual, technical depth, visual style
+- **Constraints:** time limit, must-include content, branding
+
+**Behavior:**
+- Created during the AI Interview (below) or editable directly anytime
+- Lives in the Configure tab and is referenced by all AI generation
+- Changing the brief lets the user ask the copilot to "realign" existing frames
+- Stored on the `Presentation` object: `brief?: PresentationBrief`
+
+```typescript
+interface PresentationBrief {
+  audience?: string;
+  goal?: string;
+  keyMessages?: string[];
+  expectedObjections?: string[];
+  tone?: string;
+  constraints?: string;
+}
+```
+
+### Stage 1 — Authoring Copilot (Phase 1D)
+
+**A. AI Interview (default entry point, skippable)**
+When creating a new presentation, the default experience is a conversational interview. The copilot asks **one question at a time** (audience → goal → key messages → expected objections → tone/constraints), exactly like a brainstorming partner. Answers populate the Presentation Brief.
+- "Start blank" escape hatch always visible for users who want the canvas directly
+- "Quick generate" (one-shot prompt) remains available from the AI tab
+- The interview is short (5-6 questions) and each has smart suggested answers
+
+**B. Outline-First Generation (plan-mode pattern)**
+After the interview, the copilot proposes a **frame outline** — an ordered list of frames with titles and one-line descriptions, plus where interactive elements go. This is the "plan" stage. The user reviews, reorders, adds, or removes frames *before any content is generated*. Only after approval does the copilot generate content. This avoids wasted generation and keeps structure cheap to change.
+
+**C. Frame-by-Frame Build with Progress Tracker (TODO + approval pattern)**
+The copilot builds frames one at a time, showing a live progress tracker (e.g., "✓ Title · ⟳ Architecture · ○ ROI · ○ Next Steps"). The user can:
+- Watch frames appear on the canvas in real-time
+- Approve, refine ("make this more technical"), or regenerate each frame
+- Pause/cancel the build at any point
+- Let it run fully and review afterward (for users who trust it)
+
+**D. Variant Generation (judge-panel pattern)**
+For any frame (or the overall deck angle), the user can ask the copilot for **2-3 variants** generated in parallel — e.g., a "technical depth" version, an "executive summary" version, a "story-driven" version. The user picks the best or merges. Useful when the right framing isn't obvious.
+
+**Key files:**
+- New: `src/components/app/presentation/copilot/AIInterview.tsx`
+- New: `src/components/app/presentation/copilot/OutlineReview.tsx`
+- New: `src/components/app/presentation/copilot/BuildProgress.tsx`
+- New: `src/components/app/presentation/copilot/VariantPicker.tsx`
+- New Cloud Function: `functions-ai/src/functions/generateOutline.ts` (interview answers → frame outline)
+- Extend `generatePresentationWithAI.ts` to generate per-frame from an approved outline + brief
+- Extend `runAIStep.ts` / new function for parallel variant generation
+
+### Stage 2 — Delivery Copilot (Phase 3)
+
+**A. Pre-Session AI Briefing**
+Before presenting, the copilot generates a delivery brief from the Presentation Brief and frame content: per-frame talking points, anticipated audience questions (with suggested answers), and a recommended flow. Available on the phone companion and as a printable sheet.
+
+**B. AI Rehearsal / Red-Team (novel differentiator)**
+A practice mode where the copilot **plays a skeptical prospect**. It:
+- Walks through the sequence and asks tough questions a real prospect would ask (grounded in the audience + expected objections from the brief)
+- Flags weak frames ("this claim needs evidence", "this transition is abrupt")
+- Identifies gaps in the narrative ("you never address pricing")
+- Scores the presentation on clarity, persuasiveness, and objection-handling
+- Optionally simulates different prospect personas (CTO, CFO, end-user)
+
+No competitor (Mentimeter, Slido, Pitch, Gamma) offers adversarial rehearsal. This is a signature feature.
+
+**C. Live Sequence Guidance (Phase 3C, already specified)**
+During the session, the copilot reorders the sequence and creates frames based on audience signals. Proposed on the phone companion, applied with one tap. See Phase 3C.
+
+**Key files:**
+- New: `src/components/app/presentation/copilot/RehearsalMode.tsx`
+- New page or section: `src/app/host/presentation/rehearse/[presentationId]/page.tsx`
+- New Cloud Function: `functions-ai/src/functions/rehearsalAgent.ts` (conversational adversarial reviewer)
+- New Cloud Function: `functions-ai/src/functions/generateDeliveryBriefing.ts`
+
+### Stage 3 — Follow-up Copilot (Phase 2)
+
+**A. AI Executive Brief (already specified)**
+After the session, the copilot synthesizes all session data into a branded PDF deliverable for the prospect. See Phase 2.
+
+**B. Post-Session Debrief (for the presenter)**
+A private debrief for the presenter (distinct from the prospect-facing executive brief). The copilot reviews:
+- Engagement patterns (which frames landed, which lost the room via Interest Pulse)
+- Questions raised and how they map to objections in the brief
+- What to improve next time (frames to strengthen, objections to prepare for)
+- Suggested follow-up content to send the prospect
+
+**Key files:**
+- New component: `src/components/app/presentation/analytics/PresenterDebrief.tsx`
+- New Cloud Function: `functions-ai/src/functions/generateDebrief.ts`
+
+---
+
 ## Phasing
 
-### Phase 1: UX Excellence
-Build the infinite canvas editor, new content elements, new interactive elements, and simplicity upgrades.
+### Phase 1: UX Excellence + Authoring Copilot
+Build the infinite canvas editor, new content elements, new interactive elements, simplicity upgrades, and the authoring copilot (Brief, AI Interview, Outline-first, frame-by-frame build, variants).
 
-### Phase 2: Polished Deliverables
-Turn every session into a tangible follow-up asset — an AI-generated executive brief.
+### Phase 2: Polished Deliverables + Follow-up Copilot
+AI-generated executive brief for prospects, plus the private presenter debrief.
 
-### Phase 3: Intelligence Layer
-Add the presenter copilot, auto-triggering AI steps, and AI-driven sequence management.
+### Phase 3: Intelligence Layer + Delivery Copilot
+Phone companion, auto-triggering AI steps, AI-driven sequence management, pre-session briefing, and AI rehearsal/red-team.
 
 ---
 
@@ -607,10 +716,18 @@ Smart element positioning (auto-place in largest empty area within current frame
 
 ---
 
+## Phase 1D: Authoring Copilot
+
+See **The Persistent AI Copilot → Stage 1 — Authoring Copilot** for the full design. This phase delivers: the Presentation Brief (Configure tab), the AI Interview (default skippable entry point), Outline-First generation (plan-mode pattern), frame-by-frame build with progress tracker, and variant generation. All grounded in the Brief and built on the existing `generatePresentationWithAI` / `runAIStep` infrastructure.
+
+---
+
 ## Phase 2: Polished Deliverables — AI Executive Brief
 
 ### Problem
 Current export is a markdown file. Presales teams need branded, polished PDF documents they can send to prospects as follow-up.
+
+> **Follow-up Copilot:** Phase 2 also delivers the **Post-Session Debrief** (private, presenter-facing) alongside the prospect-facing Executive Brief. See **The Persistent AI Copilot → Stage 3**.
 
 ### Design
 
@@ -650,7 +767,9 @@ Current export is a markdown file. Presales teams need branded, polished PDF doc
 
 ---
 
-## Phase 3: Intelligence Layer
+## Phase 3: Intelligence Layer + Delivery Copilot
+
+> **Delivery Copilot:** Phase 3 also delivers the **Pre-Session AI Briefing** and **AI Rehearsal / Red-Team** (the signature adversarial practice mode). See **The Persistent AI Copilot → Stage 2**.
 
 ### 3A: Phone Companion
 
@@ -753,3 +872,7 @@ Current export is a markdown file. Presales teams need branded, polished PDF doc
 6. Every session produces a PDF executive brief the host is proud to send to prospects
 7. New interactive elements (Discovery Form, Priority Ranker, Scenario Cards, Interest Pulse) produce structured data that AI steps and sequence management can reference
 8. New content elements (Icon, Stat, List, Table, Video, Code, Divider) and simplicity upgrades make it possible to build professional-looking presentations entirely within Zivo
+9. A first-time user can go from "new presentation" through the AI Interview and Outline approval to a built draft without reading documentation
+10. The Presentation Brief stays in sync across the lifecycle — the same intent informs authoring, rehearsal, live delivery, and debrief
+11. AI Rehearsal asks prospect-realistic tough questions and flags weak frames before the real meeting
+12. Every AI action across the copilot is a suggestion the user can accept, edit, or reject — never silent automation
