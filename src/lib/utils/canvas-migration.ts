@@ -1,4 +1,4 @@
-import type { PresentationSlide } from '../types/presentation';
+import type { PresentationSlide, Presentation } from '../types/presentation';
 import type { Canvas, Frame } from '../types/canvas';
 import {
   FRAME_WIDTH,
@@ -72,4 +72,12 @@ export function canvasToSlides(canvas: Canvas): PresentationSlide[] {
       transition: frame.transition,
     };
   });
+}
+
+/**
+ * Always return a Canvas for a presentation: the stored `canvas` if
+ * present, otherwise one derived from the legacy `slides` array.
+ */
+export function getCanvas(presentation: Presentation): Canvas {
+  return presentation.canvas ?? slidesToCanvas(presentation.slides);
 }

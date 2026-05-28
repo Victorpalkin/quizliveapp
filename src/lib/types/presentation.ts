@@ -1,5 +1,6 @@
 import { Timestamp } from 'firebase/firestore';
 import type { AgenticDesignerConfig, AgenticSourceRef } from './agentic-designer';
+import type { Canvas } from './canvas';
 
 // ==========================================
 // Presentation Mode Types (Canvas-based WYSIWYG)
@@ -242,6 +243,8 @@ export interface Presentation {
   description?: string;
   hostId: string;
   slides: PresentationSlide[];
+  /** New canvas model. When absent, derive from `slides` via getCanvas(). */
+  canvas?: Canvas;
   settings: PresentationSettings;
   theme: PresentationTheme;
   createdAt: Date;

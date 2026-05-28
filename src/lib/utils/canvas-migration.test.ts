@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { slidesToCanvas, canvasToSlides } from './canvas-migration';
+import { slidesToCanvas, canvasToSlides, getCanvas } from './canvas-migration';
 import {
   FRAME_WIDTH,
   FRAME_HEIGHT,
   FRAME_GAP,
   DEFAULT_SEQUENCE_ID,
 } from '../types/canvas';
-import type { PresentationSlide } from '../types/presentation';
+import type { PresentationSlide, Presentation } from '../types/presentation';
 import type { Canvas } from '../types/canvas';
 
 function makeSlide(id: string, order: number): PresentationSlide {
@@ -161,5 +161,32 @@ describe('round-trip losslessness', () => {
     // Order is normalized to 0..n-1 following the sorted order (s2 had order 3 < 7, so it comes first)
     expect(result.map((s) => s.id)).toEqual(['s2', 's1']);
     expect(result.map((s) => s.order)).toEqual([0, 1]);
+  });
+});
+
+describe('getCanvas', () => {
+  const base: Omit<Presentation, 'slides' | 'canvas'> = {
+    id: 'p1', title: 'T', hostId: 'h1',
+    settings: {} as Presentation['settings'],
+    theme: {} as Presentation['theme'],
+    createdAt: new Date(0), updatedAt: new Date(0),
+  };
+
+  it('returns the stored canvas when present', () => {
+    const canvas = slidesToCanvas([
+      { id: 'a', order: 0, elements: [] },
+    ]);
+    const pres: Presentation = { ...base, slides: [], canvas };
+    expect(getCanvas(pres)).toBe(canvas);
+  });
+
+  it('derives a canvas from slides when canvas is absent', () => {
+    const pres: Presentation = {
+      ...base,
+      slides: [{ id: 'a', order: 0, elements: [] }],
+    };
+    const result = getCanvas(pres);
+    expect(result.frames).toHaveLength(1);
+    expect(result.frames[0].id).toBe('a');
   });
 });
