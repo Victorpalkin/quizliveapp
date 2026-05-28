@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { slidesToCanvas } from './canvas-migration';
+import { slidesToCanvas, canvasToSlides } from './canvas-migration';
 import {
   FRAME_WIDTH,
   FRAME_HEIGHT,
@@ -7,6 +7,7 @@ import {
   DEFAULT_SEQUENCE_ID,
 } from '../types/canvas';
 import type { PresentationSlide } from '../types/presentation';
+import type { Canvas } from '../types/canvas';
 
 function makeSlide(id: string, order: number): PresentationSlide {
   return {
@@ -67,5 +68,58 @@ describe('slidesToCanvas', () => {
     const canvas = slidesToCanvas(slides);
     expect(canvas.frames[0].name).toBe('Frame 1');
     expect(canvas.frames[1].name).toBe('Frame 2');
+  });
+});
+
+describe('canvasToSlides', () => {
+  function makeCanvas(): Canvas {
+    return {
+      frames: [
+        {
+          id: 'a', name: 'Frame 1', canvasX: 0, canvasY: 0,
+          width: 1280, height: 720,
+          elements: [{ id: 'a-el', type: 'text', x: 10, y: 10, width: 80, height: 10, zIndex: 1, content: 'Hi' }],
+          background: { type: 'solid', color: '#ffffff' },
+          notes: 'notes-a',
+          transition: 'fade',
+        },
+        {
+          id: 'b', name: 'Frame 2', canvasX: 1440, canvasY: 0,
+          width: 1280, height: 720,
+          elements: [],
+          transition: 'none',
+        },
+      ],
+      sequences: [{ id: 'main', name: 'Main', frameIds: ['a', 'b'] }],
+      defaultSequenceId: 'main',
+    };
+  }
+
+  it('produces one slide per frame in default-sequence order', () => {
+    const slides = canvasToSlides(makeCanvas());
+    expect(slides.map((s) => s.id)).toEqual(['a', 'b']);
+  });
+
+  it('assigns sequential order indices', () => {
+    const slides = canvasToSlides(makeCanvas());
+    expect(slides[0].order).toBe(0);
+    expect(slides[1].order).toBe(1);
+  });
+
+  it('preserves elements, background, notes, transition', () => {
+    const canvas = makeCanvas();
+    const slides = canvasToSlides(canvas);
+    expect(slides[0].elements).toEqual(canvas.frames[0].elements);
+    expect(slides[0].background).toEqual(canvas.frames[0].background);
+    expect(slides[0].notes).toBe('notes-a');
+    expect(slides[0].transition).toBe('fade');
+  });
+
+  it('orders slides by the default sequence even if frames array order differs', () => {
+    const canvas = makeCanvas();
+    // Reverse the frames array; sequence still says a then b
+    canvas.frames = [canvas.frames[1], canvas.frames[0]];
+    const slides = canvasToSlides(canvas);
+    expect(slides.map((s) => s.id)).toEqual(['a', 'b']);
   });
 });

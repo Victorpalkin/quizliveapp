@@ -40,3 +40,36 @@ export function slidesToCanvas(slides: PresentationSlide[]): Canvas {
     defaultSequenceId: DEFAULT_SEQUENCE_ID,
   };
 }
+
+/**
+ * Convert the canvas model back into the legacy slide array.
+ * Slide order follows the default sequence's frameIds. Any frames not
+ * referenced by the default sequence are appended in frames-array order.
+ */
+export function canvasToSlides(canvas: Canvas): PresentationSlide[] {
+  const frameById = new Map(canvas.frames.map((f) => [f.id, f]));
+  const defaultSeq = canvas.sequences.find((s) => s.id === canvas.defaultSequenceId);
+
+  const orderedIds: string[] = [];
+  if (defaultSeq) {
+    for (const id of defaultSeq.frameIds) {
+      if (frameById.has(id)) orderedIds.push(id);
+    }
+  }
+  // Append any frames missing from the sequence, preserving array order.
+  for (const f of canvas.frames) {
+    if (!orderedIds.includes(f.id)) orderedIds.push(f.id);
+  }
+
+  return orderedIds.map((id, index) => {
+    const frame = frameById.get(id)!;
+    return {
+      id: frame.id,
+      order: index,
+      elements: frame.elements,
+      background: frame.background,
+      notes: frame.notes,
+      transition: frame.transition,
+    };
+  });
+}
