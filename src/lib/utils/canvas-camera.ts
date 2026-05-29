@@ -94,3 +94,43 @@ export function framesBoundingBox(frames: FrameBox[]): BoundingBox | null {
   }
   return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
 }
+
+/** Center on a single frame, zoomed to fit with a viewport-fraction margin. */
+export function fitFrame(frame: FrameBox, viewport: Viewport, paddingRatio = 0.1): Camera {
+  const zoomX = (viewport.width * (1 - paddingRatio)) / frame.width;
+  const zoomY = (viewport.height * (1 - paddingRatio)) / frame.height;
+  return {
+    x: frame.canvasX + frame.width / 2,
+    y: frame.canvasY + frame.height / 2,
+    zoom: clampZoom(Math.min(zoomX, zoomY)),
+  };
+}
+
+/** Center on the union of all frames, zoomed to fit. Empty -> identity camera. */
+export function fitAllFrames(frames: FrameBox[], viewport: Viewport, paddingRatio = 0.1): Camera {
+  const bbox = framesBoundingBox(frames);
+  if (!bbox) return { x: 0, y: 0, zoom: 1 };
+  const zoomX = (viewport.width * (1 - paddingRatio)) / bbox.width;
+  const zoomY = (viewport.height * (1 - paddingRatio)) / bbox.height;
+  return {
+    x: bbox.minX + bbox.width / 2,
+    y: bbox.minY + bbox.height / 2,
+    zoom: clampZoom(Math.min(zoomX, zoomY)),
+  };
+}
+
+/** Zoom to newZoom while keeping the world point under screenPoint fixed. */
+export function zoomAtPoint(
+  camera: Camera,
+  screenPoint: Point,
+  newZoom: number,
+  viewport: Viewport
+): Camera {
+  const z = clampZoom(newZoom);
+  const worldBefore = screenToWorld(screenPoint, camera, viewport);
+  return {
+    x: worldBefore.x - (screenPoint.x - viewport.width / 2) / z,
+    y: worldBefore.y - (screenPoint.y - viewport.height / 2) / z,
+    zoom: z,
+  };
+}

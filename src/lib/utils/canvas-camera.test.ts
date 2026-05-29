@@ -6,6 +6,9 @@ import {
   clampZoom,
   panBy,
   framesBoundingBox,
+  fitFrame,
+  fitAllFrames,
+  zoomAtPoint,
   type Camera,
   type Viewport,
   type FrameBox,
@@ -66,5 +69,51 @@ describe('framesBoundingBox', () => {
     expect(framesBoundingBox(frames)).toEqual({
       minX: 0, minY: 0, maxX: 300, maxY: 150, width: 300, height: 150,
     });
+  });
+});
+
+describe('fitFrame', () => {
+  it('centers on the frame and zooms to fit with default 10% padding', () => {
+    const frame: FrameBox = { canvasX: 0, canvasY: 0, width: 1280, height: 720 };
+    const cam = fitFrame(frame, { width: 1280, height: 720 });
+    expect(cam.x).toBe(640);
+    expect(cam.y).toBe(360);
+    expect(cam.zoom).toBeCloseTo(0.9, 6); // min(1280*0.9/1280, 720*0.9/720)
+  });
+});
+
+describe('fitAllFrames', () => {
+  it('falls back to identity when there are no frames', () => {
+    expect(fitAllFrames([], { width: 800, height: 600 })).toEqual({ x: 0, y: 0, zoom: 1 });
+  });
+
+  it('centers on the union box and zooms to fit', () => {
+    const frames: FrameBox[] = [
+      { canvasX: 0, canvasY: 0, width: 1000, height: 500 },
+      { canvasX: 2000, canvasY: 0, width: 1000, height: 500 },
+    ];
+    // union box: 3000 x 500, center (1500, 250)
+    const cam = fitAllFrames(frames, { width: 3000, height: 500 });
+    expect(cam.x).toBe(1500);
+    expect(cam.y).toBe(250);
+    expect(cam.zoom).toBeCloseTo(0.9, 6); // min(3000*0.9/3000, 500*0.9/500)
+  });
+});
+
+describe('zoomAtPoint', () => {
+  it('keeps the world point under the cursor fixed on screen', () => {
+    const cam: Camera = { x: 0, y: 0, zoom: 1 };
+    const cursor = { x: 500, y: 300 };
+    const worldBefore = screenToWorld(cursor, cam, VP);
+    const next = zoomAtPoint(cam, cursor, 2, VP);
+    expect(next.zoom).toBe(2);
+    const screenAfter = worldToScreen(worldBefore, next, VP);
+    expect(screenAfter.x).toBeCloseTo(cursor.x, 6);
+    expect(screenAfter.y).toBeCloseTo(cursor.y, 6);
+  });
+
+  it('clamps the requested zoom', () => {
+    const cam: Camera = { x: 0, y: 0, zoom: 1 };
+    expect(zoomAtPoint(cam, { x: 400, y: 300 }, 99, VP).zoom).toBe(4);
   });
 });
