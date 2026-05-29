@@ -28,6 +28,11 @@ export function useCanvasNavigation(canvas: Canvas, sequenceId?: string) {
   const [isAnimating, setIsAnimating] = useState(false);
   const [lastTransition, setLastTransition] = useState<FrameTransition | null>(null);
 
+  const cameraRef = useRef(camera);
+  useEffect(() => {
+    cameraRef.current = camera;
+  }, [camera]);
+
   const containerRef = useRef<HTMLDivElement | null>(null);
   const animRef = useRef<number | null>(null);
 
@@ -54,7 +59,7 @@ export function useCanvasNavigation(canvas: Canvas, sequenceId?: string) {
       }
       setIsAnimating(true);
       const startTime = performance.now();
-      const from = camera;
+      const from = cameraRef.current;
       const tick = (now: number) => {
         const t = Math.min(1, (now - startTime) / durationMs);
         setCamera(interpolateCamera(from, target, t));
@@ -67,7 +72,7 @@ export function useCanvasNavigation(canvas: Canvas, sequenceId?: string) {
       };
       animRef.current = requestAnimationFrame(tick);
     },
-    [camera, viewport.width, cancelAnim]
+    [viewport.width, cancelAnim]
   );
 
   const pointInContainer = useCallback((clientX: number, clientY: number): Point => {
@@ -138,6 +143,7 @@ export function useCanvasNavigation(canvas: Canvas, sequenceId?: string) {
       },
       onWheel: ({ delta: [dx, dy], event }) => {
         const we = event as WheelEvent;
+        we.preventDefault();
         cancelAnim();
         if (we.ctrlKey || we.metaKey) {
           const p = pointInContainer(we.clientX, we.clientY);
