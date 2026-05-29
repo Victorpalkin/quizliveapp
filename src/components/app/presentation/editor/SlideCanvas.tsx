@@ -5,14 +5,7 @@ import { useStorage } from '@/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { nanoid } from 'nanoid';
 import type { PresentationSlide, SlideElement, SlideElementType, PresentationTheme } from '@/lib/types';
-import { INTERACTIVE_ELEMENT_TYPES } from '@/lib/types';
-import { TextElement } from './elements/TextElement';
-import { ImageElement } from './elements/ImageElement';
-import { ShapeElement } from './elements/ShapeElement';
-import { ConnectorElement } from './elements/ConnectorElement';
-import { InteractiveElement } from './elements/InteractiveElement';
-import { AIStepPreview } from './elements/AIStepPreview';
-import { ResultsElement } from './elements/ResultsElement';
+import { ElementRenderer } from './elements/ElementRenderer';
 import { SelectionOverlay } from './elements/SelectionOverlay';
 import { ConnectorSelectionOverlay } from './elements/ConnectorSelectionOverlay';
 import {
@@ -59,71 +52,11 @@ interface SlideCanvasProps {
   readOnly?: boolean;
 }
 
-const RESULTS_TYPES = ['quiz-results', 'poll-results', 'thoughts-results', 'rating-results', 'evaluation-results', 'agentic-designer-results', 'ai-step-results'];
-const SPECIAL_TYPES = ['leaderboard', 'qa', 'spin-wheel'];
-
 const SNAP_THRESHOLD = 2; // % threshold for snapping
 
 interface GuideLine {
   orientation: 'horizontal' | 'vertical';
   position: number; // %
-}
-
-function ElementRenderer({
-  element,
-  isSelected,
-  onSelect,
-  isEditing,
-  onStartEditing,
-  onStopEditing,
-  onUpdateContent,
-  onUploadImage,
-}: {
-  element: SlideElement;
-  isSelected: boolean;
-  onSelect: () => void;
-  isEditing?: boolean;
-  onStartEditing?: () => void;
-  onStopEditing?: () => void;
-  onUpdateContent?: (content: string) => void;
-  onUploadImage?: () => void;
-}) {
-  if (element.type === 'text') {
-    return (
-      <TextElement
-        element={element}
-        isSelected={isSelected}
-        isEditing={isEditing}
-        onStartEditing={onStartEditing}
-        onStopEditing={onStopEditing}
-        onUpdateContent={onUpdateContent}
-      />
-    );
-  }
-  if (element.type === 'image') {
-    return <ImageElement element={element} onUpload={onUploadImage} />;
-  }
-  if (element.type === 'shape') {
-    return <ShapeElement element={element} />;
-  }
-  if (element.type === 'connector') {
-    return <ConnectorElement element={element} />;
-  }
-  if (element.type === 'ai-step') {
-    return <AIStepPreview element={element} />;
-  }
-  if (INTERACTIVE_ELEMENT_TYPES.includes(element.type) || SPECIAL_TYPES.includes(element.type)) {
-    return <InteractiveElement element={element} />;
-  }
-  if (RESULTS_TYPES.includes(element.type)) {
-    return <ResultsElement element={element} />;
-  }
-
-  return (
-    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-      {element.type}
-    </div>
-  );
 }
 
 export function SlideCanvas({
