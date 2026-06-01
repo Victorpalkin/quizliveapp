@@ -7,6 +7,9 @@ import {
   moveFrame,
   renameFrame,
   reorderSequence,
+  addElement,
+  updateElement,
+  deleteElement,
 } from './canvas-ops';
 import { FRAME_WIDTH, FRAME_GAP, DEFAULT_SEQUENCE_ID } from '../types/canvas';
 
@@ -87,5 +90,64 @@ describe('reorderSequence', () => {
     const canvas = reorderSequence(c, DEFAULT_SEQUENCE_ID, 0, 1);
     expect(canvas.sequences[0].frameIds).toEqual([b, a]);
     expect(canvas.frames.find((f) => f.id === a)!.canvasX).toBe(posA); // unchanged
+  });
+});
+
+describe('addElement', () => {
+  it('adds an element to the target frame and returns its id', () => {
+    const c = createDefaultCanvas();
+    const fid = c.frames[0].id;
+    const { canvas, elementId } = addElement(c, fid, 'text');
+    expect(elementId).toBeTruthy();
+    expect(canvas.frames[0].elements).toHaveLength(1);
+    expect(canvas.frames[0].elements[0].type).toBe('text');
+  });
+
+  it('rejects a second interactive element in the same frame', () => {
+    const c = createDefaultCanvas();
+    const fid = c.frames[0].id;
+    const after = addElement(c, fid, 'quiz').canvas;
+    const { canvas, elementId } = addElement(after, fid, 'poll');
+    expect(elementId).toBeNull();
+    expect(canvas.frames[0].elements).toHaveLength(1); // unchanged
+  });
+});
+
+describe('updateElement', () => {
+  it('updates an element in the target frame', () => {
+    const c = createDefaultCanvas();
+    const fid = c.frames[0].id;
+    const { canvas, elementId } = addElement(c, fid, 'text');
+    const next = updateElement(canvas, fid, elementId!, { x: 42 });
+    expect(next.frames[0].elements[0].x).toBe(42);
+  });
+});
+
+describe('deleteElement', () => {
+  it('removes an element from the target frame', () => {
+    const c = createDefaultCanvas();
+    const fid = c.frames[0].id;
+    const { canvas, elementId } = addElement(c, fid, 'text');
+    const next = deleteElement(canvas, fid, elementId!);
+    expect(next.frames[0].elements).toHaveLength(0);
+  });
+
+  it('detaches connectors attached to a deleted element', () => {
+    const c = createDefaultCanvas();
+    const fid = c.frames[0].id;
+    const withText = addElement(c, fid, 'text');
+    const textId = withText.elementId!;
+    // add a connector, then attach its start to the text element
+    const withConn = addElement(withText.canvas, fid, 'connector');
+    const connId = withConn.elementId!;
+    const attached = updateElement(withConn.canvas, fid, connId, {
+      connectorConfig: {
+        ...withConn.canvas.frames[0].elements.find((e) => e.id === connId)!.connectorConfig!,
+        startAttachment: { elementId: textId, anchor: 'right' },
+      },
+    });
+    const afterDelete = deleteElement(attached, fid, textId);
+    const conn = afterDelete.frames[0].elements.find((e) => e.id === connId)!;
+    expect(conn.connectorConfig!.startAttachment).toBeUndefined();
   });
 });
