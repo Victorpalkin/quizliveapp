@@ -159,7 +159,15 @@ export function useCanvasState(initial?: {
     setState((s) => {
       const canvas = ops.deleteFrame(s.canvas, frameId);
       const stillCurrent = canvas.frames.some((f) => f.id === s.currentFrameId);
-      return { ...s, canvas, currentFrameId: stillCurrent ? s.currentFrameId : null, isDirty: true };
+      return {
+        ...s,
+        canvas,
+        currentFrameId: stillCurrent ? s.currentFrameId : null,
+        mode: stillCurrent ? s.mode : 'overview',
+        selectedElementId: stillCurrent ? s.selectedElementId : null,
+        selectedElementIds: stillCurrent ? s.selectedElementIds : [],
+        isDirty: true,
+      };
     });
   }, [pushHistory]);
 

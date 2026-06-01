@@ -101,7 +101,7 @@ export function PresentationEditor({ presentation, readOnly }: PresentationEdito
         autoSaveTimerRef.current = null;
       }
     };
-  }, [editor.isDirty, editor.canvas, handleSave, readOnly]);
+  }, [editor.isDirty, handleSave, readOnly]);
 
   const handlePresent = useCallback(async () => {
     if (!presentation || !user) return;
