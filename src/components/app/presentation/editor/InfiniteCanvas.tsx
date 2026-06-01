@@ -38,6 +38,15 @@ export function InfiniteCanvas({
   const nav = useCanvasNavigation(canvas, sequenceId);
   const { setViewport, fitAll } = nav;
   const didFit = useRef(false);
+  const dragRef = useRef<{
+    id: string;
+    startClientX: number;
+    startClientY: number;
+    startX: number;
+    startY: number;
+    zoom: number;
+    moved: boolean;
+  } | null>(null);
 
   // Measure the viewport and keep it in sync with size changes.
   useEffect(() => {
@@ -74,34 +83,12 @@ export function InfiniteCanvas({
         style={{ transform: cameraToTransform(nav.camera, nav.viewport), transformOrigin: '0 0' }}
       >
         {canvas.frames.map((frame) => {
-          const handlePointerDown = onFrameMove
-            ? (e: React.PointerEvent) => {
-                if (e.button !== 0) return;
-                e.stopPropagation(); // don't start a canvas pan
-                const startClientX = e.clientX;
-                const startClientY = e.clientY;
-                const startX = frame.canvasX;
-                const startY = frame.canvasY;
-                const zoom = nav.camera.zoom;
-                let moved = false;
-                const onMove = (ev: PointerEvent) => {
-                  const dx = (ev.clientX - startClientX) / zoom;
-                  const dy = (ev.clientY - startClientY) / zoom;
-                  if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
-                  if (moved) onFrameMove(frame.id, startX + dx, startY + dy);
-                };
-                const onUp = () => {
-                  window.removeEventListener('pointermove', onMove);
-                  window.removeEventListener('pointerup', onUp);
-                };
-                window.addEventListener('pointermove', onMove);
-                window.addEventListener('pointerup', onUp);
-              }
-            : undefined;
+          const editable = !!onFrameMove;
           return (
             <div
               key={frame.id}
-              className={`absolute shadow-sm ${onFrameMove ? 'cursor-move' : 'cursor-pointer'} ${
+              data-frame="true"
+              className={`absolute shadow-sm ${editable ? 'cursor-move' : 'cursor-pointer'} ${
                 selectedFrameId === frame.id ? 'ring-2 ring-primary' : ''
               }`}
               style={{
@@ -110,7 +97,44 @@ export function InfiniteCanvas({
                 width: frame.width,
                 height: frame.height,
               }}
-              onPointerDown={handlePointerDown}
+              onPointerDown={
+                editable
+                  ? (e) => {
+                      if (e.button !== 0) return;
+                      e.stopPropagation(); // best-effort: keep the canvas pan from also starting
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      dragRef.current = {
+                        id: frame.id,
+                        startClientX: e.clientX,
+                        startClientY: e.clientY,
+                        startX: frame.canvasX,
+                        startY: frame.canvasY,
+                        zoom: nav.camera.zoom,
+                        moved: false,
+                      };
+                    }
+                  : undefined
+              }
+              onPointerMove={
+                editable
+                  ? (e) => {
+                      const d = dragRef.current;
+                      if (!d || d.id !== frame.id) return;
+                      const dx = (e.clientX - d.startClientX) / d.zoom;
+                      const dy = (e.clientY - d.startClientY) / d.zoom;
+                      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) d.moved = true;
+                      if (d.moved) onFrameMove!(frame.id, d.startX + dx, d.startY + dy);
+                    }
+                  : undefined
+              }
+              onPointerUp={
+                editable
+                  ? (e) => {
+                      if (dragRef.current?.id === frame.id) dragRef.current = null;
+                      e.currentTarget.releasePointerCapture?.(e.pointerId);
+                    }
+                  : undefined
+              }
               onClick={() => (onFrameSelect ? onFrameSelect(frame.id) : nav.goToFrame(frame.id))}
               onDoubleClick={() => onFrameActivate?.(frame.id)}
             >
