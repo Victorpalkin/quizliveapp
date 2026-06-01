@@ -338,11 +338,20 @@ export function updateElement(canvas: Canvas, frameId: string, elementId: string
   });
 }
 
-/** Update many elements with the same patch. */
+/** Update many elements with the same patch; recompute attached connectors on geometry change. */
 export function updateElements(canvas: Canvas, frameId: string, elementIds: string[], updates: Partial<SlideElement>): Canvas {
-  return withFrameElements(canvas, frameId, (elements) =>
-    elements.map((el) => (elementIds.includes(el.id) ? { ...el, ...updates } : el))
-  );
+  return withFrameElements(canvas, frameId, (elements) => {
+    let next = elements.map((el) => (elementIds.includes(el.id) ? { ...el, ...updates } : el));
+    if ('x' in updates || 'y' in updates || 'width' in updates || 'height' in updates) {
+      for (const id of elementIds) {
+        const updated = next.find((el) => el.id === id);
+        if (updated && updated.type !== 'connector') {
+          next = updateAttachedConnectors(next, id);
+        }
+      }
+    }
+    return next;
+  });
 }
 
 /** Delete one element and detach any connectors that referenced it. */

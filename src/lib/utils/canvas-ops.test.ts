@@ -9,6 +9,7 @@ import {
   reorderSequence,
   addElement,
   updateElement,
+  updateElements,
   deleteElement,
 } from './canvas-ops';
 import { FRAME_WIDTH, FRAME_GAP, DEFAULT_SEQUENCE_ID } from '../types/canvas';
@@ -149,5 +150,26 @@ describe('deleteElement', () => {
     const afterDelete = deleteElement(attached, fid, textId);
     const conn = afterDelete.frames[0].elements.find((e) => e.id === connId)!;
     expect(conn.connectorConfig!.startAttachment).toBeUndefined();
+  });
+});
+
+describe('updateElements connector sync', () => {
+  it('recomputes attached connectors when bulk-moving elements', () => {
+    const c = createDefaultCanvas();
+    const fid = c.frames[0].id;
+    const withText = addElement(c, fid, 'text');
+    const textId = withText.elementId!;
+    const withConn = addElement(withText.canvas, fid, 'connector');
+    const connId = withConn.elementId!;
+    const baseConn = withConn.canvas.frames[0].elements.find((e) => e.id === connId)!.connectorConfig!;
+    const attached = updateElement(withConn.canvas, fid, connId, {
+      connectorConfig: { ...baseConn, startAttachment: { elementId: textId, anchor: 'right' } },
+    });
+    const before = attached.frames[0].elements.find((e) => e.id === connId)!.connectorConfig!;
+    // bulk-move the text element
+    const after = updateElements(attached, fid, [textId], { x: 70, y: 70 });
+    const conn = after.frames[0].elements.find((e) => e.id === connId)!.connectorConfig!;
+    // the connector's start endpoint should have moved to track the element
+    expect(conn.startX !== before.startX || conn.startY !== before.startY).toBe(true);
   });
 });
