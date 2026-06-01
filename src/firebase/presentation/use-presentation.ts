@@ -21,6 +21,7 @@ import type {
   PresentationSettings,
   PresentationTheme,
 } from '@/lib/types';
+import type { Canvas } from '@/lib/types/canvas';
 
 const DEFAULT_SETTINGS: PresentationSettings = {
   enableReactions: true,
@@ -49,6 +50,7 @@ function docToPresentation(id: string, data: Record<string, unknown>): Presentat
     description: data.description as string | undefined,
     hostId: data.hostId as string,
     slides: (data.slides as PresentationSlide[]) || [],
+    canvas: data.canvas as Canvas | undefined,
     settings: (data.settings as PresentationSettings) || { ...DEFAULT_SETTINGS },
     theme: (data.theme as PresentationTheme) || { ...DEFAULT_THEME },
     createdAt: toDate(data.createdAt),
@@ -140,7 +142,7 @@ export function usePresentationMutations() {
   );
 
   const updatePresentation = useCallback(
-    async (id: string, data: Partial<Pick<Presentation, 'title' | 'description' | 'slides' | 'settings' | 'theme'>>) => {
+    async (id: string, data: Partial<Pick<Presentation, 'title' | 'description' | 'slides' | 'canvas' | 'settings' | 'theme'>>) => {
       if (!firestore) throw new Error('Firestore not initialized');
 
       await updateDoc(doc(firestore, 'presentations', id), removeUndefined({
