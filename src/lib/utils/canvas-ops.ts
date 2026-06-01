@@ -370,3 +370,92 @@ export function deleteElements(canvas: Canvas, frameId: string, elementIds: stri
     return remaining;
   });
 }
+
+export function bringToFront(canvas: Canvas, frameId: string, elementIds: string[]): Canvas {
+  return withFrameElements(canvas, frameId, (elements) => {
+    if (elementIds.length === 0) return elements;
+    const maxZ = elements.reduce((max, el) => Math.max(max, el.zIndex), 0);
+    let nextZ = maxZ + 1;
+    return elements.map((el) => (elementIds.includes(el.id) ? { ...el, zIndex: nextZ++ } : el));
+  });
+}
+
+export function sendToBack(canvas: Canvas, frameId: string, elementIds: string[]): Canvas {
+  return withFrameElements(canvas, frameId, (elements) => {
+    if (elementIds.length === 0) return elements;
+    const minZ = elements.reduce((min, el) => Math.min(min, el.zIndex), Infinity);
+    let nextZ = minZ - elementIds.length;
+    return elements.map((el) => (elementIds.includes(el.id) ? { ...el, zIndex: nextZ++ } : el));
+  });
+}
+
+function swapZ(elements: SlideElement[], elementId: string, dir: 1 | -1): SlideElement[] {
+  const el = elements.find((e) => e.id === elementId);
+  if (!el) return elements;
+  const sorted = [...elements].sort((a, b) => a.zIndex - b.zIndex);
+  const idx = sorted.findIndex((e) => e.id === elementId);
+  const targetIdx = idx + dir;
+  if (targetIdx < 0 || targetIdx >= sorted.length) return elements;
+  const target = sorted[targetIdx];
+  return elements.map((e) => {
+    if (e.id === el.id) return { ...e, zIndex: target.zIndex };
+    if (e.id === target.id) return { ...e, zIndex: el.zIndex };
+    return e;
+  });
+}
+
+export function moveForward(canvas: Canvas, frameId: string, elementId: string): Canvas {
+  return withFrameElements(canvas, frameId, (els) => swapZ(els, elementId, 1));
+}
+
+export function moveBackward(canvas: Canvas, frameId: string, elementId: string): Canvas {
+  return withFrameElements(canvas, frameId, (els) => swapZ(els, elementId, -1));
+}
+
+export function alignElement(
+  canvas: Canvas,
+  frameId: string,
+  elementId: string,
+  alignment: 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom'
+): Canvas {
+  return withFrameElements(canvas, frameId, (elements) => {
+    const el = elements.find((e) => e.id === elementId);
+    if (!el) return elements;
+    const updates: Partial<SlideElement> = {};
+    switch (alignment) {
+      case 'left': updates.x = 0; break;
+      case 'center-h': updates.x = (100 - el.width) / 2; break;
+      case 'right': updates.x = 100 - el.width; break;
+      case 'top': updates.y = 0; break;
+      case 'center-v': updates.y = (100 - el.height) / 2; break;
+      case 'bottom': updates.y = 100 - el.height; break;
+    }
+    return elements.map((e) => (e.id === elementId ? { ...e, ...updates } : e));
+  });
+}
+
+/** Place a copy of `source` into a frame (offset, fresh id). Honors the interactive-per-frame limit. */
+export function pasteElement(canvas: Canvas, frameId: string, source: SlideElement): { canvas: Canvas; elementId: string | null } {
+  const frame = canvas.frames.find((f) => f.id === frameId);
+  if (!frame) return { canvas, elementId: null };
+  if (INTERACTIVE_ELEMENT_TYPES.includes(source.type) && frame.elements.some((el) => INTERACTIVE_ELEMENT_TYPES.includes(el.type))) {
+    return { canvas, elementId: null };
+  }
+  const maxZ = frame.elements.reduce((max, el) => Math.max(max, el.zIndex), 0);
+  const pasted: SlideElement = {
+    ...JSON.parse(JSON.stringify(source)),
+    id: nanoid(),
+    x: Math.min((source.x || 0) + 3, 90),
+    y: Math.min((source.y || 0) + 3, 90),
+    zIndex: maxZ + 1,
+  };
+  return { canvas: withFrameElements(canvas, frameId, (els) => [...els, pasted]), elementId: pasted.id };
+}
+
+/** Duplicate an element within its frame (offset, fresh id). */
+export function duplicateElement(canvas: Canvas, frameId: string, elementId: string): { canvas: Canvas; elementId: string | null } {
+  const frame = canvas.frames.find((f) => f.id === frameId);
+  const el = frame?.elements.find((e) => e.id === elementId);
+  if (!frame || !el) return { canvas, elementId: null };
+  return pasteElement(canvas, frameId, el);
+}

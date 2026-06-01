@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { canvasToSlides } from './canvas-migration';
 import {
   createDefaultCanvas,
   addFrame,
@@ -11,6 +12,10 @@ import {
   updateElement,
   updateElements,
   deleteElement,
+  bringToFront,
+  alignElement,
+  duplicateElement,
+  pasteElement,
 } from './canvas-ops';
 import { FRAME_WIDTH, FRAME_GAP, DEFAULT_SEQUENCE_ID } from '../types/canvas';
 
@@ -171,5 +176,79 @@ describe('updateElements connector sync', () => {
     const conn = after.frames[0].elements.find((e) => e.id === connId)!.connectorConfig!;
     // the connector's start endpoint should have moved to track the element
     expect(conn.startX !== before.startX || conn.startY !== before.startY).toBe(true);
+  });
+});
+
+describe('bringToFront', () => {
+  it('raises selected elements above the rest', () => {
+    const c = createDefaultCanvas();
+    const fid = c.frames[0].id;
+    const a = addElement(c, fid, 'text');
+    const b = addElement(a.canvas, fid, 'shape');
+    const next = bringToFront(b.canvas, fid, [a.elementId!]);
+    const els = next.frames[0].elements;
+    const za = els.find((e) => e.id === a.elementId)!.zIndex;
+    const zb = els.find((e) => e.id === b.elementId)!.zIndex;
+    expect(za).toBeGreaterThan(zb);
+  });
+});
+
+describe('alignElement', () => {
+  it('aligns an element to the left edge', () => {
+    const c = createDefaultCanvas();
+    const fid = c.frames[0].id;
+    const { canvas, elementId } = addElement(c, fid, 'text', { x: 30, width: 40 });
+    const next = alignElement(canvas, fid, elementId!, 'left');
+    expect(next.frames[0].elements[0].x).toBe(0);
+  });
+
+  it('centers an element horizontally', () => {
+    const c = createDefaultCanvas();
+    const fid = c.frames[0].id;
+    const { canvas, elementId } = addElement(c, fid, 'text', { x: 0, width: 40 });
+    const next = alignElement(canvas, fid, elementId!, 'center-h');
+    expect(next.frames[0].elements[0].x).toBe(30); // (100-40)/2
+  });
+});
+
+describe('duplicateElement / pasteElement', () => {
+  it('duplicates an element with a fresh id and offset', () => {
+    const c = createDefaultCanvas();
+    const fid = c.frames[0].id;
+    const { canvas, elementId } = addElement(c, fid, 'text', { x: 10, y: 10 });
+    const { canvas: next, elementId: dupId } = duplicateElement(canvas, fid, elementId!);
+    expect(dupId).not.toBe(elementId);
+    expect(next.frames[0].elements).toHaveLength(2);
+    const dup = next.frames[0].elements.find((e) => e.id === dupId)!;
+    expect(dup.x).toBe(13);
+    expect(dup.y).toBe(13);
+  });
+
+  it('pastes a clipboard element into a frame', () => {
+    const c = createDefaultCanvas();
+    const fid = c.frames[0].id;
+    const { canvas, elementId } = addElement(c, fid, 'text');
+    const clip = canvas.frames[0].elements.find((e) => e.id === elementId)!;
+    const { canvas: next, elementId: pastedId } = pasteElement(canvas, fid, clip);
+    expect(pastedId).toBeTruthy();
+    expect(next.frames[0].elements).toHaveLength(2);
+  });
+});
+
+describe('canvasToSlides stays consistent after edits', () => {
+  it('reflects sequence order and frame contents (dual-write source)', () => {
+    let c = createDefaultCanvas();
+    c = addFrame(c).canvas; // A, B
+    const fidA = c.frames[0].id;
+    c = addElement(c, fidA, 'text').canvas;
+    // reverse navigation order: B then A
+    c = reorderSequence(c, c.defaultSequenceId, 0, 1);
+    const slides = canvasToSlides(c);
+    // slides follow the (reordered) sequence; ids match frame ids; orders are 0..n-1
+    expect(slides.map((s) => s.id)).toEqual(c.sequences[0].frameIds);
+    expect(slides.map((s) => s.order)).toEqual([0, 1]);
+    // the frame's edited elements survive the conversion
+    const slideA = slides.find((s) => s.id === fidA)!;
+    expect(slideA.elements).toHaveLength(1);
   });
 });
