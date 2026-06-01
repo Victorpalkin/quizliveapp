@@ -15,6 +15,14 @@ interface InfiniteCanvasProps {
   sequenceId?: string;
   showMiniMap?: boolean;
   className?: string;
+  /** Editor mode: id of the currently selected frame (highlighted). */
+  selectedFrameId?: string | null;
+  /** Editor mode: single-click selects a frame (stays in overview). When omitted, click focuses the camera (read-only nav). */
+  onFrameSelect?: (frameId: string) => void;
+  /** Editor mode: double-click a frame to activate (enter edit). */
+  onFrameActivate?: (frameId: string) => void;
+  /** Editor mode: drag a frame to reposition it (absolute canvas px). Enables drag when provided. */
+  onFrameMove?: (frameId: string, canvasX: number, canvasY: number) => void;
 }
 
 export function InfiniteCanvas({
@@ -22,6 +30,10 @@ export function InfiniteCanvas({
   sequenceId,
   showMiniMap = true,
   className,
+  selectedFrameId,
+  onFrameSelect,
+  onFrameActivate,
+  onFrameMove,
 }: InfiniteCanvasProps) {
   const nav = useCanvasNavigation(canvas, sequenceId);
   const { setViewport, fitAll } = nav;
@@ -61,22 +73,52 @@ export function InfiniteCanvas({
         className="absolute left-0 top-0 will-change-transform"
         style={{ transform: cameraToTransform(nav.camera, nav.viewport), transformOrigin: '0 0' }}
       >
-        {canvas.frames.map((frame) => (
-          <div
-            key={frame.id}
-            className="absolute cursor-pointer shadow-sm"
-            style={{
-              left: frame.canvasX,
-              top: frame.canvasY,
-              width: frame.width,
-              height: frame.height,
-            }}
-            onClick={() => nav.goToFrame(frame.id)}
-          >
-            <FrameContent frame={frame} />
-            <FrameOverlay name={frame.name} active={frame.id === nav.currentFrameId} />
-          </div>
-        ))}
+        {canvas.frames.map((frame) => {
+          const handlePointerDown = onFrameMove
+            ? (e: React.PointerEvent) => {
+                if (e.button !== 0) return;
+                e.stopPropagation(); // don't start a canvas pan
+                const startClientX = e.clientX;
+                const startClientY = e.clientY;
+                const startX = frame.canvasX;
+                const startY = frame.canvasY;
+                const zoom = nav.camera.zoom;
+                let moved = false;
+                const onMove = (ev: PointerEvent) => {
+                  const dx = (ev.clientX - startClientX) / zoom;
+                  const dy = (ev.clientY - startClientY) / zoom;
+                  if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
+                  if (moved) onFrameMove(frame.id, startX + dx, startY + dy);
+                };
+                const onUp = () => {
+                  window.removeEventListener('pointermove', onMove);
+                  window.removeEventListener('pointerup', onUp);
+                };
+                window.addEventListener('pointermove', onMove);
+                window.addEventListener('pointerup', onUp);
+              }
+            : undefined;
+          return (
+            <div
+              key={frame.id}
+              className={`absolute shadow-sm ${onFrameMove ? 'cursor-move' : 'cursor-pointer'} ${
+                selectedFrameId === frame.id ? 'ring-2 ring-primary' : ''
+              }`}
+              style={{
+                left: frame.canvasX,
+                top: frame.canvasY,
+                width: frame.width,
+                height: frame.height,
+              }}
+              onPointerDown={handlePointerDown}
+              onClick={() => (onFrameSelect ? onFrameSelect(frame.id) : nav.goToFrame(frame.id))}
+              onDoubleClick={() => onFrameActivate?.(frame.id)}
+            >
+              <FrameContent frame={frame} />
+              <FrameOverlay name={frame.name} active={frame.id === (selectedFrameId ?? nav.currentFrameId)} />
+            </div>
+          );
+        })}
       </div>
 
       {/* Fade transition: brief dim overlay (all frames are always visible, so no true cross-fade). */}
