@@ -83,8 +83,8 @@ Next/Prev / frame click ──► goToFrame ──► RAF interpolateCamera ─�
 - `worldToScreen(point, camera, viewport): {x, y}` — `screen = (world - camera) * zoom + viewportCenter`.
 - `screenToWorld(point, camera, viewport): {x, y}` — exact inverse.
 - `cameraToTransform(camera, viewport): string` — the CSS transform for the world container: `translate(vw/2px, vh/2px) scale(zoom) translate(-x px, -y px)`.
-- `fitFrame(frame, viewport, padding?): Camera` — center on the frame; `zoom = min(vw/(w+2·pad), vh/(h+2·pad))`, then `clampZoom`.
-- `fitAllFrames(frames, viewport, padding?): Camera` — bounding box of all frames; center + zoom to fit. Single frame → same as `fitFrame`. Empty frames → fallback `{ x: 0, y: 0, zoom: 1 }`.
+- `fitFrame(frame, viewport, paddingRatio = 0.1): Camera` — center on the frame; `zoom = clampZoom(min(vw·(1−paddingRatio)/w, vh·(1−paddingRatio)/h))`. (Padding is a viewport-fraction margin, not world px.)
+- `fitAllFrames(frames, viewport, paddingRatio = 0.1): Camera` — bounding box of all frames; center + zoom to fit using the same fraction-margin formula. Single frame → same as `fitFrame`. Empty frames → fallback `{ x: 0, y: 0, zoom: 1 }`.
 - `zoomAtPoint(camera, screenPoint, newZoom, viewport): Camera` — apply `clampZoom(newZoom)` while keeping the world point under `screenPoint` fixed on screen.
 - `panBy(camera, dxScreen, dyScreen): Camera` — `camera.x -= dx/zoom; camera.y -= dy/zoom`.
 - `clampZoom(zoom, min = 0.1, max = 4): number`.
@@ -123,11 +123,13 @@ The RAF loop and gesture binding are the only non-trivial untested glue, kept de
 
 ### `InfiniteCanvas`
 
-Props: `canvas: Canvas`, `sequenceId?: string` (default `canvas.defaultSequenceId`), `theme: PresentationTheme`, `showMiniMap?: boolean` (default `true`), `initialFit?: 'all' | { frameId: string }` (default `'all'`), `className?`.
+Props: `canvas: Canvas`, `sequenceId?: string` (default `canvas.defaultSequenceId`), `showMiniMap?: boolean` (default `true`), `className?`.
+
+> **As-built note:** this plan implements the read-only component with the props above and always fits-all once on mount. The originally-sketched `theme: PresentationTheme` and `initialFit?: 'all' | { frameId }` props were deferred — frame backgrounds come from `frame.background` (not the theme), and a configurable initial fit isn't needed until the editor wires this in. Plan #2 (editor integration) can add `theme` threading and `initialFit` when real consumers need them.
 
 Behavior:
 
-- Measures the viewport via `ResizeObserver`; performs the initial fit on mount and when frames change.
+- Measures the viewport via `ResizeObserver`; performs a one-time fit-all once the viewport size is known (does not re-fit on resize — the user can pan/zoom freely).
 - Renders an `overflow-hidden` viewport containing the world container styled with `cameraToTransform(camera, viewport)`.
 - For each frame: an absolutely-positioned box at `left: canvasX, top: canvasY, width, height` (world px) holding the frame background, `FrameContent`, and `FrameOverlay`.
 - Renders `MiniMap` (when enabled) and minimal Next/Prev controls + a "frame i/N in <sequence>" status readout.
