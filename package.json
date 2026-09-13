@@ -56,7 +56,8 @@
     "zod": "^3.24.2"
   },
   "overrides": {
-    "postcss": "^8.5.10"
+    "postcss": "^8.5.10",
+    "vite": "^7"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
@@ -68,6 +69,6 @@
     "postcss": "^8.5.10",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
-    "vitest": "^2.1.9"
+    "vitest": "^4.1.11"
   }
 }
