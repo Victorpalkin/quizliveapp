@@ -394,7 +394,7 @@ gcloud services enable firebaseextensions.googleapis.com
 gcloud services enable eventarc.googleapis.com       # For Firestore trigger functions (v2)
 gcloud services enable pubsub.googleapis.com         # Required by Eventarc and Cloud Scheduler
 gcloud services enable cloudscheduler.googleapis.com # For scheduled functions (cleanupOldGames)
-gcloud services enable aiplatform.googleapis.com     # For AI quiz generation (Gemini 3 Pro)
+gcloud services enable aiplatform.googleapis.com     # For AI quiz generation (Gemini 3.8 Flash)
 ```
 
 **For Production Project:**
@@ -415,7 +415,7 @@ gcloud services enable firebaseextensions.googleapis.com
 gcloud services enable eventarc.googleapis.com       # For Firestore trigger functions (v2)
 gcloud services enable pubsub.googleapis.com         # Required by Eventarc and Cloud Scheduler
 gcloud services enable cloudscheduler.googleapis.com # For scheduled functions (cleanupOldGames)
-gcloud services enable aiplatform.googleapis.com     # For AI quiz generation (Gemini 3 Pro)
+gcloud services enable aiplatform.googleapis.com     # For AI quiz generation (Gemini 3.8 Flash)
 ```
 
 ### 3.2 Create Custom Service Accounts for Cloud Build
@@ -654,7 +654,7 @@ echo "GCP service agent bindings configured for Eventarc"
 
 ### 3.4 Create Custom Service Account for AI Functions
 
-The AI features use Gemini 3 Pro via Vertex AI for:
+The AI features use Gemini 3.8 Flash via Vertex AI for:
 - **Quiz generation** (`generateQuizWithAI`) - generates quiz questions from prompts
 - **Image generation** (`generateQuestionImage`) - generates images for quiz questions
 
@@ -1445,7 +1445,7 @@ gcloud services enable aiplatform.googleapis.com --project=$DEV_PROJECT_ID
 
 1. Verify you're using the correct model name in `functions-ai/src/config.ts`
 2. Ensure the Vertex AI API is enabled in your project
-3. Check that your region supports the Gemini 3 Pro model (europe-west4 is recommended)
+3. Check that your region supports the Gemini 3.8 Flash model (europe-west4 is recommended)
 
 ### Issue: Cloud Build fails to deploy AI functions with "Permission denied on service account"
 
@@ -1745,7 +1745,7 @@ Monitor costs in [Google Cloud Console](https://console.cloud.google.com/billing
 - Cloud Build: 120 free minutes/day, then $0.003/minute
 - Firestore: Free tier: 50K reads, 20K writes/day
 - Cloud Storage: Free tier: 5GB
-- Vertex AI (Gemini 3 Pro): Pay per token (input/output)
+- Vertex AI (Gemini 3.8 Flash): Pay per token (input/output)
 
 ---
 

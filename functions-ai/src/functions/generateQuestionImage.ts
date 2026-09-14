@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import { AI_SERVICE_ACCOUNT, REGION, ALLOWED_ORIGINS } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
 import { enforceRateLimitInMemory } from '../utils/rateLimit';
-import { GEMINI_IMAGE, createGeminiClient } from '../utils/gemini';
+import { GEMINI_IMAGE, ThinkingLevel, createGeminiClient } from '../utils/gemini';
 import type { GenerateImageRequest, GenerateImageResponse } from '../types';
 
 export const generateQuestionImage = onCall(
@@ -84,6 +84,7 @@ export const generateQuestionImage = onCall(
         config: {
           responseModalities: ['TEXT', 'IMAGE'],
           imageConfig: { aspectRatio: '16:9' },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
         },
       });
 

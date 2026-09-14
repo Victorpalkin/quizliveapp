@@ -1,5 +1,6 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { createAIHandler, buildGeminiContents } from '../utils/createAIHandler';
+import { ThinkingLevel } from '../utils/gemini';
 import { stripMarkdownCodeBlocks } from '../utils/stripMarkdownCodeBlocks';
 import type {
   GeneratePresentationRequest,
@@ -222,6 +223,7 @@ function parsePresentationResponse(responseText: string): GeneratePresentationRe
 export const generatePresentationWithAI = createAIHandler<GeneratePresentationRequest, GeneratePresentationResponse>({
   systemPrompt: PRESENTATION_SYSTEM_PROMPT,
   activityType: 'presentation',
+  thinkingLevel: ThinkingLevel.HIGH,
   validateRequest: (data) => {
     if (data.attachedContent && typeof data.attachedContent === 'string' && data.attachedContent.length > 50000) {
       throw new HttpsError(

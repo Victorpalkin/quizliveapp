@@ -9,6 +9,7 @@ import {
   throwClassifiedError,
   GEMINI_FLASH,
   GEMINI_PRO,
+  ThinkingLevel,
 } from '../utils/gemini';
 import { generateAndUploadImage } from '../utils/imageGeneration';
 
@@ -501,7 +502,7 @@ INSTRUCTIONS:
       const client = createGeminiClient();
 
       // Call Gemini with retry logic
-      const aiOutput = await callGeminiWithRetry(client, model, AGENTIC_DESIGNER_SYSTEM_PROMPT, fullPrompt, useSearch);
+      const aiOutput = await callGeminiWithRetry(client, model, AGENTIC_DESIGNER_SYSTEM_PROMPT, fullPrompt, useSearch, ThinkingLevel.HIGH);
 
       // Step 10: also generate the infographic image
       let imageUrl: string | undefined;
@@ -655,6 +656,7 @@ Output ONLY the synthesized request.`;
         model: GEMINI_FLASH,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           temperature: 0.5,
           maxOutputTokens: 1024,
         },

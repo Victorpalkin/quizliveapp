@@ -205,7 +205,7 @@ export default function CreateQuizWithAIPage() {
                 Create Quiz with AI
               </h1>
               <p className="text-muted-foreground mt-1">
-                Describe your quiz and let Gemini 3 Pro generate it for you
+                Describe your quiz and let Gemini 3.8 Flash generate it for you
               </p>
             </div>
           </div>

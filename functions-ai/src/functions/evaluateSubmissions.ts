@@ -1,5 +1,5 @@
 import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import * as admin from 'firebase-admin';
 import { ALLOWED_ORIGINS, REGION, GEMINI_MODEL, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
@@ -225,6 +225,7 @@ Score each question from 0-100 based on how well it fits the topic and quiz qual
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         config: {
           systemInstruction: EVALUATION_PROMPT,
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
           temperature: 0.3, // Lower temperature for more consistent scoring
           topP: 0.8,
           maxOutputTokens: 4096,

@@ -2,16 +2,19 @@ import { GoogleGenAI } from '@google/genai';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getStorage } from 'firebase-admin/storage';
 import { randomUUID } from 'crypto';
-import { GEMINI_IMAGE } from './gemini';
+import { GEMINI_IMAGE, ThinkingLevel } from './gemini';
 
 /**
  * Generate an image with Gemini and upload to Firebase Storage.
  * Returns the public download URL.
+ * NOTE: gemini-3.1-flash-image only supports 'minimal' or 'high' thinking; we
+ * default to 'high' for better spatial/label accuracy on complex prompts.
  */
 export async function generateAndUploadImage(
   client: GoogleGenAI,
   imagePrompt: string,
-  storagePath: string
+  storagePath: string,
+  thinkingLevel: ThinkingLevel = ThinkingLevel.HIGH
 ): Promise<string> {
   const response = await client.models.generateContent({
     model: GEMINI_IMAGE,
@@ -19,6 +22,7 @@ export async function generateAndUploadImage(
     config: {
       responseModalities: ['TEXT', 'IMAGE'],
       imageConfig: { aspectRatio: '16:9' },
+      thinkingConfig: { thinkingLevel },
     },
   });
 
