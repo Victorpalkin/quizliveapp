@@ -213,11 +213,21 @@ export async function callGeminiWithTools(
       throw new HttpsError('internal', 'AI model failed to produce output after tool calls');
     }
 
-    // Append model's function call response to conversation
-    contents.push({
-      role: 'model',
-      parts: functionCalls.map((fc: FunctionCall) => ({ functionCall: fc })),
-    });
+    // Append the model's response content verbatim so required fields are
+    // preserved when we echo the turn back. Gemini 3.x attaches a
+    // `thoughtSignature` to functionCall parts when thinking is enabled and
+    // rejects follow-up requests (400) if it is missing. Rebuilding the turn
+    // from `response.functionCalls` alone drops that signature, so prefer the
+    // actual candidate content and only reconstruct as a fallback.
+    const modelContent = response.candidates?.[0]?.content;
+    if (modelContent) {
+      contents.push(modelContent);
+    } else {
+      contents.push({
+        role: 'model',
+        parts: functionCalls.map((fc: FunctionCall) => ({ functionCall: fc })),
+      });
+    }
 
     // Execute each function call and collect responses
     const responseParts: Part[] = [];
