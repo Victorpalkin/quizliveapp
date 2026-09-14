@@ -54,7 +54,29 @@ export async function callGeminiWithRetry(
 
       const text = response.text;
       if (!text) {
-        throw new HttpsError('internal', 'No response received from AI model');
+        // A successful call can still yield empty text: an empty/blocked
+        // candidate, or the model emitting only "thought" parts and no answer
+        // (SDK's `.text` returns undefined in both cases). The cause is
+        // intermittent, so retry at the SAME thinking level — preserving answer
+        // quality — and log finishReason/usage so a recurrence tells us WHY it
+        // was empty instead of us guessing.
+        const candidate = response.candidates?.[0];
+        const parts = candidate?.content?.parts ?? [];
+        const diag =
+          `finishReason=${candidate?.finishReason ?? 'unknown'}, parts=${parts.length}, ` +
+          `thoughtOnly=${parts.length > 0 && parts.every((p) => p.thought === true)}, ` +
+          `usage=${JSON.stringify(response.usageMetadata ?? {})}`;
+        if (retries < maxRetries) {
+          retries++;
+          console.warn(`Gemini returned empty text (${diag}); retry ${retries}/${maxRetries}`);
+          await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, retries - 1)));
+          continue;
+        }
+        console.error(`Gemini returned empty text after ${maxRetries} retries (${diag})`);
+        throw new HttpsError(
+          'internal',
+          `No response received from AI model (finishReason: ${candidate?.finishReason ?? 'unknown'})`
+        );
       }
 
       return text;
