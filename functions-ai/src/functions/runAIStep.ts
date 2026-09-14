@@ -5,6 +5,7 @@ import { verifyAppCheck } from '../utils/appCheck';
 import {
   createGeminiClient,
   callGeminiWithRetry,
+  callGeminiGrounded,
   callGeminiWithTools,
   extractJsonFromText,
   throwClassifiedError,
@@ -444,8 +445,13 @@ export const runAIStep = onCall(
         if (result.toolCallLog.length > 0) {
           console.log(`Agent tracker tool called ${result.toolCallLog.length} time(s): ${result.toolCallLog.map((c) => c.args.query).join(', ')}`);
         }
+      } else if (useSearch) {
+        // googleSearch + HIGH thinking in one call is unstable on gemini-3.8-flash
+        // (finishReason=MALFORMED_FUNCTION_CALL). Ground with search first, then
+        // generate the answer at HIGH thinking with no tools.
+        aiOutput = await callGeminiGrounded(client, model, systemPrompt, fullPrompt, ThinkingLevel.HIGH);
       } else {
-        aiOutput = await callGeminiWithRetry(client, model, systemPrompt, fullPrompt, useSearch, ThinkingLevel.HIGH);
+        aiOutput = await callGeminiWithRetry(client, model, systemPrompt, fullPrompt, false, ThinkingLevel.HIGH);
       }
 
       // Image generation (if enabled)

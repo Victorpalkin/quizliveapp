@@ -34,7 +34,15 @@ export async function callGeminiWithRetry(
   thinkingLevel: ThinkingLevel
 ): Promise<string> {
   let retries = 0;
+  let emptyRetries = 0;
   const maxRetries = 3;
+  // Empty responses are retried at most once, and only as a safety net for a
+  // genuine transient. We must NOT retry hard here: an empty response is often a
+  // deterministic finishReason=MALFORMED_FUNCTION_CALL (googleSearch + HIGH
+  // thinking in one call), and retrying it 3× at HIGH only burns quota (429) and
+  // blows the client timeout (deadline-exceeded). The structural fix is to avoid
+  // that combo (see callGeminiGrounded) rather than retry through it.
+  const maxEmptyRetries = 1;
   const baseDelay = 1500;
 
   while (retries <= maxRetries) {
@@ -56,23 +64,23 @@ export async function callGeminiWithRetry(
       if (!text) {
         // A successful call can still yield empty text: an empty/blocked
         // candidate, or the model emitting only "thought" parts and no answer
-        // (SDK's `.text` returns undefined in both cases). The cause is
-        // intermittent, so retry at the SAME thinking level — preserving answer
-        // quality — and log finishReason/usage so a recurrence tells us WHY it
-        // was empty instead of us guessing.
+        // (SDK's `.text` returns undefined in both cases). Log finishReason/usage
+        // so a recurrence tells us WHY it was empty, and retry at most once at the
+        // SAME thinking level — preserving answer quality — as a transient safety
+        // net only.
         const candidate = response.candidates?.[0];
         const parts = candidate?.content?.parts ?? [];
         const diag =
           `finishReason=${candidate?.finishReason ?? 'unknown'}, parts=${parts.length}, ` +
           `thoughtOnly=${parts.length > 0 && parts.every((p) => p.thought === true)}, ` +
           `usage=${JSON.stringify(response.usageMetadata ?? {})}`;
-        if (retries < maxRetries) {
-          retries++;
-          console.warn(`Gemini returned empty text (${diag}); retry ${retries}/${maxRetries}`);
-          await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, retries - 1)));
+        if (emptyRetries < maxEmptyRetries) {
+          emptyRetries++;
+          console.warn(`Gemini returned empty text (${diag}); retry ${emptyRetries}/${maxEmptyRetries}`);
+          await new Promise(resolve => setTimeout(resolve, baseDelay));
           continue;
         }
-        console.error(`Gemini returned empty text after ${maxRetries} retries (${diag})`);
+        console.error(`Gemini returned empty text after ${maxEmptyRetries} retry (${diag})`);
         throw new HttpsError(
           'internal',
           `No response received from AI model (finishReason: ${candidate?.finishReason ?? 'unknown'})`
@@ -123,6 +131,71 @@ export async function callGeminiWithRetry(
   }
 
   throw new HttpsError('internal', 'AI request failed after maximum retries');
+}
+
+// ── Grounded Generation (two-step: search, then generate) ──
+
+/**
+ * Produce a HIGH-thinking answer that is grounded in current web facts, WITHOUT
+ * the unstable `googleSearch + HIGH thinking` single-call combination.
+ *
+ * On gemini-3.8-flash (Vertex), enabling `googleSearch` grounding together with
+ * HIGH thinking in one `generateContent` call frequently returns
+ * finishReason=MALFORMED_FUNCTION_CALL with empty content (the model attempts a
+ * search/tool call that fails to generate). There is no config flag that fixes
+ * it. So we split the work into two calls, neither of which contains that combo:
+ *   1. a grounding call with `googleSearch` at LOW thinking gathers current facts;
+ *   2. a tool-free HIGH-thinking call writes the final answer from those facts.
+ * The generation call carries no tool, so it cannot emit MALFORMED_FUNCTION_CALL.
+ *
+ * Grounding is best-effort: if step 1 returns nothing (or errors), step 2 still
+ * runs on the ungrounded prompt — identical to a non-search step — rather than
+ * failing the whole request.
+ */
+export async function callGeminiGrounded(
+  client: GoogleGenAI,
+  model: string,
+  systemPrompt: string,
+  prompt: string,
+  thinkingLevel: ThinkingLevel
+): Promise<string> {
+  // Step 1 — gather grounded facts with Google Search at LOW thinking.
+  let groundedFacts = '';
+  try {
+    const grounding = await client.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        systemInstruction:
+          'You are a research assistant. Use Google Search to gather current, accurate facts ' +
+          'relevant to the task below. Return a concise bulleted list of the key findings, ' +
+          'including source names where relevant. Do not attempt to answer the task itself.',
+        tools: [{ googleSearch: {} }],
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        maxOutputTokens: 8192,
+      },
+    });
+    groundedFacts = grounding.text?.trim() ?? '';
+    if (!groundedFacts) {
+      const candidate = grounding.candidates?.[0];
+      console.warn(
+        `Grounding step returned no findings (finishReason=${candidate?.finishReason ?? 'unknown'}); ` +
+          'proceeding with ungrounded generation.'
+      );
+    }
+  } catch (error: any) {
+    // Grounding is best-effort — never fail the whole request because search failed.
+    console.warn(
+      `Grounding step failed (${error?.message ?? error}); proceeding with ungrounded generation.`
+    );
+  }
+
+  // Step 2 — produce the final answer at the requested thinking level, NO tools.
+  const generationPrompt = groundedFacts
+    ? `${prompt}\n\nGROUNDED RESEARCH (from web search — use as your factual basis):\n${groundedFacts}`
+    : prompt;
+
+  return callGeminiWithRetry(client, model, systemPrompt, generationPrompt, false, thinkingLevel);
 }
 
 // ── Function Calling with Tools ──
@@ -211,7 +284,18 @@ export async function callGeminiWithTools(
     if (!functionCalls || functionCalls.length === 0) {
       const text = response.text;
       if (!text) {
-        throw new HttpsError('internal', 'No response received from AI model');
+        // Single-shot log (no retry storm): surface finishReason/usage so an
+        // empty tool-call response — e.g. MALFORMED_FUNCTION_CALL — is diagnosable.
+        const candidate = response.candidates?.[0];
+        const parts = candidate?.content?.parts ?? [];
+        console.error(
+          `Gemini (tools) returned empty text: finishReason=${candidate?.finishReason ?? 'unknown'}, ` +
+            `parts=${parts.length}, usage=${JSON.stringify(response.usageMetadata ?? {})}`
+        );
+        throw new HttpsError(
+          'internal',
+          `No response received from AI model (finishReason: ${candidate?.finishReason ?? 'unknown'})`
+        );
       }
       return { text, toolCallLog };
     }
