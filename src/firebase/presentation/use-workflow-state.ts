@@ -96,7 +96,12 @@ export function useWorkflowState(gameId: string) {
           hostInputs?: Record<string, string | boolean>;
         },
         { output: string }
-      >(functions, 'runAIStep');
+      >(functions, 'runAIStep', {
+        // The server allows up to 300s (two-step grounded HIGH-thinking generation
+        // plus optional image gen can exceed the 70s callable default, which
+        // surfaced as `deadline-exceeded` on the client). Stay below the 300s cap.
+        timeout: 180000,
+      });
 
       const result = await runFn({
         gameId,
