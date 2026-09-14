@@ -1,5 +1,6 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { createAIHandler, buildGeminiContents } from '../utils/createAIHandler';
+import { ThinkingLevel } from '../utils/gemini';
 import { stripMarkdownCodeBlocks } from '../utils/stripMarkdownCodeBlocks';
 import type { GenerateQuizRequest, GenerateQuizResponse } from '../types';
 import { QUIZ_SYSTEM_PROMPT } from '../prompts/quizPrompt';
@@ -79,6 +80,7 @@ function parseQuizResponse(responseText: string): GenerateQuizResponse {
 export const generateQuizWithAI = createAIHandler<GenerateQuizRequest, GenerateQuizResponse>({
   systemPrompt: QUIZ_SYSTEM_PROMPT,
   activityType: 'quiz',
+  thinkingLevel: ThinkingLevel.MEDIUM,
   buildContents: (data) => buildGeminiContents(
     data.prompt,
     data.conversationHistory,

@@ -8,7 +8,7 @@ Zivo is an interactive, real-time audience engagement platform that allows users
 
 - **Secure Authentication**: Email/password sign-in for hosts
 - **Quiz Creation**: Multiple question types (single-choice, multiple-choice, slider, slide, polls)
-- **AI Quiz Generation**: Generate quiz questions from topics using Gemini 3 Pro
+- **AI Quiz Generation**: Generate quiz questions from topics using Gemini 3.8 Flash
 - **AI Image Generation**: Generate question images with AI, with preview and regenerate options
 - **Image/GIF Uploads**: Add visual content to questions (up to 5MB)
 - **Configurable Time Limits**: 10, 20, 30, or 60 seconds per question
@@ -29,7 +29,7 @@ Zivo is an interactive, real-time audience engagement platform that allows users
 - **Framework**: [Next.js](https://nextjs.org/) (App Router) with [TypeScript](https://www.typescriptlang.org/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) with [ShadCN UI](https://ui.shadcn.com/)
 - **Backend**: [Firebase](https://firebase.google.com/) (Auth, Firestore, Storage, Cloud Functions)
-- **AI**: Google Gemini 3 Pro via Vertex AI
+- **AI**: Google Gemini 3.8 Flash via Vertex AI
 - **Deployment**: Google Cloud Run + Firebase
 
 ## Quick Start

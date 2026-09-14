@@ -1,14 +1,17 @@
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import type { FunctionDeclaration, FunctionCall, Content, Part, Tool } from '@google/genai';
 import { HttpsError } from 'firebase-functions/v2/https';
 
-export { Type };
+export { Type, ThinkingLevel };
 
 // ── Model Constants ──
-
-export const GEMINI_PRO = 'gemini-3.1-pro-preview';
-export const GEMINI_FLASH = 'gemini-3-flash-preview';
-export const GEMINI_IMAGE = 'gemini-3.1-flash-image-preview';
+// All text/reasoning tasks run on Gemini 3.8 Flash. Effort is differentiated per
+// task via thinkingConfig.thinkingLevel (see callers), not by swapping models.
+// NOTE: 'minimal' thinking is unsupported on gemini-3.8-flash — use low/medium/high.
+export const GEMINI_PRO = 'gemini-3.8-flash';
+export const GEMINI_FLASH = 'gemini-3.8-flash';
+// Image output requires a dedicated image model (3.8 Flash is text-only).
+export const GEMINI_IMAGE = 'gemini-3.1-flash-image';
 
 // ── Client Factory ──
 
@@ -27,7 +30,8 @@ export async function callGeminiWithRetry(
   model: string,
   systemPrompt: string,
   prompt: string,
-  useSearch: boolean
+  useSearch: boolean,
+  thinkingLevel: ThinkingLevel
 ): Promise<string> {
   let retries = 0;
   const maxRetries = 3;
@@ -41,6 +45,7 @@ export async function callGeminiWithRetry(
         config: {
           systemInstruction: systemPrompt,
           tools: useSearch ? [{ googleSearch: {} }] : undefined,
+          thinkingConfig: { thinkingLevel },
           temperature: 0.7,
           topP: 0.9,
           maxOutputTokens: 65536,
@@ -122,9 +127,10 @@ export async function callGeminiWithTools(
   systemPrompt: string,
   prompt: string,
   tools: ToolDefinition[],
-  options?: { maxToolCalls?: number; useSearch?: boolean }
+  options?: { maxToolCalls?: number; useSearch?: boolean; thinkingLevel?: ThinkingLevel }
 ): Promise<{ text: string; toolCallLog: ToolCallLogEntry[] }> {
   const maxToolCalls = options?.maxToolCalls ?? 10;
+  const thinkingLevel = options?.thinkingLevel ?? ThinkingLevel.HIGH;
   const toolCallLog: ToolCallLogEntry[] = [];
 
   const geminiTools: Tool[] = [
@@ -152,6 +158,7 @@ export async function callGeminiWithTools(
         config: {
           systemInstruction: systemPrompt,
           tools: geminiTools,
+          thinkingConfig: { thinkingLevel },
           temperature: 0.7,
           topP: 0.9,
           maxOutputTokens: 65536,
@@ -195,6 +202,7 @@ export async function callGeminiWithTools(
         contents,
         config: {
           systemInstruction: systemPrompt,
+          thinkingConfig: { thinkingLevel },
           temperature: 0.7,
           topP: 0.9,
           maxOutputTokens: 65536,
@@ -253,7 +261,8 @@ export async function callGeminiWithTools(
 export async function extractJsonFromText(
   client: GoogleGenAI,
   extractionPrompt: string,
-  responseSchema?: Record<string, unknown>
+  responseSchema?: Record<string, unknown>,
+  thinkingLevel: ThinkingLevel = ThinkingLevel.LOW
 ): Promise<Record<string, unknown> | null> {
   try {
     const response = await client.models.generateContent({
@@ -262,6 +271,7 @@ export async function extractJsonFromText(
       config: {
         responseMimeType: 'application/json',
         ...(responseSchema ? { responseSchema } : {}),
+        thinkingConfig: { thinkingLevel },
         temperature: 0.3,
         maxOutputTokens: 8192,
       },

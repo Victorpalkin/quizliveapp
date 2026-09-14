@@ -1,5 +1,6 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { createAIHandler, buildGeminiContents } from '../utils/createAIHandler';
+import { ThinkingLevel } from '../utils/gemini';
 import { stripMarkdownCodeBlocks } from '../utils/stripMarkdownCodeBlocks';
 import type { GeneratePollRequest, GeneratePollResponse } from '../types';
 import { POLL_SYSTEM_PROMPT } from '../prompts/pollPrompt';
@@ -62,6 +63,7 @@ function parsePollResponse(responseText: string): GeneratePollResponse {
 export const generatePollWithAI = createAIHandler<GeneratePollRequest, GeneratePollResponse>({
   systemPrompt: POLL_SYSTEM_PROMPT,
   activityType: 'poll',
+  thinkingLevel: ThinkingLevel.MEDIUM,
   buildContents: (data) => buildGeminiContents(
     data.prompt,
     data.conversationHistory,

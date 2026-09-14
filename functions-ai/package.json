@@ -1,7 +1,7 @@
 {
   "name": "functions-ai",
   "version": "1.0.0",
-  "description": "AI-powered Cloud Functions for gQuiz (Gemini 3 Pro)",
+  "description": "AI-powered Cloud Functions for gQuiz (Gemini 3.8 Flash)",
   "scripts": {
     "build": "tsc",
     "serve": "npm run build && firebase emulators:start --only functions",

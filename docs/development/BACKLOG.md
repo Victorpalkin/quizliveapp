@@ -30,7 +30,7 @@
 | Streak tracking | ✅ Implemented | Medium | Server-side streak calculation with UI display on results and leaderboards |
 | Question timer visibility | ✅ Implemented | High | Timer bar shown on host screen during questions |
 | Copy quiz (own) | ✅ Implemented | Medium | Duplicate your own quizzes to modify |
-| AI quiz generation | ✅ Implemented | Very High | Generate quiz questions from topics using Gemini 3 Pro |
+| AI quiz generation | ✅ Implemented | Very High | Generate quiz questions from topics using Gemini 3.8 Flash |
 | AI image generation | ✅ Implemented | High | Generate question images with AI, preview & regenerate flow |
 | Question crowdsourcing | ✅ Implemented | High | Players submit questions in lobby, AI evaluates and selects best ones |
 

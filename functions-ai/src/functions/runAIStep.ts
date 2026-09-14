@@ -11,6 +11,7 @@ import {
   GEMINI_PRO,
   GEMINI_FLASH,
   Type,
+  ThinkingLevel,
 } from '../utils/gemini';
 import type { ToolDefinition } from '../utils/gemini';
 import { generateAndUploadImage } from '../utils/imageGeneration';
@@ -437,13 +438,14 @@ export const runAIStep = onCall(
         const result = await callGeminiWithTools(client, model, systemPrompt, fullPrompt, [agentTrackerTool], {
           maxToolCalls: 3,
           useSearch,
+          thinkingLevel: ThinkingLevel.HIGH,
         });
         aiOutput = result.text;
         if (result.toolCallLog.length > 0) {
           console.log(`Agent tracker tool called ${result.toolCallLog.length} time(s): ${result.toolCallLog.map((c) => c.args.query).join(', ')}`);
         }
       } else {
-        aiOutput = await callGeminiWithRetry(client, model, systemPrompt, fullPrompt, useSearch);
+        aiOutput = await callGeminiWithRetry(client, model, systemPrompt, fullPrompt, useSearch, ThinkingLevel.HIGH);
       }
 
       // Image generation (if enabled)
@@ -575,6 +577,7 @@ Output ONLY the synthesized request.`;
         model: GEMINI_FLASH,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           temperature: 0.5,
           maxOutputTokens: 1024,
         },

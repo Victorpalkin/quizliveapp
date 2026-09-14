@@ -1,5 +1,5 @@
 import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { ALLOWED_ORIGINS, REGION, GEMINI_MODEL, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from './appCheck';
 import { enforceRateLimitFirestore } from './rateLimit';
@@ -12,6 +12,8 @@ interface AIHandlerOptions<TRequest extends { prompt: string }, TResponse> {
   systemPrompt: string;
   activityType: string;
   maxPromptLength?: number;
+  /** Reasoning effort for this generator. Defaults to MEDIUM. */
+  thinkingLevel?: ThinkingLevel;
   buildContents: (data: TRequest) => GeminiContents;
   parseResponse: (responseText: string) => TResponse;
   getSuccessLog: (uid: string, result: TResponse) => string;
@@ -27,6 +29,7 @@ export function createAIHandler<TRequest extends { prompt: string }, TResponse>(
   options: AIHandlerOptions<TRequest, TResponse>
 ) {
   const maxPromptLength = options.maxPromptLength ?? 2000;
+  const thinkingLevel = options.thinkingLevel ?? ThinkingLevel.MEDIUM;
 
   return onCall(
     {
@@ -88,6 +91,7 @@ export function createAIHandler<TRequest extends { prompt: string }, TResponse>(
           contents,
           config: {
             systemInstruction: options.systemPrompt,
+            thinkingConfig: { thinkingLevel },
             temperature: 0.7,
             topP: 0.9,
             maxOutputTokens: 8192,

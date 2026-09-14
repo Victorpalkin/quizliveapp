@@ -142,14 +142,14 @@ steps:
         echo "This is required for CORS preflight requests."
         echo "Security is enforced at the application level (Firebase Auth + App Check)"
 
-        # generateQuizWithAI - AI quiz generation using Gemini 3 Pro
+        # generateQuizWithAI - AI quiz generation using Gemini 3.8 Flash
         gcloud functions add-invoker-policy-binding generateQuizWithAI \
           --region=${_REGION} \
           --member="allUsers" \
           --project=${PROJECT_ID} \
           --gen2
 
-        # generateQuestionImage - AI image generation using Gemini 3 Pro Image
+        # generateQuestionImage - AI image generation using Gemini 3.1 Flash Image
         gcloud functions add-invoker-policy-binding generateQuestionImage \
           --region=${_REGION} \
           --member="allUsers" \

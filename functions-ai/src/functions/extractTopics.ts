@@ -1,5 +1,5 @@
 import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import * as admin from 'firebase-admin';
 import { ALLOWED_ORIGINS, REGION, GEMINI_MODEL, AI_SERVICE_ACCOUNT } from '../config';
 import { verifyAppCheck } from '../utils/appCheck';
@@ -324,6 +324,7 @@ Create meaningful groups based on the specific subject matter of each response. 
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         config: {
           systemInstruction: EXTRACTION_PROMPT,
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
           temperature: 0.5,
           topP: 0.8,
           maxOutputTokens: 65536,
